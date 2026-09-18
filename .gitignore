@@ -1,0 +1,8 @@
+.vercel/output/
+.tanstack/tmp/
+.grok/preview.log
+.grok/status
+node_modules/
+.env
+.env.*
+!.env.example
