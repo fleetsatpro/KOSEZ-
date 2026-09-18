@@ -1,28 +1,30 @@
 # KOSEZ workspace import manifest
 
-Generated from the supplied grok-workspace.zip on 2026-09-18.
+Source: `grok-workspace.zip`
+Prepared: 2026-09-18
 
-## Archive inventory
+## Inventory
 
 - Archive entries: 444
-- Regular files in archive: 364
-- Archive payload: 33,593,613 bytes (33.6 MB)
+- Source-control files after generated/transient exclusions: 255
+- Original payload represented by the clean archive: 24,549,492 bytes
+- Clean archive SHA-256: `6fbafa0bfa862fe6ebf74dc66523a412e6fb1f3c81fa61d9b8f6b5b8b9c96674`
 
-## Intended source-control exclusions
+## Exclusions
 
-Generated/runtime artifacts are excluded from the repository import:
+Generated or transient output is deliberately excluded:
 
-- .vercel/output/ — generated Vercel build output
-- .tanstack/tmp/ — temporary TanStack workspace files
-- .grok/preview.log — preview runtime log
-- .grok/status — generated runtime status
+- `.vercel/output/`
+- `.tanstack/tmp/`
+- `.grok/preview.log`
+- `.grok/status`
+- `node_modules/`
+- `.env` / `.env.*`
 
-After those exclusions, 255 files remain, totaling approximately 23.41 MB, including source, documentation, migrations, screenshots, images, fonts, and other static assets.
+The project source, migrations, skills, screenshots, images, fonts, configuration, tests, scripts, and other non-generated workspace content are retained.
 
-## Safety scan
+## Transfer state
 
-No obvious private-key or common API-key token patterns were detected during the pre-import scan.
+The GitHub-connected environment cannot directly stream a local binary archive into GitHub. The exact clean archive is therefore available as a verified transfer artifact, while `grok-workspace-import` contains the guarded importer needed to place its contents into the repository without changing the root layout.
 
-## Important
-
-The repository has been initialized and a dedicated grok-workspace-import branch has been prepared. The full binary payload still requires a GitHub upload path that accepts the local archive/files directly; the connected GitHub write interface in this session does not expose that operation.
+The importer verifies the SHA-256 digest before touching the checkout and performs a credential-pattern scan before committing.
