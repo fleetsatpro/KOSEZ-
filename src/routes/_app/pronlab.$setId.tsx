@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, Volume2 } from "lucide-react";
 import { RecordControl } from "@/components/app/record-control";
 import { Eyebrow, Page, Sparkline, DualWave, Surface } from "@/components/app/primitives";
@@ -54,10 +54,7 @@ function PronlabSetPage() {
 
   const unlocked = isSetUnlocked(setDef.id, attempts, assigned);
   const item = setDef.items[index]!;
-  const summary = useMemo(
-    () => summarisePronlabItem(item.id, attempts),
-    [item.id, attempts],
-  );
+  const summary = summarisePronlabItem(item.id, attempts);
   const history = attempts
     .filter((a) => a.itemId === item.id)
     .slice(-10)
