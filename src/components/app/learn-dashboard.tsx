@@ -66,7 +66,6 @@ const PILLARS = [
 
 export function LearnDashboard() {
   const enrolledIds = useBlossom((s) => s.enrolledIds);
-  const enroll = useBlossom((s) => s.enroll);
   const homework = useBlossom((s) => s.homework).filter(
     (item) => item.studentId === "camille" && (item.status === "sent" || item.status === "done"),
   );
