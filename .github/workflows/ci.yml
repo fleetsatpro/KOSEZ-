@@ -1,5 +1,7 @@
 name: CI
 
+# Strict verification: lockfile, tests, types, lint, production build
+
 on:
   push:
     branches: [main]
