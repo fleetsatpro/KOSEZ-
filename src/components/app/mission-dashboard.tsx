@@ -422,6 +422,7 @@ export function MissionDashboard() {
       track("mission_debrief_closed", { seconds: seconds ?? 0 });
       navigate({ to: "/" });
     }
+  }
 
   return (
     <Page className="max-w-6xl">
