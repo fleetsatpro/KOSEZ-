@@ -76,6 +76,7 @@ export function RecordControl({
       const nextStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       if (!holding.current) {
         nextStream.getTracks().forEach((track) => track.stop());
+        setPhase("idle");
         return;
       }
 
