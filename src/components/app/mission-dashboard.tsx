@@ -225,7 +225,7 @@ function BriefStep({
             <MapPin className="size-3.5 text-primary" />
             {TODAY_MISSION.place}
           </div>
-          <p className="mt-1 pl-5.5 text-xs leading-relaxed text-muted">
+          <p className="mt-1 pl-5 text-xs leading-relaxed text-muted">
             Faites-le pour de vrai, ou utilisez l'enregistrement lorsque personne n'est disponible.
           </p>
         </div>
