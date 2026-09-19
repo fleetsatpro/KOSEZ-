@@ -11,6 +11,7 @@ import {
   Target,
   Volume2,
 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { RecordControl } from "@/components/app/record-control";
 import { Badge } from "@/components/ui/badge";
@@ -388,6 +389,7 @@ function FeedbackStep({
 }
 
 export function MissionDashboard() {
+  const navigate = useNavigate();
   const log = useBlossom((s) => s.activityLog);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const plan = useBlossom((s) => s.plan);
@@ -418,8 +420,8 @@ export function MissionDashboard() {
     );
     if (result.ok) {
       track("mission_debrief_closed", { seconds: seconds ?? 0 });
+      navigate({ to: "/" });
     }
-  }
 
   return (
     <Page className="max-w-6xl">
