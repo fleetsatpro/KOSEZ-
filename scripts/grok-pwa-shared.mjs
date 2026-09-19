@@ -406,7 +406,8 @@ export function normalizeHeadContext(ctx = {}) {
   // integration (Vite build/preview or Nitro baked snapshot). Keeping the
   // generic helper default context-free prevents platform unit tests from
   // reading an embedding app's site.json implicitly.
-  const site = applyCustomCardFromFs(ctx.site !== undefined ? ctx.site : {}, cwd);
+  const site =
+    ctx.site !== undefined ? applyCustomCardFromFs(ctx.site, cwd) : {};
   const appName = resolveOgTitle(site, ctx.appName ?? DEFAULT_APP_NAME, ctx.host ?? "");
   return {
     appName,
