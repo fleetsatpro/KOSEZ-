@@ -14,6 +14,8 @@ function NotFound() {
   );
 }
 
+// getRouter is a framework-required factory export, not a React component.
+ // eslint-disable-next-line react-refresh/only-export-components
 export function getRouter() {
   return createRouter({
     routeTree,
