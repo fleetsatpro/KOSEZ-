@@ -149,7 +149,7 @@ function MissionRail({
           </p>
           <div className="flex items-center justify-between border-t border-border pt-4">
             <span className="text-xs text-muted">Étape</span>
-            <Badge variant="secondary">{stageLabel}</Badge>
+            <Badge variant="outline">{stageLabel}</Badge>
           </div>
         </div>
       </Surface>
