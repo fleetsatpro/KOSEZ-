@@ -152,7 +152,7 @@ export function LearnDashboard() {
               }}
             >
               <Check className="size-4" />
-              {continueTarget.action}
+              Marquer comme fait
             </Button>
           ) : activeSet ? (
             <Button
