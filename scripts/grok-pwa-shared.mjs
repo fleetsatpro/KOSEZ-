@@ -403,11 +403,15 @@ function insertBeforeHeadClose(html, snippet) {
 export function normalizeHeadContext(ctx = {}) {
   const cwd = ctx.cwd ?? process.cwd();
   // App-specific OG identity is supplied explicitly by the platform
-  // integration (Vite build/preview or Nitro baked snapshot). Keeping the
-  // generic helper default context-free prevents platform unit tests from
-  // reading an embedding app's site.json implicitly.
+  // integration (Vite build/preview or Nitro baked snapshot). Generic helper
+  // calls may still provide a site object, but filesystem discovery is only
+  // enabled when the caller explicitly supplies the workspace root.
   const site =
-    ctx.site !== undefined ? applyCustomCardFromFs(ctx.site, cwd) : {};
+    ctx.site !== undefined
+      ? ctx.cwd !== undefined
+        ? applyCustomCardFromFs(ctx.site, cwd)
+        : ctx.site
+      : {};
   const appName = resolveOgTitle(site, ctx.appName ?? DEFAULT_APP_NAME, ctx.host ?? "");
   return {
     appName,
