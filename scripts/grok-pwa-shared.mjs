@@ -402,14 +402,11 @@ function insertBeforeHeadClose(html, snippet) {
 
 export function normalizeHeadContext(ctx = {}) {
   const cwd = ctx.cwd ?? process.cwd();
-  // Middleware passes a baked `site`. Still consult the workspace so a
-  // public/og.jpg generated after that snapshot (or missed by a wrong cwd)
-  // wins over the og.grok.me placeholder. Vercel has no public/ to read, so
-  // a correct bake is unchanged.
-  const site = applyCustomCardFromFs(
-    ctx.site !== undefined ? ctx.site : snapshotOgIdentity(cwd).site,
-    cwd,
-  );
+  // App-specific OG identity is supplied explicitly by the platform
+  // integration (Vite build/preview or Nitro baked snapshot). Keeping the
+  // generic helper default context-free prevents platform unit tests from
+  // reading an embedding app's site.json implicitly.
+  const site = applyCustomCardFromFs(ctx.site !== undefined ? ctx.site : {}, cwd);
   const appName = resolveOgTitle(site, ctx.appName ?? DEFAULT_APP_NAME, ctx.host ?? "");
   return {
     appName,
