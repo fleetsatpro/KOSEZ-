@@ -94,43 +94,8 @@ export function LearnDashboard() {
     ? activeSet.items.filter((item) => summarisePronlabItem(item.id, attempts).mastered).length
     : 0;
 
-  const continueTarget = activeHomework
-    ? {
-        eyebrow: "À faire avec Léa",
-        title: activeHomework.title,
-        detail: activeHomework.body,
-        to: "/learn",
-        icon: RotateCcw,
-        action: "Marquer comme fait",
-      }
-    : activeSet
-      ? {
-          eyebrow: "À reprendre",
-          title: activeSet.title,
-          detail: activeSet.blurb,
-          to: "/pronlab/$setId",
-          params: { setId: activeSet.id },
-          icon: Target,
-          action: "Reprendre",
-        }
-      : libraryOk && LIBRARY[0]
-        ? {
-            eyebrow: "Prochaine lecture",
-            title: LIBRARY[0].title,
-            detail: LIBRARY[0].blurb,
-            to: "/library/$id",
-            params: { id: LIBRARY[0].id },
-            icon: BookOpen,
-            action: "Lire",
-          }
-        : {
-            eyebrow: "Prochaine expérience",
-            title: "Une salle de parole vous attend",
-            detail: "Choisissez une situation courte et faites entrer la langue dans votre semaine.",
-            to: "/osez",
-            icon: Mic2,
-            action: "Osez parler",
-          };
+
+  const ContinueIcon = activeHomework ? RotateCcw : activeSet ? Target : libraryOk && LIBRARY[0] ? BookOpen : Mic2;
 
   return (
     <Page>
@@ -166,17 +131,17 @@ export function LearnDashboard() {
         <article className="rounded-2xl bg-fg p-5 text-primary-foreground shadow-[var(--shadow-border)] sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <Eyebrow className="text-primary-foreground/55">{continueTarget.eyebrow}</Eyebrow>
+              <Eyebrow className="text-primary-foreground/55">{activeHomework ? "À faire avec Léa" : activeSet ? "À reprendre" : libraryOk && LIBRARY[0] ? "Prochaine lecture" : "Prochaine expérience"}</Eyebrow>
               <h2 className="mt-2 max-w-xl font-display text-3xl tracking-tight sm:text-4xl">
-                {continueTarget.title}
+                {activeHomework ? activeHomework.title : activeSet ? activeSet.title : libraryOk && LIBRARY[0] ? LIBRARY[0].title : "Une salle de parole vous attend"}
               </h2>
             </div>
             <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary-foreground/10">
-              <continueTarget.icon className="size-5" strokeWidth={1.7} />
+              <ContinueIcon className="size-5" strokeWidth={1.7} />
             </span>
           </div>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-primary-foreground/70">
-            {continueTarget.detail}
+            {activeHomework ? activeHomework.body : activeSet ? activeSet.blurb : libraryOk && LIBRARY[0] ? LIBRARY[0].blurb : "Choisissez une situation courte et faites entrer la langue dans votre semaine."}
           </p>
           {activeHomework ? (
             <Button
@@ -190,14 +155,36 @@ export function LearnDashboard() {
               <Check className="size-4" />
               {continueTarget.action}
             </Button>
+          ) : activeSet ? (
+            <Button
+              asChild
+              size="lg"
+              className="mt-6 bg-primary-foreground text-fg hover:bg-primary-foreground/90"
+            >
+              <Link to="/pronlab/$setId" params={{ setId: activeSet.id }}>
+                Reprendre
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          ) : libraryOk && LIBRARY[0] ? (
+            <Button
+              asChild
+              size="lg"
+              className="mt-6 bg-primary-foreground text-fg hover:bg-primary-foreground/90"
+            >
+              <Link to="/library/$id" params={{ id: LIBRARY[0].id }}>
+                Lire
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
           ) : (
             <Button
               asChild
               size="lg"
               className="mt-6 bg-primary-foreground text-fg hover:bg-primary-foreground/90"
             >
-              <Link to={continueTarget.to} params={"params" in continueTarget ? continueTarget.params : undefined}>
-                {continueTarget.action}
+              <Link to="/osez">
+                Osez parler
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
