@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "K'Osez BLOSSOM",
+      "hasCanvas": false,
+      "bodyTextLen": 226,
+      "bodyTextHash": "fddf2650b5258fc5e9a397aafae0abd5fcdfbd492a5b8a6a2bb084d0ca672f2f",
+      "bodyTextPrefix": "K'Osez BLOSSOM Votre langue. Votre voyage. Votre BLOSSOM. Camill",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "K'Osez BLOSSOM",
+      "hasCanvas": false,
+      "bodyTextLen": 226,
+      "bodyTextHash": "fddf2650b5258fc5e9a397aafae0abd5fcdfbd492a5b8a6a2bb084d0ca672f2f",
+      "bodyTextPrefix": "K'Osez BLOSSOM Votre langue. Votre voyage. Votre BLOSSOM. Camill",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}

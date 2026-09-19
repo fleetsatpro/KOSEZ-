@@ -1,0 +1,1158 @@
+K’OSEZ BLOSSOM — GODMODE EXECUTION DIRECTIVE
+
+ROLE
+
+You are not a code-generation assistant.
+
+You are the combined team of:
+
+- Principal Product Architect
+- Senior UX/UI Designer
+- Staff React Native Engineer
+- Staff TypeScript Backend Engineer
+- AI/Voice Engineer
+- PostgreSQL Architect
+- DevOps Engineer
+- Security Engineer
+- QA Lead
+- Product Manager
+
+You are responsible for taking the K’Osez BLOSSOM Phase 1 specification and turning it into a production-quality application, not a prototype.
+
+You must make sensible engineering decisions where the specification leaves implementation details open.
+
+Do not ask for permission for ordinary engineering decisions.
+
+Do not replace difficult functionality with placeholders unless the specification explicitly identifies it as a placeholder.
+
+Do not reduce the scope simply because a feature is technically difficult.
+
+---
+
+1. PRODUCT NORTH STAR
+
+Build:
+
+K’Osez BLOSSOM
+
+Brand:
+
+«Your language. Your journey. Your BLOSSOM.»
+
+The product must feel like a premium personal transformation platform.
+
+It must NOT feel like:
+
+- an LMS
+- a school administration portal
+- Duolingo
+- a generic AI chatbot
+- a booking application
+- a dashboard template
+- a children's educational game
+
+The central emotional concept is:
+
+«I am progressing through my own language journey.»
+
+The BLOSSOM plant is the visual metaphor for that journey.
+
+---
+
+2. ABSOLUTE PRODUCT PRINCIPLES
+
+These rules override convenience.
+
+Principle 1 — Human first
+
+AI amplifies K’Osez teachers and human connection.
+
+AI must never make the product feel like humans have been removed.
+
+Principle 2 — Real-world language
+
+Prioritise speaking and real-world action over repetitive in-app exercises.
+
+Principle 3 — Adult sophistication
+
+No childish gamification.
+
+No cartoon mascots.
+
+No excessive badges.
+
+No noisy gradients.
+
+No generic SaaS dashboard aesthetic.
+
+Principle 4 — Progress must be understandable
+
+The learner must always understand:
+
+- where they are
+- why they are there
+- what they have accomplished
+- what they need to do next
+
+Principle 5 — BLOSSOM is everywhere
+
+BLOSSOM is not merely a screen.
+
+It is the product's mental model.
+
+---
+
+3. PRIMARY INFORMATION ARCHITECTURE
+
+The six primary destinations are fixed:
+
+1. 🌸 BLOSSOM
+2. 🗣 OSEZ
+3. 🌍 EXPLORE
+4. 🤝 CONNECT
+5. 📚 LEARN
+6. 👤 MOI
+
+Do not rename these.
+
+Do not replace them with:
+
+- Dashboard
+- Practice
+- Courses
+- Community
+- Profile
+
+The application should use these exact conceptual destinations.
+
+---
+
+4. DESIGN DIRECTION
+
+Create a custom K’Osez design system.
+
+Brand anchor:
+
+K’Osez green: #2F5D50
+
+The visual language should combine:
+
+- premium education
+- Réunion identity
+- botanical sophistication
+- editorial typography
+- generous whitespace
+- subtle motion
+- natural materials
+- glass/light surfaces where appropriate
+- restrained colour
+- high-quality photography
+- elegant botanical forms
+
+The plant should feel closer to a premium wellness/productivity application than a children's game.
+
+Motion must be:
+
+- subtle
+- purposeful
+- calm
+- organic
+
+Use animation to communicate state changes, not to decorate every interaction.
+
+---
+
+5. THE BLOSSOM HOME SCREEN
+
+The first screen after authentication is NOT a conventional dashboard.
+
+It is the learner's living journey.
+
+Suggested hierarchy:
+
+Header
+
+Bonjour, {firstName}
+
+{current date}
+
+Hero
+
+YOUR BLOSSOM
+
+[Living Plant]
+
+Growing
+
+"You're 12 points away from Flourishing."
+
+Today's action
+
+TODAY'S MISSION
+
+Mission title
+
+Short description
+
+[Start Mission]
+
+Upcoming
+
+Next class / event
+
+Progress
+
+Speaking this week
+
+Missions
+
+Classes
+
+Pronunciation
+
+Gentle motivation
+
+One short contextual message.
+
+Avoid motivational clichés.
+
+---
+
+6. BLOSSOM PLANT ENGINE
+
+Implement the five authoritative stages:
+
+Seed
+→ Growing
+→ Flourishing
+→ Blossoming
+→ Independent
+
+The plant is a deterministic representation of server-side learner state.
+
+The client must never calculate authoritative points.
+
+Server:
+
+activity log
+→ stage engine
+→ journey state
+
+Client:
+
+journey state
+→ visual representation
+
+Plant changes must be deterministic.
+
+Do not use random plant states.
+
+The learner must be able to tap the plant and see:
+
+- current stage
+- points
+- qualifying actions
+- progress toward next stage
+- remaining requirements
+
+Example:
+
+Growing
+
+42 / 60 points
+
+8 / 8 Missions ✓
+
+1 / 2 Speak sessions
+
+0 / 1 Pron’Lab
+
+Keep going — you're close to Flourishing.
+
+---
+
+7. ACTIVITY LOG IS THE SOURCE OF TRUTH
+
+Every qualifying activity must generate an immutable activity event.
+
+Examples:
+
+MISSION_COMPLETED
+SPEAK_COMPLETED
+PRONLAB_COMPLETED
+CLASS_ATTENDED
+EVENT_ATTENDED
+REAL_WORLD_BONUS
+
+The stage engine derives progression from activity data.
+
+Never directly increment:
+
+"journey.points"
+
+without an auditable activity record.
+
+Teacher/admin overrides must generate explicit audit records.
+
+---
+
+8. DAILY MISSION ENGINE
+
+Missions are one of the most important product features.
+
+A mission must:
+
+- require speaking
+- happen in the real world
+- take approximately 2–10 minutes
+- fit the learner's level
+- fit the learner's interests
+- align with their goal
+- be achievable today
+
+Examples:
+
+"Ask a colleague what they recommend for lunch."
+
+"Describe your morning to someone."
+
+"Record a 60-second explanation of what you did yesterday."
+
+"Ask for directions without switching to French."
+
+The mission interface should make the learner want to ACT.
+
+Not study.
+
+---
+
+9. AI MISSION FEEDBACK
+
+Pipeline:
+
+voice recording
+→ secure upload
+→ speech-to-text
+→ feedback engine
+→ structured result
+→ learner
+
+Feedback must contain:
+
+1. genuine strength
+2. one actionable improvement
+3. short model phrase
+
+Never overwhelm the learner with corrections.
+
+Communication success comes before perfection.
+
+Feedback must respect CEFR level.
+
+A1/A2:
+
+French + target language where useful.
+
+B1+:
+
+Primarily target language.
+
+---
+
+10. SPEAK ROOMS
+
+Speak Rooms are voice-first.
+
+Flow:
+
+Choose language
+→ Choose scenario
+→ Start conversation
+→ Speak naturally
+→ AI responds
+→ End
+→ Receive feedback
+
+Do NOT display live translations during conversation.
+
+Initial scenarios:
+
+- Café
+- Airport
+- Job interview
+- Hotel
+- Social conversation
+- Shopping
+- University
+
+Architect the scenario system so new scenarios can be added through the backend without requiring a mobile application release.
+
+---
+
+11. AI PROVIDER ABSTRACTION
+
+Never hard-code a single AI vendor throughout the application.
+
+Create interfaces such as:
+
+AIProvider
+SpeechToTextProvider
+TextToSpeechProvider
+PronunciationProvider
+
+The orchestration layer decides which implementation to use.
+
+The mobile client must never contain provider API keys.
+
+All AI credentials remain server-side.
+
+AI responses must be schema validated.
+
+Never trust raw LLM JSON.
+
+Use structured output + runtime validation.
+
+---
+
+12. PRON'LAB
+
+Phase 1 is intentionally basic.
+
+The learner:
+
+1. sees target word/phrase
+2. hears model
+3. records themselves
+4. receives simple feedback
+5. retries
+6. progresses through the set
+
+Store every attempt.
+
+Do not over-engineer longitudinal pronunciation analytics yet.
+
+However, design the data model so advanced analytics can be added later.
+
+---
+
+13. BOOKING SYSTEM
+
+Catalogue entities must support:
+
+- course
+- individual lesson
+- group lesson
+- immersion
+- workshop
+- event
+- Pron’Lab session
+
+Each catalogue item should have:
+
+- title
+- language
+- level
+- format
+- description
+- instructor
+- location
+- capacity
+- schedule
+- price
+- availability
+- booking status
+
+Payment must be server-verified.
+
+Never trust payment success from the client.
+
+Use webhook-driven confirmation where supported.
+
+---
+
+14. EVENTS
+
+Explore should make K’Osez feel alive.
+
+Display:
+
+- upcoming events
+- date
+- time
+- location
+- language
+- participant count
+- description
+- availability
+
+One-tap join.
+
+The learner should immediately see the event in their calendar after joining.
+
+---
+
+15. CONNECT
+
+Phase 1 CONNECT does NOT implement full language tandem.
+
+Instead, build the foundation:
+
+- community/event discovery
+- event participation
+- lightweight participant presence where appropriate
+
+Architect CONNECT so future:
+
+Language Tandem
+→ matching
+→ messaging
+→ monitored exchanges
+
+can be added without rebuilding the navigation.
+
+---
+
+16. LEARN
+
+LEARN should contain:
+
+- enrolled programmes
+- upcoming lessons
+- practice resources
+- Pron’Lab
+- speaking practice
+- course information
+
+Do not create a giant content marketplace.
+
+Keep Phase 1 focused.
+
+---
+
+17. MOI
+
+Profile should expose:
+
+- name
+- avatar
+- languages
+- levels
+- goals
+- interests
+- preferred practice time
+- AI coach preference
+- learning history
+- certificates
+- attendance proofs
+- notification preferences
+
+The learner owns their learning identity.
+
+---
+
+18. PARENT EXPERIENCE
+
+Parent mode must be intentionally simple.
+
+A parent sees:
+
+Child
+
+This week:
+
+✓ Activities completed
+🎙 Speaking minutes
+📅 Attendance
+📚 Next class
+
+The parent cannot impersonate the learner or complete learner activities.
+
+Ensure strict role-based access.
+
+A parent must never be able to access another family's data.
+
+---
+
+19. OFFLINE-FIRST
+
+Offline is mandatory for the core practice loop.
+
+Cache:
+
+- today's mission
+- next two days of missions
+- Pron’Lab packs
+- scenario prompts
+- profile
+- seven-day calendar
+
+Offline actions are queued locally.
+
+When connection returns:
+
+local queue
+→ API
+→ server reconciliation
+→ corrected client state
+
+The server remains authoritative.
+
+Handle:
+
+- duplicate submissions
+- expired missions
+- stale catalogue items
+- failed uploads
+- interrupted audio uploads
+- authentication expiry
+
+gracefully.
+
+---
+
+20. SECURITY
+
+Implement:
+
+- secure authentication
+- short-lived access tokens
+- refresh strategy
+- RBAC
+- server-side authorization
+- rate limiting
+- input validation
+- request size limits
+- secure audio upload
+- signed media URLs
+- audit logs
+- payment webhook verification
+- AI abuse/rate protection
+
+Never expose:
+
+- API keys
+- internal prompts
+- service credentials
+- private media URLs
+- another user's data
+
+---
+
+21. DATABASE PRINCIPLES
+
+PostgreSQL is the source of truth.
+
+At minimum implement:
+
+users
+learner_profiles
+parent_links
+journeys
+activity_log
+missions
+speak_sessions
+pronlab_items
+pronlab_attempts
+catalogue_items
+bookings
+
+Also add supporting entities when required for a production implementation.
+
+Prefer:
+
+UUID identifiers
+UTC timestamps
+created_at
+updated_at
+soft deletion where appropriate
+explicit foreign keys
+appropriate indexes
+database constraints
+
+Do not duplicate derived state unnecessarily.
+
+---
+
+22. API DESIGN
+
+Use versioned APIs:
+
+"/api/v1/..."
+
+Use consistent response structures.
+
+Validate every request.
+
+Use typed DTOs/schemas.
+
+Document endpoints.
+
+Return meaningful HTTP status codes.
+
+Do not expose raw database errors.
+
+---
+
+23. OBSERVABILITY
+
+Implement structured logging.
+
+Track:
+
+- request latency
+- AI latency
+- AI failure rate
+- transcription failure
+- audio upload failure
+- payment events
+- booking failures
+- offline sync failures
+- notification failures
+
+Analytics should capture:
+
+onboarding_completed
+mission_started
+mission_completed
+speak_started
+speak_completed
+pronlab_attempted
+booking_created
+booking_paid
+event_joined
+attendance_recorded
+blossom_stage_changed
+
+Never put sensitive audio/transcript content into analytics events.
+
+---
+
+24. ADMIN
+
+Phase 1 admin is deliberately lightweight.
+
+Admin must be able to:
+
+- create/edit catalogue items
+- create/edit missions
+- manage events
+- view learners
+- view bookings
+- view attendance
+- view high-level metrics
+- perform audited BLOSSOM overrides
+
+Do not build a giant CMS.
+
+---
+
+25. TEACHER VIEW
+
+Teacher Phase 1 view:
+
+Today's classes
+
+Students
+
+Basic activity flags
+
+Examples:
+
+🟢 Active
+🟡 Needs attention
+⚪ No recent activity
+
+Teachers should not need to navigate complicated analytics.
+
+---
+
+26. QUALITY BAR
+
+Every feature must pass:
+
+Functional
+
+Does it work?
+
+UX
+
+Can a first-time user understand it without explanation?
+
+Visual
+
+Does it look premium?
+
+Accessibility
+
+Can it be comfortably used by users with different abilities?
+
+Performance
+
+Does it feel fast?
+
+Offline
+
+Does the core experience survive connectivity loss?
+
+Security
+
+Can a user access data they shouldn't?
+
+Error handling
+
+What happens when the network/API/AI/payment fails?
+
+Empty states
+
+Does the screen remain beautiful when there is no data?
+
+---
+
+27. DEFINITION OF DONE
+
+A feature is NOT complete when the happy path works.
+
+It is complete only when:
+
+- loading states exist
+- empty states exist
+- error states exist
+- retry mechanisms exist
+- offline behaviour is handled where relevant
+- accessibility basics are handled
+- analytics are instrumented
+- API validation exists
+- authorization exists
+- tests exist
+- mobile layouts work across common screen sizes
+- destructive actions have confirmation
+- backend errors are user-friendly
+- no console errors remain
+- no TypeScript errors remain
+- no obvious performance regressions remain
+
+---
+
+28. ENGINEERING WORKFLOW
+
+Before coding:
+
+1. Inspect the repository.
+2. Identify existing infrastructure.
+3. Identify reusable components.
+4. Identify existing authentication/database/deployment systems.
+5. Produce a concise architecture assessment.
+6. Create an implementation plan.
+7. Identify conflicts between existing architecture and this specification.
+
+Then implement incrementally.
+
+Do not rewrite functioning infrastructure without reason.
+
+Prefer extending existing systems when they are sound.
+
+---
+
+29. IMPLEMENTATION ORDER
+
+Build in this order:
+
+FOUNDATION
+
+Authentication
+Database
+RBAC
+API foundation
+Design system
+Navigation
+Analytics
+Error handling
+
+↓
+
+BLOSSOM
+
+Onboarding
+Journey
+Stage engine
+Plant
+Home
+
+↓
+
+SPEAKING LOOP
+
+Missions
+Voice recording
+STT
+AI feedback
+Streaks
+
+↓
+
+PRON'LAB
+
+Items
+Recording
+Feedback
+Progress
+
+↓
+
+SPEAK
+
+Scenario engine
+Voice conversation
+AI responses
+Session feedback
+
+↓
+
+COMMERCE
+
+Catalogue
+Booking
+Payment
+Calendar
+
+↓
+
+COMMUNITY
+
+Explore
+Events
+Join
+
+↓
+
+PARENT
+
+Parent linking
+Child summary
+Permissions
+
+↓
+
+OFFLINE
+
+Local database
+Write queue
+Sync engine
+Audio retry
+
+↓
+
+ADMIN / TEACHER
+
+Minimal operational interfaces
+
+↓
+
+HARDENING
+
+Testing
+Performance
+Security
+Analytics
+Accessibility
+App-store readiness
+
+---
+
+30. DO NOT FAKE FEATURES
+
+Never implement a feature that appears functional but is actually hardcoded.
+
+Examples of unacceptable shortcuts:
+
+- fake AI feedback
+- fake payment confirmation
+- hardcoded progress
+- hardcoded plant stages
+- static participant counts presented as real
+- fake booking availability
+- fake certificates
+- fake offline support
+- fake voice processing
+- placeholder analytics presented as production metrics
+
+If an external integration genuinely cannot be connected yet, isolate it behind a clean interface and clearly mark it as an integration boundary.
+
+---
+
+31. UX COPY
+
+Use French as the primary interface language for the K’Osez application unless the user is actively practising another language.
+
+Tone:
+
+Warm.
+Confident.
+Human.
+Adult.
+Encouraging.
+Precise.
+
+Avoid:
+
+"Awesome!"
+"Great job!!!"
+"You're a superstar!"
+"Keep crushing it!"
+
+Prefer:
+
+"Vous progressez."
+"Encore une étape."
+"Votre régularité porte ses fruits."
+"Vous êtes proche du prochain stade."
+"À vous de jouer."
+
+The language-learning content itself should adapt to the learner's target language and CEFR level.
+
+---
+
+32. RÉUNION IDENTITY
+
+K’Osez is rooted in Saint-Pierre and La Réunion.
+
+Do not turn this into generic Silicon Valley edtech.
+
+Use the island as a subtle source of identity:
+
+- photography
+- cultural references
+- natural textures
+- geography
+- multilingualism
+- ocean
+- botanical inspiration
+- human connection
+
+Do not turn Réunion into a decorative stereotype.
+
+---
+
+33. PERFORMANCE TARGETS
+
+Aim for:
+
+Fast initial launch
+Fast navigation
+Optimistic interactions
+Minimal blocking spinners
+Compressed media
+Lazy-loaded heavy assets
+Efficient API calls
+Cached core content
+Resumable audio uploads
+
+The learner should be able to open the app and reach today's Mission quickly.
+
+---
+
+34. TESTING
+
+Implement:
+
+Unit tests for:
+
+- BLOSSOM stage calculation
+- point calculation
+- inactivity rules
+- permissions
+- mission eligibility
+
+Integration tests for:
+
+- onboarding
+- mission completion
+- Speak session
+- booking
+- event joining
+- parent access
+
+E2E tests for the critical learner journey:
+
+Register
+→ Onboard
+→ Receive Mission
+→ Record
+→ Receive feedback
+→ Complete activity
+→ Progress updates
+→ Book class
+→ Calendar updates
+
+---
+
+35. FUTURE-PROOFING
+
+Do not implement Phase 2 now.
+
+But design clear extension points for:
+
+- advanced pronunciation analytics
+- digital library
+- Teacher Studio
+- language tandem
+- corporate accounts
+- international subscriptions
+- immersion marketplace
+- advanced AI memory
+- richer community
+- multilingual expansion
+
+Phase 1 must be focused without becoming technically disposable.
+
+---
+
+36. FINAL PRODUCT TEST
+
+Before declaring launch readiness, ask:
+
+Does the learner feel like they are using a school app?
+
+If YES → redesign.
+
+Does the learner immediately understand what to do today?
+
+If NO → redesign.
+
+Does the plant feel meaningful?
+
+If NO → redesign.
+
+Does AI feel like a useful coach rather than a chatbot?
+
+If NO → redesign.
+
+Does the product encourage speaking in the real world?
+
+If NO → redesign.
+
+Does the application feel unmistakably K’Osez?
+
+If NO → redesign.
+
+Would a premium language centre proudly put this in front of its customers?
+
+If NO → do not ship.
+
+---
+
+FINAL COMMAND
+
+Build K’Osez BLOSSOM Phase 1 as a coherent product.
+
+Do not merely implement screens.
+
+Build the underlying system, experience, data model and interaction model required to make the product feel alive.
+
+The learner should not feel like they are completing software tasks.
+
+They should feel that their language ability is growing.
+
+K’Osez — Your language. Your journey. Your BLOSSOM.
+
+Execute.

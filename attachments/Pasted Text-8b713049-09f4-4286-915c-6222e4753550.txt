@@ -1,0 +1,196 @@
+Phase 2 — Full Delivery (1 + 2 + 3 + 4)
+I am delivering all four in order.
+1. Deep Expansion of the Three P0 Epics
+2.1 Full Pron’Lab — Complete Spec
+User Stories + Acceptance Criteria
+PRON-2.1 Longitudinal History
+As a learner I practise the same item across sessions and see my improvement.
+AC: Every attempt stored. Learner can open any item and see score history + audio history (last 10 attempts minimum). Simple sparkline or list of scores over time.
+PRON-2.2 Specific Feedback
+As a learner I receive actionable visual + audio feedback.
+AC: Model audio + my audio side-by-side. Highlighted problem segment when possible. One clear tip in Léo’s voice. Score shown but secondary.
+PRON-2.3 Progression Path
+As a learner I move from sounds → words → sentences → short spontaneous speech.
+AC: Clear unlock rules. Learner can always go back. “Mastery” flag when 3 consecutive attempts ≥ threshold.
+PRON-2.4 Teacher View
+As a teacher I see pronunciation flags before class.
+AC: Per-class list sorted by need. One-click “assign remediation set” of 5–8 items.
+PRON-2.5 Export
+As a learner I can export a 20-second before/after clip.
+AC: Consent toggle. Download or share link. Only my own audio.
+Data Model
+pronlab_items (
+  id, language, type ('phoneme'|'word'|'sentence'|'spontaneous'),
+  text, phonemes[], model_audio_url, level, difficulty, tags[]
+)
+
+pronlab_attempts (
+  id, learner_id, item_id, audio_url,
+  overall_score, segment_scores jsonb, feedback jsonb,
+  created_at
+)
+
+pronlab_progress (
+  learner_id, item_id, best_score, attempt_count,
+  mastery_reached_at, last_attempt_at
+)
+API
+GET  /pronlab/items?language=&level=&type=
+GET  /pronlab/items/:id
+POST /pronlab/attempts          (audio + item_id)
+GET  /pronlab/progress
+GET  /pronlab/history/:itemId
+POST /pronlab/assign            (teacher)
+GET  /teacher/pronlab/flags
+2.2 Language Tandem — Complete Spec
+User Stories + AC
+TANDEM-1 Profile & Request
+As a learner I create a tandem profile and request.
+AC: Languages I speak + languages I want, level band, 3–5 interests, availability windows, goals. Can pause/cancel.
+TANDEM-2 Matching
+As a learner I receive ranked compatible partners.
+AC: Score based on language direction, level proximity (±1 band), shared interests, overlapping availability. Both sides must accept.
+TANDEM-3 Structured Session
+As a learner I enter a timed 30+30 (or flexible) session with prompts.
+AC: Visible timer. Prompt deck changes or on-demand. Equal time enforced by default. End session early possible.
+TANDEM-4 Private Debrief
+As a learner I receive a short private AI debrief.
+AC: One strength + one improvement in my target language. No comparison with partner. Optional.
+TANDEM-5 Safety
+As a learner I can report, block, or leave instantly.
+AC: One-tap report. Block removes future matching. Repeated reports escalate.
+Data
+tandem_profiles, tandem_requests, tandem_matches,
+tandem_sessions (with start/end, language_split, prompt_log),
+tandem_feedback
+API
+POST/GET /tandem/profile
+POST     /tandem/requests
+GET      /tandem/matches
+POST     /tandem/matches/:id/accept
+POST     /tandem/sessions
+POST     /tandem/sessions/:id/end
+POST     /tandem/feedback
+POST     /tandem/report
+2.3 Teacher Studio — Complete Spec
+User Stories + AC
+TEACH-1 Prep View
+As a teacher I open a class and immediately see who needs attention.
+AC: Students listed with flags (pronunciation, grammar, participation, low speaking volume, missed missions). One-click generate 6-minute warm-up.
+TEACH-2 Quick Capture
+As a teacher I tag or voice-note a student in < 30 seconds.
+AC: Predefined tags + free text. Voice note auto-transcribed. Works on mobile.
+TEACH-3 Auto Follow-up
+As a teacher AI drafts personalised homework + progress note.
+AC: I can edit or discard before it is sent to the learner. Learner receives it inside the app under LEARN or MOI.
+TEACH-4 Roster Overview
+As a teacher I see all my learners with stage, speaking minutes, last activity, Pron’Lab status.
+AC: Sortable, filterable, no vanity metrics.
+Data
+teacher_classes, class_enrollments,
+teacher_notes, homework_assignments,
+teacher_flags (materialised from activity + pronlab)
+API
+GET  /teacher/classes
+GET  /teacher/classes/:id/prep
+POST /teacher/notes
+POST /teacher/homework
+GET  /teacher/roster
+2. Phase 2 Godmode Master Prompt (Compilable)
+GODMODE PHASE 2 – K’Osez BLOSSOM
+
+You are building Phase 2 of K’Osez BLOSSOM on top of the existing Phase 1 foundation (living plant, Missions, Speak Rooms, basic Pron’Lab, 6-tab navigation, parent view, brand identity).
+
+NORTH STAR
+Every practice moment measurable. Every teacher more powerful. Every learner part of a living human network. Physical centre and digital journey become one continuous experience.
+
+SACRED
+- Navigation: 🌸 BLOSSOM · 🗣 OSEZ · 🌍 EXPLORE · 🤝 CONNECT · 📚 LEARN · 👤 MOI
+- Plant remains emotional centre. New features feed the plant.
+- AI amplifies teachers and volume; never replaces human connection.
+- Adult, warm, sophisticated, Réunion-rooted, positive-psychology tone.
+- Progress always transparent.
+
+P0 EPICS (must ship)
+1. Full Pron’Lab – longitudinal history, specific feedback, progression path, teacher flags, exportable before/after.
+2. Language Tandem – profile, matching, structured 30+30 sessions with prompts, private AI debrief, report/block.
+3. Teacher Studio – prep view with flags, quick capture (tags + voice), auto homework generation (teacher edits before send), roster overview.
+
+P1 EPICS
+4. Digital Library – digitised multilingual library, tap-to-save vocabulary, AI lookup, feeds future practice.
+5. Children’s Ecosystem – separate visual language, richer parent dashboard, parent cannot do the work.
+6. Personalisation Engine – memory of mistakes/interests/confidence, adaptive Missions and Speak scenarios.
+7. Immersion Companion – pre/during/post villa weekend experience, automatic stage recognition, personal story.
+
+DATA & API
+Extend existing schema with pronlab_*, tandem_*, teacher_*, library_*, immersion_* tables.
+All new activity types continue to feed the single BLOSSOM stage engine.
+New API namespaces: /pronlab, /tandem, /teacher, /library, /immersion.
+
+AI
+Reuse Léo tone. New prompts for: Pron’Lab feedback, Tandem private debrief, Teacher warm-up generator, Personalised Mission (with memory), Homework generation.
+All AI calls server-side.
+
+NON-NEGOTIABLES
+- Teacher is final authority on anything sent to learners.
+- Tandem is structured and safe (no open free chat).
+- Children’s experience is visually separate.
+- Stage engine remains the single source of truth for progress.
+- Everything still feels like K’Osez.
+
+BUILD ORDER
+Block A: Full Pron’Lab + Teacher Studio light
+Block B: Language Tandem + safety
+Block C: Library + Children + Immersion + Personalisation memory
+
+Extend the existing Phase 1 mockup. Do not rewrite the plant, navigation, or visual system.
+3. Technical Delta List (Current Mockup → Phase 2 Production)
+Area
+Current Mockup
+Phase 2 Required
+State
+Client Zustand + seeded log
+Real PostgreSQL + activity_log as source of truth
+Pron’Lab
+Basic route + static items
+Full items/attempts/progress + real scoring service
+Audio
+UI only
+Upload → object storage → STT + pronunciation engine
+AI Feedback
+Hard-coded strings
+Server-side LLM with exact prompts + memory
+Tandem
+Does not exist
+New domain + matching service + session timer
+Teacher
+Does not exist
+New role + prep/roster/homework flows
+Auth
+Demo “enter” gate
+Real roles: learner / parent / teacher / admin
+Offline
+None
+Required for Pron’Lab packs + Missions (carry from Phase 1 plan)
+Library
+None
+New content model + vocabulary saves
+Immersion
+Representational only
+Full companion state machine
+Analytics
+Basic track()
+Full event set including new Phase 2 events
+Mobile
+Responsive web
+Decide: stay PWA or add Expo shell
+Highest leverage first move inside the current codebase
+Evolve the existing /pronlab route and src/lib/blossom into the full Pron’Lab data model and UI. This is the cleanest extension of what already exists.
+4. Starting Construction — Full Pron’Lab Foundation
+I am now extending the existing codebase with the Phase 2 Pron’Lab data model, store methods, and a richer Pron’Lab experience that can grow into the full lab.
+First concrete steps underway:
+Extend src/lib/blossom/engine.ts and data layer with Pron’Lab types and mastery logic.
+Expand the Pron’Lab route from basic to history-aware + progression-aware.
+Add teacher-flag helper functions (even before full Teacher Studio UI).
+Keep the existing visual language and plant integration.
+I will begin implementing now.
