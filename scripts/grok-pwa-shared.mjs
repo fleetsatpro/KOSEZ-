@@ -322,8 +322,14 @@ export function siteHasCustomCard(site = {}) {
  * Vercel: the bake (`card=custom` / `image`) because the function cannot stat public/.
  * Otherwise empty — caller emits the og.grok.me placeholder.
  */
-export function resolveOgCardAsset(site = {}, cwd = process.cwd()) {
-  return ogCardPublicPath(cwd) || (detectCustomOgCard(cwd, site) ? String(site.image ?? "").trim() || "/og.jpg" : "");
+export function resolveOgCardAsset(site = {}, cwd) {
+  if (cwd) {
+    const disk = ogCardPublicPath(cwd);
+    if (disk) return disk;
+  }
+  return siteHasCustomCard(site) || Boolean(String(site.image ?? "").trim())
+    ? String(site.image ?? "").trim() || "/og.jpg"
+    : "";
 }
 
 /** Stamp `card=custom` when public/og.jpg or public/og.png is on disk. */
@@ -401,14 +407,14 @@ function insertBeforeHeadClose(html, snippet) {
 }
 
 export function normalizeHeadContext(ctx = {}) {
-  const cwd = ctx.cwd ?? process.cwd();
+  const cwd = ctx.cwd;
   // App-specific OG identity is supplied explicitly by the platform
   // integration (Vite build/preview or Nitro baked snapshot). Generic helper
   // calls may still provide a site object, but filesystem discovery is only
   // enabled when the caller explicitly supplies the workspace root.
   const site =
     ctx.site !== undefined
-      ? ctx.cwd !== undefined
+      ? cwd !== undefined
         ? applyCustomCardFromFs(ctx.site, cwd)
         : ctx.site
       : {};
