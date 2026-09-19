@@ -259,12 +259,6 @@ export function ogCardPublicPath(cwd = process.cwd()) {
   return "";
 }
 
-function detectCustomOgCard(cwd = process.cwd(), site = {}) {
-  if (ogCardPublicPath(cwd)) return true;
-  // Vercel runtime has no public/: trust a bake that already saw the file.
-  return siteHasCustomCard(site) || Boolean(String(site.image ?? "").trim());
-}
-
 /** Snapshot for Vite/Nitro to bake into the server bundle (Vercel has no workspace FS). */
 export function snapshotOgIdentity(cwd = process.cwd()) {
   const site = { ...readOgSite(cwd) };
