@@ -502,7 +502,10 @@ function ChallengeSelector({
 }
 
 function MissionBrief({
+  mission,
   objective,
+  mode,
+  onMode,
   challenge,
   recommendedChallenge,
   onChallenge,
@@ -513,7 +516,10 @@ function MissionBrief({
   level,
   language,
 }: {
+  mission: ReturnType<typeof personaliseMission>;
   objective: ReturnType<typeof missionObjective>;
+  mode: MissionMode;
+  onMode: (value: MissionMode) => void;
   challenge: MissionChallenge;
   recommendedChallenge: MissionChallenge;
   onChallenge: (value: MissionChallenge) => void;
@@ -543,10 +549,10 @@ function MissionBrief({
           </div>
 
           <h2 className="mt-8 max-w-3xl font-display text-5xl leading-[0.96] tracking-tight sm:text-7xl">
-            {objective.title}
+            {mission.title}
           </h2>
           <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
-            {objective.prompt}
+            {mission.prompt}
           </p>
 
           <div className="mt-7 grid gap-2 sm:grid-cols-3">
@@ -577,16 +583,67 @@ function MissionBrief({
         />
       </div>
 
-      <MissionScoreboard
-        run={null}
-        journey={journeySnapshot([])}
-        history={{ completedRuns: 0, totalPracticeSeconds: 0, totalMissionAttempts: 0, averageConfidence: 0, friction: { hesitation: 0, vocabulary: 0, switching: 0, confidence: 0, none: 0 }, latestOutcome: null }}
-        challenge={challenge}
-      />
-
       {objective.scene ? (
         <SceneTabs active={tab} onChange={setTab} scene={objective.scene} objective={objective} />
       ) : null}
+
+      <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+        <div>
+          <SectionTitle
+            kicker="Mission mode"
+            title="Choisissez où le geste doit vivre."
+            body="Le même objectif peut être joué sur le terrain ou répété ici. Ce choix reste attaché à votre session."
+          />
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {(["real-world", "practice"] as const).map((item) => {
+              const Meta = MODE_META[item];
+              const Icon = Meta.icon;
+              const selected = mode === item;
+              return (
+                <button
+                  type="button"
+                  key={item}
+                  aria-pressed={selected}
+                  onClick={() => onMode(item)}
+                  className={[
+                    "rounded-2xl border p-5 text-left transition-[border-color,background-color,transform,box-shadow]",
+                    selected
+                      ? "border-primary bg-primary/[0.05] shadow-[var(--shadow-border-hover)]"
+                      : "border-border bg-surface hover:bg-surface-2/35",
+                  ].join(" ")}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-full bg-surface-2 text-primary">
+                      <Icon className="size-4" />
+                    </div>
+                    <Badge variant={selected ? "default" : "outline"}>
+                      {selected ? "sélectionné" : "choisir"}
+                    </Badge>
+                  </div>
+                  <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.17em] text-subtle">{Meta.kicker}</p>
+                  <p className="mt-1 font-display text-2xl">{Meta.title}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-muted">{Meta.body}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <Surface className="border border-primary/15 bg-primary/[0.045]">
+          <div className="flex items-start gap-3">
+            <Zap className="mt-0.5 size-5 text-primary" />
+            <div>
+              <Eyebrow className="text-primary">Conception BLOSSOM</Eyebrow>
+              <p className="mt-2 font-display text-xl leading-snug">
+                Le mode décide de la preuve, pas de votre valeur.
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-muted">
+                Terrain = vous faites la scène et vous la déclarez. Studio = vous pratiquez et mesurez uniquement la durée de parole.
+              </p>
+            </div>
+          </div>
+        </Surface>
+      </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
         <div>
@@ -1343,7 +1400,6 @@ export function MissionTheatre() {
   );
   const personalised = personaliseMission(TODAY_MISSION, memory, memoryEnabled);
   const journey = journeySnapshot(log);
-  const scene = objective.scene;
   const currentStep = step;
 
   function startSession() {
@@ -1431,7 +1487,10 @@ export function MissionTheatre() {
 
           <div className="mt-10">
             <MissionBrief
+              mission={personalised}
               objective={objective}
+              mode={mode}
+              onMode={setMode}
               challenge={challenge}
               recommendedChallenge={recommendedChallenge}
               onChallenge={setChallenge}
