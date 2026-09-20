@@ -16,6 +16,7 @@ import {
   createMissionSession,
   evaluateMission,
   finishMissionRun,
+  reopenMissionRun,
   saveMissionReflection,
   type MissionCapture,
   type MissionChallenge,
@@ -104,6 +105,7 @@ type AppState = {
     missionId: string,
     reflection: MissionReflection,
   ) => boolean;
+  reopenMissionSession: (missionId: string) => boolean;
   completeMissionSession: (missionId: string) => {
     ok: boolean;
     reason?: string;
@@ -229,6 +231,20 @@ export const useBlossom = create<AppState>()(
           capture,
           seconds: Math.max(0, Math.round(seconds)),
         });
+        return true;
+      },
+      reopenMissionSession: (missionId) => {
+        const current = get().missionSessions[missionId];
+        if (!current || !activeMissionRun(current)) return false;
+        const next = reopenMissionRun(current);
+        if (next === current) return false;
+        set({
+          missionSessions: {
+            ...get().missionSessions,
+            [missionId]: next,
+          },
+        });
+        track("mission_session_reopened", { missionId });
         return true;
       },
       saveMissionReflection: (missionId, reflection) => {
