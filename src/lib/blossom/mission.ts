@@ -2,6 +2,7 @@ import type { Mission } from "./data";
 import type { LearnerMemory } from "./engine";
 
 export type MissionMode = "real-world" | "practice";
+export type MissionChallenge = "core" | "stretch";
 export type MissionStep = "brief" | "prepare" | "execute" | "reflect";
 export type MissionAttemptKind = "warmup" | "mission";
 export type MissionCapture = "microphone" | "manual";
@@ -26,6 +27,7 @@ export type MissionReflection = {
 export type MissionRun = {
   id: string;
   mode: MissionMode;
+  challenge: MissionChallenge;
   startedAt: string;
   lastUpdatedAt: string;
   attempts: MissionAttempt[];
@@ -58,6 +60,67 @@ export type MissionEvaluation = {
   nextAction: string;
 };
 
+export type MissionHistorySummary = {
+  completedRuns: number;
+  totalPracticeSeconds: number;
+  totalMissionAttempts: number;
+  averageConfidence: number;
+  friction: Record<MissionReflection["friction"], number>;
+  latestOutcome: MissionOutcome | null;
+};
+
+export function summariseMissionHistory(
+  runs: MissionRun[],
+): MissionHistorySummary {
+  const completed = runs.filter((run) => run.completedAt);
+  const missionAttempts = runs.flatMap((run) =>
+    run.attempts.filter((attempt) => attempt.kind === "mission"),
+  );
+  const confidenceValues = completed
+    .map((run) => run.reflection?.confidence)
+    .filter((value): value is MissionReflection["confidence"] => value !== undefined);
+  const friction: MissionHistorySummary["friction"] = {
+    hesitation: 0,
+    vocabulary: 0,
+    switching: 0,
+    confidence: 0,
+    none: 0,
+  };
+
+  for (const run of completed) {
+    if (run.reflection) friction[run.reflection.friction] += 1;
+  }
+
+  const latest = completed.at(-1);
+  return {
+    completedRuns: completed.length,
+    totalPracticeSeconds: runs
+      .flatMap((run) => run.attempts)
+      .filter((attempt) => attempt.capture === "microphone")
+      .reduce((sum, attempt) => sum + attempt.seconds, 0),
+    totalMissionAttempts: missionAttempts.length,
+    averageConfidence:
+      confidenceValues.length === 0
+        ? 0
+        : Number(
+            (
+              confidenceValues.reduce((sum, value) => sum + value, 0) /
+              confidenceValues.length
+            ).toFixed(1),
+          ),
+    friction,
+    latestOutcome: latest?.reflection
+      ? evaluateMission(latest.reflection).outcome
+      : null,
+  };
+}
+
+export function nextMissionChallenge(
+  outcome: MissionOutcome | null | undefined,
+): MissionChallenge {
+  return outcome === "advance" ? "stretch" : "core";
+}
+
 export function createMissionSession(missionId: string): MissionSession {
   return {
     missionId,
@@ -76,6 +139,7 @@ export function activeMissionRun(
 export function beginMissionRun(
   session: MissionSession,
   mode: MissionMode,
+  challenge: MissionChallenge = "core",
   now = new Date().toISOString(),
   runId = "run-" + Date.now(),
 ): MissionSession {
@@ -85,6 +149,7 @@ export function beginMissionRun(
   const run: MissionRun = {
     id: runId,
     mode,
+    challenge,
     startedAt: now,
     lastUpdatedAt: now,
     attempts: [],
@@ -236,14 +301,19 @@ export function missionObjective(
     ? "Léo garde votre point de friction en arrière-plan ; vous ne devez pas le résoudre aujourd'hui."
     : "Une phrase d'appui suffit. Le reste peut être imparfait.";
 
+  const common = {
+    title: mission.title,
+    prompt: mission.prompt,
+    situation: mission.realWorldInstruction ?? mission.context,
+    successSignals,
+    supportPhrase: mission.supportPhrase ?? mission.title,
+    support,
+    scene: mission.scene ?? null,
+  };
+
   if (previousOutcome === "repeat") {
     return {
-      title: mission.title,
-      prompt: mission.prompt,
-      situation: mission.realWorldInstruction ?? mission.context,
-      successSignals,
-      supportPhrase: mission.supportPhrase ?? mission.title,
-      support,
+      ...common,
       stretch: "Gardez le geste identique. N'ajoutez aucune difficulté tant qu'il n'est pas disponible.",
       adaptation: "Sécuriser",
     };
@@ -251,12 +321,7 @@ export function missionObjective(
 
   if (previousOutcome === "stabilise") {
     return {
-      title: mission.title,
-      prompt: mission.prompt,
-      situation: mission.realWorldInstruction ?? mission.context,
-      successSignals,
-      supportPhrase: mission.supportPhrase ?? mission.title,
-      support,
+      ...common,
       stretch: mission.stretch ?? "Même geste, nouvelle personne ou nouveau contexte.",
       adaptation: "Stabiliser",
     };
@@ -264,24 +329,14 @@ export function missionObjective(
 
   if (previousOutcome === "advance") {
     return {
-      title: mission.title,
-      prompt: mission.prompt,
-      situation: mission.realWorldInstruction ?? mission.context,
-      successSignals,
-      supportPhrase: mission.supportPhrase ?? mission.title,
-      support,
+      ...common,
       stretch: mission.stretch ?? "Ajoutez une relance courte.",
       adaptation: "Prolonger",
     };
   }
 
   return {
-    title: mission.title,
-    prompt: mission.prompt,
-    situation: mission.realWorldInstruction ?? mission.context,
-    successSignals,
-    supportPhrase: mission.supportPhrase ?? mission.title,
-    support,
+    ...common,
     stretch: mission.stretch ?? "Ajoutez une relance seulement si la première phrase sort naturellement.",
     adaptation: "Fondation",
   };
