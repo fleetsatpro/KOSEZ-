@@ -10,6 +10,19 @@ import {
   type PronlabAttempt,
 } from "./engine";
 import {
+  activeMissionRun,
+  appendMissionAttempt,
+  beginMissionRun,
+  createMissionSession,
+  evaluateMission,
+  finishMissionRun,
+  saveMissionReflection,
+  type MissionCapture,
+  type MissionMode,
+  type MissionReflection,
+  type MissionSession,
+} from "./mission";
+import {
   findPronlabItem,
   findPronlabSet,
   INITIAL_LOG,
@@ -70,6 +83,7 @@ type AppState = {
   orgInvites: number;
   invoiceRequested: boolean;
   languageId: string;
+  missionSessions: Record<string, MissionSession>;
   enter: () => void;
   setParentMode: (value: boolean) => void;
   setTeacherMode: (value: boolean) => void;
@@ -78,6 +92,22 @@ type AppState = {
   setPlan: (plan: PlanId) => void;
   claimProof: () => void;
   updateLearner: (patch: Partial<LearnerProfile>) => void;
+  startMissionRun: (missionId: string, mode: MissionMode) => string | null;
+  recordMissionAttempt: (
+    missionId: string,
+    kind: "warmup" | "mission",
+    capture: MissionCapture,
+    seconds: number,
+  ) => boolean;
+  saveMissionReflection: (
+    missionId: string,
+    reflection: MissionReflection,
+  ) => boolean;
+  completeMissionSession: (missionId: string) => {
+    ok: boolean;
+    reason?: string;
+    evaluation?: ReturnType<typeof evaluateMission>;
+  };
   completeActivity: (
     type: ActivityType,
     sourceId: string,
@@ -141,6 +171,7 @@ export const useBlossom = create<AppState>()(
       orgInvites: 0,
       invoiceRequested: false,
       languageId: "en",
+      missionSessions: {},
       enter: () => {
         if (!get().hasEntered) track("onboarding_completed");
         set({ hasEntered: true });
@@ -160,6 +191,100 @@ export const useBlossom = create<AppState>()(
       claimProof: () => set({ proofClaimed: true }),
       updateLearner: (patch) =>
         set({ learner: { ...get().learner, ...patch } }),
+      startMissionRun: (missionId, mode) => {
+        const current =
+          get().missionSessions[missionId] ?? createMissionSession(missionId);
+        const next = beginMissionRun(current, mode);
+        const active = activeMissionRun(next);
+        set({
+          missionSessions: {
+            ...get().missionSessions,
+            [missionId]: next,
+          },
+        });
+        if (active) {
+          track("mission_mode_selected", { mode, resumed: current.activeRunId === active.id });
+        }
+        return active?.id ?? null;
+      },
+      recordMissionAttempt: (missionId, kind, capture, seconds) => {
+        const current = get().missionSessions[missionId];
+        if (!current || !activeMissionRun(current)) return false;
+        const next = appendMissionAttempt(current, {
+          kind,
+          capture,
+          seconds,
+        });
+        if (next === current) return false;
+        set({
+          missionSessions: {
+            ...get().missionSessions,
+            [missionId]: next,
+          },
+        });
+        track("mission_attempt_completed", {
+          missionId,
+          kind,
+          capture,
+          seconds: Math.max(0, Math.round(seconds)),
+        });
+        return true;
+      },
+      saveMissionReflection: (missionId, reflection) => {
+        const current = get().missionSessions[missionId];
+        if (!current || !activeMissionRun(current)) return false;
+        const next = saveMissionReflection(current, reflection);
+        if (next === current) return false;
+        set({
+          missionSessions: {
+            ...get().missionSessions,
+            [missionId]: next,
+          },
+        });
+        const evaluation = evaluateMission(reflection);
+        track("mission_reflection_saved", {
+          missionId,
+          outcome: evaluation.outcome,
+          evidence: evaluation.evidenceCount,
+          confidence: reflection.confidence,
+        });
+        return true;
+      },
+      completeMissionSession: (missionId) => {
+        const current = get().missionSessions[missionId];
+        const active = current ? activeMissionRun(current) : null;
+        if (!active?.reflection) {
+          return { ok: false, reason: "reflection-required" };
+        }
+
+        const evaluation = evaluateMission(active.reflection);
+        const finished = finishMissionRun(current!);
+        if (finished === current) {
+          return { ok: false, reason: "session-not-finishable", evaluation };
+        }
+
+        set({
+          missionSessions: {
+            ...get().missionSessions,
+            [missionId]: finished,
+          },
+        });
+
+        const result = get().completeActivity(
+          "MISSION_COMPLETED",
+          missionId,
+          "Evidence " +
+            String(evaluation.evidenceCount) +
+            "/3 · " +
+            evaluation.outcome,
+        );
+        track("mission_session_completed", {
+          missionId,
+          outcome: evaluation.outcome,
+          evidence: evaluation.evidenceCount,
+        });
+        return { ...result, evaluation };
+      },
       completeActivity: (type, sourceId, note) => {
         const log = get().activityLog;
         if (hasSource(log, sourceId)) {
@@ -364,6 +489,7 @@ export const useBlossom = create<AppState>()(
           orgInvites: 0,
           invoiceRequested: false,
           languageId: "en",
+          missionSessions: {},
         }),
     }),
     {
