@@ -43,6 +43,34 @@ export const INITIAL_LOG: ActivityEvent[] = [
   { id: "a9", type: "MISSION_COMPLETED", createdAt: daysAgo(2), sourceId: "m-hist-8" },
 ];
 
+export type MissionScene = {
+  time: string;
+  atmosphere: string;
+  sensoryCue: string;
+  people: Array<{
+    role: string;
+    name: string;
+    intent: string;
+  }>;
+  pressure: string;
+  culturalNote: string;
+  languageKit: Array<{
+    phrase: string;
+    meaning: string;
+    use: string;
+  }>;
+  rescuePhrases: Array<{
+    phrase: string;
+    meaning: string;
+  }>;
+  conversationTurns: Array<{
+    label: string;
+    goal: string;
+    optional?: boolean;
+  }>;
+  constraints: string[];
+};
+
 export type Mission = {
   id: string;
   title: string;
@@ -57,6 +85,7 @@ export type Mission = {
   successSignals?: string[];
   realWorldInstruction?: string;
   stretch?: string;
+  scene?: MissionScene;
 };
 
 export const TODAY_MISSION: Mission = {
@@ -81,6 +110,74 @@ export const TODAY_MISSION: Mission = {
     "Au déjeuner, posez réellement la question à un collègue. Une réponse courte suffit : le but est d'ouvrir l'échange.",
   stretch:
     "Après la première réponse, ajoutez une relance courte si elle vient naturellement.",
+  scene: {
+    time: "12:18 · pause déjeuner",
+    atmosphere: "Terrasse bruyante, lumière chaude, service rapide.",
+    sensoryCue: "Une machine à café souffle derrière vous ; les tables se remplissent.",
+    people: [
+      {
+        role: "Collègue",
+        name: "Noah",
+        intent: "Il a déjà choisi son plat et vous laisse décider.",
+      },
+      {
+        role: "Serveuse",
+        name: "Maya",
+        intent: "Elle écoute, puis attend votre commande.",
+      },
+    ],
+    pressure:
+      "Vous avez peu de temps : choisissez, posez une question, puis tenez un tour de conversation.",
+    culturalNote:
+      "Une recommandation n'est pas une faveur énorme : en anglais, une question courte suffit pour ouvrir l'échange.",
+    languageKit: [
+      {
+        phrase: "What do you recommend?",
+        meaning: "Qu'est-ce que vous recommandez ?",
+        use: "Ouvrir la conversation.",
+      },
+      {
+        phrase: "I'll have …",
+        meaning: "Je vais prendre …",
+        use: "Passer de la question à l'action.",
+      },
+      {
+        phrase: "What about you?",
+        meaning: "Et toi / et vous ?",
+        use: "Renvoyer la conversation.",
+      },
+      {
+        phrase: "Could you repeat that?",
+        meaning: "Pouvez-vous répéter ?",
+        use: "Récupérer sans repasser au français.",
+      },
+    ],
+    rescuePhrases: [
+      {
+        phrase: "Sorry, could you say that again?",
+        meaning: "Demander une répétition sans abandonner l'anglais.",
+      },
+      {
+        phrase: "I mean …",
+        meaning: "Réparer une phrase sans recommencer depuis zéro.",
+      },
+      {
+        phrase: "Let me think for a second.",
+        meaning: "Gagner une seconde sans remplir le silence.",
+      },
+    ],
+    conversationTurns: [
+      { label: "Ouvrir", goal: "Poser la question de recommandation." },
+      { label: "Choisir", goal: "Dire ce que vous allez prendre." },
+      { label: "Relancer", goal: "Poser une petite question en retour.", optional: true },
+      { label: "Récupérer", goal: "Demander de répéter si nécessaire.", optional: true },
+    ],
+    constraints: [
+      "Pas de traduction mot à mot.",
+      "Une phrase courte vaut mieux qu'une phrase préparée.",
+      "Le silence de deux secondes est autorisé.",
+    ],
+  },
 };
 
 export const UPCOMING_MISSIONS: Mission[] = [
