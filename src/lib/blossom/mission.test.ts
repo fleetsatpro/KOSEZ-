@@ -58,7 +58,7 @@ test("mission attempts preserve capture method and duration", () => {
 });
 
 test("mission execution is limited to two attempts per run", () => {
-  let session = beginMissionRun(createMissionSession("mission-today"), "practice", "2026-09-20T07:00:00.000Z", "run-1");
+  let session = beginMissionRun(createMissionSession("mission-today"), "practice", "core", "2026-09-20T07:00:00.000Z", "run-1");
   session = appendMissionAttempt(session, {
     kind: "mission",
     capture: "microphone",
