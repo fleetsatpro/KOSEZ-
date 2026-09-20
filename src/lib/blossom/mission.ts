@@ -206,6 +206,20 @@ export function appendMissionAttempt(
   }));
 }
 
+export function reopenMissionRun(
+  session: MissionSession,
+  now = new Date().toISOString(),
+): MissionSession {
+  const run = activeMissionRun(session);
+  if (!run || run.completedAt) return session;
+
+  return updateRun(session, run.id, (current) => ({
+    ...current,
+    reflection: null,
+    lastUpdatedAt: now,
+  }));
+}
+
 export function saveMissionReflection(
   session: MissionSession,
   reflection: MissionReflection,
