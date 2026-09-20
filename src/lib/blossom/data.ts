@@ -52,6 +52,11 @@ export type Mission = {
   level: string;
   language: string;
   place: string;
+  sceneImage?: string;
+  supportPhrase?: string;
+  successSignals?: string[];
+  realWorldInstruction?: string;
+  stretch?: string;
 };
 
 export const TODAY_MISSION: Mission = {
@@ -65,6 +70,17 @@ export const TODAY_MISSION: Mission = {
   level: "A2",
   language: "English",
   place: "Au bureau, à Saint-Pierre",
+  sceneImage: "/images/atelier.jpg",
+  supportPhrase: "What do you recommend?",
+  successSignals: [
+    "Vous ouvrez réellement la conversation.",
+    "Vous utilisez la phrase travaillée au moins une fois.",
+    "Vous restez dans la langue cible pendant l'échange.",
+  ],
+  realWorldInstruction:
+    "Au déjeuner, posez réellement la question à un collègue. Une réponse courte suffit : le but est d'ouvrir l'échange.",
+  stretch:
+    "Après la première réponse, ajoutez une relance courte si elle vient naturellement.",
 };
 
 export const UPCOMING_MISSIONS: Mission[] = [
