@@ -297,6 +297,7 @@ function ModeCard({
 
 function BriefStep({
   mission,
+  base,
   objective,
   mode,
   setMode,
