@@ -1,156 +1,244 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   ArrowRight,
   Check,
+  ChevronDown,
   Clock3,
+  Headphones,
+  History,
   MapPin,
   Mic2,
+  Radio,
   RotateCcw,
+  ShieldCheck,
   Sparkles,
   Target,
+  Trophy,
   Volume2,
 } from "lucide-react";
-import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RecordControl } from "@/components/app/record-control";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import {
   LEARNER_MEMORY,
-  MISSION_FEEDBACK,
+  LEARNER,
   TODAY_MISSION,
   planAllows,
 } from "@/lib/blossom/data";
-import { hasSource, journeySnapshot, personaliseMission, resolveMemory } from "@/lib/blossom/engine";
+import {
+  activeMissionRun,
+  evaluateMission,
+  missionAttemptCount,
+  missionExecutionReady,
+  missionObjective,
+  type MissionMode,
+  type MissionReflection,
+  type MissionRun,
+} from "@/lib/blossom/mission";
+import { hasSource, journeySnapshot, resolveMemory } from "@/lib/blossom/engine";
 import { useBlossom } from "@/lib/blossom/store";
 import { track } from "@/lib/analytics";
 
-type Step = "brief" | "record" | "feedback";
+type SessionStep = "brief" | "prepare" | "execute" | "reflect";
 
-const STEPS: Array<{ id: Step; label: string }> = [
-  { id: "brief", label: "Brief" },
-  { id: "record", label: "Parler" },
-  { id: "feedback", label: "Débrief" },
+const STEP_META: Array<{ id: SessionStep; label: string; compact: string }> = [
+  { id: "brief", label: "Brief", compact: "01" },
+  { id: "prepare", label: "Préparer", compact: "02" },
+  { id: "execute", label: "Exécuter", compact: "03" },
+  { id: "reflect", label: "Bilan", compact: "04" },
 ];
 
-function MissionHeader({ step, completed }: { step: Step; completed: boolean }) {
-  const activeIndex = STEPS.findIndex((item) => item.id === step);
+const MODE_META: Record<
+  MissionMode,
+  { title: string; eyebrow: string; body: string; cta: string }
+> = {
+  "real-world": {
+    title: "Dans la vraie vie",
+    eyebrow: "Mode terrain",
+    body: "Sortez du parcours. Faites la scène avec une vraie personne, puis revenez noter ce qui s'est réellement passé.",
+    cta: "Faire la scène réelle",
+  },
+  practice: {
+    title: "Je m'entraîne ici",
+    eyebrow: "Mode pratique",
+    body: "Répétez la scène dans BLOSSOM. Le micro sert à mesurer la durée de parole, pas à fabriquer un faux score.",
+    cta: "M'entraîner maintenant",
+  },
+};
 
+const REFLECTION_DEFAULT: MissionReflection = {
+  objectiveAchieved: true,
+  stayedInTargetLanguage: "partly",
+  confidence: 3,
+  friction: "hesitation",
+};
+
+function initialStep(run: MissionRun | null): SessionStep {
+  if (!run || run.completedAt) return "brief";
+  if (run.reflection || missionAttemptCount(run, "mission") > 0) return "reflect";
+  return "prepare";
+}
+
+function formatDuration(seconds: number) {
+  if (seconds < 60) return String(seconds) + " s";
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return String(minutes) + " min" + (remainder ? " " + String(remainder) + " s" : "");
+}
+
+function speakModel(text: string) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "en-GB";
+  utterance.rate = 0.88;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+}
+
+function SessionStepper({
+  step,
+  completed,
+}: {
+  step: SessionStep;
+  completed: boolean;
+}) {
+  const active = STEP_META.findIndex((item) => item.id === step);
   return (
-    <div className="mt-6 flex items-center justify-between gap-4 border-y border-border/70 py-4">
-      <div className="flex min-w-0 items-center gap-2">
-        {STEPS.map((item, index) => {
-          const done = index < activeIndex || (completed && item.id === "feedback");
-          const active = index === activeIndex;
+    <div className="flex items-center justify-between gap-4 border-y border-border/70 py-4">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        {STEP_META.map((item, index) => {
+          const done = index < active || (completed && item.id === "reflect");
+          const current = index === active;
           return (
-            <div key={item.id} className="flex items-center gap-2">
+            <div key={item.id} className="flex min-w-0 flex-1 items-center gap-2 last:flex-none">
               <div
-                aria-current={active ? "step" : undefined}
                 className={[
-                  "flex size-7 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold transition-colors",
+                  "flex size-8 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold",
                   done
                     ? "border-primary bg-primary text-primary-foreground"
-                    : active
+                    : current
                       ? "border-primary bg-surface text-primary"
                       : "border-border bg-transparent text-subtle",
                 ].join(" ")}
+                aria-current={current ? "step" : undefined}
               >
-                {done ? <Check className="size-3.5" /> : index + 1}
+                {done ? <Check className="size-3.5" /> : item.compact}
               </div>
               <span
-                className={
-                  active
-                    ? "text-xs font-semibold text-fg"
-                    : "hidden text-xs text-subtle sm:inline"
-                }
+                className={[
+                  "hidden truncate text-xs sm:block",
+                  current ? "font-semibold text-fg" : "text-subtle",
+                ].join(" ")}
               >
                 {item.label}
               </span>
-              {index < STEPS.length - 1 ? (
-                <span className="mx-1 h-px w-5 bg-border sm:w-10" aria-hidden />
+              {index < STEP_META.length - 1 ? (
+                <span className="h-px min-w-3 flex-1 bg-border sm:mx-2" aria-hidden />
               ) : null}
             </div>
           );
         })}
       </div>
-      <span className="shrink-0 text-[11px] uppercase tracking-[0.18em] text-subtle">
-        {activeIndex + 1} / {STEPS.length}
+      <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.18em] text-subtle">
+        {String(active + 1).padStart(2, "0")} / 04
       </span>
     </div>
   );
 }
 
-function MissionMeta() {
-  return (
-    <div className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-lg border border-border bg-surface/60">
-      <div className="px-3 py-3">
-        <div className="flex items-center gap-1.5 text-subtle">
-          <Clock3 className="size-3.5" />
-          <span className="text-[10px] uppercase tracking-[0.14em]">Temps</span>
-        </div>
-        <p className="mt-1 text-sm font-semibold">{TODAY_MISSION.durationMin} min</p>
-      </div>
-      <div className="px-3 py-3">
-        <div className="flex items-center gap-1.5 text-subtle">
-          <Target className="size-3.5" />
-          <span className="text-[10px] uppercase tracking-[0.14em]">Niveau</span>
-        </div>
-        <p className="mt-1 text-sm font-semibold">{TODAY_MISSION.level}</p>
-      </div>
-      <div className="px-3 py-3">
-        <div className="flex items-center gap-1.5 text-subtle">
-          <MapPin className="size-3.5" />
-          <span className="text-[10px] uppercase tracking-[0.14em]">Lieu</span>
-        </div>
-        <p className="mt-1 truncate text-sm font-semibold">Saint-Pierre</p>
-      </div>
-    </div>
-  );
-}
-
 function MissionRail({
-  stageLabel,
-  points,
-  progress,
-  remaining,
+  run,
+  journey,
+  completed,
+  previousOutcome,
 }: {
-  stageLabel: string;
-  points: number;
-  progress: number;
-  remaining: number;
+  run: MissionRun | null;
+  journey: ReturnType<typeof journeySnapshot>;
+  completed: boolean;
+  previousOutcome: string | null;
 }) {
+  const missionAttempts = missionAttemptCount(run, "mission");
+  const warmups = missionAttemptCount(run, "warmup");
+  const evaluation = run?.reflection ? evaluateMission(run.reflection) : null;
+
   return (
     <aside className="space-y-3 lg:sticky lg:top-8 lg:self-start">
       <Surface className="overflow-hidden border border-border/70 p-0">
         <div className="bg-primary px-5 py-5 text-primary-foreground">
-          <Eyebrow className="text-primary-foreground/65">Cap du jour</Eyebrow>
-          <p className="mt-2 font-display text-2xl">Parler avant de corriger.</p>
+          <div className="flex items-center justify-between gap-3">
+            <Eyebrow className="text-primary-foreground/65">Mission control</Eyebrow>
+            <Radio className="size-4 text-primary-foreground/65" />
+          </div>
+          <p className="mt-2 font-display text-2xl">Un geste réel, une trace utile.</p>
           <p className="mt-2 text-xs leading-relaxed text-primary-foreground/75">
-            La mission est courte. Le geste réel compte plus qu'une réponse parfaite.
+            BLOSSOM conserve ce qui aide à décider quoi faire ensuite.
           </p>
         </div>
+
         <div className="space-y-4 p-5">
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="text-xs text-muted">Voyage BLOSSOM</span>
-            <span className="font-display text-lg text-primary">{points} pts</span>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-surface-2/70 p-3">
+              <p className="text-[10px] uppercase tracking-[0.15em] text-subtle">Voyage</p>
+              <p className="mt-1 font-display text-xl text-primary">{journey.points} pts</p>
+              <p className="mt-1 text-[11px] text-muted">{journey.stage.label}</p>
+            </div>
+            <div className="rounded-lg bg-surface-2/70 p-3">
+              <p className="text-[10px] uppercase tracking-[0.15em] text-subtle">Session</p>
+              <p className="mt-1 font-display text-xl">{run ? run.mode === "practice" ? "Pratique" : "Terrain" : "Prête"}</p>
+              <p className="mt-1 text-[11px] text-muted">
+                {missionAttempts} tentative{missionAttempts > 1 ? "s" : ""}
+              </p>
+            </div>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
-            <div
-              className="h-full rounded-full bg-primary transition-[width] duration-500"
-              style={{ width: String(Math.round(progress * 100)) + "%" }}
-            />
+
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-muted">Présence dans la scène</span>
+              <span className="text-xs font-semibold text-primary">
+                {warmups ? "Échauffée" : "Sans échauffement"}
+              </span>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
+              <div
+                className="h-full rounded-full bg-primary transition-[width] duration-500"
+                style={{ width: String(completed ? 100 : Math.min(85, 25 + missionAttempts * 30)) + "%" }}
+              />
+            </div>
           </div>
-          <p className="text-[11px] text-subtle">
-            {remaining > 0
-              ? String(remaining) + " pts avant la prochaine étape."
-              : "Étape actuelle stabilisée."}
-          </p>
-          <div className="flex items-center justify-between border-t border-border pt-4">
-            <span className="text-xs text-muted">Étape</span>
-            <Badge variant="outline">{stageLabel}</Badge>
+
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="size-4 text-primary" />
+              <p className="text-xs font-semibold">Intégrité de la session</p>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-muted">
+              Durée de parole et bilan déclaratif, sans faux diagnostic audio.
+            </p>
           </div>
+
+          {evaluation ? (
+            <div className="border-t border-border pt-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-muted">Preuves de réussite</span>
+                <span className="font-display text-lg text-primary">
+                  {evaluation.evidenceCount}/{evaluation.evidenceTotal}
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-subtle">{evaluation.summary}</p>
+            </div>
+          ) : null}
+
+          {previousOutcome ? (
+            <div className="flex items-start gap-2 rounded-lg border border-border bg-surface/70 px-3 py-3">
+              <History className="mt-0.5 size-3.5 shrink-0 text-primary" />
+              <p className="text-[11px] leading-relaxed text-muted">
+                Dernier passage · {previousOutcome}
+              </p>
+            </div>
+          ) : null}
         </div>
       </Surface>
 
@@ -162,75 +250,154 @@ function MissionRail({
   );
 }
 
+function ModeCard({
+  mode,
+  selected,
+  onSelect,
+}: {
+  mode: MissionMode;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const item = MODE_META[mode];
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={[
+        "group rounded-2xl border p-5 text-left transition-[border-color,background-color,transform,box-shadow] duration-200",
+        selected
+          ? "border-primary bg-primary/[0.045] shadow-[var(--shadow-border-hover)]"
+          : "border-border bg-surface hover:bg-surface-2/35",
+      ].join(" ")}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">{item.eyebrow}</p>
+          <p className="mt-2 font-display text-2xl">{item.title}</p>
+        </div>
+        <div
+          className={[
+            "flex size-7 items-center justify-center rounded-full border",
+            selected ? "border-primary bg-primary text-primary-foreground" : "border-border text-transparent",
+          ].join(" ")}
+        >
+          <Check className="size-3.5" />
+        </div>
+      </div>
+      <p className="mt-3 text-sm leading-relaxed text-muted">{item.body}</p>
+      <span className={selected ? "mt-4 block text-xs font-semibold text-primary" : "mt-4 block text-xs text-subtle"}>
+        {selected ? "Mode sélectionné" : "Sélectionner"}
+      </span>
+    </button>
+  );
+}
+
 function BriefStep({
   mission,
-  memoryEnabled,
+  objective,
+  mode,
+  setMode,
   onStart,
+  hasHistory,
 }: {
-  mission: ReturnType<typeof personaliseMission>;
-  memoryEnabled: boolean;
+  mission: typeof TODAY_MISSION;
+  objective: ReturnType<typeof missionObjective>;
+  mode: MissionMode;
+  setMode: (mode: MissionMode) => void;
   onStart: () => void;
+  hasHistory: boolean;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <Surface className="overflow-hidden border border-border/70 p-0">
-        <div className="relative isolate overflow-hidden bg-surface-2 px-6 py-7 sm:px-8 sm:py-9">
-          <div className="absolute -right-16 -top-20 size-48 rounded-full bg-primary/10 blur-2xl" aria-hidden />
-          <div className="absolute -bottom-24 left-12 size-52 rounded-full bg-clay/10 blur-3xl" aria-hidden />
+        <div className="relative isolate overflow-hidden bg-surface-2 px-6 py-8 sm:px-9 sm:py-10">
+          <div className="absolute -right-20 -top-24 size-64 rounded-full bg-primary/10 blur-3xl" aria-hidden />
+          <div className="absolute -bottom-28 left-0 size-72 rounded-full bg-clay/10 blur-3xl" aria-hidden />
           <div className="relative">
-            <div className="flex items-center justify-between gap-4">
-              <Badge className="bg-surface text-primary shadow-none">
-                {TODAY_MISSION.language} · {TODAY_MISSION.level}
-              </Badge>
-              {memoryEnabled ? (
-                <span className="flex items-center gap-1.5 text-[11px] font-medium text-primary">
-                  <Sparkles className="size-3.5" />
-                  Léo ajuste la mission
-                </span>
-              ) : null}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Badge className="bg-surface text-primary shadow-none">{mission.language} · {mission.level}</Badge>
+              <span className="flex items-center gap-1.5 text-[11px] font-medium text-primary">
+                <Sparkles className="size-3.5" />
+                {hasHistory ? "Votre historique compte" : "Première session"}
+              </span>
             </div>
-            <h2 className="mt-7 max-w-3xl font-display text-4xl leading-[1.02] tracking-tight sm:text-5xl">
+
+            <h2 className="mt-8 max-w-3xl font-display text-4xl leading-[1.01] tracking-tight sm:text-6xl">
               {mission.title}
             </h2>
             <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
               {mission.prompt}
             </p>
-            <div className="mt-6">
-              <MissionMeta />
+
+            <div className="mt-7 grid grid-cols-3 divide-x divide-border overflow-hidden rounded-xl border border-border bg-surface/65">
+              <div className="p-3 sm:p-4">
+                <Clock3 className="size-3.5 text-primary" />
+                <p className="mt-2 text-xs text-muted">Durée</p>
+                <p className="mt-1 text-sm font-semibold">{mission.durationMin} min</p>
+              </div>
+              <div className="p-3 sm:p-4">
+                <Target className="size-3.5 text-primary" />
+                <p className="mt-2 text-xs text-muted">Objectif</p>
+                <p className="mt-1 text-sm font-semibold">Oser</p>
+              </div>
+              <div className="p-3 sm:p-4">
+                <MapPin className="size-3.5 text-primary" />
+                <p className="mt-2 text-xs text-muted">Scène</p>
+                <p className="mt-1 truncate text-sm font-semibold">Saint-Pierre</p>
+              </div>
             </div>
           </div>
         </div>
+
         <div className="grid gap-0 divide-y divide-border lg:grid-cols-3 lg:divide-x lg:divide-y-0">
           <div className="p-5 sm:p-6">
-            <Eyebrow>Situation</Eyebrow>
-            <p className="mt-2 text-sm leading-relaxed text-muted">{mission.context}</p>
+            <Eyebrow>À faire</Eyebrow>
+            <p className="mt-2 text-sm leading-relaxed text-muted">{objective.situation}</p>
           </div>
           <div className="p-5 sm:p-6">
-            <Eyebrow>À réussir</Eyebrow>
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              Ouvrir la conversation. Demander. Répondre. Ne pas chercher une phrase parfaite.
-            </p>
+            <Eyebrow>Signaux de réussite</Eyebrow>
+            <div className="mt-3 space-y-2.5">
+              {objective.successSignals.map((signal) => (
+                <div key={signal} className="flex gap-2.5 text-xs leading-relaxed text-muted">
+                  <span className="mt-1 size-1.5 shrink-0 rounded-full bg-primary" />
+                  <span>{signal}</span>
+                </div>
+              ))}
+            </div>
           </div>
           <div className="p-5 sm:p-6">
             <Eyebrow>Phrase d'appui</Eyebrow>
             <p className="mt-2 font-display text-xl leading-snug">“What do you recommend?”</p>
-            <p className="mt-2 text-xs text-subtle">Un appui, pas un script.</p>
+            <p className="mt-2 text-xs leading-relaxed text-subtle">{objective.support}</p>
           </div>
         </div>
       </Surface>
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
-        <div className="rounded-lg border border-border bg-surface/55 px-4 py-3">
-          <div className="flex items-center gap-2 text-xs font-semibold">
-            <MapPin className="size-3.5 text-primary" />
-            {TODAY_MISSION.place}
+      <div>
+        <div className="mb-3 flex items-end justify-between gap-4">
+          <div>
+            <Eyebrow>Choisissez votre scène</Eyebrow>
+            <p className="mt-1 text-sm text-muted">La mission ne devrait pas vous obliger à pratiquer de la même façon chaque jour.</p>
           </div>
-          <p className="mt-1 pl-5 text-xs leading-relaxed text-muted">
-            Faites-le pour de vrai, ou utilisez l'enregistrement lorsque personne n'est disponible.
-          </p>
         </div>
-        <Button size="lg" onClick={onStart} className="w-full sm:w-auto">
-          Commencer la mission
+        <div className="grid gap-3 md:grid-cols-2">
+          <ModeCard mode="real-world" selected={mode === "real-world"} onSelect={() => setMode("real-world")} />
+          <ModeCard mode="practice" selected={mode === "practice"} onSelect={() => setMode("practice")} />
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div className="rounded-xl border border-border bg-surface/65 px-4 py-3">
+          <div className="flex items-center gap-2 text-xs font-semibold">
+            <ShieldCheck className="size-3.5 text-primary" />
+            {MODE_META[mode].title}
+          </div>
+          <p className="mt-1 pl-5 text-xs leading-relaxed text-muted">{MODE_META[mode].body}</p>
+        </div>
+        <Button size="lg" className="w-full sm:w-auto" onClick={onStart}>
+          {MODE_META[mode].cta}
           <ArrowRight className="size-4" />
         </Button>
       </div>
@@ -238,188 +405,524 @@ function BriefStep({
   );
 }
 
-function RecordStep({ onFinished }: { onFinished: (seconds?: number) => void }) {
+function PrepareStep({
+  mode,
+  objective,
+  warmupDone,
+  onWarmup,
+  onSkip,
+  onContinue,
+}: {
+  mode: MissionMode;
+  objective: ReturnType<typeof missionObjective>;
+  warmupDone: boolean;
+  onWarmup: (seconds: number) => void;
+  onSkip: () => void;
+  onContinue: () => void;
+}) {
+  const [showWarmup, setShowWarmup] = useState(false);
+
   return (
-    <Surface className="overflow-hidden border border-primary/15 bg-primary p-0 text-primary-foreground">
-      <div className="px-6 pb-7 pt-7 sm:px-10 sm:pb-10 sm:pt-9">
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div>
-            <Eyebrow className="text-primary-foreground/60">Parlez maintenant</Eyebrow>
-            <h2 className="mt-2 font-display text-3xl tracking-tight sm:text-4xl">
-              Une réponse naturelle.
-            </h2>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-primary-foreground/75">
-              Tenez le bouton pendant votre réponse. Rien n'est sauvegardé ici : le contrôle mesure uniquement la durée de votre prise de parole.
-            </p>
+    <div className="space-y-5">
+      <Surface className="overflow-hidden border border-border/70 p-0">
+        <div className="bg-surface-2 px-6 py-8 sm:px-9 sm:py-10">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Badge variant="outline">{MODE_META[mode].eyebrow}</Badge>
+            <span className="text-[11px] uppercase tracking-[0.17em] text-subtle">Préparation</span>
           </div>
-          <div className="rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.16em] text-primary-foreground/75">
-            {TODAY_MISSION.durationMin} min conseillées
-          </div>
+          <h2 className="mt-5 max-w-3xl font-display text-4xl leading-tight sm:text-5xl">
+            Réduisez la friction avant de parler.
+          </h2>
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
+            Une phrase, un rythme, puis la scène. L'objectif n'est pas d'être prêt à 100 % ; il est de rendre le premier mot facile.
+          </p>
         </div>
 
-        <div className="mt-10 rounded-2xl border border-primary-foreground/10 bg-primary-foreground/[0.055] px-5 py-7 sm:px-8">
-          <div className="mb-7 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.18em] text-primary-foreground/55">Situation</p>
-              <p className="mt-1 text-sm font-medium">Au déjeuner · Saint-Pierre</p>
-            </div>
-            <div className="flex items-center gap-2 text-primary-foreground/70">
-              <Volume2 className="size-4" />
-              <span className="text-xs">Voix libre</span>
+        <div className="grid gap-0 divide-y divide-border lg:grid-cols-[1.2fr_1fr] lg:divide-x lg:divide-y-0">
+          <div className="p-6 sm:p-8">
+            <Eyebrow>Phrase d'appui</Eyebrow>
+            <button
+              type="button"
+              className="mt-3 flex w-full items-start justify-between gap-4 rounded-2xl border border-border bg-surface px-5 py-5 text-left transition-colors hover:bg-surface-2/40"
+              onClick={() => speakModel("What do you recommend?")}
+            >
+              <div>
+                <p className="font-display text-2xl leading-snug sm:text-3xl">What do you recommend?</p>
+                <p className="mt-2 text-xs text-muted">Écouter le modèle · puis dites-le une fois à votre manière.</p>
+              </div>
+              <Volume2 className="mt-1 size-5 shrink-0 text-primary" />
+            </button>
+
+            <div className="mt-5 rounded-xl border border-border bg-surface-2/45 px-4 py-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="size-4 text-primary" />
+                <p className="text-xs font-semibold">Point de bascule</p>
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{objective.stretch}</p>
             </div>
           </div>
-          <div className="rounded-xl bg-primary-foreground/[0.055] px-4 py-5 text-center">
-            <p className="text-xs uppercase tracking-[0.18em] text-primary-foreground/50">Votre impulsion</p>
-            <p className="mx-auto mt-3 max-w-xl font-display text-2xl leading-snug sm:text-3xl">
-              What do you recommend?
+
+          <div className="p-6 sm:p-8">
+            <Eyebrow>Échauffement facultatif</Eyebrow>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              Une courte prise de parole avant la scène. Elle est gardée comme historique de pratique, pas comme preuve de réussite.
             </p>
-            <p className="mt-2 text-xs text-primary-foreground/55">Puis laissez la conversation venir.</p>
-          </div>
-          <div className="mt-8">
-            <RecordControl onFinished={onFinished} inverted />
+
+            {!showWarmup && !warmupDone ? (
+              <Button variant="outline" className="mt-5 w-full" onClick={() => setShowWarmup(true)}>
+                <Mic2 className="size-4" />
+                Faire un échauffement
+              </Button>
+            ) : null}
+
+            {showWarmup && !warmupDone ? (
+              <div className="mt-5 rounded-2xl bg-primary p-5 text-primary-foreground">
+                <RecordControl
+                  inverted
+                  cta="Maintenir pour échauffer"
+                  onFinished={(seconds) => {
+                    onWarmup(seconds ?? 0);
+                    setShowWarmup(false);
+                  }}
+                />
+              </div>
+            ) : null}
+
+            {warmupDone ? (
+              <div className="mt-5 flex items-start gap-3 rounded-xl border border-primary/15 bg-primary/[0.055] px-4 py-4">
+                <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-semibold">Échauffement enregistré</p>
+                  <p className="mt-1 text-xs text-muted">Le prochain geste peut rester imparfait.</p>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
+      </Surface>
+
+      <div className="grid gap-3 sm:grid-cols-[auto_1fr_auto]">
+        <Button variant="ghost" onClick={onSkip} className="justify-start">
+          <ChevronDown className="size-4" />
+          Passer la préparation
+        </Button>
+        <div />
+        <Button size="lg" onClick={onContinue}>
+          Entrer dans la scène
+          <ArrowRight className="size-4" />
+        </Button>
       </div>
-    </Surface>
+    </div>
   );
 }
 
-function FeedbackStep({
-  already,
-  seconds,
-  onClose,
-  onRestart,
+function ExecuteStep({
+  mode,
+  attemptCount,
+  onAttemptFinished,
+  onRealWorldDone,
 }: {
-  already: boolean;
-  seconds: number | null;
-  onClose: () => void;
-  onRestart: () => void;
+  mode: MissionMode;
+  attemptCount: number;
+  onAttemptFinished: (seconds: number) => void;
+  onRealWorldDone: () => void;
 }) {
-  const [showMethod, setShowMethod] = useState(false);
+  const remaining = Math.max(0, 2 - attemptCount);
 
   return (
-    <div className="space-y-4">
-      <Surface className="overflow-hidden border border-border/70 p-0">
-        <div className="bg-surface-2 px-6 py-7 sm:px-8 sm:py-9">
-          <div className="flex items-start justify-between gap-4">
+    <div className="space-y-5">
+      <Surface className="overflow-hidden border border-primary/15 bg-primary p-0 text-primary-foreground">
+        <div className="px-6 pb-8 pt-8 sm:px-10 sm:pb-10 sm:pt-9">
+          <div className="flex flex-wrap items-start justify-between gap-5">
             <div>
-              <Eyebrow>Mission terminée</Eyebrow>
-              <h2 className="mt-2 font-display text-4xl tracking-tight sm:text-5xl">Le geste est fait.</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
-                {already
-                  ? "Cette mission était déjà validée. Vous pouvez relire le débrief sans générer une seconde récompense."
-                  : "Voici le débrief guidé de la mission. Il porte sur l'objectif travaillé, pas sur une prétendue analyse automatique de votre audio."}
+              <Eyebrow className="text-primary-foreground/60">
+                {MODE_META[mode].eyebrow} · maintenant
+              </Eyebrow>
+              <h2 className="mt-2 font-display text-4xl tracking-tight sm:text-5xl">
+                Faites la scène, pas l'exercice.
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-primary-foreground/75 sm:text-base">
+                Ouvrez avec la phrase d'appui, puis laissez votre réponse devenir votre propre phrase.
               </p>
             </div>
-            <div className="hidden rounded-full bg-primary p-3 text-primary-foreground sm:flex">
-              <Check className="size-5" />
+            <div className="rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-3 py-1.5 text-[11px] uppercase tracking-[0.16em] text-primary-foreground/70">
+              {attemptCount}/2 passages
             </div>
           </div>
-          {seconds !== null ? (
-            <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs">
+
+          <div className="mt-9 grid gap-3 md:grid-cols-[1fr_auto]">
+            <div className="rounded-2xl border border-primary-foreground/10 bg-primary-foreground/[0.055] px-5 py-5">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-primary-foreground/50">Impulsion</p>
+              <p className="mt-3 font-display text-2xl leading-snug sm:text-3xl">
+                What do you recommend?
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-primary-foreground/60">
+                Puis commandez. Une seule relance suffit.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-primary-foreground/10 bg-primary-foreground/[0.055] px-5 py-5 md:w-56">
+              <div className="flex items-center gap-2">
+                <Headphones className="size-4 text-primary-foreground/70" />
+                <span className="text-xs font-semibold">Règle du tour</span>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-primary-foreground/60">
+                Pas de script. Pas de correction pendant que vous parlez.
+              </p>
+            </div>
+          </div>
+
+          {mode === "practice" ? (
+            <div className="mt-8 rounded-2xl border border-primary-foreground/10 bg-primary-foreground/[0.055] px-5 py-8 sm:px-8">
+              <RecordControl inverted onFinished={(seconds) => onAttemptFinished(seconds ?? 0)} />
+            </div>
+          ) : (
+            <div className="mt-8 rounded-2xl border border-primary-foreground/10 bg-primary-foreground/[0.055] px-6 py-9 text-center">
+              <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary-foreground/10">
+                <MapPin className="size-7" />
+              </div>
+              <p className="mt-5 font-display text-2xl">Partez faire la scène.</p>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-primary-foreground/65">
+                Quand vous avez réellement posé la question et tenu l'échange, revenez valider le passage.
+              </p>
+              <Button
+                size="lg"
+                className="mt-6 bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+                onClick={onRealWorldDone}
+              >
+                <Check className="size-4" />
+                J'ai fait la mission
+              </Button>
+            </div>
+          )}
+        </div>
+      </Surface>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="size-3.5 text-primary" />
+          {mode === "practice"
+            ? "Le contenu audio n'est pas conservé par ce contrôle."
+            : "Ce passage repose sur votre déclaration, pas sur une capture audio."}
+        </div>
+        <span>{remaining} reprise{remaining > 1 ? "s" : ""} disponible{remaining > 1 ? "s" : ""}</span>
+      </div>
+    </div>
+  );
+}
+
+function ReflectionChoice({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onClick}
+      className={[
+        "rounded-xl border px-4 py-3 text-left text-sm transition-colors",
+        selected
+          ? "border-primary bg-primary/[0.055] text-primary"
+          : "border-border bg-surface hover:bg-surface-2/40",
+      ].join(" ")}
+    >
+      <span className="flex items-center gap-2">
+        <span className={selected ? "flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground" : "size-5 rounded-full border border-border"}>
+          {selected ? <Check className="size-3" /> : null}
+        </span>
+        {label}
+      </span>
+    </button>
+  );
+}
+
+function Confidence({
+  value,
+  onChange,
+}: {
+  value: MissionReflection["confidence"];
+  onChange: (value: MissionReflection["confidence"]) => void;
+}) {
+  return (
+    <div className="grid grid-cols-5 gap-2">
+      {([1, 2, 3, 4, 5] as const).map((score) => (
+        <button
+          key={score}
+          type="button"
+          aria-label={"Confiance " + String(score) + " sur 5"}
+          aria-pressed={value === score}
+          onClick={() => onChange(score)}
+          className={[
+            "flex h-12 items-center justify-center rounded-lg border text-sm font-semibold tabular-nums transition-colors",
+            value === score
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-surface text-muted hover:bg-surface-2/40",
+          ].join(" ")}
+        >
+          {score}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ReflectStep({
+  run,
+  draft,
+  saved,
+  onChange,
+  onSave,
+  onRedo,
+  onFinish,
+}: {
+  run: MissionRun | null;
+  draft: MissionReflection;
+  saved: boolean;
+  onChange: (next: MissionReflection) => void;
+  onSave: () => void;
+  onRedo: () => void;
+  onFinish: () => void;
+}) {
+  const evaluation = saved ? evaluateMission(draft) : null;
+  const attemptSeconds = run?.attempts
+    .filter((attempt) => attempt.kind === "mission")
+    .reduce((sum, attempt) => sum + attempt.seconds, 0) ?? 0;
+
+  return (
+    <div className="space-y-5">
+      <Surface className="overflow-hidden border border-border/70 p-0">
+        <div className="bg-surface-2 px-6 py-8 sm:px-9 sm:py-10">
+          <Eyebrow>Bilan de terrain</Eyebrow>
+          <h2 className="mt-2 max-w-3xl font-display text-4xl tracking-tight sm:text-5xl">
+            Qu'est-ce qui s'est réellement passé ?
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
+            Pas de note artificielle. Trois signaux simples suffisent pour décider de la prochaine étape.
+          </p>
+
+          {attemptSeconds > 0 ? (
+            <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs">
               <Clock3 className="size-3.5 text-primary" />
-              {seconds > 0 ? String(seconds) + "s parlées" : "Mode sans micro"}
+              {formatDuration(attemptSeconds)} de parole sur vos passages
             </div>
           ) : null}
         </div>
 
-        <div className="grid gap-0 divide-y divide-border lg:grid-cols-3 lg:divide-x lg:divide-y-0">
-          <div className="p-6">
-            <div className="flex items-center gap-2 text-primary">
-              <Sparkles className="size-4" />
-              <Eyebrow className="text-primary">Ce qui compte</Eyebrow>
+        <div className="space-y-6 p-6 sm:p-8">
+          <div>
+            <Eyebrow>01 · Objectif</Eyebrow>
+            <p className="mt-2 text-sm font-semibold">Avez-vous réellement fait l'action demandée ?</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <ReflectionChoice
+                label="Oui, je l'ai fait"
+                selected={draft.objectiveAchieved}
+                onClick={() => onChange({ ...draft, objectiveAchieved: true })}
+              />
+              <ReflectionChoice
+                label="Pas encore"
+                selected={!draft.objectiveAchieved}
+                onClick={() => onChange({ ...draft, objectiveAchieved: false })}
+              />
             </div>
-            <p className="mt-3 text-sm leading-relaxed">{MISSION_FEEDBACK.strength}</p>
           </div>
-          <div className="p-6">
-            <Eyebrow>À ajuster</Eyebrow>
-            <p className="mt-3 text-sm leading-relaxed text-muted">{MISSION_FEEDBACK.improvement}</p>
+
+          <div>
+            <Eyebrow>02 · Langue cible</Eyebrow>
+            <p className="mt-2 text-sm font-semibold">Comment avez-vous tenu l'anglais ?</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <ReflectionChoice
+                label="Tout du long"
+                selected={draft.stayedInTargetLanguage === "yes"}
+                onClick={() => onChange({ ...draft, stayedInTargetLanguage: "yes" })}
+              />
+              <ReflectionChoice
+                label="Par moments"
+                selected={draft.stayedInTargetLanguage === "partly"}
+                onClick={() => onChange({ ...draft, stayedInTargetLanguage: "partly" })}
+              />
+              <ReflectionChoice
+                label="J'ai basculé"
+                selected={draft.stayedInTargetLanguage === "no"}
+                onClick={() => onChange({ ...draft, stayedInTargetLanguage: "no" })}
+              />
+            </div>
           </div>
-          <div className="p-6">
-            <Eyebrow>Phrase à emporter</Eyebrow>
-            <p className="mt-3 font-display text-2xl leading-snug">{MISSION_FEEDBACK.model}</p>
-            <p className="mt-2 text-xs leading-relaxed text-muted">{MISSION_FEEDBACK.note}</p>
+
+          <div>
+            <Eyebrow>03 · Confiance</Eyebrow>
+            <p className="mt-2 text-sm font-semibold">À quel point le geste vous semblait disponible ?</p>
+            <div className="mt-3">
+              <Confidence
+                value={draft.confidence}
+                onChange={(confidence) => onChange({ ...draft, confidence })}
+              />
+            </div>
+            <div className="mt-2 flex justify-between text-[11px] text-subtle">
+              <span>Bloqué</span>
+              <span>Naturel</span>
+            </div>
+          </div>
+
+          <div>
+            <Eyebrow>Ce qui a gêné</Eyebrow>
+            <div className="mt-3 grid gap-2 sm:grid-cols-5">
+              {([
+                ["hesitation", "Hésitation"],
+                ["vocabulary", "Vocabulaire"],
+                ["switching", "Retour au français"],
+                ["confidence", "Confiance"],
+                ["none", "Rien de notable"],
+              ] as const).map(([value, label]) => (
+                <ReflectionChoice
+                  key={value}
+                  label={label}
+                  selected={draft.friction === value}
+                  onClick={() => onChange({ ...draft, friction: value })}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </Surface>
 
-      <Surface className="p-5 sm:p-6">
-        <button
-          type="button"
-          className="flex w-full items-center justify-between gap-4 text-left"
-          onClick={() => setShowMethod((value) => !value)}
-          aria-expanded={showMethod}
-        >
-          <div>
-            <Eyebrow>Transparence</Eyebrow>
-            <p className="mt-1 text-sm font-semibold">Comment ce débrief est construit</p>
-          </div>
-          <ArrowRight className={showMethod ? "size-4 rotate-90 text-primary transition-transform" : "size-4 text-subtle transition-transform"} />
-        </button>
-        {showMethod ? (
-          <div className="mt-4 grid gap-3 border-t border-border pt-4 text-xs leading-relaxed text-muted sm:grid-cols-2">
-            <p>
-              La durée de parole peut être mesurée par le navigateur. Aucun score de prononciation n'est inventé à partir de l'enregistrement.
-            </p>
-            <p>
-              Pour une analyse phonétique réelle, le module Pron'Lab reste la surface spécialisée de BLOSSOM.
-            </p>
-          </div>
-        ) : null}
-      </Surface>
+      {!saved ? (
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+          <p className="text-xs leading-relaxed text-muted">
+            Votre bilan est votre donnée d'apprentissage. Il ne prétend pas décrire la qualité sonore de votre anglais.
+          </p>
+          <Button size="lg" className="w-full sm:w-auto" onClick={onSave}>
+            Enregistrer le bilan
+            <Check className="size-4" />
+          </Button>
+        </div>
+      ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-[auto_1fr_auto]">
-        <Button variant="outline" onClick={onRestart}>
-          <RotateCcw className="size-4" />
-          Refaire
-        </Button>
-        <Button variant="secondary" asChild>
-          <Link to="/pronlab">
-            Continuer avec Pron'Lab
-            <Mic2 className="size-4" />
-          </Link>
-        </Button>
-        <Button onClick={onClose}>
-          Retour au voyage
-          <ArrowRight className="size-4" />
-        </Button>
-      </div>
+      {evaluation ? (
+        <Surface className="overflow-hidden border border-primary/15 p-0">
+          <div className="bg-primary px-6 py-7 text-primary-foreground sm:px-8 sm:py-8">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <Eyebrow className="text-primary-foreground/65">Décision BLOSSOM</Eyebrow>
+                <h3 className="mt-2 font-display text-3xl">
+                  {evaluation.evidenceCount}/3 signaux confirmés.
+                </h3>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-primary-foreground/75">
+                  {evaluation.summary}
+                </p>
+              </div>
+              <div className="flex size-11 items-center justify-center rounded-full bg-primary-foreground/10">
+                {evaluation.outcome === "advance" ? <Trophy className="size-5" /> : <Sparkles className="size-5" />}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-4 p-6 sm:p-8">
+            <div className="rounded-xl border border-border bg-surface-2/45 px-4 py-4">
+              <Eyebrow>Prochaine action</Eyebrow>
+              <p className="mt-2 font-display text-xl leading-snug">{evaluation.nextAction}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-[auto_1fr_auto]">
+              <Button variant="outline" onClick={onRedo} disabled={!missionExecutionReady(run)}>
+                <RotateCcw className="size-4" />
+                Refaire
+              </Button>
+              <div />
+              <Button onClick={onFinish}>
+                Terminer la mission
+                <ArrowRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+        </Surface>
+      ) : null}
     </div>
   );
 }
 
 export function MissionDashboard() {
   const navigate = useNavigate();
-  const log = useBlossom((s) => s.activityLog);
-  const attempts = useBlossom((s) => s.pronlabAttempts);
-  const plan = useBlossom((s) => s.plan);
-  const complete = useBlossom((s) => s.completeActivity);
+  const log = useBlossom((state) => state.activityLog);
+  const attempts = useBlossom((state) => state.pronlabAttempts);
+  const plan = useBlossom((state) => state.plan);
+  const sessions = useBlossom((state) => state.missionSessions);
+  const startMissionRun = useBlossom((state) => state.startMissionRun);
+  const recordMissionAttempt = useBlossom((state) => state.recordMissionAttempt);
+  const saveMissionReflection = useBlossom((state) => state.saveMissionReflection);
+  const completeMissionSession = useBlossom((state) => state.completeMissionSession);
+
+  const session = sessions[TODAY_MISSION.id];
+  const persistedRun = activeMissionRun(session);
   const already = hasSource(log, TODAY_MISSION.id);
-  const [step, setStep] = useState<Step>(already ? "feedback" : "brief");
-  const [seconds, setSeconds] = useState<number | null>(null);
+  const completedRuns = session?.runs.filter((run) => run.completedAt) ?? [];
+  const previousRun = completedRuns.at(-1) ?? null;
+  const previousEvaluation = previousRun?.reflection ? evaluateMission(previousRun.reflection) : null;
 
-  const memoryOn = planAllows(plan, "memory");
+  const [step, setStep] = useState<SessionStep>(() => initialStep(persistedRun));
+  const [mode, setMode] = useState<MissionMode>(persistedRun?.mode ?? "real-world");
+  const [saved, setSaved] = useState(Boolean(persistedRun?.reflection));
+  const [reflection, setReflection] = useState<MissionReflection>(
+    persistedRun?.reflection ?? REFLECTION_DEFAULT,
+  );
+  const [showHistory, setShowHistory] = useState(false);
+
+  useEffect(() => {
+    if (persistedRun?.mode) setMode(persistedRun.mode);
+    if (persistedRun?.reflection) {
+      setReflection(persistedRun.reflection);
+      setSaved(true);
+    }
+  }, [persistedRun?.id, persistedRun?.reflection, persistedRun?.mode]);
+
+  const memoryEnabled = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
-  const mission = personaliseMission(TODAY_MISSION, memory, memoryOn);
+  const objective = missionObjective(TODAY_MISSION, memory, memoryEnabled);
   const journey = journeySnapshot(log);
+  const run = activeMissionRun(session);
+  const runAttempts = missionAttemptCount(run, "mission");
+  const warmupDone = missionAttemptCount(run, "warmup") > 0;
 
-  function finish(secondsValue?: number) {
-    setSeconds(secondsValue ?? 0);
-    setStep("feedback");
-    track("mission_record_finished", {
-      seconds: secondsValue ?? 0,
-      mode: (secondsValue ?? 0) > 0 ? "microphone" : "no-mic",
-    });
+  const previousOutcome = useMemo(
+    () =>
+      previousEvaluation
+        ? previousEvaluation.outcome === "advance"
+          ? "objectif tenu, prête à avancer"
+          : previousEvaluation.outcome === "stabilise"
+            ? "objectif tenu, geste à stabiliser"
+            : "geste à reprendre"
+        : null,
+    [previousEvaluation],
+  );
+
+  function start() {
+    const id = startMissionRun(TODAY_MISSION.id, mode);
+    if (!id) return;
+    setSaved(false);
+    setReflection(REFLECTION_DEFAULT);
+    setStep("prepare");
+    track("mission_session_started", { mode });
   }
 
-  function closeMission() {
-    const result = complete(
-      "MISSION_COMPLETED",
-      TODAY_MISSION.id,
-      seconds === null ? undefined : "Session de " + String(seconds) + "s",
-    );
-    if (result.ok) {
-      track("mission_debrief_closed", { seconds: seconds ?? 0 });
+  function addAttempt(seconds: number, capture: "microphone" | "manual") {
+    const ok = recordMissionAttempt(TODAY_MISSION.id, "mission", capture, seconds);
+    if (!ok) return;
+    setSaved(false);
+    setStep("reflect");
+  }
+
+  function saveReflection() {
+    const ok = saveMissionReflection(TODAY_MISSION.id, reflection);
+    if (!ok) return;
+    setSaved(true);
+  }
+
+  function finish() {
+    const result = completeMissionSession(TODAY_MISSION.id);
+    if (result.ok || result.reason === "already") {
       navigate({ to: "/" });
     }
   }
@@ -433,75 +936,186 @@ export function MissionDashboard() {
             Retour
           </Link>
         </Button>
-        <span className="text-[11px] uppercase tracking-[0.18em] text-subtle">Mission active</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">
+          Session {TODAY_MISSION.level} · {TODAY_MISSION.language}
+        </span>
       </div>
 
-      <MissionHeader step={step} completed={already} />
+      <SessionStepper step={step} completed={already} />
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_290px]">
+      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <main className="min-w-0">
           {step === "brief" ? (
             <>
-              <Eyebrow>Mission du jour · {TODAY_MISSION.language}</Eyebrow>
-              <h1 className="mt-2 max-w-4xl font-display text-5xl leading-[0.98] tracking-tight sm:text-6xl">
-                Osez la conversation avant de chercher la perfection.
+              <Eyebrow>Mission du jour · exécution réelle</Eyebrow>
+              <h1 className="mt-2 max-w-5xl font-display text-5xl leading-[0.96] tracking-tight sm:text-7xl">
+                Une compétence devient utile quand elle survit à l'écran.
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
-                Une séquence courte, située dans votre vraie vie, avec un seul geste à réussir.
+                {memoryEnabled
+                  ? "Cette mission s'ajuste à votre mémoire d'apprentissage, sans vous enfermer dans une correction."
+                  : "Une mission courte, un geste précis, puis un bilan assez simple pour savoir quoi faire ensuite."}
               </p>
               <div className="mt-8">
-                <BriefStep mission={mission} memoryEnabled={memoryOn} onStart={() => {
-                  track("mission_started");
-                  setStep("record");
-                }} />
-              </div>
-            </>
-          ) : null}
-
-          {step === "record" ? (
-            <>
-              <Eyebrow>Mission du jour · en direct</Eyebrow>
-              <h1 className="mt-2 max-w-4xl font-display text-5xl leading-[0.98] tracking-tight sm:text-6xl">
-                Faites-le comme dans la vraie scène.
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
-                Pas de script. Un appui, puis votre propre parole.
-              </p>
-              <div className="mt-8">
-                <RecordStep onFinished={finish} />
-              </div>
-            </>
-          ) : null}
-
-          {step === "feedback" ? (
-            <>
-              <Eyebrow>Mission du jour · débrief</Eyebrow>
-              <h1 className="mt-2 max-w-4xl font-display text-5xl leading-[0.98] tracking-tight sm:text-6xl">
-                Transformez l'effort en réflexe.
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
-                Un rappel précis, une phrase à emporter, puis retour au parcours.
-              </p>
-              <div className="mt-8">
-                <FeedbackStep
-                  already={already}
-                  seconds={seconds}
-                  onRestart={() => {
-                    setSeconds(null);
-                    setStep("record");
-                  }}
-                  onClose={closeMission}
+                <BriefStep
+                  mission={TODAY_MISSION}
+                  objective={objective}
+                  mode={mode}
+                  setMode={setMode}
+                  onStart={start}
+                  hasHistory={completedRuns.length > 0}
                 />
               </div>
             </>
           ) : null}
+
+          {step === "prepare" ? (
+            <>
+              <Eyebrow>Étape 02 · préparer</Eyebrow>
+              <h1 className="mt-2 max-w-5xl font-display text-5xl leading-[0.96] tracking-tight sm:text-7xl">
+                Facilitez le premier mot.
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
+                L'échauffement est facultatif. La phrase d'appui est là pour vous lancer, pas pour être récitée.
+              </p>
+              <div className="mt-8">
+                <PrepareStep
+                  mode={run?.mode ?? mode}
+                  objective={objective}
+                  warmupDone={warmupDone}
+                  onWarmup={(seconds) => {
+                    recordMissionAttempt(TODAY_MISSION.id, "warmup", "microphone", seconds);
+                  }}
+                  onSkip={() => setStep("execute")}
+                  onContinue={() => setStep("execute")}
+                />
+              </div>
+            </>
+          ) : null}
+
+          {step === "execute" ? (
+            <>
+              <Eyebrow>Étape 03 · exécuter</Eyebrow>
+              <h1 className="mt-2 max-w-5xl font-display text-5xl leading-[0.96] tracking-tight sm:text-7xl">
+                Maintenant, osez.
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
+                Une seule scène. Deux passages maximum. Vous décidez quand l'échange est suffisant.
+              </p>
+              <div className="mt-8">
+                <ExecuteStep
+                  mode={run?.mode ?? mode}
+                  attemptCount={runAttempts}
+                  onAttemptFinished={(seconds) => addAttempt(seconds, "microphone")}
+                  onRealWorldDone={() => addAttempt(0, "manual")}
+                />
+              </div>
+            </>
+          ) : null}
+
+          {step === "reflect" ? (
+            <>
+              <Eyebrow>Étape 04 · bilan</Eyebrow>
+              <h1 className="mt-2 max-w-5xl font-display text-5xl leading-[0.96] tracking-tight sm:text-7xl">
+                Transformez ce qui s'est passé en prochaine action.
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">
+                Votre bilan ne juge pas votre anglais. Il décide simplement si le geste doit être répété, stabilisé ou approfondi.
+              </p>
+              <div className="mt-8">
+                <ReflectStep
+                  run={run}
+                  draft={reflection}
+                  saved={saved}
+                  onChange={(next) => {
+                    setReflection(next);
+                    setSaved(false);
+                  }}
+                  onSave={saveReflection}
+                  onRedo={() => {
+                    setSaved(false);
+                    setStep("execute");
+                  }}
+                  onFinish={finish}
+                />
+              </div>
+            </>
+          ) : null}
+
+          {completedRuns.length > 0 ? (
+            <div className="mt-8">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between rounded-xl border border-border bg-surface/55 px-4 py-4 text-left"
+                onClick={() => setShowHistory((value) => !value)}
+                aria-expanded={showHistory}
+              >
+                <div className="flex items-center gap-3">
+                  <History className="size-4 text-primary" />
+                  <div>
+                    <p className="text-sm font-semibold">Historique de cette mission</p>
+                    <p className="mt-0.5 text-xs text-muted">
+                      {completedRuns.length} passage{completedRuns.length > 1 ? "s" : ""} terminé{completedRuns.length > 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+                <ChevronDown className={showHistory ? "size-4 rotate-180 text-subtle transition-transform" : "size-4 text-subtle transition-transform"} />
+              </button>
+              {showHistory ? (
+                <div className="mt-2 overflow-hidden rounded-xl border border-border bg-surface">
+                  {completedRuns.slice().reverse().map((item, index) => {
+                    const evaluation = item.reflection ? evaluateMission(item.reflection) : null;
+                    const duration = item.attempts
+                      .filter((attempt) => attempt.kind === "mission")
+                      .reduce((sum, attempt) => sum + attempt.seconds, 0);
+                    return (
+                      <div
+                        key={item.id}
+                        className="grid gap-3 border-b border-border p-4 last:border-b-0 sm:grid-cols-[auto_1fr_auto]"
+                      >
+                        <div className="flex size-8 items-center justify-center rounded-full bg-surface-2 text-xs font-semibold text-primary">
+                          {completedRuns.length - index}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">
+                            {item.mode === "practice" ? "Pratique" : "Terrain"}
+                          </p>
+                          <p className="mt-1 text-xs text-muted">
+                            {new Date(item.startedAt).toLocaleDateString("fr-FR")} · {duration ? formatDuration(duration) : "sans capture"}
+                          </p>
+                        </div>
+                        <div className="text-left sm:text-right">
+                          <p className="text-sm font-semibold text-primary">{evaluation?.evidenceCount ?? 0}/3</p>
+                          <p className="mt-1 text-[11px] text-subtle">{evaluation?.outcome ?? "terminé"}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {already && step === "brief" ? (
+            <Surface className="mt-5 border border-primary/15 bg-primary/[0.045]">
+              <div className="flex gap-3">
+                <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-semibold">Cette mission a déjà rapporté sa récompense.</p>
+                  <p className="mt-1 text-xs leading-relaxed text-muted">
+                    Vous pouvez tout de même la refaire pour vous entraîner. BLOSSOM empêchera simplement une deuxième attribution de points.
+                  </p>
+                </div>
+              </div>
+            </Surface>
+          ) : null}
         </main>
 
         <MissionRail
-          stageLabel={journey.stage.label}
-          points={journey.points}
-          progress={journey.progress}
-          remaining={journey.remaining}
+          run={run}
+          journey={journey}
+          completed={already}
+          previousOutcome={previousOutcome}
         />
       </div>
     </Page>
