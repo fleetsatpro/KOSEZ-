@@ -37,7 +37,7 @@ import {
   type MissionReflection,
   type MissionRun,
 } from "@/lib/blossom/mission";
-import { hasSource, journeySnapshot, resolveMemory } from "@/lib/blossom/engine";
+import { hasSource, journeySnapshot, personaliseMission, resolveMemory } from "@/lib/blossom/engine";
 import { useBlossom } from "@/lib/blossom/store";
 import { track } from "@/lib/analytics";
 
@@ -67,6 +67,8 @@ const MODE_META: Record<
     cta: "M'entraîner maintenant",
   },
 };
+
+const MISSION_SCENE_IMAGE = "/images/atelier.jpg";
 
 const REFLECTION_DEFAULT: MissionReflection = {
   objectiveAchieved: true,
@@ -311,44 +313,64 @@ function BriefStep({
   return (
     <div className="space-y-5">
       <Surface className="overflow-hidden border border-border/70 p-0">
-        <div className="relative isolate overflow-hidden bg-surface-2 px-6 py-8 sm:px-9 sm:py-10">
-          <div className="absolute -right-20 -top-24 size-64 rounded-full bg-primary/10 blur-3xl" aria-hidden />
-          <div className="absolute -bottom-28 left-0 size-72 rounded-full bg-clay/10 blur-3xl" aria-hidden />
-          <div className="relative">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <Badge className="bg-surface text-primary shadow-none">{mission.language} · {mission.level}</Badge>
-              <span className="flex items-center gap-1.5 text-[11px] font-medium text-primary">
-                <Sparkles className="size-3.5" />
-                {hasHistory ? "Votre historique compte" : "Première session"}
-              </span>
-            </div>
-
-            <h2 className="mt-8 max-w-3xl font-display text-4xl leading-[1.01] tracking-tight sm:text-6xl">
-              {mission.title}
-            </h2>
-            <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
-              {mission.prompt}
-            </p>
-
-            <div className="mt-7 grid grid-cols-3 divide-x divide-border overflow-hidden rounded-xl border border-border bg-surface/65">
-              <div className="p-3 sm:p-4">
-                <Clock3 className="size-3.5 text-primary" />
-                <p className="mt-2 text-xs text-muted">Durée</p>
-                <p className="mt-1 text-sm font-semibold">{mission.durationMin} min</p>
+        <div className="grid gap-0 bg-surface-2 lg:grid-cols-[minmax(0,1.2fr)_minmax(270px,0.72fr)]">
+          <div className="relative isolate overflow-hidden px-6 py-8 sm:px-9 sm:py-10">
+            <div className="absolute -right-20 -top-24 size-64 rounded-full bg-primary/10 blur-3xl" aria-hidden />
+            <div className="absolute -bottom-28 left-0 size-72 rounded-full bg-clay/10 blur-3xl" aria-hidden />
+            <div className="relative">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Badge className="bg-surface text-primary shadow-none">{TODAY_MISSION.language} · {TODAY_MISSION.level}</Badge>
+                <span className="flex items-center gap-1.5 text-[11px] font-medium text-primary">
+                  <Sparkles className="size-3.5" />
+                  {hasHistory ? "Votre historique compte" : "Première session"}
+                </span>
               </div>
-              <div className="p-3 sm:p-4">
-                <Target className="size-3.5 text-primary" />
-                <p className="mt-2 text-xs text-muted">Objectif</p>
-                <p className="mt-1 text-sm font-semibold">Oser</p>
-              </div>
-              <div className="p-3 sm:p-4">
-                <MapPin className="size-3.5 text-primary" />
-                <p className="mt-2 text-xs text-muted">Scène</p>
-                <p className="mt-1 truncate text-sm font-semibold">Saint-Pierre</p>
+
+              <h2 className="mt-8 max-w-3xl font-display text-4xl leading-[1.01] tracking-tight sm:text-6xl">
+                {mission.title}
+              </h2>
+              <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
+                {mission.prompt}
+              </p>
+
+              <div className="mt-7 grid grid-cols-3 divide-x divide-border overflow-hidden rounded-xl border border-border bg-surface/65">
+                <div className="p-3 sm:p-4">
+                  <Clock3 className="size-3.5 text-primary" />
+                  <p className="mt-2 text-xs text-muted">Durée</p>
+                  <p className="mt-1 text-sm font-semibold">{TODAY_MISSION.durationMin} min</p>
+                </div>
+                <div className="p-3 sm:p-4">
+                  <Target className="size-3.5 text-primary" />
+                  <p className="mt-2 text-xs text-muted">Objectif</p>
+                  <p className="mt-1 text-sm font-semibold">Oser</p>
+                </div>
+                <div className="p-3 sm:p-4">
+                  <MapPin className="size-3.5 text-primary" />
+                  <p className="mt-2 text-xs text-muted">Scène</p>
+                  <p className="mt-1 truncate text-sm font-semibold">Saint-Pierre</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+
+          <div className="relative min-h-72 overflow-hidden lg:min-h-full">
+            <img
+              src={MISSION_SCENE_IMAGE}
+              alt="Scène de la mission à Saint-Pierre"
+              className="absolute inset-0 size-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-fg/85 via-fg/15 to-transparent" aria-hidden />
+            <div className="absolute inset-x-5 bottom-5 rounded-2xl border border-primary-foreground/15 bg-fg/65 p-4 text-primary-foreground backdrop-blur-md">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/65">Scène</p>
+              <p className="mt-1 font-display text-2xl">Déjeuner à Saint-Pierre</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[10px]">4 min</span>
+                <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[10px]">A2</span>
+                <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[10px]">English</span>
+              </div>
+            </div>
+          </div>
+        </div>        </div>
 
         <div className="grid gap-0 divide-y divide-border lg:grid-cols-3 lg:divide-x lg:divide-y-0">
           <div className="p-5 sm:p-6">
