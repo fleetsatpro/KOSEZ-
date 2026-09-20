@@ -18,7 +18,7 @@ import {
 
 test("mission runs persist and resume instead of resetting", () => {
   const first = beginMissionRun(createMissionSession("mission-today"), "practice", "core", "2026-09-20T07:00:00.000Z", "run-1");
-  const resumed = beginMissionRun(first, "real-world", "2026-09-20T07:05:00.000Z", "run-2");
+  const resumed = beginMissionRun(first, "real-world", "stretch", "2026-09-20T07:05:00.000Z", "run-2");
   assert.equal(resumed.runs.length, 1);
   assert.equal(activeMissionRun(resumed)?.mode, "practice");
   assert.equal(activeMissionRun(resumed)?.id, "run-1");
@@ -38,14 +38,14 @@ test("completed runs create a new run while preserving history", () => {
     friction: "none",
   }, "2026-09-20T07:02:30.000Z");
   session = finishMissionRun(session, "2026-09-20T07:03:00.000Z");
-  session = beginMissionRun(session, "practice", "2026-09-20T08:00:00.000Z", "run-2");
+  session = beginMissionRun(session, "practice", "core", "2026-09-20T08:00:00.000Z", "run-2");
   assert.equal(session.runs.length, 2);
   assert.equal(activeMissionRun(session)?.id, "run-2");
   assert.equal(session.runs[0]?.completedAt, "2026-09-20T07:03:00.000Z");
 });
 
 test("mission attempts preserve capture method and duration", () => {
-  let session = beginMissionRun(createMissionSession("mission-today"), "practice", "2026-09-20T07:00:00.000Z", "run-1");
+  let session = beginMissionRun(createMissionSession("mission-today"), "practice", "core", "2026-09-20T07:00:00.000Z", "run-1");
   session = appendMissionAttempt(session, {
     kind: "warmup",
     capture: "microphone",
@@ -115,7 +115,7 @@ test("mission objective is explicit about success signals", () => {
 });
 
 test("reflection requires an execution and finishing preserves the completed run", () => {
-  let session = beginMissionRun(createMissionSession("mission-today"), "real-world", "2026-09-20T07:00:00.000Z", "run-1");
+  let session = beginMissionRun(createMissionSession("mission-today"), "real-world", "core", "2026-09-20T07:00:00.000Z", "run-1");
   const blocked = finishMissionRun(session, "2026-09-20T07:01:00.000Z");
   assert.equal(activeMissionRun(blocked)?.completedAt, null);
   const noExecutionReflection = saveMissionReflection(session, {
@@ -146,6 +146,7 @@ test("mission step resolver resumes at the correct stage", () => {
   const started = beginMissionRun(
     createMissionSession("mission-today"),
     "practice",
+    "core",
     "2026-09-20T09:00:00.000Z",
     "run-step",
   );
