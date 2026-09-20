@@ -64,6 +64,12 @@ test("mission execution is limited to two attempts per run", () => {
   }, "2026-09-20T07:00:22.000Z", "attempt-2");
   assert.equal(missionAttemptCount(activeMissionRun(session), "mission"), 2);
   assert.equal(missionExecutionReady(activeMissionRun(session)), false);
+  const blocked = appendMissionAttempt(session, {
+    kind: "mission",
+    capture: "microphone",
+    seconds: 20,
+  }, "2026-09-20T07:00:30.000Z", "attempt-3");
+  assert.equal(missionAttemptCount(activeMissionRun(blocked), "mission"), 2);
 });
 
 test("mission evaluation distinguishes evidence from invented audio scores", () => {
@@ -96,20 +102,33 @@ test("mission evaluation distinguishes evidence from invented audio scores", () 
 test("mission objective is explicit about success signals", () => {
   const objective = missionObjective(TODAY_MISSION, LEARNER_MEMORY, true);
   assert.equal(objective.successSignals.length, 3);
+  assert.equal(objective.supportPhrase, "What do you recommend?");
   assert.match(objective.support, /Léo/);
   assert.ok(objective.stretch.length > 10);
 });
 
-test("finishing requires reflection and preserves the completed run", () => {
+test("reflection requires an execution and finishing preserves the completed run", () => {
   let session = beginMissionRun(createMissionSession("mission-today"), "real-world", "2026-09-20T07:00:00.000Z", "run-1");
   const blocked = finishMissionRun(session, "2026-09-20T07:01:00.000Z");
   assert.equal(activeMissionRun(blocked)?.completedAt, null);
+  const noExecutionReflection = saveMissionReflection(session, {
+    objectiveAchieved: true,
+    stayedInTargetLanguage: "yes",
+    confidence: 4,
+    friction: "none",
+  }, "2026-09-20T07:01:30.000Z");
+  assert.equal(activeMissionRun(noExecutionReflection)?.reflection, null);
+  session = appendMissionAttempt(session, {
+    kind: "mission",
+    capture: "manual",
+    seconds: 0,
+  }, "2026-09-20T07:02:00.000Z", "attempt-1");
   session = saveMissionReflection(session, {
     objectiveAchieved: true,
     stayedInTargetLanguage: "yes",
     confidence: 4,
     friction: "confidence",
-  }, "2026-09-20T07:02:00.000Z");
+  }, "2026-09-20T07:02:30.000Z");
   const finished = finishMissionRun(session, "2026-09-20T07:03:00.000Z");
   assert.equal(activeMissionRun(finished)?.completedAt, "2026-09-20T07:03:00.000Z");
 });
