@@ -33,7 +33,9 @@ import {
   missionAttemptCount,
   missionExecutionReady,
   missionObjective,
+  missionStepFromRun,
   type MissionMode,
+  type MissionStep,
   type MissionReflection,
   type MissionRun,
 } from "@/lib/blossom/mission";
@@ -41,9 +43,7 @@ import { hasSource, journeySnapshot, personaliseMission, resolveMemory } from "@
 import { useBlossom } from "@/lib/blossom/store";
 import { track } from "@/lib/analytics";
 
-type SessionStep = "brief" | "prepare" | "execute" | "reflect";
-
-const STEP_META: Array<{ id: SessionStep; label: string; compact: string }> = [
+const STEP_META: Array<{ id: MissionStep; label: string; compact: string }> = [
   { id: "brief", label: "Brief", compact: "01" },
   { id: "prepare", label: "Préparer", compact: "02" },
   { id: "execute", label: "Exécuter", compact: "03" },
@@ -68,20 +68,12 @@ const MODE_META: Record<
   },
 };
 
-const MISSION_SCENE_IMAGE = "/images/atelier.jpg";
-
 const REFLECTION_DEFAULT: MissionReflection = {
   objectiveAchieved: true,
   stayedInTargetLanguage: "partly",
   confidence: 3,
   friction: "hesitation",
 };
-
-function initialStep(run: MissionRun | null): SessionStep {
-  if (!run || run.completedAt) return "brief";
-  if (run.reflection || missionAttemptCount(run, "mission") > 0) return "reflect";
-  return "prepare";
-}
 
 function formatDuration(seconds: number) {
   if (seconds < 60) return String(seconds) + " s";
@@ -103,7 +95,7 @@ function SessionStepper({
   step,
   completed,
 }: {
-  step: SessionStep;
+  step: MissionStep;
   completed: boolean;
 }) {
   const active = STEP_META.findIndex((item) => item.id === step);
@@ -322,10 +314,11 @@ function BriefStep({
             <div className="relative">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <Badge className="bg-surface text-primary shadow-none">{base.language} · {base.level}</Badge>
-                <span className="flex items-center gap-1.5 text-[11px] font-medium text-primary">
+                <div className="flex items-center gap-2 text-[11px] font-medium text-primary">
                   <Sparkles className="size-3.5" />
-                  {hasHistory ? "Votre historique compte" : "Première session"}
-                </span>
+                  <span>{hasHistory ? "Votre historique compte" : "Première session"}</span>
+                  <span className="rounded-full border border-primary/15 bg-surface px-2 py-0.5 text-[10px]">{objective.adaptation}</span>
+                </div>
               </div>
 
               <h2 className="mt-8 max-w-3xl font-display text-4xl leading-[1.01] tracking-tight sm:text-6xl">
@@ -357,18 +350,18 @@ function BriefStep({
 
           <div className="relative min-h-72 overflow-hidden lg:min-h-full">
             <img
-              src={MISSION_SCENE_IMAGE}
+              src={base.sceneImage ?? "/images/atelier.jpg"}
               alt="Scène de la mission à Saint-Pierre"
               className="absolute inset-0 size-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-fg/85 via-fg/15 to-transparent" aria-hidden />
             <div className="absolute inset-x-5 bottom-5 rounded-2xl border border-primary-foreground/15 bg-fg/65 p-4 text-primary-foreground backdrop-blur-md">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/65">Scène</p>
-              <p className="mt-1 font-display text-2xl">Déjeuner à Saint-Pierre</p>
+              <p className="mt-1 font-display text-2xl">{base.place}</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[10px]">4 min</span>
-                <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[10px]">A2</span>
-                <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[10px]">English</span>
+                <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[10px]">{String(base.durationMin)} min</span>
+                <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[10px]">{base.level}</span>
+                <span className="rounded-full bg-primary-foreground/10 px-2.5 py-1 text-[10px]">{base.language}</span>
               </div>
             </div>
           </div>
@@ -889,7 +882,7 @@ export function MissionDashboard() {
   const previousRun = completedRuns.at(-1) ?? null;
   const previousEvaluation = previousRun?.reflection ? evaluateMission(previousRun.reflection) : null;
 
-  const [step, setStep] = useState<SessionStep>(() => initialStep(persistedRun));
+  const [step, setStep] = useState<MissionStep>(() => missionStepFromRun(persistedRun));
   const [mode, setMode] = useState<MissionMode>(persistedRun?.mode ?? "real-world");
   const [saved, setSaved] = useState(Boolean(persistedRun?.reflection));
   const [reflection, setReflection] = useState<MissionReflection>(
