@@ -24,12 +24,17 @@ test("mission runs persist and resume instead of resetting", () => {
 
 test("completed runs create a new run while preserving history", () => {
   let session = beginMissionRun(createMissionSession("mission-today"), "real-world", "2026-09-20T07:00:00.000Z", "run-1");
+  session = appendMissionAttempt(session, {
+    kind: "mission",
+    capture: "manual",
+    seconds: 0,
+  }, "2026-09-20T07:02:00.000Z", "attempt-1");
   session = saveMissionReflection(session, {
     objectiveAchieved: true,
     stayedInTargetLanguage: "yes",
     confidence: 4,
     friction: "none",
-  }, "2026-09-20T07:02:00.000Z");
+  }, "2026-09-20T07:02:30.000Z");
   session = finishMissionRun(session, "2026-09-20T07:03:00.000Z");
   session = beginMissionRun(session, "practice", "2026-09-20T08:00:00.000Z", "run-2");
   assert.equal(session.runs.length, 2);
