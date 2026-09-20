@@ -16,7 +16,7 @@ import {
 } from "./mission.ts";
 
 test("mission runs persist and resume instead of resetting", () => {
-  const first = beginMissionRun(createMissionSession("mission-today"), "practice", "2026-09-20T07:00:00.000Z", "run-1");
+  const first = beginMissionRun(createMissionSession("mission-today"), "practice", "core", "2026-09-20T07:00:00.000Z", "run-1");
   const resumed = beginMissionRun(first, "real-world", "2026-09-20T07:05:00.000Z", "run-2");
   assert.equal(resumed.runs.length, 1);
   assert.equal(activeMissionRun(resumed)?.mode, "practice");
@@ -24,7 +24,7 @@ test("mission runs persist and resume instead of resetting", () => {
 });
 
 test("completed runs create a new run while preserving history", () => {
-  let session = beginMissionRun(createMissionSession("mission-today"), "real-world", "2026-09-20T07:00:00.000Z", "run-1");
+  let session = beginMissionRun(createMissionSession("mission-today"), "real-world", "core", "2026-09-20T07:00:00.000Z", "run-1");
   session = appendMissionAttempt(session, {
     kind: "mission",
     capture: "manual",
@@ -167,4 +167,16 @@ test("previous outcome changes the next mission focus without changing its ident
   assert.equal(stabilise.adaptation, "Stabiliser");
   assert.equal(advance.adaptation, "Prolonger");
   assert.notEqual(repeat.stretch, stabilise.stretch);
+});
+
+
+test("mission challenge is carried into the run and history", () => {
+  const session = beginMissionRun(
+    createMissionSession("mission-today"),
+    "practice",
+    "stretch",
+    "2026-09-20T10:00:00.000Z",
+    "run-challenge",
+  );
+  assert.equal(activeMissionRun(session)?.challenge, "stretch");
 });
