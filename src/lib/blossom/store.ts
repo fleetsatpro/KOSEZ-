@@ -16,8 +16,10 @@ import {
   createMissionSession,
   evaluateMission,
   finishMissionRun,
+  reopenMissionRun,
   saveMissionReflection,
   type MissionCapture,
+  type MissionChallenge,
   type MissionMode,
   type MissionReflection,
   type MissionSession,
@@ -92,7 +94,7 @@ type AppState = {
   setPlan: (plan: PlanId) => void;
   claimProof: () => void;
   updateLearner: (patch: Partial<LearnerProfile>) => void;
-  startMissionRun: (missionId: string, mode: MissionMode) => string | null;
+  startMissionRun: (missionId: string, mode: MissionMode, challenge?: MissionChallenge) => string | null;
   recordMissionAttempt: (
     missionId: string,
     kind: "warmup" | "mission",
@@ -103,6 +105,7 @@ type AppState = {
     missionId: string,
     reflection: MissionReflection,
   ) => boolean;
+  reopenMissionSession: (missionId: string) => boolean;
   completeMissionSession: (missionId: string) => {
     ok: boolean;
     reason?: string;
@@ -191,10 +194,10 @@ export const useBlossom = create<AppState>()(
       claimProof: () => set({ proofClaimed: true }),
       updateLearner: (patch) =>
         set({ learner: { ...get().learner, ...patch } }),
-      startMissionRun: (missionId, mode) => {
+      startMissionRun: (missionId, mode, challenge = "core") => {
         const current =
           get().missionSessions[missionId] ?? createMissionSession(missionId);
-        const next = beginMissionRun(current, mode);
+        const next = beginMissionRun(current, mode, challenge);
         const active = activeMissionRun(next);
         set({
           missionSessions: {
@@ -203,7 +206,7 @@ export const useBlossom = create<AppState>()(
           },
         });
         if (active) {
-          track("mission_mode_selected", { mode, resumed: current.activeRunId === active.id });
+          track("mission_mode_selected", { mode, challenge, resumed: current.activeRunId === active.id });
         }
         return active?.id ?? null;
       },
@@ -228,6 +231,20 @@ export const useBlossom = create<AppState>()(
           capture,
           seconds: Math.max(0, Math.round(seconds)),
         });
+        return true;
+      },
+      reopenMissionSession: (missionId) => {
+        const current = get().missionSessions[missionId];
+        if (!current || !activeMissionRun(current)) return false;
+        const next = reopenMissionRun(current);
+        if (next === current) return false;
+        set({
+          missionSessions: {
+            ...get().missionSessions,
+            [missionId]: next,
+          },
+        });
+        track("mission_session_reopened", { missionId });
         return true;
       },
       saveMissionReflection: (missionId, reflection) => {
