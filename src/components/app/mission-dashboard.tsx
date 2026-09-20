@@ -24,7 +24,6 @@ import { Button } from "@/components/ui/button";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import {
   LEARNER_MEMORY,
-  LEARNER,
   TODAY_MISSION,
   planAllows,
 } from "@/lib/blossom/data";
