@@ -11,6 +11,7 @@ import {
   missionAttemptCount,
   missionExecutionReady,
   missionObjective,
+  missionStepFromRun,
   saveMissionReflection,
 } from "./mission.ts";
 
@@ -136,4 +137,34 @@ test("reflection requires an execution and finishing preserves the completed run
   }, "2026-09-20T07:02:30.000Z");
   const finished = finishMissionRun(session, "2026-09-20T07:03:00.000Z");
   assert.equal(activeMissionRun(finished)?.completedAt, "2026-09-20T07:03:00.000Z");
+});
+
+
+test("mission step resolver resumes at the correct stage", () => {
+  assert.equal(missionStepFromRun(null), "brief");
+  const started = beginMissionRun(
+    createMissionSession("mission-today"),
+    "practice",
+    "2026-09-20T09:00:00.000Z",
+    "run-step",
+  );
+  assert.equal(missionStepFromRun(activeMissionRun(started)), "prepare");
+
+  const executed = appendMissionAttempt(started, {
+    kind: "mission",
+    capture: "microphone",
+    seconds: 9,
+  }, "2026-09-20T09:00:10.000Z", "attempt-step");
+  assert.equal(missionStepFromRun(activeMissionRun(executed)), "reflect");
+});
+
+test("previous outcome changes the next mission focus without changing its identity", () => {
+  const repeat = missionObjective(TODAY_MISSION, LEARNER_MEMORY, true, "repeat");
+  const stabilise = missionObjective(TODAY_MISSION, LEARNER_MEMORY, true, "stabilise");
+  const advance = missionObjective(TODAY_MISSION, LEARNER_MEMORY, true, "advance");
+
+  assert.equal(repeat.adaptation, "Sécuriser");
+  assert.equal(stabilise.adaptation, "Stabiliser");
+  assert.equal(advance.adaptation, "Prolonger");
+  assert.notEqual(repeat.stretch, stabilise.stretch);
 });
