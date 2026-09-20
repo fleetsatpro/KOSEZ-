@@ -104,6 +104,7 @@ export function appendMissionAttempt(
 ): MissionSession {
   const run = activeMissionRun(session);
   if (!run || run.completedAt) return session;
+  if (input.kind === "mission" && missionAttemptCount(run, "mission") >= 2) return session;
 
   const endedAt = now;
   const startedAt = new Date(
@@ -113,13 +114,17 @@ export function appendMissionAttempt(
     ),
   ).toISOString();
 
+  const safeSeconds = Number.isFinite(input.seconds)
+    ? Math.max(0, Math.round(input.seconds))
+    : 0;
+
   const attempt: MissionAttempt = {
     id: attemptId,
     kind: input.kind,
     capture: input.capture,
     startedAt,
     endedAt,
-    seconds: Math.max(0, Math.round(input.seconds)),
+    seconds: safeSeconds,
   };
 
   return updateRun(session, run.id, (current) => ({
@@ -136,6 +141,7 @@ export function saveMissionReflection(
 ): MissionSession {
   const run = activeMissionRun(session);
   if (!run || run.completedAt) return session;
+  if (missionAttemptCount(run, "mission") < 1) return session;
 
   return updateRun(session, run.id, (current) => ({
     ...current,
@@ -150,7 +156,8 @@ export function finishMissionRun(
 ): MissionSession {
   const run = activeMissionRun(session);
   if (!run || run.completedAt || !run.reflection) return session;
-
+  if (missionAttemptCount(run, "mission") < 1) return session;
+  
   return updateRun(session, run.id, (current) => ({
     ...current,
     completedAt: now,
@@ -221,6 +228,7 @@ export function missionObjective(
       "Vous utilisez au moins une fois la phrase travaillée.",
       "Vous restez dans la langue cible pendant l'échange.",
     ],
+    supportPhrase: "What do you recommend?",
     support: memoryEnabled
       ? "Léo garde votre point de friction en arrière-plan ; vous ne devez pas le résoudre aujourd'hui."
       : "Une phrase d'appui suffit. Le reste peut être imparfait.",
