@@ -392,7 +392,7 @@ function BriefStep({
           </div>
           <div className="p-5 sm:p-6">
             <Eyebrow>Phrase d'appui</Eyebrow>
-            <p className="mt-2 font-display text-xl leading-snug">“What do you recommend?”</p>
+            <p className="mt-2 font-display text-xl leading-snug">“{objective.supportPhrase}”</p>
             <p className="mt-2 text-xs leading-relaxed text-subtle">{objective.support}</p>
           </div>
         </div>
@@ -1010,7 +1010,7 @@ export function MissionDashboard() {
               <div className="mt-8">
                 <PrepareStep
                   mode={run?.mode ?? mode}
-                  phrase={personalised.title}
+                  phrase={objective.supportPhrase}
                   objective={objective}
                   warmupDone={warmupDone}
                   onWarmup={(seconds) => {
