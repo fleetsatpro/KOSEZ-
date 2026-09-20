@@ -901,7 +901,12 @@ export function MissionDashboard() {
   const memoryEnabled = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
   const personalised = personaliseMission(TODAY_MISSION, memory, memoryEnabled);
-  const objective = missionObjective(TODAY_MISSION, memory, memoryEnabled);
+  const objective = missionObjective(
+    TODAY_MISSION,
+    memory,
+    memoryEnabled,
+    previousEvaluation?.outcome,
+  );
   const journey = journeySnapshot(log);
   const run = activeMissionRun(session);
   const runAttempts = missionAttemptCount(run, "mission");
