@@ -2,6 +2,7 @@ import type { Mission } from "./data";
 import type { LearnerMemory } from "./engine";
 
 export type MissionMode = "real-world" | "practice";
+export type MissionStep = "brief" | "prepare" | "execute" | "reflect";
 export type MissionAttemptKind = "warmup" | "mission";
 export type MissionCapture = "microphone" | "manual";
 
@@ -42,6 +43,12 @@ export type MissionOutcome =
   | "advance"
   | "stabilise"
   | "repeat";
+
+export function missionStepFromRun(run: MissionRun | null): MissionStep {
+  if (!run || run.completedAt) return "brief";
+  if (run.reflection || missionAttemptCount(run, "mission") > 0) return "reflect";
+  return "prepare";
+}
 
 export type MissionEvaluation = {
   outcome: MissionOutcome;
@@ -157,7 +164,7 @@ export function finishMissionRun(
   const run = activeMissionRun(session);
   if (!run || run.completedAt || !run.reflection) return session;
   if (missionAttemptCount(run, "mission") < 1) return session;
-  
+
   return updateRun(session, run.id, (current) => ({
     ...current,
     completedAt: now,
@@ -218,23 +225,65 @@ export function missionObjective(
   mission: Mission,
   memory: LearnerMemory,
   memoryEnabled: boolean,
+  previousOutcome?: MissionOutcome | null,
 ) {
+  const successSignals = mission.successSignals ?? [
+    "Vous ouvrez réellement la conversation.",
+    "Vous utilisez au moins une fois la phrase travaillée.",
+    "Vous restez dans la langue cible pendant l'échange.",
+  ];
+  const support = memoryEnabled
+    ? "Léo garde votre point de friction en arrière-plan ; vous ne devez pas le résoudre aujourd'hui."
+    : "Une phrase d'appui suffit. Le reste peut être imparfait.";
+
+  if (previousOutcome === "repeat") {
+    return {
+      title: mission.title,
+      prompt: mission.prompt,
+      situation: mission.realWorldInstruction ?? mission.context,
+      successSignals,
+      supportPhrase: mission.supportPhrase ?? mission.title,
+      support,
+      stretch: "Gardez le geste identique. N'ajoutez aucune difficulté tant qu'il n'est pas disponible.",
+      adaptation: "Sécuriser",
+    };
+  }
+
+  if (previousOutcome === "stabilise") {
+    return {
+      title: mission.title,
+      prompt: mission.prompt,
+      situation: mission.realWorldInstruction ?? mission.context,
+      successSignals,
+      supportPhrase: mission.supportPhrase ?? mission.title,
+      support,
+      stretch: mission.stretch ?? "Même geste, nouvelle personne ou nouveau contexte.",
+      adaptation: "Stabiliser",
+    };
+  }
+
+  if (previousOutcome === "advance") {
+    return {
+      title: mission.title,
+      prompt: mission.prompt,
+      situation: mission.realWorldInstruction ?? mission.context,
+      successSignals,
+      supportPhrase: mission.supportPhrase ?? mission.title,
+      support,
+      stretch: mission.stretch ?? "Ajoutez une relance courte.",
+      adaptation: "Prolonger",
+    };
+  }
+
   return {
     title: mission.title,
     prompt: mission.prompt,
-    situation: mission.context,
-    successSignals: [
-      "Vous ouvrez réellement la conversation.",
-      "Vous utilisez au moins une fois la phrase travaillée.",
-      "Vous restez dans la langue cible pendant l'échange.",
-    ],
-    supportPhrase: "What do you recommend?",
-    support: memoryEnabled
-      ? "Léo garde votre point de friction en arrière-plan ; vous ne devez pas le résoudre aujourd'hui."
-      : "Une phrase d'appui suffit. Le reste peut être imparfait.",
-    stretch: memoryEnabled
-      ? "Ajoutez une relance courte après la première réponse."
-      : "Ajoutez une relance seulement si la première phrase sort naturellement.",
+    situation: mission.realWorldInstruction ?? mission.context,
+    successSignals,
+    supportPhrase: mission.supportPhrase ?? mission.title,
+    support,
+    stretch: mission.stretch ?? "Ajoutez une relance seulement si la première phrase sort naturellement.",
+    adaptation: "Fondation",
   };
 }
 
