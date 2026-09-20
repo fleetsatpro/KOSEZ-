@@ -1363,6 +1363,7 @@ export function MissionTheatre() {
   const recordMissionAttempt = useBlossom((state) => state.recordMissionAttempt);
   const saveMissionReflection = useBlossom((state) => state.saveMissionReflection);
   const completeMissionSession = useBlossom((state) => state.completeMissionSession);
+  const reopenMissionSession = useBlossom((state) => state.reopenMissionSession);
 
   const session = sessions[TODAY_MISSION.id];
   const run = activeMissionRun(session);
@@ -1593,7 +1594,13 @@ export function MissionTheatre() {
               }}
               onSave={saveReflection}
               onRedo={() => {
+                const reopened = reopenMissionSession(TODAY_MISSION.id);
+                if (!reopened) {
+                  toast("Cette session ne peut plus être reprise.");
+                  return;
+                }
                 setSaved(false);
+                setReflection(REFLECTION_DEFAULT);
                 setStep("execute");
               }}
               onFinish={finishSession}
