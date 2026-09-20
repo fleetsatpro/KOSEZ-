@@ -303,7 +303,8 @@ function BriefStep({
   onStart,
   hasHistory,
 }: {
-  mission: typeof TODAY_MISSION;
+  mission: ReturnType<typeof personaliseMission>;
+  base: typeof TODAY_MISSION;
   objective: ReturnType<typeof missionObjective>;
   mode: MissionMode;
   setMode: (mode: MissionMode) => void;
@@ -319,7 +320,7 @@ function BriefStep({
             <div className="absolute -bottom-28 left-0 size-72 rounded-full bg-clay/10 blur-3xl" aria-hidden />
             <div className="relative">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <Badge className="bg-surface text-primary shadow-none">{TODAY_MISSION.language} · {TODAY_MISSION.level}</Badge>
+                <Badge className="bg-surface text-primary shadow-none">{base.language} · {base.level}</Badge>
                 <span className="flex items-center gap-1.5 text-[11px] font-medium text-primary">
                   <Sparkles className="size-3.5" />
                   {hasHistory ? "Votre historique compte" : "Première session"}
@@ -337,7 +338,7 @@ function BriefStep({
                 <div className="p-3 sm:p-4">
                   <Clock3 className="size-3.5 text-primary" />
                   <p className="mt-2 text-xs text-muted">Durée</p>
-                  <p className="mt-1 text-sm font-semibold">{TODAY_MISSION.durationMin} min</p>
+                  <p className="mt-1 text-sm font-semibold">{base.durationMin} min</p>
                 </div>
                 <div className="p-3 sm:p-4">
                   <Target className="size-3.5 text-primary" />
@@ -370,7 +371,7 @@ function BriefStep({
               </div>
             </div>
           </div>
-        </div>        </div>
+        </div>
 
         <div className="grid gap-0 divide-y divide-border lg:grid-cols-3 lg:divide-x lg:divide-y-0">
           <div className="p-5 sm:p-6">
@@ -428,6 +429,7 @@ function BriefStep({
 
 function PrepareStep({
   mode,
+  phrase,
   objective,
   warmupDone,
   onWarmup,
@@ -435,6 +437,7 @@ function PrepareStep({
   onContinue,
 }: {
   mode: MissionMode;
+  phrase: string;
   objective: ReturnType<typeof missionObjective>;
   warmupDone: boolean;
   onWarmup: (seconds: number) => void;
@@ -465,10 +468,10 @@ function PrepareStep({
             <button
               type="button"
               className="mt-3 flex w-full items-start justify-between gap-4 rounded-2xl border border-border bg-surface px-5 py-5 text-left transition-colors hover:bg-surface-2/40"
-              onClick={() => speakModel("What do you recommend?")}
+              onClick={() => speakModel(phrase)}
             >
               <div>
-                <p className="font-display text-2xl leading-snug sm:text-3xl">What do you recommend?</p>
+                <p className="font-display text-2xl leading-snug sm:text-3xl">{phrase}</p>
                 <p className="mt-2 text-xs text-muted">Écouter le modèle · puis dites-le une fois à votre manière.</p>
               </div>
               <Volume2 className="mt-1 size-5 shrink-0 text-primary" />
@@ -540,11 +543,13 @@ function PrepareStep({
 function ExecuteStep({
   mode,
   attemptCount,
+  phrase,
   onAttemptFinished,
   onRealWorldDone,
 }: {
   mode: MissionMode;
   attemptCount: number;
+  phrase: string;
   onAttemptFinished: (seconds: number) => void;
   onRealWorldDone: () => void;
 }) {
@@ -575,7 +580,7 @@ function ExecuteStep({
             <div className="rounded-2xl border border-primary-foreground/10 bg-primary-foreground/[0.055] px-5 py-5">
               <p className="text-[10px] uppercase tracking-[0.18em] text-primary-foreground/50">Impulsion</p>
               <p className="mt-3 font-display text-2xl leading-snug sm:text-3xl">
-                What do you recommend?
+                {phrase}
               </p>
               <p className="mt-2 text-xs leading-relaxed text-primary-foreground/60">
                 Puis commandez. Une seule relance suffit.
@@ -901,6 +906,7 @@ export function MissionDashboard() {
 
   const memoryEnabled = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
+  const personalised = personaliseMission(TODAY_MISSION, memory, memoryEnabled);
   const objective = missionObjective(TODAY_MISSION, memory, memoryEnabled);
   const journey = journeySnapshot(log);
   const run = activeMissionRun(session);
@@ -979,7 +985,8 @@ export function MissionDashboard() {
               </p>
               <div className="mt-8">
                 <BriefStep
-                  mission={TODAY_MISSION}
+                  mission={personalised}
+                  base={TODAY_MISSION}
                   objective={objective}
                   mode={mode}
                   setMode={setMode}
@@ -1002,6 +1009,7 @@ export function MissionDashboard() {
               <div className="mt-8">
                 <PrepareStep
                   mode={run?.mode ?? mode}
+                  phrase={personalised.title}
                   objective={objective}
                   warmupDone={warmupDone}
                   onWarmup={(seconds) => {
@@ -1027,6 +1035,7 @@ export function MissionDashboard() {
                 <ExecuteStep
                   mode={run?.mode ?? mode}
                   attemptCount={runAttempts}
+                  phrase={personalised.title}
                   onAttemptFinished={(seconds) => addAttempt(seconds, "microphone")}
                   onRealWorldDone={() => addAttempt(0, "manual")}
                 />
