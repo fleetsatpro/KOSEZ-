@@ -12,6 +12,7 @@ import {
   missionExecutionReady,
   missionObjective,
   missionStepFromRun,
+  reopenMissionRun,
   saveMissionReflection,
 } from "./mission.ts";
 
@@ -179,4 +180,30 @@ test("mission challenge is carried into the run and history", () => {
     "run-challenge",
   );
   assert.equal(activeMissionRun(session)?.challenge, "stretch");
+});
+
+
+test("reopening a mission clears saved reflection without deleting execution history", () => {
+  let session = beginMissionRun(
+    createMissionSession("mission-today"),
+    "practice",
+    "core",
+    "2026-09-20T11:00:00.000Z",
+    "run-reopen",
+  );
+  session = appendMissionAttempt(session, {
+    kind: "mission",
+    capture: "manual",
+    seconds: 0,
+  }, "2026-09-20T11:01:00.000Z", "attempt-reopen");
+  session = saveMissionReflection(session, {
+    objectiveAchieved: true,
+    stayedInTargetLanguage: "yes",
+    confidence: 4,
+    friction: "none",
+  }, "2026-09-20T11:02:00.000Z");
+  const reopened = reopenMissionRun(session, "2026-09-20T11:03:00.000Z");
+  assert.equal(activeMissionRun(reopened)?.reflection, null);
+  assert.equal(missionAttemptCount(activeMissionRun(reopened), "mission"), 1);
+  assert.equal(missionStepFromRun(activeMissionRun(reopened)), "reflect");
 });
