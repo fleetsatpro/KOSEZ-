@@ -3,6 +3,7 @@ import type {
   MissionChallenge,
   MissionMode,
   MissionStep,
+  MissionReflection,
 } from "@/lib/blossom/mission";
 
 export const STEPS: Array<{ id: MissionStep; label: string }> = [
@@ -49,7 +50,7 @@ export const CHALLENGES: Record<MissionChallenge, {
   },
 };
 
-export const DEFAULT_REFLECTION = {
+export const DEFAULT_REFLECTION: MissionReflection = {
   objectiveAchieved: true,
   stayedInTargetLanguage: "partly" as const,
   confidence: 3 as const,
