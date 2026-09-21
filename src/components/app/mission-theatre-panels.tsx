@@ -31,7 +31,7 @@ import {
   speakModel,
 } from "./mission-theatre-shared";
 
-function ProgressRail({ step, completed }: { step: MissionStep; completed: boolean }) {
+export function ProgressRail({ step, completed }: { step: MissionStep; completed: boolean }) {
   const current = STEPS.findIndex((item) => item.id === step);
   return (
     <div className="rounded-xl border border-border bg-surface px-3 py-3 shadow-[var(--shadow-border)]">
@@ -67,7 +67,7 @@ function ProgressRail({ step, completed }: { step: MissionStep; completed: boole
   );
 }
 
-function SceneCard({
+export function SceneCard({
   scene,
   objective,
 }: {
@@ -105,7 +105,7 @@ function SceneCard({
   );
 }
 
-function ReserveDetails({ scene, objective }: { scene: MissionScene; objective: ReturnType<typeof missionObjective> }) {
+export function ReserveDetails({ scene, objective }: { scene: MissionScene; objective: ReturnType<typeof missionObjective> }) {
   return (
     <section className="rounded-2xl border border-border bg-surface shadow-[var(--shadow-border)]">
       <div className="border-b border-border px-5 py-4 sm:px-6">
@@ -206,7 +206,7 @@ function ReserveDetails({ scene, objective }: { scene: MissionScene; objective: 
   );
 }
 
-function SettingsDetails({
+export function SettingsDetails({
   mode,
   challenge,
   recommended,
@@ -295,7 +295,7 @@ function SettingsDetails({
 }
 
 
-function MissionHistory({ history, runs }: { history: ReturnType<typeof summariseMissionHistory>; runs: MissionRun[] }) {
+export function MissionHistory({ history, runs }: { history: ReturnType<typeof summariseMissionHistory>; runs: MissionRun[] }) {
   if (!runs.length) return null;
   const topFriction = (Object.entries(history.friction) as Array<[MissionReflection["friction"], number]>)
     .filter(([, count]) => count > 0)
