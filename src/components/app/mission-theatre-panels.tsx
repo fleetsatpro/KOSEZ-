@@ -17,9 +17,9 @@ import {
   evaluateMission,
   type MissionReflection,
   type MissionRun,
-  missionAttemptCount,
   type MissionChallenge,
   type MissionMode,
+  type MissionStep,
   missionObjective,
   summariseMissionHistory,
 } from "@/lib/blossom/mission";
