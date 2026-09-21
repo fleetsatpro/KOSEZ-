@@ -1,5 +1,4 @@
-import { Headphones, Mic2, Users } from "lucide-react";
-import { TODAY_MISSION } from "@/lib/blossom/data";
+import { Mic2, Users } from "lucide-react";
 import type {
   MissionChallenge,
   MissionMode,
