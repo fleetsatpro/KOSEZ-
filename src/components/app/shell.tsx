@@ -2,11 +2,9 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BookOpen,
-  Compass,
   Mic,
   Sprout,
   User,
-  Users,
 } from "lucide-react";
 import { Welcome } from "@/components/app/welcome";
 import { ParentView } from "@/components/app/parent-view";
@@ -14,16 +12,38 @@ import { TeacherStudio } from "@/components/app/teacher-studio";
 import { OrgStudio } from "@/components/app/org-studio";
 import { ChildHome } from "@/components/app/child-home";
 import { Wordmark } from "@/components/app/primitives";
-import { useBlossom } from "@/lib/blossom/store";
+import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: "BLOSSOM", icon: Sprout, hint: ["/", "/plant", "/mission"] },
-  { to: "/osez", label: "OSEZ", icon: Mic, hint: ["/osez"] },
-  { to: "/explore", label: "EXPLORE", icon: Compass, hint: ["/explore"] },
-  { to: "/connect", label: "CONNECT", icon: Users, hint: ["/connect", "/tandem"] },
-  { to: "/learn", label: "LEARN", icon: BookOpen, hint: ["/learn", "/pronlab", "/library", "/immersion"] },
-  { to: "/moi", label: "MOI", icon: User, hint: ["/moi"] },
+  {
+    to: "/",
+    label: "BLOSSOM",
+    icon: Sprout,
+    hint: ["/", "/plant", "/mission", "/explore", "/connect", "/tandem"],
+    description: "Votre parcours",
+  },
+  {
+    to: "/osez",
+    label: "OSEZ",
+    icon: Mic,
+    hint: ["/osez"],
+    description: "Parler maintenant",
+  },
+  {
+    to: "/learn",
+    label: "ATELIER",
+    icon: BookOpen,
+    hint: ["/learn", "/pronlab", "/library", "/immersion"],
+    description: "Pratiquer & ancrer",
+  },
+  {
+    to: "/moi",
+    label: "MOI",
+    icon: User,
+    hint: ["/moi"],
+    description: "Votre espace",
+  },
 ] as const;
 
 function isActive(pathname: string, hint: readonly string[]) {
@@ -41,6 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const teacherMode = useBlossom((s) => s.teacherMode);
   const orgMode = useBlossom((s) => s.orgMode);
   const childMode = useBlossom((s) => s.childMode);
+  const journey = useJourney();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const hideChrome =
     pathname.startsWith("/osez/") || pathname.startsWith("/tandem/");
@@ -82,47 +103,105 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="paper-grain min-h-dvh bg-bg text-fg">
       {!hideChrome && (
-        <aside className="fixed inset-y-0 left-0 z-20 hidden w-56 flex-col border-r border-border bg-surface/80 px-5 py-8 backdrop-blur-sm lg:flex">
-          <Wordmark />
-          <nav className="mt-10 flex flex-col gap-1">
-            {NAV.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(pathname, item.hint);
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={cn(
-                    "flex h-11 items-center gap-3 rounded-md px-3 text-sm tracking-wide transition-colors duration-150",
-                    active
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted hover:bg-surface-2 hover:text-fg",
-                  )}
-                >
-                  <Icon className="size-4" strokeWidth={1.7} />
-                  {item.label}
-                </Link>
-              );
-            })}
+        <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-border bg-surface/90 px-6 py-7 backdrop-blur-sm lg:flex">
+          <div className="flex items-start justify-between gap-4">
+            <Wordmark />
+            <span
+              className="mt-1 flex size-8 items-center justify-center rounded-full bg-surface-2 text-primary"
+              aria-hidden
+            >
+              <Sprout className="size-4" strokeWidth={1.7} />
+            </span>
+          </div>
+
+          <nav className="mt-12" aria-label="Navigation principale">
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">
+              Votre espace
+            </p>
+            <div className="mt-3 grid gap-1">
+              {NAV.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(pathname, item.hint);
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={cn(
+                      "group flex min-h-14 items-center gap-3 rounded-xl px-3.5 transition-[background-color,color,transform] duration-200",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted hover:-translate-y-0.5 hover:bg-surface-2 hover:text-fg",
+                    )}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <span
+                      className={cn(
+                        "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                        active
+                          ? "bg-primary-foreground/10 text-primary-foreground"
+                          : "bg-surface-2 text-primary",
+                      )}
+                    >
+                      <Icon className="size-4" strokeWidth={active ? 2 : 1.7} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium tracking-wide">
+                        {item.label}
+                      </span>
+                      <span
+                        className={cn(
+                          "mt-0.5 block text-[11px]",
+                          active
+                            ? "text-primary-foreground/65"
+                            : "text-subtle",
+                        )}
+                      >
+                        {item.description}
+                      </span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
           </nav>
-          <p className="mt-auto text-xs leading-relaxed text-subtle">
-            Your language.
-            <br />
-            Your journey.
-            <br />
-            Your BLOSSOM.
-          </p>
+
+          <div className="mt-auto rounded-2xl border border-border bg-bg/70 p-4 shadow-[var(--shadow-border)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">
+                  BLOSSOM
+                </p>
+                <p className="mt-1 font-display text-lg">{journey.stage.label}</p>
+              </div>
+              <span className="font-display text-xl tabular-nums text-primary">
+                {journey.points}
+              </span>
+            </div>
+            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-surface-2">
+              <div
+                className="h-full rounded-full bg-primary transition-[width] duration-500"
+                style={{ width: `${Math.max(4, Math.round(journey.progress * 100))}%` }}
+              />
+            </div>
+            <p className="mt-2 text-[11px] leading-5 text-muted">
+              {journey.nextAt
+                ? `${journey.remaining} point${journey.remaining > 1 ? "s" : ""} avant le prochain stade.`
+                : "Votre croissance continue."}
+            </p>
+          </div>
         </aside>
       )}
 
-      <div className={cn(!hideChrome && "lg:pl-56")}>{children}</div>
+      <div className={cn(!hideChrome && "lg:pl-64")}>{children}</div>
 
       {!hideChrome && (
         <nav
           className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface/95 backdrop-blur-md lg:hidden"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          aria-label="Navigation principale"
         >
-          <ul className="grid grid-cols-6 px-1 pt-1">
+          <ul className="grid grid-cols-4 px-1 pt-1">
             {NAV.map((item) => {
               const Icon = item.icon;
               const active = isActive(pathname, item.hint);
@@ -131,9 +210,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <Link
                     to={item.to}
                     className={cn(
-                      "flex min-h-14 flex-col items-center justify-center gap-1 text-[0.625rem] font-medium uppercase tracking-wider",
-                      active ? "text-primary" : "text-subtle",
+                      "flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.625rem] font-semibold uppercase tracking-[0.12em] transition-colors duration-150",
+                      active
+                        ? "bg-primary/8 text-primary"
+                        : "text-subtle",
                     )}
+                    aria-current={active ? "page" : undefined}
                   >
                     <Icon className="size-4" strokeWidth={active ? 2 : 1.6} />
                     {item.label}
