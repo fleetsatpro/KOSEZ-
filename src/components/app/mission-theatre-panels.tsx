@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow } from "@/components/app/primitives";
-import { type MissionScene } from "@/lib/blossom/data";
+import { TODAY_MISSION, type MissionScene } from "@/lib/blossom/data";
 import {
   evaluateMission,
   type MissionReflection,
