@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Clock3,
+  MapPin,
   Leaf,
   ShieldCheck,
   Sprout,
@@ -10,6 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BlossomPlant } from "@/components/app/plant";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import {
@@ -18,17 +20,19 @@ import {
   planAllows,
 } from "@/lib/blossom/data";
 import {
+  journeySnapshot,
+  hasSource,
+  personaliseMission,
+  resolveMemory,
+} from "@/lib/blossom/engine";
+import {
   activeMissionRun,
   evaluateMission,
   missionAttemptCount,
   missionStepFromRun,
+  missionObjective,
   nextMissionChallenge,
-  personaliseMission,
-  resolveMemory,
-  journeySnapshot,
-  hasSource,
-} from "@/lib/blossom/engine";
-import {
+  summariseMissionHistory,
   type MissionChallenge,
   type MissionMode,
   type MissionReflection,
@@ -36,7 +40,7 @@ import {
 } from "@/lib/blossom/mission";
 import { useBlossom } from "@/lib/blossom/store";
 import { track } from "@/lib/analytics";
-import { ProgressRail, ReserveDetails, SettingsDetails, MissionHistory } from "./mission-theatre-panels";
+import { ProgressRail, ReserveDetails, SceneCard, SettingsDetails, MissionHistory } from "./mission-theatre-panels";
 import { PrepareStage, ExecuteStage, ReflectionStage } from "./mission-theatre-flow";
 import { CHALLENGES, DEFAULT_REFLECTION, MODES } from "./mission-theatre-shared";
 
