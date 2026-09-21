@@ -35,7 +35,7 @@ import {
   speakModel,
 } from "./mission-theatre-shared";
 
-function PrepareStage({
+export function PrepareStage({
   objective,
   run,
   onWarmup,
@@ -119,7 +119,7 @@ function PrepareStage({
   );
 }
 
-function ExecuteStage({
+export function ExecuteStage({
   mode,
   challenge,
   objective,
@@ -234,7 +234,7 @@ const REFLECTION_STEPS = [
   { id: "friction", label: "Friction", question: "Qu'est-ce qui vous a ralenti le plus ?" },
 ] as const;
 
-function ReflectionChoice({
+export function ReflectionChoice({
   label,
   detail,
   selected,
@@ -268,7 +268,7 @@ function ReflectionChoice({
   );
 }
 
-function ReflectionStage({
+export function ReflectionStage({
   draft,
   saved,
   run,
