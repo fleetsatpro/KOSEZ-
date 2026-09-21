@@ -21,7 +21,8 @@ export const Route = createRootRoute({
         content:
           "Votre langue. Votre voyage. Votre BLOSSOM. — K'Osez, Saint-Pierre.",
       },
-      { name: "theme-color", content: "#2F5D50" },
+      { name: "theme-color", content: "#0a0d0c" },
+      { name: "color-scheme", content: "dark" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
@@ -36,7 +37,7 @@ export const Route = createRootRoute({
       },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap",
       },
     ],
   }),

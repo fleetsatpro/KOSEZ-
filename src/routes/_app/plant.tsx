@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Sprout } from "lucide-react";
 import { BlossomPlant } from "@/components/app/plant";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ function PlantPage() {
       required: journey.missions.required,
     },
     {
-      label: "Sessions Speak",
+      label: "Parole",
       current: journey.speak.current,
       required: journey.speak.required,
     },
@@ -32,9 +32,10 @@ function PlantPage() {
       required: journey.pronlab.required,
     },
   ];
+  const stageProgress = Math.round(journey.progress * 100);
 
   return (
-    <Page className="max-w-3xl">
+    <Page className="kosez-feature-page max-w-4xl">
       <Button variant="ghost" size="sm" asChild className="-ml-2">
         <Link to="/">
           <ArrowLeft className="size-4" />
@@ -42,7 +43,18 @@ function PlantPage() {
         </Link>
       </Button>
 
-      <div className="mt-4 grid gap-8 lg:grid-cols-2">
+      <header className="mt-5 max-w-2xl">
+        <Eyebrow>Votre BLOSSOM</Eyebrow>
+        <h1 className="mt-3 font-display text-4xl tracking-tight sm:text-5xl">
+          {journey.stage.verb}, sans forcer.
+        </h1>
+        <p className="mt-3 text-sm leading-7 text-muted sm:text-base">
+          Chaque geste utile nourrit la plante. Pas de course — une croissance
+          visible, mesurable, ancrée dans ce que vous osez vraiment dire.
+        </p>
+      </header>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
         <BlossomPlant
           stageId={journey.stage.id}
           stageLabel={journey.stage.label}
@@ -52,26 +64,48 @@ function PlantPage() {
           linked={false}
         />
 
-        <div>
-          <Eyebrow>Stade actuel</Eyebrow>
-          <h1 className="mt-2 font-display text-4xl tracking-tight">
-            {journey.stage.label}
-          </h1>
-          <p className="mt-3 text-sm leading-relaxed text-muted">
+        <Surface className="flex h-full min-h-0 flex-col">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <Eyebrow>Stade actuel</Eyebrow>
+              <p className="mt-2 font-display text-3xl tracking-tight">
+                {journey.stage.label}
+              </p>
+            </div>
+            <span
+              className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
+              aria-hidden
+            >
+              <Sprout className="size-5" strokeWidth={1.7} />
+            </span>
+          </div>
+
+          <p className="mt-4 text-sm leading-6 text-muted">
             {journey.points} / {journey.stage.nextAt ?? journey.points} points.
             {upcoming
-              ? ` Il vous reste ${journey.remaining} points pour ${upcoming.label.toLowerCase()}.`
+              ? ` Il reste ${journey.remaining} point${journey.remaining > 1 ? "s" : ""} avant ${upcoming.label.toLowerCase()}.`
               : " Vous tenez le stade ultime."}
           </p>
-          <Progress className="mt-5" value={journey.progress * 100} />
 
-          <ul className="mt-6 space-y-3">
+          <div className="mt-5 flex items-end justify-between gap-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">
+              Progression du stade
+            </p>
+            <p className="font-display text-xl tabular-nums">{stageProgress}%</p>
+          </div>
+          <Progress
+            className="mt-2 h-2"
+            value={stageProgress}
+            aria-label={`Progression du stade ${journey.stage.label}`}
+          />
+
+          <ul className="mt-6 space-y-2" aria-label="Conditions du stade">
             {reqs.map((item) => {
               const met = item.current >= item.required;
               return (
                 <li
                   key={item.label}
-                  className="flex items-center justify-between rounded-md bg-surface px-4 py-3 shadow-[var(--shadow-border)]"
+                  className="flex min-h-12 items-center justify-between rounded-xl border border-border/70 bg-surface-2/50 px-4"
                 >
                   <span className="text-sm">{item.label}</span>
                   <span
@@ -80,44 +114,70 @@ function PlantPage() {
                       met ? "text-primary" : "text-muted",
                     )}
                   >
-                    {Math.min(item.current, item.required)} / {item.required}
-                    {met && <Check className="size-4" />}
+                    <span>
+                      {Math.min(item.current, item.required)} / {item.required}
+                    </span>
+                    {met && (
+                      <Check className="size-4" aria-label="Objectif atteint" />
+                    )}
                   </span>
                 </li>
               );
             })}
           </ul>
 
-          <p className="mt-6 text-sm text-muted">
-            {upcoming
-              ? "Continuez — vous êtes proche du prochain stade."
-              : "Votre régularité porte ses fruits."}
-          </p>
-        </div>
+          <div className="mt-auto pt-6">
+            <Button asChild className="w-full sm:w-auto">
+              <Link to="/mission">
+                Nourrir la plante
+                <ArrowRight className="size-4" aria-hidden />
+              </Link>
+            </Button>
+            <p className="mt-3 text-xs leading-5 text-subtle">
+              {upcoming
+                ? "La prochaine mission compte déjà pour le stade suivant."
+                : "Votre régularité porte ses fruits."}
+            </p>
+          </div>
+        </Surface>
       </div>
 
-      <Surface className="mt-10">
+      <Surface className="mt-8">
         <Eyebrow>Les cinq stades</Eyebrow>
-        <ol className="mt-5 grid gap-3 sm:grid-cols-5">
-          {STAGES.map((stage) => {
+        <ol className="mt-5 grid gap-2 sm:grid-cols-5">
+          {STAGES.map((stage, index) => {
             const current = stage.id === journey.stage.id;
             const reached = journey.points >= stage.minPoints;
             return (
               <li
                 key={stage.id}
+                aria-current={current ? "step" : undefined}
                 className={cn(
-                  "rounded-md px-3 py-4 text-center",
-                  current ? "bg-primary text-primary-foreground" : "bg-surface-2",
+                  "relative rounded-xl px-3 py-4 text-center transition-colors",
+                  current
+                    ? "bg-primary text-primary-foreground ring-1 ring-primary/40"
+                    : reached
+                      ? "border border-primary/25 bg-primary/5"
+                      : "bg-surface-2/80",
                 )}
               >
-                <p className="font-display text-lg">{stage.label}</p>
+                <p className="text-[10px] font-semibold tabular-nums opacity-60">
+                  {String(index + 1).padStart(2, "0")}
+                </p>
+                <p className="mt-1 font-display text-base leading-tight sm:text-lg">
+                  {stage.label}
+                </p>
                 <p
                   className={cn(
-                    "mt-1 text-[11px] tabular-nums",
+                    "mt-1.5 text-[11px] tabular-nums",
                     current ? "text-primary-foreground/70" : "text-subtle",
                   )}
                 >
-                  {reached ? "Atteint" : `dès ${stage.minPoints} pts`}
+                  {current
+                    ? "Maintenant"
+                    : reached
+                      ? "Atteint"
+                      : `dès ${stage.minPoints} pts`}
                 </p>
               </li>
             );
