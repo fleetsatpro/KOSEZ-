@@ -53,7 +53,7 @@ export function HomeDashboard() {
   const stageProgress = Math.round(journey.progress * 100);
 
   return (
-    <div className="stagger-in">
+    <div className="stagger-in kosez-home">
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
@@ -81,7 +81,7 @@ export function HomeDashboard() {
       </header>
 
       <section className="mt-8 grid gap-5 lg:grid-cols-[1.08fr_0.92fr] lg:items-stretch">
-        <article className="relative overflow-hidden rounded-2xl bg-primary p-6 text-primary-foreground shadow-[var(--shadow-border)] sm:p-8">
+        <article className="kosez-hero-mission relative overflow-hidden rounded-2xl bg-primary p-6 text-primary-foreground shadow-[var(--shadow-border)] sm:p-8">
           <div className="absolute right-5 top-5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/55">
             <Sprout className="size-3.5" />
             Focus du jour
@@ -161,7 +161,7 @@ export function HomeDashboard() {
       </section>
 
       <section className="mt-5 grid gap-5 lg:grid-cols-[1.08fr_0.92fr]">
-        <article className="rounded-2xl bg-surface p-5 shadow-[var(--shadow-border)] sm:p-6">
+        <article className="kosez-data-panel rounded-2xl bg-surface p-5 shadow-[var(--shadow-border)] sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
@@ -280,7 +280,7 @@ export function HomeDashboard() {
         </article>
       </section>
 
-      <section className="mt-5 border-t border-border pt-5" aria-label="Accès rapides">
+      <section className="kosez-quick-actions mt-5 border-t border-border pt-5" aria-label="Accès rapides">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">
@@ -298,7 +298,7 @@ export function HomeDashboard() {
                 <Link
                   key={action.to}
                   to={action.to}
-                  className="group inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm transition-[background-color,color] duration-150 hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                  className="kosez-quick-action group inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm transition-[background-color,color] duration-150 hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 >
                   <Icon className="size-4 text-primary" strokeWidth={1.7} />
                   <span>

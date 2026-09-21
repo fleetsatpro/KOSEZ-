@@ -97,7 +97,7 @@ export function LearnDashboard() {
   const ContinueIcon = activeHomework ? RotateCcw : activeSet ? Target : libraryOk && LIBRARY[0] ? BookOpen : Mic2;
 
   return (
-    <Page>
+    <Page className="kosez-feature-page">
       <header className="relative overflow-hidden rounded-[28px] bg-surface p-6 shadow-[var(--shadow-border)] sm:p-8">
         <div className="pointer-events-none absolute -right-16 -top-20 size-64 rounded-full border border-primary/10" />
         <div className="pointer-events-none absolute -bottom-28 right-16 size-72 rounded-full bg-primary/5 blur-3xl" />

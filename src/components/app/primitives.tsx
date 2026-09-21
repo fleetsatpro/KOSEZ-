@@ -11,7 +11,7 @@ export function Page({
   return (
     <div
       className={cn(
-        "mx-auto w-full max-w-5xl px-5 pt-6 pb-24 lg:px-10 lg:pt-10 lg:pb-12",
+        "kosez-main-page mx-auto w-full px-5 pt-7 pb-24 lg:px-12 lg:pt-11 lg:pb-14",
         className,
       )}
     >
@@ -29,10 +29,7 @@ export function Eyebrow({
 }) {
   return (
     <p
-      className={cn(
-        "text-[11px] font-medium uppercase tracking-[0.2em] text-muted",
-        className,
-      )}
+      className={cn("kosez-eyebrow text-[10px] font-bold uppercase", className)}
     >
       {children}
     </p>
@@ -48,10 +45,7 @@ export function Surface({
 }) {
   return (
     <div
-      className={cn(
-        "rounded-xl bg-surface p-5 shadow-[var(--shadow-border)]",
-        className,
-      )}
+      className={cn("kosez-surface rounded-2xl p-5 sm:p-6", className)}
     >
       {children}
     </div>
@@ -60,23 +54,39 @@ export function Surface({
 
 export function Wordmark({ inverted = false }: { inverted?: boolean }) {
   return (
-    <div className="leading-none">
-      <p
+    <div className="flex items-center gap-3 leading-none">
+      <span
+        aria-hidden="true"
         className={cn(
-          "font-display text-[1.35rem] tracking-tight",
-          inverted ? "text-primary-foreground" : "text-fg",
+          "kosez-wordmark-mark relative flex shrink-0 items-center justify-center rounded-lg",
+          inverted && "border-primary-foreground/30 bg-primary-foreground/10",
         )}
       >
-        K'Osez
-      </p>
-      <p
-        className={cn(
-          "mt-1 text-[10px] font-medium uppercase tracking-[0.28em]",
-          inverted ? "text-primary-foreground/70" : "text-muted",
-        )}
-      >
-        Blossom
-      </p>
+        <span
+          className={cn(
+            "block size-2.5 rounded-full bg-primary",
+            inverted && "bg-primary-foreground",
+          )}
+        />
+      </span>
+      <div>
+        <p
+          className={cn(
+            "kosez-wordmark-primary",
+            inverted ? "text-primary-foreground" : "text-fg",
+          )}
+        >
+          K'Osez
+        </p>
+        <p
+          className={cn(
+            "kosez-wordmark-sub mt-1",
+            inverted ? "text-primary-foreground/65" : "text-muted",
+          )}
+        >
+          BLOSSOM
+        </p>
+      </div>
     </div>
   );
 }
@@ -89,7 +99,7 @@ export function EmptyState({
   body: string;
 }) {
   return (
-    <Surface className="px-6 py-10 text-center">
+    <Surface className="px-6 py-12 text-center">
       <p className="font-display text-xl text-fg">{title}</p>
       <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">
         {body}
@@ -166,7 +176,7 @@ export function Initials({
   return (
     <div
       className={cn(
-        "flex size-11 items-center justify-center rounded-full bg-surface-2 font-display text-lg text-primary",
+        "flex size-11 items-center justify-center rounded-xl bg-surface-2 font-display text-lg font-semibold text-primary",
         className,
       )}
     >

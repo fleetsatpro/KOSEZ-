@@ -15,7 +15,7 @@ function OsezPage() {
   const memoryOn = planAllows(plan, "memory");
 
   return (
-    <Page>
+    <Page className="kosez-feature-page">
       <Eyebrow>OSEZ</Eyebrow>
       <h1 className="mt-2 font-display text-4xl tracking-tight">Speak Rooms</h1>
       <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">

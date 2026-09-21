@@ -21,7 +21,7 @@ function ExplorePage() {
   const earlyOk = planAllows(plan, "immersionEarly");
 
   return (
-    <Page>
+    <Page className="kosez-feature-page">
       <div className="overflow-hidden rounded-2xl">
         <div className="relative aspect-video">
           <img
