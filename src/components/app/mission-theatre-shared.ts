@@ -72,6 +72,3 @@ export function speakModel(text: string) {
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 }
-
-void Headphones;
-void TODAY_MISSION;
