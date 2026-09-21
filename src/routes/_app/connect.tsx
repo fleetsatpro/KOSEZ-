@@ -15,7 +15,7 @@ function ConnectPage() {
   const tandemOk = planAllows(plan, "tandem");
 
   return (
-    <Page>
+    <Page className="kosez-feature-page">
       <Eyebrow>CONNECT</Eyebrow>
       <h1 className="mt-2 font-display text-4xl tracking-tight">
         La maison, et le tandem

@@ -67,7 +67,7 @@ function MoiPage() {
   ];
 
   return (
-    <Page className="max-w-2xl">
+    <Page className="kosez-feature-page max-w-3xl">
       <div className="flex items-end gap-5">
         <img
           src={learner.avatar}

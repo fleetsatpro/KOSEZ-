@@ -9,7 +9,7 @@ export function Welcome() {
   const firstName = useBlossom((s) => s.learner.firstName);
 
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-fg text-primary-foreground">
+    <main className="modern-ui kosez-welcome relative min-h-dvh overflow-hidden bg-fg text-primary-foreground">
       <img
         src="/images/botanical.jpg"
         alt=""

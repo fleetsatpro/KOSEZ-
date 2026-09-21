@@ -101,9 +101,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="paper-grain min-h-dvh bg-bg text-fg">
+    <div className="modern-ui paper-grain min-h-dvh bg-bg text-fg">
       {!hideChrome && (
-        <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-border bg-surface/90 px-6 py-7 backdrop-blur-sm lg:flex">
+        <aside className="kosez-sidebar fixed inset-y-0 left-0 z-20 hidden flex-col border-r px-5 py-8 lg:flex">
           <div className="flex items-start justify-between gap-4">
             <Wordmark />
             <span
@@ -127,13 +127,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                     key={item.to}
                     to={item.to}
                     className={cn(
-                      "group flex min-h-14 items-center gap-3 rounded-xl px-3.5 transition-[background-color,color,transform] duration-200",
+                      "kosez-sidebar-link group flex min-h-14 items-center gap-3 rounded-xl px-3.5 transition-[background-color,color,transform] duration-200",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
                       active
                         ? "bg-primary text-primary-foreground"
                         : "text-muted hover:-translate-y-0.5 hover:bg-surface-2 hover:text-fg",
                     )}
                     aria-current={active ? "page" : undefined}
+                    data-active={active}
                   >
                     <span
                       className={cn(
@@ -193,11 +194,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
       )}
 
-      <div className={cn(!hideChrome && "lg:pl-64")}>{children}</div>
+      <div className={cn("min-h-dvh", !hideChrome && "lg:pl-[246px]")}>{children}</div>
 
       {!hideChrome && (
         <nav
-          className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface/95 backdrop-blur-md lg:hidden"
+          className="kosez-mobile-nav fixed inset-x-0 bottom-0 z-20 border-t lg:hidden"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           aria-label="Navigation principale"
         >
@@ -210,12 +211,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <Link
                     to={item.to}
                     className={cn(
-                      "flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.625rem] font-semibold uppercase tracking-[0.12em] transition-colors duration-150",
+                      "kosez-mobile-link flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-[0.625rem] font-semibold uppercase tracking-[0.12em] transition-colors duration-150",
                       active
                         ? "bg-primary/8 text-primary"
                         : "text-subtle",
                     )}
                     aria-current={active ? "page" : undefined}
+                    data-active={active}
                   >
                     <Icon className="size-4" strokeWidth={active ? 2 : 1.6} />
                     {item.label}
