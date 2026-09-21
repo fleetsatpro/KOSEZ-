@@ -14,17 +14,15 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { RecordControl } from "@/components/app/record-control";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/app/primitives";
 import {
-  type MissionScene,
-  TODAY_MISSION,
 } from "@/lib/blossom/data";
 import {
   evaluateMission,
   missionAttemptCount,
   missionExecutionReady,
+  missionObjective,
   type MissionChallenge,
   type MissionMode,
   type MissionReflection,
@@ -32,8 +30,6 @@ import {
   summariseMissionHistory,
 } from "@/lib/blossom/mission";
 import {
-  CHALLENGES,
-  DEFAULT_REFLECTION,
   MODES,
   formatDuration,
   speakModel,
