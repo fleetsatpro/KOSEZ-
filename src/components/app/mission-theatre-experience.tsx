@@ -10,7 +10,6 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BlossomPlant } from "@/components/app/plant";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import {
