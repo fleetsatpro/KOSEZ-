@@ -45,14 +45,16 @@ const cataloguePayloadSchema = z.object({
 export type ContentKind = "event" | "catalogue";
 export type ContentState = "draft" | "published" | "archived";
 
+export type ContentPayload = Record<string, string | number | boolean | null>;
+
 export type AdminContentItem = {
   contentKey: string;
   kind: ContentKind;
   state: ContentState | "fallback";
   draftRevision: number;
   publishedRevision: number;
-  draftPayload: Record<string, unknown>;
-  publishedPayload: Record<string, unknown> | null;
+  draftPayload: ContentPayload;
+  publishedPayload: ContentPayload | null;
   updatedBy: string | null;
   publishedBy: string | null;
   publishedAt: string | null;
@@ -138,9 +140,9 @@ export async function getAdminContentItems(userId: string): Promise<AdminContent
       state: String(row.state) as ContentState,
       draftRevision: Number(row.draft_revision ?? 1),
       publishedRevision: Number(row.published_revision ?? 0),
-      draftPayload: row.draft_payload as Record<string, unknown>,
+      draftPayload: row.draft_payload as ContentPayload,
       publishedPayload: row.published_payload
-        ? (row.published_payload as Record<string, unknown>)
+        ? (row.published_payload as ContentPayload)
         : null,
       updatedBy: row.updated_by ? String(row.updated_by) : null,
       publishedBy: row.published_by ? String(row.published_by) : null,
