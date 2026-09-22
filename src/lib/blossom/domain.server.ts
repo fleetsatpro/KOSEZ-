@@ -129,7 +129,7 @@ async function canActForLearner(
   learnerUserId: string,
   relation: "teacher" | "guardian",
 ): Promise<boolean> {
-  if (actorUserId === learnerUserId) return true;
+  if (actorUserId === learnerUserId) return relation === "guardian";
   const sql = await getSql();
 
   const table =
