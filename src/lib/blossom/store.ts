@@ -156,7 +156,6 @@ type AppState = {
   setTeacherMode: (value: boolean) => void;
   setOrgMode: (value: boolean) => void;
   setChildMode: (value: boolean) => void;
-  setPlan: (plan: PlanId) => void;
   claimProof: () => void;
   updateLearner: (patch: Partial<LearnerProfile>) => void;
   startMissionRun: (missionId: string, mode: MissionMode, challenge?: MissionChallenge) => string | null;
@@ -334,18 +333,6 @@ export const useBlossom = create<AppState>()(
         set({ orgMode: value, parentMode: false, teacherMode: false, childMode: false }),
       setChildMode: (value) =>
         set({ childMode: value, parentMode: false, teacherMode: false, orgMode: false }),
-      setPlan: (plan) => {
-        const current = get();
-        set({ plan });
-        queueProfileSync(
-          current.learner,
-          current.languageId,
-          plan,
-          current.warmup,
-          current.exportConsent,
-        );
-        track("plan_selected", { plan });
-      },
       claimProof: () => set({ proofClaimed: true }),
       updateLearner: (patch) => {
         const current = get();
