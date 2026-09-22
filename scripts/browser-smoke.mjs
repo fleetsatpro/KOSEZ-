@@ -181,6 +181,13 @@ try {
     await page.waitForTimeout(1000);
 
     const routeChecks = [];
+    async function waitForRenderedRoute() {
+      await page.waitForFunction(
+        () => document.body && document.body.innerText.trim().length > 80,
+        { timeout: Math.min(timeoutMs, 8000) },
+      ).catch(() => {});
+      await page.waitForTimeout(350);
+    }
     for (const route of SMOKE_ROUTES) {
       const response = route === "/"
         ? resp
@@ -190,25 +197,26 @@ try {
             { waitUntil: "domcontentloaded", timeout: timeoutMs },
           );
       const routeStatus = response?.status() ?? 0;
+      await waitForRenderedRoute();
       const routeBodyText = await page
         .locator("body")
         .innerText()
         .catch(() => "");
       const routeExpectedText =
         route === "/learn/curriculum"
-          ? "Parcours"
+          ? "Un chemin, pas une"
           : route === "/learn/curriculum/a2-real-life-basics"
             ? "Les gestes qui ouvrent"
             : route === "/learn/curriculum/b1-description-and-comparison"
               ? "Décrire et comparer"
               : route === "/learn/progress"
-                ? "Compétences"
+                ? "Ce que nous pouvons"
                 : route === "/learn/history"
-                  ? "Chronologie"
+                  ? "Votre histoire"
                   : route === "/learn/labs"
                     ? "Construire, entendre"
                     : route === "/learn/review"
-                      ? "Révision adaptative"
+                      ? "Ce que votre mémoire"
                       : null;
       routeChecks.push({
         route,
@@ -247,7 +255,7 @@ try {
     });
     const requiredLearnerText =
       expectedAuth === "disabled"
-        ? ["BLOSSOM", "Reprendre exactement", "EXPLORE", "CONNECT", "LEARN", "MOI"]
+        ? ["BLOSSOM", "Votre parcours", "EXPLORE", "CONNECT", "LEARN", "MOI"]
         : [];
     const forbiddenLearnerText =
       expectedAuth === "disabled"
