@@ -114,7 +114,7 @@ test("homework and tandem feed the same point table", () => {
   );
 });
 
-test("personaliseMission stays generic without memory, reshapes with it", () => {
+test("personaliseMission preserves the real mission and adds evidence when enabled", () => {
   const base = {
     title: "What do you recommend?",
     prompt: "Demandez.",
@@ -122,17 +122,17 @@ test("personaliseMission stays generic without memory, reshapes with it", () => 
   };
   const memory = {
     hesitation: "TH",
-    avoided: "I'll have",
-    confidence: "Commander",
+    avoided: "à reprendre à voix haute",
+    confidence: "les compétences déjà observées",
     leoNote: "Note.",
   };
   const off = personaliseMission(base, memory, false);
-  assert.equal(off.title, base.title);
-  assert.equal(off.leo, null);
+  assert.deepEqual(off, { ...base, leo: null });
   const on = personaliseMission(base, memory, true);
-  assert.equal(on.title, "I'll have what you recommend");
-  assert.ok(on.prompt.includes("I'll have"));
-  assert.ok(on.leo?.includes("Note"));
+  assert.equal(on.title, base.title);
+  assert.equal(on.prompt, base.prompt);
+  assert.ok(on.context.includes("TH"));
+  assert.equal(on.leo, "Note.");
 });
 
 test("resolveMemory shifts after TH mastery", () => {
