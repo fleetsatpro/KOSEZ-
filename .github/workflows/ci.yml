@@ -64,6 +64,15 @@ jobs:
             kill "$(cat /tmp/kosez-dev.pid)" || true
           fi
 
+      - name: Upload browser smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kosez-browser-smoke
+          path: .smoke
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Lint
         run: npm run lint
 
