@@ -11,7 +11,7 @@ import {
   Sprout,
   User,
   UserRound,
-  CloudCheck,
+  Cloud,
   CloudOff,
   LoaderCircle,
 } from "lucide-react";
@@ -125,7 +125,7 @@ function SyncStatus() {
   ) : pending ? (
     <LoaderCircle className="size-3.5 animate-spin text-primary" strokeWidth={1.7} />
   ) : (
-    <CloudCheck className="size-3.5 text-primary" strokeWidth={1.7} />
+    <Cloud className="size-3.5 text-primary" strokeWidth={1.7} />
   );
   const label = !online ? "Hors connexion" : pending ? "Synchronisation" : "Synchronisé";
   const detail = !online
