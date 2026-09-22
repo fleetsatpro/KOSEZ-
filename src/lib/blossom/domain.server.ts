@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
-import { MARKETPLACE } from "./data";
+
 import { getPublishedContent } from "./content.server";
 
 export class BlossomForbiddenError extends Error {
@@ -510,9 +510,10 @@ export async function requestCatalogueBooking(
 }
 
 export async function requestWaitlist(userId: string, itemId: string) {
-  const item = MARKETPLACE.find((entry) => entry.id === itemId);
+  const { catalogue } = await getPublishedContent();
+  const item = catalogue.find((entry) => entry.id === itemId && entry.kind === "immersion");
   if (!item) throw new Error("unknown-waitlist-item");
-  if (item.early) assertFeaturePlan(await getServerPlan(userId), "immersionEarly");
+  if (item.early === true) assertFeaturePlan(await getServerPlan(userId), "immersionEarly");
   const sql = await getSql();
   const rows = await sql.query(
     `insert into blossom_waitlist_request (id, user_id, item_id, status)
