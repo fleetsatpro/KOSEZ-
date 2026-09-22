@@ -148,7 +148,13 @@ function SpeakRoom() {
   function finish() {
     if (!room) return;
     mineralsBefore.current = useBlossom.getState().mineralSnapshot;
-    const result = complete("SPEAK_COMPLETED", `speak-${room.id}`);
+    const speakingMinutes = Math.max(1, Math.round(elapsed / 60));
+    const result = complete(
+      "SPEAK_COMPLETED",
+      `speak-${room.id}`,
+      undefined,
+      { minutes: speakingMinutes },
+    );
     if (result.ok) {
       toast("Session close. La tige s'épaissit.");
       setCeremonyOpen(true);
