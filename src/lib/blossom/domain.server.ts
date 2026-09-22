@@ -358,6 +358,7 @@ export async function getTandemCandidates(userId: string): Promise<TandemCandida
     left join blossom_tandem_connection incoming
       on incoming.user_id = p.user_id and incoming.partner_user_id = $1
     where p.user_id <> $1
+      and coalesce((p.preferences->>'tandemOpen')::boolean, false) = true
       and coalesce(mine.status, 'suggested') <> 'blocked'
       and coalesce(incoming.status, 'none') <> 'blocked'
     order by display_name asc`,
@@ -464,6 +465,9 @@ export async function requestCatalogueBooking(
   userId: string,
   catalogueItemId: string,
 ) {
+  if (!CATALOGUE.some((item) => item.id === catalogueItemId)) {
+    throw new Error("unknown-catalogue-item");
+  }
   const sql = await getSql();
   const rows = await sql.query(
     `insert into blossom_booking_request (id, user_id, catalogue_item_id, status)
@@ -617,11 +621,21 @@ export async function setTandemStatus(
 
   const sql = await getSql();
   const partnerRows = await sql.query(
-    "select 1 from blossom_profile where user_id = $1 limit 1",
+    "select preferences from blossom_profile where user_id = $1 limit 1",
     [input.partnerUserId],
   );
   if (!partnerRows[0]) {
     throw new BlossomForbiddenError("Ce profil tandem n'est plus disponible.");
+  }
+  const partnerPreferences =
+    partnerRows[0].preferences && typeof partnerRows[0].preferences === "object"
+      ? (partnerRows[0].preferences as Record<string, unknown>)
+      : {};
+  if (
+    (input.status === "pending" || input.status === "suggested") &&
+    partnerPreferences.tandemOpen !== true
+  ) {
+    throw new BlossomForbiddenError("Ce profil n'accepte pas les nouvelles demandes tandem.");
   }
 
   if (input.status === "accepted") {
