@@ -232,6 +232,9 @@ export const useBlossom = create<AppState>()(
           get().missionSessions[missionId] ?? createMissionSession(missionId);
         const next = beginMissionRun(current, mode, challenge);
         const active = activeMissionRun(next);
+        if (next === current || !active) {
+          return active?.id ?? null;
+        }
         const revisions = queueMissionSync(
           missionId,
           next,
