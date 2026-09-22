@@ -7,6 +7,7 @@ import {
   publishContent,
   archiveContent,
   saveContentDraft,
+  getContentRevisionHistory,
 } from "./content.server";
 
 const eventContentSchema = z.object({
@@ -106,4 +107,16 @@ export const publishAdminContentOnServer = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) =>
     publishContent(context.userId, data.contentKey, data.expectedDraftRevision),
+  );
+
+
+export const getAdminContentHistoryOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      contentKey: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,159}$/),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    getContentRevisionHistory(context.userId, data.contentKey),
   );
