@@ -120,7 +120,6 @@ type AppState = {
   enrolledIds: string[];
   bookingStatuses: Record<string, "requested" | "confirmed">;
   pronlabAttempts: PronlabAttempt[];
-  assignedSetIds: string[];
   tandemStatus: Record<string, TandemStatus>;
   tandemOpen: boolean;
   tandemReports: Record<string, number>;
@@ -142,8 +141,6 @@ type AppState = {
   childMissionDone: boolean;
   childWords: string[];
   waitlistIds: string[];
-  orgInvites: number;
-  invoiceRequested: boolean;
   languageId: string;
   missionSessions: Record<string, MissionSession>;
   backendMissionRevisions: Record<string, number>;
@@ -188,7 +185,6 @@ type AppState = {
   leaveEvent: (id: string) => void;
   enroll: (id: string) => void;
   recordPronlabAttempt: (itemId: string, seconds: number) => PronlabAttempt | null;
-  assignSet: (setId: string) => void;
   setTandemStatus: (partnerId: string, status: TandemStatus) => void;
   setTandemOpen: (value: boolean) => void;
   reportTandem: (partnerId: string) => { count: number; escalated: boolean };
@@ -205,8 +201,6 @@ type AppState = {
   completeChildMission: () => void;
   markChildWord: (id: string) => void;
   joinWaitlist: (id: string) => void;
-  inviteOrgSeat: () => { ok: boolean };
-  requestInvoice: () => void;
   setLanguage: (id: string) => void;
   completePulse: (dareId: string, seconds: number, offline: boolean) => void;
   markLeoLetterRead: (id: string) => void;
@@ -297,7 +291,6 @@ export const useBlossom = create<AppState>()(
       enrolledIds: [],
       bookingStatuses: {},
       pronlabAttempts: [],
-      assignedSetIds: [],
       tandemStatus: {},
       tandemOpen: true,
       tandemReports: {},
@@ -314,8 +307,6 @@ export const useBlossom = create<AppState>()(
       childMissionDone: false,
       childWords: [],
       waitlistIds: [],
-      orgInvites: 0,
-      invoiceRequested: false,
       languageId: "en",
       missionSessions: {},
       backendMissionRevisions: {},
@@ -674,10 +665,6 @@ export const useBlossom = create<AppState>()(
         }
         return attempt;
       },
-      assignSet: (setId) => {
-        if (get().assignedSetIds.includes(setId)) return;
-        set({ assignedSetIds: [...get().assignedSetIds, setId] });
-      },
       setTandemStatus: (partnerId, status) => {
         set({
           tandemStatus: { ...get().tandemStatus, [partnerId]: status },
@@ -915,13 +902,6 @@ export const useBlossom = create<AppState>()(
         });
         track("immersion_waitlist", { id });
       },
-      inviteOrgSeat: () => {
-        const used = 6 + get().orgInvites;
-        if (used >= 8) return { ok: false };
-        set({ orgInvites: get().orgInvites + 1 });
-        return { ok: true };
-      },
-      requestInvoice: () => set({ invoiceRequested: true }),
       setLanguage: (id) => {
         const current = get();
         set({ languageId: id });
@@ -968,7 +948,6 @@ export const useBlossom = create<AppState>()(
           teacherMode: false,
           childMode: false,
           pronlabAttempts: [],
-          assignedSetIds: [],
           tandemStatus: {},
           tandemOpen: true,
           tandemReports: {},
@@ -986,8 +965,6 @@ export const useBlossom = create<AppState>()(
           childMissionDone: false,
           childWords: [],
           waitlistIds: [],
-          orgInvites: 0,
-          invoiceRequested: false,
           languageId: "en",
           missionSessions: {},
           backendMissionRevisions: {},
