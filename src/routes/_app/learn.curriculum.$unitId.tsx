@@ -32,7 +32,7 @@ function lessonLink(kind: LessonKind) {
     case "mission": return "/mission";
     case "speak": return "/osez";
     case "pronlab": return "/pronlab";
-    case "library": return "/library/lib-market";
+    case "library": return "/library";
     case "review": return "/learn/review";
   }
 }
