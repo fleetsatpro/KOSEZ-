@@ -32,7 +32,7 @@ function LearningLabs() {
     <header className="mt-6 overflow-hidden rounded-[28px] bg-fg p-6 text-primary-foreground shadow-[var(--shadow-border)] sm:p-8">
       <Eyebrow className="text-primary-foreground/55">ATELIER · LABS</Eyebrow>
       <h1 className="mt-3 max-w-4xl font-display text-[clamp(2.7rem,6vw,5rem)] leading-[0.9] tracking-[-0.05em]">Construire, entendre, <span className="text-primary">écrire.</span></h1>
-      <p className="mt-5 max-w-2xl text-sm leading-7 text-primary-foreground/65 sm:text-base">Trois laboratoires courts complètent OSEZ, Pron&apos;Lab, la bibliothèque et les missions. Ils créent des traces de pratique sans prétendre remplacer une évaluation linguistique complète.</p>
+      <p className="mt-5 max-w-2xl text-sm leading-7 text-primary-foreground/65 sm:text-base">Trois laboratoires courts complètent OSEZ, Pron&apos;Lab, la bibliothèque et les missions ; un repère diagnostique aide à choisir le point de départ. Ils créent des traces de pratique sans prétendre remplacer une évaluation linguistique complète.</p>
     </header>
     <div className="mt-6 grid gap-2 sm:grid-cols-3">{LABS.map((item) => <button key={item.id} type="button" onClick={() => setLab(item.id)} className={`rounded-2xl border p-4 text-left transition ${lab === item.id ? "border-primary/30 bg-primary/8 text-fg" : "border-border bg-surface text-muted hover:bg-surface-2/60 hover:text-fg"}`}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">{item.label}</p><p className="mt-2 font-display text-xl tracking-tight">{item.detail}</p>
