@@ -6,8 +6,7 @@ import type { SyncJsonValue } from "./sync-types";
 import {
   hasSource,
   journeySnapshot,
-  scoreAttempt,
-  summarisePronlabItem,
+    summarisePronlabItem,
   type ActivityType,
   type PronlabAttempt,
 } from "./engine";
@@ -581,7 +580,11 @@ export const useBlossom = create<AppState>()(
         if (!item) return null;
         const prior = get().pronlabAttempts.filter((a) => a.itemId === itemId);
         const before = summarisePronlabItem(itemId, get().pronlabAttempts);
-        const score = scoreAttempt(itemId, prior.length, seconds);
+        const score = 0;
+        const metadata = {
+          assessment: "capture-only",
+          provider: "unavailable",
+        };
         const mutation = createMutation({
           operation: "pronlab.attempt",
           entityId: itemId,
@@ -590,7 +593,7 @@ export const useBlossom = create<AppState>()(
             score,
             seconds: Math.max(0, Math.round(seconds)),
             tip: item.tip,
-            metadata: {},
+            metadata,
           },
         });
         const attempt: PronlabAttempt = {
@@ -600,6 +603,7 @@ export const useBlossom = create<AppState>()(
           tip: item.tip,
           createdAt: new Date().toISOString(),
           seconds: Math.max(0, Math.round(seconds)),
+          metadata,
         };
         const nextAttempts = [...get().pronlabAttempts, attempt];
         void enqueueMutation(mutation);
