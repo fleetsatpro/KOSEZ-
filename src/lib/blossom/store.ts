@@ -116,6 +116,7 @@ type AppState = {
   joinedEventIds: string[];
   eventRegistrationCounts: Record<string, number>;
   enrolledIds: string[];
+  bookingStatuses: Record<string, "requested" | "confirmed">;
   pronlabAttempts: PronlabAttempt[];
   assignedSetIds: string[];
   tandemStatus: Record<string, TandemStatus>;
@@ -288,6 +289,7 @@ export const useBlossom = create<AppState>()(
       joinedEventIds: [],
       eventRegistrationCounts: {},
       enrolledIds: [],
+      bookingStatuses: {},
       pronlabAttempts: [],
       assignedSetIds: [],
       tandemStatus: {},
@@ -609,7 +611,13 @@ export const useBlossom = create<AppState>()(
       },
       enroll: (id) => {
         if (get().enrolledIds.includes(id)) return;
-        set({ enrolledIds: [...get().enrolledIds, id] });
+        set({
+          enrolledIds: [...get().enrolledIds, id],
+          bookingStatuses: {
+            ...get().bookingStatuses,
+            [id]: "requested",
+          },
+        });
         queueSyncMutation({
           operation: "booking.request",
           entityId: id,
