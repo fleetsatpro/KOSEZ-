@@ -4,6 +4,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import {
   addTeacherNote,
   completeChallenge,
+  getBlossomAccessContext,
   recordPronlabAttempt,
   registerEvent,
   saveHomework,
@@ -13,6 +14,11 @@ import {
 import type { JsonObject } from "./backend.server";
 
 const metadataJson = z.string().trim().max(20000).optional();
+
+export const getBlossomWorkspaceAccess = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getBlossomAccessContext(context.userId));
+
 
 function parseJsonObject(value: string | undefined): JsonObject {
   if (!value) return {};
