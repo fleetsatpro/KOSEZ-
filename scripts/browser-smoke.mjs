@@ -211,14 +211,26 @@ try {
     });
     const requiredLearnerText =
       expectedAuth === "disabled"
-        ? ["BLOSSOM", "EXPLORE", "CONNECT", "LEARN", "MOI"]
+        ? ["BLOSSOM", "Reprendre exactement", "EXPLORE", "CONNECT", "LEARN", "MOI"]
+        : [];
+    const forbiddenLearnerText =
+      expectedAuth === "disabled"
+        ? ["Enter dans BLOSSOM", "Continuer avec Google", "Continuer avec X"]
         : [];
     const missingLearnerText = requiredLearnerText.filter(
       (text) => !bodyText.includes(text),
     );
+    const presentForbiddenText = forbiddenLearnerText.filter(
+      (text) => bodyText.includes(text),
+    );
     if (missingLearnerText.length) {
       errors.pageErrors.push(
         `learner shell missing expected text: ${missingLearnerText.join(", ")}`,
+      );
+    }
+    if (presentForbiddenText.length) {
+      errors.pageErrors.push(
+        `learner smoke unexpectedly shows auth gate: ${presentForbiddenText.join(", ")}`,
       );
     }
     await page.screenshot({ path: vp.screenshot, fullPage: false });
