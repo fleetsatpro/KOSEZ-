@@ -63,8 +63,8 @@ test("the auth schema location matches the workspace auth mode", () => {
   const appEnvPath = join(projectRoot(), ".grok/app-env.json");
   let authOn = true;
   try {
-    const appEnv = JSON.parse(readFileSync(appEnvPath, "utf8")) as { VITE_AUTH_ENABLED?: string };
-    authOn = appEnv.VITE_AUTH_ENABLED !== "false";
+    const appEnv = JSON.parse(readFileSync(appEnvPath, "utf8"));
+    authOn = appEnv?.VITE_AUTH_ENABLED !== "false";
   } catch {
     authOn = true;
   }
