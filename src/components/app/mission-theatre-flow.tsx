@@ -405,7 +405,6 @@ export function ExecuteStage({
                   <p className="mt-1 text-sm leading-5 text-muted">{objective.scene.pressure}</p>
                 </div>
               </div>
-              </div>
             ) : null}
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-subtle">Votre geste maintenant</p>
             <h2 className="mt-4 font-display text-5xl leading-[0.92] tracking-tight sm:text-7xl">
