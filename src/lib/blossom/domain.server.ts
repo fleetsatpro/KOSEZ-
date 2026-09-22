@@ -506,6 +506,11 @@ export async function requestCatalogueBooking(
     [userId, catalogueItemId],
   );
   if (!current[0]) throw new Error("booking-request-write-failed");
+  await writeAuditEvent(userId, {
+    action: "commerce.booking_requested",
+    resourceType: "booking_request",
+    resourceId: String(current[0].id),
+  });
   return current[0];
 }
 
@@ -538,6 +543,11 @@ export async function requestWaitlist(userId: string, itemId: string) {
     [userId, itemId],
   );
   if (!current[0]) throw new Error("waitlist-write-failed");
+  await writeAuditEvent(userId, {
+    action: "commerce.waitlist_requested",
+    resourceType: "waitlist_request",
+    resourceId: String(current[0].id),
+  });
   return current[0];
 }
 
@@ -876,6 +886,9 @@ export async function saveHomework(
   },
 ) {
   await assertLearnerAccess(actorUserId, input.learnerUserId, "teacher");
+  if (input.status === "done") {
+    throw new BlossomForbiddenError("La fin d’un devoir est réservée à l’apprenant.");
+  }
   const sql = await getSql();
   const rows = input.id
     ? await sql.query(
