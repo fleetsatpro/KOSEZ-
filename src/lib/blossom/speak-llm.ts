@@ -95,13 +95,15 @@ export async function buildSpeakRoom(
   try {
     const { generateSpeakRoom } = await import("./speak.api.ts");
     return await generateSpeakRoom({
-      topic,
-      level: opts.level,
-      firstName: opts.firstName,
-      friction: opts.friction,
-      interests: opts.interests,
-      archetype: opts.archetype,
-      entropy: opts.entropy,
+      data: {
+        topic,
+        level: opts.level,
+        firstName: opts.firstName,
+        friction: opts.friction,
+        interests: opts.interests,
+        archetype: opts.archetype,
+        entropy: opts.entropy,
+      },
     });
   } catch {
     return {
