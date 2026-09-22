@@ -41,14 +41,15 @@ function Review() {
     }))),
     [plan.due, fallback],
   );
-  const [queue, setQueue] = useState<ScheduledReviewItem[]>(initial);
+  const [queue, setQueue] = useState<ScheduledReviewItem[]>(() => initial);
+  const [sessionTotal] = useState(() => Math.max(initial.length, 1));
   const [revealed, setRevealed] = useState(false);
   const [done, setDone] = useState(false);
   const [reviewed, setReviewed] = useState(0);
   const [misses, setMisses] = useState<Record<string, number>>({});
 
   const current = queue[0];
-  const total = Math.max(initial.length, 1);
+  const total = sessionTotal;
   const finished = reviewed >= total && !current;
 
   function answer(correct: boolean) {
