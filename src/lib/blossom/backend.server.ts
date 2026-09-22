@@ -89,6 +89,7 @@ export type BlossomTeacherNoteRecord = {
 
 export type BlossomBackendState = {
   profile: BlossomProfileRecord | null;
+  plan: "centre" | "digital" | "premium";
   activity: BlossomActivityRecord[];
   missionSessions: Record<string, BlossomMissionRecord>;
   pronlabAttempts: BlossomPronlabAttemptRecord[];
@@ -150,9 +151,13 @@ function mapActivity(row: Record<string, unknown>): BlossomActivityRecord {
 
 export async function readBlossomState(userId: string): Promise<BlossomBackendState> {
   const sql = await getSql();
-  const [profiles, activity, missions, pronlab, vocabulary, submissions, registrations, eventCounts, challenges, tandem, bookings, waitlists, homework, teacherNotes] = await Promise.all([
+  const [profiles, subscriptions, activity, missions, pronlab, vocabulary, submissions, registrations, eventCounts, challenges, tandem, bookings, waitlists, homework, teacherNotes] = await Promise.all([
     sql.query(
       "select user_id, display_name, target_language, level, timezone, preferences, created_at, updated_at from blossom_profile where user_id = $1",
+      [userId],
+    ),
+    sql.query(
+      "select plan from blossom_subscription where user_id = $1 and status = 'active' limit 1",
       [userId],
     ),
     sql.query(
@@ -210,6 +215,11 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
 
   return {
     profile: profiles[0] ? mapProfile(profiles[0]) : null,
+    plan:
+      subscriptions[0] &&
+      ["centre", "digital", "premium"].includes(String(subscriptions[0].plan))
+        ? (String(subscriptions[0].plan) as "centre" | "digital" | "premium")
+        : "centre",
     activity: activity.map(mapActivity),
     missionSessions: Object.fromEntries(
       missions.map((row) => [
