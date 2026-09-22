@@ -22,6 +22,7 @@ export type LearningEvidence = {
   createdAt: string;
   direct: boolean;
   label: string;
+  freshnessKnown: boolean;
 };
 
 export type DomainIntelligence = {
@@ -100,6 +101,7 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
     createdAt: event.createdAt,
     direct: entry.direct,
     label: entry.label,
+    freshnessKnown: true,
   }));
 }
 
@@ -123,6 +125,7 @@ function submissionEvidence(submission: LearningSubmission): LearningEvidence[] 
     createdAt: submission.createdAt,
     direct: submission.kind !== "review",
     label: `Trace · ${kind}`,
+    freshnessKnown: true,
   }));
 }
 
@@ -133,6 +136,7 @@ function pronunciationEvidence(attempts: PronlabAttempt[]): LearningEvidence[] {
     createdAt: attempt.createdAt,
     direct: true,
     label: `Pron'Lab · ${attempt.itemId}`,
+    freshnessKnown: true,
   }));
 }
 
@@ -142,9 +146,10 @@ function vocabularyEvidence(
   return vocabulary.map((word) => ({
     domainId: "vocabulary",
     kind: "vocabulary",
-    createdAt: word.updatedAt ?? word.firstSavedAt ?? "1970-01-01T00:00:00.000Z",
+    createdAt: word.updatedAt ?? word.firstSavedAt ?? new Date().toISOString(),
     direct: false,
     label: "Mot sauvegardé",
+    freshnessKnown: Boolean(word.updatedAt || word.firstSavedAt),
   }));
 }
 
@@ -168,6 +173,7 @@ function domainSignal(
   now: string,
 ): DomainIntelligence {
   const relevant = evidence.filter((item) => item.domainId === domainId);
+  const timed = relevant.filter((item) => item.freshnessKnown);
   if (!relevant.length) {
     return {
       domainId,
@@ -180,7 +186,7 @@ function domainSignal(
     };
   }
 
-  const weighted = relevant.reduce((total, item) => total + recencyWeight(daysAgo(now, item.createdAt)), 0);
+  const weighted = timed.reduce((total, item) => total + recencyWeight(daysAgo(now, item.createdAt)), 0) || Math.min(1, relevant.length * 0.25);
   const direct = relevant.filter((item) => item.direct).length;
   const coverage = Math.max(
     1,
@@ -189,8 +195,8 @@ function domainSignal(
       Math.round(weighted * 16 + Math.min(20, direct * 3)),
     ),
   );
-  const lastSeenAt = relevant[0]!.createdAt;
-  const age = daysAgo(now, lastSeenAt);
+  const lastSeenAt = timed[0]?.createdAt ?? null;
+  const age = lastSeenAt ? daysAgo(now, lastSeenAt) : null;
   return {
     domainId,
     coverage,
@@ -198,7 +204,7 @@ function domainSignal(
     directEvidenceCount: direct,
     recencyDays: age,
     lastSeenAt,
-    signal: age <= 3 ? "fresh" : age <= 14 ? "active" : "fading",
+    signal: age === null ? "active" : age <= 3 ? "fresh" : age <= 14 ? "active" : "fading",
   };
 }
 
@@ -206,7 +212,6 @@ function recommendation(
   domains: DomainIntelligence[],
   evidence: LearningEvidence[],
   plan: ReviewPlan,
-  submissions: LearningSubmission[],
   now: string,
 ): LearningIntelligence["next"] {
   const urgent = plan.due.find((item) => item.priority === "haute");
@@ -312,7 +317,7 @@ export function buildLearningIntelligence(
   const evidence = collectLearningEvidence(log, attempts, submissions, vocabulary);
   const domains = LEARNING_DOMAINS.map((domain) => domainSignal(domain.id, evidence, now));
   const dates = evidence
-    .filter((item) => item.kind !== "vocabulary")
+    .filter((item) => item.kind !== "vocabulary" && item.freshnessKnown)
     .map((item) => item.createdAt);
   const activeDays14 = uniqueDays(dates, now, 14);
   const activeDays30 = uniqueDays(dates, now, 30);
@@ -335,7 +340,7 @@ export function buildLearningIntelligence(
     friction,
     dueNow: plan.due.length,
     highPriorityDue,
-    next: recommendation(domains, evidence, plan, submissions, now),
+    next: recommendation(domains, evidence, plan, now),
   };
 }
 
