@@ -10,6 +10,7 @@ import {
   archiveAdminContentOnServer,
   saveAdminContentDraftOnServer,
   getAdminContentHistoryOnServer,
+  restoreAdminContentDraftOnServer,
 } from "@/lib/blossom/content.api";
 import type { AdminContentItem } from "@/lib/blossom/content.server";
 
@@ -98,6 +99,43 @@ export function AdminContentStudio() {
     setItems((current) => [item, ...current]);
     setSelectedKey(id);
     toast("Nouveau brouillon créé. Enregistrez-le pour le rendre durable.");
+  }
+
+  async function restoreRevision(
+    channel: "draft" | "published" | "archived",
+    revision: number,
+  ) {
+    if (!selected) return;
+    try {
+      const result = await restoreAdminContentDraftOnServer({
+        data: {
+          contentKey: selected.contentKey,
+          channel,
+          revision,
+          expectedDraftRevision: selected.draftRevision,
+        },
+      });
+      const restoredHistory = await getAdminContentHistoryOnServer({
+        data: { contentKey: selected.contentKey },
+      });
+      setDraft({ ...(selected.draftPayload as Record<string, Scalar>), ...restoredHistory[0]?.payload });
+      setItems((current) =>
+        current.map((item) =>
+          item.contentKey === selected.contentKey
+            ? {
+                ...item,
+                draftPayload: restoredHistory[0]?.payload ?? item.draftPayload,
+                draftRevision: result.draftRevision,
+                state: result.state,
+              }
+            : item,
+        ),
+      );
+      setHistory(restoredHistory);
+      toast(`Révision v${revision} restaurée comme brouillon.`);
+    } catch {
+      toast("La restauration a échoué. Vérifiez qu’aucune modification concurrente n’a été enregistrée.");
+    }
   }
 
   async function save() {
@@ -313,12 +351,23 @@ export function AdminContentStudio() {
             ) : (
               <ol className="mt-4 space-y-2">
                 {history.slice(0, 8).map((entry) => (
-                  <li key={entry.revisionId} className="flex items-center gap-3 rounded-lg border border-border/70 bg-bg/40 px-3 py-2.5">
-                    <Badge variant="outline">v{entry.revision}</Badge>
-                    <span className="text-xs uppercase tracking-[0.12em] text-subtle">{entry.channel}</span>
-                    <span className="ml-auto text-xs text-muted">
-                      {new Date(entry.createdAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
-                    </span>
+                  <li key={entry.revisionId} className="flex flex-col gap-2 rounded-lg border border-border/70 bg-bg/40 px-3 py-2.5 sm:flex-row sm:items-center">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline">v{entry.revision}</Badge>
+                      <span className="text-xs uppercase tracking-[0.12em] text-subtle">{entry.channel}</span>
+                      <span className="text-xs text-muted">
+                        {new Date(entry.createdAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="sm:ml-auto"
+                      disabled={saving || publishing || changed}
+                      onClick={() => void restoreRevision(entry.channel, entry.revision)}
+                    >
+                      Restaurer comme brouillon
+                    </Button>
                   </li>
                 ))}
               </ol>
