@@ -3,7 +3,7 @@
 -- by the verified user id supplied by authMiddleware.
 
 create table if not exists blossom_profile (
-  user_id text primary key references "user" ("id") on delete cascade,
+  user_id text primary key,
   display_name text,
   target_language text not null default 'en',
   level text,
@@ -15,7 +15,7 @@ create table if not exists blossom_profile (
 
 create table if not exists blossom_activity_event (
   id uuid primary key,
-  user_id text not null references "user" ("id") on delete cascade,
+  user_id text not null,
   event_type text not null,
   source_id text,
   payload jsonb not null default '{}'::jsonb,
