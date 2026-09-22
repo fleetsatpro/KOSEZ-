@@ -293,6 +293,7 @@ export async function getConnectPeers(userId: string): Promise<ConnectPeer[]> {
     join blossom_profile p on p.user_id = their.user_id
     where mine.user_id = $1
       and mine.status = 'joined'
+      and lower(coalesce(p.preferences->>'tandemOpen', 'false')) = 'true'
     group by p.user_id, p.display_name, p.level, p.preferences
     order by shared_events desc, last_seen desc nulls last
     limit 24`,
@@ -358,7 +359,7 @@ export async function getTandemCandidates(userId: string): Promise<TandemCandida
     left join blossom_tandem_connection incoming
       on incoming.user_id = p.user_id and incoming.partner_user_id = $1
     where p.user_id <> $1
-      and coalesce((p.preferences->>'tandemOpen')::boolean, false) = true
+      and lower(coalesce(p.preferences->>'tandemOpen', 'false')) = 'true'
       and coalesce(mine.status, 'suggested') <> 'blocked'
       and coalesce(incoming.status, 'none') <> 'blocked'
     order by display_name asc`,
