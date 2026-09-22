@@ -724,14 +724,24 @@ export const useBlossom = create<AppState>()(
         void enqueueMutation(mutation);
       },
       addTeacherNote: (studentId, tags, text) => {
+        const mutation = createMutation({
+          operation: "teacher.note",
+          entityId: studentId,
+          payload: {
+            learnerUserId: studentId,
+            tags,
+            note: text,
+          },
+        });
         const note: TeacherNote = {
-          id: `note-${Date.now()}`,
+          id: mutation.mutationId,
           studentId,
           tags,
           text,
-          createdAt: new Date().toISOString(),
+          createdAt: mutation.createdAt,
         };
         set({ teacherNotes: [...get().teacherNotes, note] });
+        void enqueueMutation(mutation);
       },
       saveWarmup: (text) => {
         const current = get();
