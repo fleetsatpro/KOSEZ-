@@ -24,6 +24,30 @@ export const PLANT_IMAGE: Record<StageId, string> = {
   independent: "/images/botanical.jpg",
 };
 
+function dateFromToday(daysAhead: number): string {
+  const date = new Date();
+  date.setUTCHours(12, 0, 0, 0);
+  date.setUTCDate(date.getUTCDate() + daysAhead);
+  return date.toISOString().slice(0, 10);
+}
+
+function rangeLabelFromToday(startDays: number, endDays: number): string {
+  const format = new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
+  const start = format.format(new Date(dateFromToday(startDays) + "T12:00:00Z"));
+  const end = format.format(new Date(dateFromToday(endDays) + "T12:00:00Z"));
+  const [startDay, ...startMonthParts] = start.split(" ");
+  const [endDay, ...endMonthParts] = end.split(" ");
+  const startMonth = startMonthParts.join(" ");
+  const endMonth = endMonthParts.join(" ");
+  return startMonth === endMonth
+    ? `${startDay}–${endDay} ${endMonth}`
+    : `${start} – ${end}`;
+}
+
 function daysAgo(days: number, hour = 12): string {
   const date = new Date("2026-08-30T12:00:00.000Z");
   date.setUTCDate(date.getUTCDate() - days);
@@ -340,7 +364,7 @@ export const EVENTS: EventItem[] = [
     id: "evt-cafe",
     title: "Café anglais",
     blurb: "Une heure autour d'une table, sans exercice. On parle de la semaine.",
-    date: "2026-09-02",
+    date: dateFromToday(2),
     time: "18:00",
     place: "Le Comptoir, Saint-Pierre",
     language: "English · A2–B1",
@@ -353,7 +377,7 @@ export const EVENTS: EventItem[] = [
     id: "evt-pronlab",
     title: "Atelier Pron'Lab",
     blurb: "Les voyelles qui bloquent encore. Petit groupe, beaucoup d'écoute.",
-    date: "2026-09-03",
+    date: dateFromToday(3),
     time: "12:30",
     place: "Maison K'Osez, Saint-Pierre",
     language: "English · A2",
@@ -366,7 +390,7 @@ export const EVENTS: EventItem[] = [
     id: "evt-marche",
     title: "Marché en anglais",
     blurb: "On se retrouve au marché. Commander, goûter, demander le prix.",
-    date: "2026-09-05",
+    date: dateFromToday(5),
     time: "09:00",
     place: "Marché couvert, Saint-Pierre",
     language: "English · A1–A2",
@@ -379,7 +403,7 @@ export const EVENTS: EventItem[] = [
     id: "evt-cote",
     title: "Balade côtière",
     blurb: "Marcher le long de la côte et raconter ce que l'on voit — en anglais.",
-    date: "2026-09-06",
+    date: dateFromToday(7),
     time: "16:00",
     place: "Front de mer, Saint-Pierre",
     language: "English · A2+",
@@ -472,7 +496,7 @@ export const CATALOGUE: CatalogueItem[] = [
 export const NEXT_CLASS = {
   id: "class-tue",
   title: "Conversation A2",
-  date: "2026-09-01",
+  date: dateFromToday(8),
   time: "18:00",
   duration: "1 h 30",
   instructor: "Léa Moreau",
@@ -1208,7 +1232,7 @@ export const LIBRARY_GLOSS: Record<string, string> = {
 export const IMMERSION = {
   id: "imm-sep",
   title: "Immersion weekend",
-  dates: "19–20 septembre",
+  dates: rangeLabelFromToday(10, 11),
   place: "Saint-Pierre et la côte",
   packing: [
     "Une tenue de marche",
@@ -1306,7 +1330,7 @@ export const MARKETPLACE = [
   {
     id: "imm-sep",
     title: "Immersion weekend",
-    dates: "19–20 septembre",
+    dates: rangeLabelFromToday(10, 11),
     place: "Saint-Pierre et la côte",
     spots: 10,
     taken: 6,
