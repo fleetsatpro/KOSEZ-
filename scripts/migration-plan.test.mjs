@@ -56,12 +56,22 @@ test("non-.sql entries are dropped (readdir also yields the auth/ directory)", (
   assert.deepEqual(pendingMigrations(["auth", "README.md"], []), []);
 });
 
-test("the auth schema stays outside the globbed directory", () => {
+test("the auth schema location matches the workspace auth mode", () => {
   const migrationsDir = join(projectRoot(), "migrations");
   const rootMigrations = readdirSync(migrationsDir);
+  const sourceExists = readdirSync(join(migrationsDir, "auth")).includes(AUTH_MIGRATION);
+  const appEnvPath = join(projectRoot(), ".grok/app-env.json");
+  let authOn = true;
+  try {
+    const appEnv = JSON.parse(readFileSync(appEnvPath, "utf8")) as { VITE_AUTH_ENABLED?: string };
+    authOn = appEnv.VITE_AUTH_ENABLED !== "false";
+  } catch {
+    authOn = true;
+  }
+
   assert.ok(rootMigrations.includes("0002_blossom_backend.sql"));
-  assert.ok(!rootMigrations.includes(AUTH_MIGRATION));
-  assert.ok(readdirSync(join(migrationsDir, "auth")).includes(AUTH_MIGRATION));
+  assert.equal(sourceExists, true);
+  assert.equal(rootMigrations.includes(AUTH_MIGRATION), authOn);
 });
 
 test("this workspace's auth schema copy is byte-identical to its source", () => {
