@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   getAdminSafetySummaryOnServer,
   getAdminWorkspaceOnServer,
+  updateAdminSafetyReportOnServer,
 } from "@/lib/blossom/domain.api";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { AdminContentStudio } from "./admin-content-studio";
@@ -138,7 +139,7 @@ export function AdminStudio() {
                     <th className="pb-3 font-semibold">Statut</th>
                     <th className="pb-3 font-semibold">Signalement</th>
                     <th className="pb-3 font-semibold">Personne concernée</th>
-                    <th className="pb-3 font-semibold">Quand</th>
+                    <th className="pb-3 font-semibold">Quand</th><th className="pb-3 font-semibold">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -148,6 +149,66 @@ export function AdminStudio() {
                       <td className="py-3 text-muted">{report.reason}</td>
                       <td className="py-3 text-muted">{report.partnerUserId}</td>
                       <td className="py-3 text-subtle">{relative(report.createdAt)}</td>
+                      <td className="py-3">
+                        {report.status === "open" ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              void updateAdminSafetyReportOnServer({
+                                data: { reportId: report.id, status: "reviewing" },
+                              })
+                                .then(() => {
+                                  setSafety((current) =>
+                                    current
+                                      ? {
+                                          ...current,
+                                          recentReports: current.recentReports.map((item) =>
+                                            item.id === report.id
+                                              ? { ...item, status: "reviewing" }
+                                              : item,
+                                          ),
+                                        }
+                                      : current,
+                                  );
+                                  toast("Signalement passé en revue.");
+                                })
+                                .catch(() => toast("La mise à jour du signalement a échoué."));
+                            }}
+                          >
+                            Prendre en revue
+                          </Button>
+                        ) : report.status === "reviewing" ? (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              void updateAdminSafetyReportOnServer({
+                                data: { reportId: report.id, status: "resolved" },
+                              })
+                                .then(() => {
+                                  setSafety((current) =>
+                                    current
+                                      ? {
+                                          ...current,
+                                          recentReports: current.recentReports.map((item) =>
+                                            item.id === report.id
+                                              ? { ...item, status: "resolved" }
+                                              : item,
+                                          ),
+                                          openReports: Math.max(0, current.openReports - 1),
+                                        }
+                                      : current,
+                                  );
+                                  toast("Signalement clôturé.");
+                                })
+                                .catch(() => toast("La clôture du signalement a échoué."));
+                            }}
+                          >
+                            Clôturer
+                          </Button>
+                        ) : null}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -155,6 +216,10 @@ export function AdminStudio() {
             </div>
           )}
         </Surface>
+      </section>
+
+      <section className="mt-5">
+        <AdminContentStudio />
       </section>
 
       <section className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
@@ -173,8 +238,6 @@ export function AdminStudio() {
             <Metric label="Payées" value={workspace.bookingRequests.paid} />
             <Metric label="Non payées" value={workspace.bookingRequests.unpaid} />
           </div>
-
-          <AdminContentStudio />
 
       <p className="mt-5 text-xs leading-5 text-subtle">
             Une demande n’est jamais affichée comme payée ou confirmée par
@@ -252,10 +315,8 @@ export function AdminStudio() {
       </section>
 
       <p className="mt-5 text-xs leading-5 text-subtle">
-        Catalogue, mission and event authoring still require a dedicated
-        content-management transaction model; this workspace deliberately does
-        not expose fake “save” controls for file-backed content.
-      </p>
+        Les actions d’administration ci-dessus sont limitées aux workflows
+        réellement implémentés et audités côté serveur.
     </Page>
   );
 }
