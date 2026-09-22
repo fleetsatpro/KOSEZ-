@@ -116,6 +116,7 @@ const activityPayloadSchema = z.object({
   eventType: z.string().trim().min(1).max(100),
   sourceId: z.string().trim().max(200).nullable().optional(),
   payload: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   occurredAt: z.string().datetime().optional(),
 });
 
@@ -224,7 +225,10 @@ async function applyMutation(
       await appendBlossomActivity(userId, {
         eventType: payload.eventType,
         sourceId: payload.sourceId ?? null,
-        payload: objectValue(payload.payload),
+        payload: {
+          ...objectValue(payload.payload),
+          metadata: objectValue(payload.metadata),
+        },
         idempotencyKey: mutation.mutationId,
         occurredAt: payload.occurredAt,
       });
