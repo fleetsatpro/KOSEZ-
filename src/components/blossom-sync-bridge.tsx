@@ -38,6 +38,35 @@ function localActivityKey(event: Pick<ActivityEvent, "id" | "sourceId">): string
 function mergeBackendState(remote: BackendState): void {
   const current = useBlossom.getState();
 
+  let profilePatch: Partial<typeof current.learner> = {};
+  let profilePlan = current.plan;
+  let profileWarmup = current.warmup;
+  let profileLanguageId = current.languageId;
+  let profileExportConsent = current.exportConsent;
+
+  if (remote.profile) {
+    const displayName = remote.profile.displayName?.trim();
+    if (displayName) {
+      const parts = displayName.split(/\s+/);
+      profilePatch = {
+        firstName: parts.shift() ?? current.learner.firstName,
+        lastName: parts.join(" ") || current.learner.lastName,
+      };
+    }
+    if (remote.profile.level) profilePatch.level = remote.profile.level;
+    if (remote.profile.targetLanguage) profileLanguageId = remote.profile.targetLanguage;
+    const prefs = remote.profile.preferences;
+    if (typeof prefs.plan === "string" && ["centre", "digital", "premium"].includes(prefs.plan)) {
+      profilePlan = prefs.plan as typeof current.plan;
+    }
+    if (typeof prefs.warmup === "string" || prefs.warmup === null) {
+      profileWarmup = prefs.warmup as string | null;
+    }
+    if (typeof prefs.exportConsent === "boolean") {
+      profileExportConsent = prefs.exportConsent;
+    }
+  }
+
   const activity = new Map<string, ActivityEvent>();
   for (const event of current.activityLog) {
     activity.set(localActivityKey(event), event);
@@ -128,6 +157,11 @@ function mergeBackendState(remote: BackendState): void {
   };
 
   useBlossom.setState({
+    learner: { ...current.learner, ...profilePatch },
+    plan: profilePlan,
+    warmup: profileWarmup,
+    languageId: profileLanguageId,
+    exportConsent: profileExportConsent,
     activityLog: [...activity.values()].sort(
       (a, b) => timestamp(a.createdAt) - timestamp(b.createdAt),
     ),
@@ -268,7 +302,6 @@ function SyncMark({ ready }: { ready: boolean }) {
 
 export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
   const { user, isPending } = useCurrentUserState();
-  const activeUserRef = useRef<string | null>(null);
   const syncingRef = useRef(false);
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
@@ -286,7 +319,6 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
     let disposed = false;
     const storedOwner = useBlossom.getState().syncOwnerUserId;
     const userChanged = Boolean(storedOwner && storedOwner !== user.id);
-    activeUserRef.current = user.id;
     setSyncOwner(user.id);
 
     if (userChanged) {
