@@ -436,22 +436,29 @@ async function flushOutbox(): Promise<void> {
             !Array.isArray(mutation.payload.rollback)
               ? (mutation.payload.rollback as Record<string, unknown>)
               : null;
+          const rollbackTitle =
+            typeof rollback?.title === "string" ? rollback.title : null;
+          const rollbackBody =
+            typeof rollback?.body === "string" ? rollback.body : null;
+          const rollbackUpdatedAt =
+            typeof rollback?.updatedAt === "string"
+              ? rollback.updatedAt
+              : null;
           if (
             status === "draft" &&
-            rollback &&
-            typeof rollback.title === "string" &&
-            typeof rollback.body === "string" &&
-            typeof rollback.updatedAt === "string"
+            rollbackTitle !== null &&
+            rollbackBody !== null &&
+            rollbackUpdatedAt !== null
           ) {
             useBlossom.setState({
               homework: state.homework.map((homework) =>
                 homework.id === mutation.entityId
                   ? {
                       ...homework,
-                      title: rollback.title,
-                      body: rollback.body,
+                      title: rollbackTitle,
+                      body: rollbackBody,
                       status: "draft" as const,
-                      updatedAt: rollback.updatedAt,
+                      updatedAt: rollbackUpdatedAt,
                     }
                   : homework,
               ),
