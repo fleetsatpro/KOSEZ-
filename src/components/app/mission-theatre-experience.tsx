@@ -70,8 +70,10 @@ function useReducedMotion() {
 
 function CinematicTop({
   step,
+  language,
 }: {
   step: MissionStep;
+  language: string;
 }) {
   return (
     <div className="mx-auto flex w-full max-w-[1240px] items-center justify-between gap-4 px-5 py-4 lg:px-8">
@@ -86,7 +88,7 @@ function CinematicTop({
       <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-subtle">
         <span>{String(["brief", "prepare", "execute", "reflect"].indexOf(step) + 1).padStart(2, "0")}</span>
         <span className="size-1 rounded-full bg-subtle" aria-hidden />
-        <span>{TODAY_MISSION.language}</span>
+        <span>{language}</span>
       </div>
     </div>
   );
@@ -613,7 +615,7 @@ export function MissionTheatreExperience() {
   if (step === "brief") {
     return (
       <div className="min-h-[100svh]">
-        <CinematicTop step={step} />
+        <CinematicTop step={step} language={todayMission.language} />
         <SceneReel
           mission={personalised}
           mode={mode}
