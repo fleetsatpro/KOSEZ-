@@ -2,9 +2,8 @@ import { Mic2, Users } from "lucide-react";
 import type {
   MissionChallenge,
   MissionMode,
-  MissionStep,
+  MissionStep ,
   MissionReflection,
-  MissionObjective,
 } from "@/lib/blossom/mission";
 
 export const STEPS: Array<{ id: MissionStep; label: string }> = [
