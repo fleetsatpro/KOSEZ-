@@ -50,6 +50,18 @@ import {
 
 export type LearnerProfile = typeof LEARNER;
 
+export const NEW_LEARNER: LearnerProfile = {
+  ...LEARNER,
+  firstName: "",
+  lastName: "",
+  avatar: "",
+  goal: "",
+  interests: [],
+  practiceWindow: "",
+  coachVoice: "Posé, précis, jamais infantilisant.",
+};
+
+
 export type TandemStatus = "suggested" | "pending" | "accepted" | "blocked" | "paused";
 
 export type Homework = {
@@ -257,11 +269,11 @@ export const useBlossom = create<AppState>()(
       teacherMode: false,
       orgMode: false,
       childMode: false,
-      learner: LEARNER,
-      activityLog: INITIAL_LOG,
+      learner: NEW_LEARNER,
+      activityLog: [],
       joinedEventIds: [],
-      enrolledIds: ["cat-a2"],
-      pronlabAttempts: INITIAL_PRONLAB_ATTEMPTS,
+      enrolledIds: [],
+      pronlabAttempts: [],
       assignedSetIds: [],
       tandemStatus: {},
       tandemOpen: true,
@@ -826,15 +838,15 @@ export const useBlossom = create<AppState>()(
       },
       resetJourney: () =>
         set({
-          learner: LEARNER,
+          learner: NEW_LEARNER,
           syncOwnerUserId: null,
-          activityLog: INITIAL_LOG,
+          activityLog: [],
           joinedEventIds: [],
-          enrolledIds: ["cat-a2"],
+          enrolledIds: [],
           parentMode: false,
           teacherMode: false,
           childMode: false,
-          pronlabAttempts: INITIAL_PRONLAB_ATTEMPTS,
+          pronlabAttempts: [],
           assignedSetIds: [],
           tandemStatus: {},
           tandemOpen: true,
@@ -859,9 +871,9 @@ export const useBlossom = create<AppState>()(
           missionSessions: {},
           backendMissionRevisions: {},
           growthEvents: [],
-          mineralSnapshot: computeMinerals(INITIAL_LOG),
+          mineralSnapshot: computeMinerals([]),
           phonemeLeaves: buildPhonemeLeaves(
-            INITIAL_PRONLAB_ATTEMPTS,
+            [],
             PRONLAB_SETS.flatMap((s) => s.items),
           ),
           leoLetters: [],
