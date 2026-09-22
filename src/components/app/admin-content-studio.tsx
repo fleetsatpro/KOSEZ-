@@ -82,7 +82,12 @@ export function AdminContentStudio() {
           host: String(draft.host ?? ""),
         };
         const result = await saveAdminContentDraftOnServer({
-          data: { kind: "event", contentKey: selected.contentKey, payload },
+          data: {
+            kind: "event",
+            contentKey: selected.contentKey,
+            payload,
+            expectedDraftRevision: selected.draftRevision,
+          },
         });
         setItems((current) =>
           current.map((item) =>
@@ -119,7 +124,12 @@ export function AdminContentStudio() {
         image: String(draft.image ?? ""),
       };
       const result = await saveAdminContentDraftOnServer({
-        data: { kind: "catalogue", contentKey: selected.contentKey, payload },
+        data: {
+          kind: "catalogue",
+          contentKey: selected.contentKey,
+          payload,
+          expectedDraftRevision: selected.draftRevision,
+        },
       });
       setItems((current) =>
         current.map((item) =>
@@ -140,7 +150,12 @@ export function AdminContentStudio() {
     if (!selected) return;
     setPublishing(true);
     try {
-      const result = await publishAdminContentOnServer({ data: { contentKey: selected.contentKey } });
+      const result = await publishAdminContentOnServer({
+        data: {
+          contentKey: selected.contentKey,
+          expectedDraftRevision: selected.draftRevision,
+        },
+      });
       setItems((current) => current.map((item) => item.contentKey === selected.contentKey ? { ...item, publishedPayload: { ...draft }, publishedRevision: result.publishedRevision, state: "published", publishedAt: new Date().toISOString() } : item));
       toast("Publication confirmée.");
     } catch {
