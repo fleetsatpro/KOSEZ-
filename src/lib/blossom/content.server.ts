@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { getSql } from "@/lib/db";
-import { BlossomForbiddenError } from "./domain.server";
 import {
   CATALOGUE,
   EVENTS,
@@ -11,6 +10,14 @@ import {
 } from "./data";
 
 const contentKeySchema = z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,159}$/);
+export class ContentForbiddenError extends Error {
+  readonly status = 403;
+  constructor(message = "Forbidden") {
+    super(message);
+    this.name = "ContentForbiddenError";
+  }
+}
+
 
 const eventPayloadSchema = z.object({
   id: contentKeySchema,
@@ -87,7 +94,7 @@ async function assertAdmin(userId: string) {
     "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
     [userId],
   );
-  if (!rows[0]) throw new BlossomForbiddenError("Admin access is required.");
+  if (!rows[0]) throw new ContentForbiddenError("Admin access is required.");
 }
 
 function validatePayload(kind: ContentKind, payload: unknown) {
