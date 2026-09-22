@@ -152,12 +152,15 @@ async function ensureBootstrapContent(sql: Awaited<ReturnType<typeof getSql>>) {
   ];
 
   const existingRows = await sql.query(
-    "select content_key from blossom_content_item where content_key = any($1::text[])",
+    "select content_key, state, published_payload from blossom_content_item where content_key = any($1::text[])",
     [authored.map(({ item }) => item.id)],
   );
   const existing = new Set(existingRows.map((row) => String(row.content_key)));
 
   for (const { kind, item } of authored) {
+    const row = existingRows.find((candidate) => String(candidate.content_key) === item.id);
+    // Bootstrap only creates missing rows. Once an admin has archived or edited
+    // a key, authored code must never silently resurrect or overwrite it.
     if (existing.has(item.id)) continue;
     validatePayload(kind, item);
     await sql.query(
