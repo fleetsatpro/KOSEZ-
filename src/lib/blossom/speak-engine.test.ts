@@ -81,3 +81,20 @@ describe("speak-engine swarm", () => {
     assert.equal(b.place.archetype, "coast");
   });
 });
+
+
+it("gives B1 rooms a genuine stretch beat", () => {
+  const room = generateLivingRoom({
+    archetype: "office",
+    level: "B1",
+    entropy: "b1-stretch",
+    now: new Date("2026-09-22T12:00:00Z"),
+  });
+  const goals = room.turns.map((turn) => turn.goal);
+  assert.ok(
+    goals.some((goal) =>
+      /Comparer|Nuancer|Résoudre/.test(goal),
+    ),
+  );
+  assert.ok(room.turns.some((turn) => Boolean(turn.stretch)));
+});
