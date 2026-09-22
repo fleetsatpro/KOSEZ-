@@ -495,6 +495,15 @@ function MoiPage() {
                 Espace parent
               </Button>
             ) : null}
+            {access.isChild ? (
+              <Button
+                variant="secondary"
+                className="justify-start"
+                onClick={() => setChildMode(true)}
+              >
+                Ouvrir le parcours enfant
+              </Button>
+            ) : null}
           </div>
         </div>
       ) : null}
