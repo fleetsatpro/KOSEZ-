@@ -1,122 +1,190 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { X, RefreshCw, Flag, ArrowRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, Flag, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import {
-  TANDEM_DEBRIEF,
-  TANDEM_PARTNERS,
+  LANGUAGE_MODULES,
   TANDEM_PROMPTS,
 } from "@/lib/blossom/data";
+import { getTandemSessionOnServer } from "@/lib/blossom/domain.api";
 import { useBlossom } from "@/lib/blossom/store";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/tandem/$id")({
   component: TandemSession,
 });
 
-const HALF = 90;
+const HALF_SECONDS = 30 * 60;
 
-/**
- * Full-bleed timed exchange.
- * Two halves · private debrief · no public score.
- */
+type Candidate = NonNullable<
+  Awaited<ReturnType<typeof getTandemSessionOnServer>>
+>;
+
+function languageLabel(id: string) {
+  return LANGUAGE_MODULES.find((language) => language.id === id)?.name ?? id;
+}
+
 function TandemSession() {
   const { id } = Route.useParams();
-  const partner = TANDEM_PARTNERS.find((p) => p.id === id);
   const navigate = useNavigate();
   const complete = useBlossom((s) => s.completeActivity);
   const reportTandem = useBlossom((s) => s.reportTandem);
-  const [half, setHalf] = useState<"english" | "french">("english");
-  const [left, setLeft] = useState(HALF);
+  const [partner, setPartner] = useState<Candidate | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [half, setHalf] = useState<"target" | "partner">("target");
+  const [left, setLeft] = useState(HALF_SECONDS);
   const [promptIndex, setPromptIndex] = useState(0);
-  const [done, setDone] = useState(false);
-  const [running, setRunning] = useState(true);
-  const [phase, setPhase] = useState<"live" | "transition" | "debrief">("live");
+  const [phase, setPhase] = useState<"live" | "transition" | "complete">("live");
 
   useEffect(() => {
-    if (!running || done || phase !== "live") return;
-    const t = window.setInterval(() => {
-      setLeft((s) => {
-        if (s <= 1) {
-          if (half === "english") {
+    let disposed = false;
+    setLoading(true);
+    void getTandemSessionOnServer({ data: { partnerUserId: id } })
+      .then((candidate) => {
+        if (!disposed) setPartner(candidate);
+      })
+      .catch(() => {
+        if (!disposed) {
+          setPartner(null);
+          setAuthError("Cette session n’est plus ouverte pour votre compte.");
+        }
+      })
+      .finally(() => {
+        if (!disposed) setLoading(false);
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (phase !== "live") return;
+    const timer = window.setInterval(() => {
+      setLeft((value) => {
+        if (value <= 1) {
+          if (half === "target") {
+            setHalf("partner");
+            setPromptIndex(0);
             setPhase("transition");
-            setRunning(false);
             return 0;
           }
-          setDone(true);
-          setPhase("debrief");
-          setRunning(false);
+          setPhase("complete");
           return 0;
         }
-        return s - 1;
+        return value - 1;
       });
     }, 1000);
-    return () => window.clearInterval(t);
-  }, [running, done, half, phase]);
+    return () => window.clearInterval(timer);
+  }, [half, phase]);
 
-  if (!partner) {
+  const prompts = useMemo(
+    () =>
+      half === "target"
+        ? TANDEM_PROMPTS.english
+        : TANDEM_PROMPTS.french,
+    [half],
+  );
+
+  if (loading) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-bg px-6">
         <div className="text-center">
-          <p className="font-display text-2xl">Partenaire introuvable</p>
-          <Button asChild className="mt-4">
-            <Link to="/tandem">Retour</Link>
+          <span className="mx-auto block size-2 animate-pulse rounded-full bg-primary" />
+          <p className="mt-4 text-sm text-muted">Vérification de la session…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!partner || authError) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-bg px-6">
+        <div className="w-full max-w-md text-center">
+          <Eyebrow>Tandem</Eyebrow>
+          <h1 className="mt-3 font-display text-3xl tracking-tight">
+            Session non disponible
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            {authError ?? "Ce partenaire n’est plus disponible."}
+          </p>
+          <Button asChild className="mt-6">
+            <Link to="/tandem">Retour au tandem</Link>
           </Button>
         </div>
       </div>
     );
   }
 
-  const prompts = TANDEM_PROMPTS[half];
   const prompt = prompts[promptIndex % prompts.length]!;
-  const debrief = TANDEM_DEBRIEF[partner.id] ?? TANDEM_DEBRIEF.noah!;
-  const firstName = partner.name.split(" ")[0]!;
-  const progress = ((HALF - left) / HALF) * 100;
-
-  function startSecondHalf() {
-    setHalf("french");
-    setPromptIndex(0);
-    setLeft(HALF);
-    setPhase("live");
-    setRunning(true);
-  }
+  const progress = ((HALF_SECONDS - left) / HALF_SECONDS) * 100;
 
   function finish() {
-    complete("TANDEM_COMPLETED", `tandem-${id}`);
-    toast("Session close. Vous progressez.");
+    complete("TANDEM_COMPLETED", `tandem-${partner.id}`);
+    toast("Session terminée. Votre participation est enregistrée.");
     navigate({ to: "/tandem" });
   }
 
-  if (phase === "debrief" || done) {
+  if (phase === "transition") {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center bg-bg px-6 text-center text-fg">
+        <Eyebrow>Premier tour terminé</Eyebrow>
+        <h1 className="mt-4 font-display text-3xl tracking-tight sm:text-4xl">
+          Maintenant : {partner.speaks}
+        </h1>
+        <p className="mt-3 max-w-sm text-sm leading-6 text-muted">
+          Les rôles s’inversent. Prenez votre temps, puis laissez l’autre personne parler.
+        </p>
+        <Button
+          className="mt-8"
+          size="lg"
+          onClick={() => {
+            setLeft(HALF_SECONDS);
+            setPhase("live");
+          }}
+        >
+          Commencer le second tour
+          <ArrowRight className="size-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  if (phase === "complete") {
     return (
       <div className="min-h-dvh bg-bg px-5 py-10 text-fg">
         <div className="mx-auto max-w-lg">
-          <Eyebrow>Débrief privé</Eyebrow>
+          <Eyebrow>Session terminée</Eyebrow>
           <h1 className="mt-2 font-display text-3xl tracking-tight sm:text-4xl">
-            Avec {firstName}
+            Avec {partner.name}
           </h1>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            Pour vous seul. Rien n'est comparé, rien n'est publié. Léo a
-            écouté des deux côtés.
-          </p>
 
-          <div className="mt-8 space-y-4">
-            <Surface className="!p-5 border border-primary/20 bg-primary/5">
-              <Eyebrow className="text-primary/80">Force</Eyebrow>
-              <p className="mt-3 text-sm leading-7">{debrief.strength}</p>
-            </Surface>
-            <Surface className="!p-5">
-              <Eyebrow>À ajuster</Eyebrow>
-              <p className="mt-3 text-sm leading-7">{debrief.improvement}</p>
-            </Surface>
-          </div>
+          <Surface className="mt-8">
+            <Eyebrow>Ce qui est réellement enregistré</Eyebrow>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <Metric label="Cadre" value="30 + 30 min" />
+              <Metric
+                label="Votre moitié"
+                value={`${languageLabel(partner.wants)} · cible`}
+              />
+              <Metric
+                label="Sa moitié"
+                value={`${partner.speaks} · partenaire`}
+              />
+              <Metric label="Score" value="Aucun" />
+            </div>
+          </Surface>
 
-          <p className="mt-6 text-xs leading-5 text-subtle">
-            Ce débrief n'entre pas dans un classement. Il nourrit la mémoire
-            de Léo pour les prochaines missions.
-          </p>
+          <Surface className="mt-4">
+            <Eyebrow>Débrief</Eyebrow>
+            <p className="mt-3 text-sm leading-7 text-muted">
+              K’Osez n’invente pas un débrief vocal lorsqu’aucune transcription
+              ou analyse audio fiable n’a été produite. Cette session compte
+              comme participation au tandem ; son contenu n’est ni noté ni publié.
+            </p>
+          </Surface>
 
           <Button className="mt-8 w-full" size="lg" onClick={finish}>
             Clore la session
@@ -127,58 +195,32 @@ function TandemSession() {
     );
   }
 
-  if (phase === "transition") {
-    return (
-      <div className="flex min-h-dvh flex-col items-center justify-center bg-bg px-6 text-center text-fg">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-subtle">
-          Mi-temps
-        </p>
-        <h1 className="mt-4 font-display text-3xl tracking-tight sm:text-4xl">
-          Maintenant : français
-        </h1>
-        <p className="mt-3 max-w-sm text-sm leading-6 text-muted">
-          C'est le tour de {firstName}. Vous écoutez, vous aidez, vous
-          parlez dans sa langue.
-        </p>
-        <Button className="mt-8" size="lg" onClick={startSecondHalf}>
-          Continuer
-          <ArrowRight className="size-4" />
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-dvh flex-col bg-primary text-primary-foreground">
-      {/* Progress rail */}
       <div className="h-1 w-full bg-primary-foreground/10">
         <div
-          className="h-full bg-primary-foreground/70 transition-[width] duration-1000 linear"
+          className="h-full bg-primary-foreground/75 transition-[width] duration-1000 linear"
           style={{ width: `${progress}%` }}
         />
       </div>
 
-      <header className="flex items-center justify-between px-5 py-4">
+      <header className="flex items-center justify-between gap-4 px-5 py-4">
         <p className="text-sm tabular-nums text-primary-foreground/70">
           {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}
         </p>
         <div className="text-center">
           <p className="font-display text-lg">
-            {half === "english" ? "English" : "Français"}
+            {half === "target" ? languageLabel(partner.wants) : partner.speaks}
           </p>
           <p className="text-[10px] uppercase tracking-[0.16em] text-primary-foreground/50">
-            avec {firstName}
+            Avec {partner.name}
           </p>
         </div>
         <button
           type="button"
           aria-label="Quitter"
           className="rounded-lg p-2 transition-colors hover:bg-primary-foreground/10"
-          onClick={() => {
-            setDone(true);
-            setPhase("debrief");
-            setRunning(false);
-          }}
+          onClick={() => navigate({ to: "/tandem" })}
         >
           <X className="size-5" />
         </button>
@@ -186,22 +228,22 @@ function TandemSession() {
 
       <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
         <p className="text-[11px] uppercase tracking-[0.2em] text-primary-foreground/55">
-          {half === "english"
-            ? "Votre cible"
-            : `La langue de ${firstName}`}
+          {half === "target" ? "À vous" : `À ${partner.name.split(" ")[0]}`}
         </p>
-        <p className="mt-6 max-w-md font-display text-3xl leading-snug tracking-tight sm:text-4xl">
+        <p className="mt-6 max-w-2xl font-display text-3xl leading-snug tracking-tight sm:text-4xl">
           {prompt}
         </p>
-        <p className="mt-8 max-w-xs text-sm leading-6 text-primary-foreground/60">
-          Session courte de démonstration — 90 s + 90 s. En vrai : 30 + 30.
+        <p className="mt-8 max-w-md text-sm leading-6 text-primary-foreground/55">
+          Parlez réellement avec votre partenaire. Les amorces sont là pour
+          relancer, pas pour devenir un script.
         </p>
       </div>
 
       <div className="flex flex-col gap-2 px-6 pb-10">
         <Button
-          className="w-full bg-primary-foreground text-fg hover:bg-primary-foreground/92"
-          onClick={() => setPromptIndex((n) => n + 1)}
+          variant="secondary"
+          className="w-full"
+          onClick={() => setPromptIndex((index) => index + 1)}
         >
           <RefreshCw className="size-4" />
           Autre amorce
@@ -226,12 +268,23 @@ function TandemSession() {
           <Button
             variant="outline"
             className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
-            asChild
+            onClick={() => navigate({ to: "/tandem" })}
           >
-            <Link to="/tandem">Partir</Link>
+            Partir
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-surface-2/50 p-4 text-left">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-subtle">
+        {label}
+      </p>
+      <p className="mt-2 font-display text-lg">{value}</p>
     </div>
   );
 }
