@@ -222,7 +222,7 @@ try {
     });
     const requiredLearnerText =
       expectedAuth === "disabled"
-        ? ["BLOSSOM", "Geste du jour", "EXPLORE", "CONNECT", "LEARN", "MOI"]
+        ? ["BLOSSOM", "EXPLORE", "CONNECT", "LEARN", "MOI"]
         : [];
     const forbiddenLearnerText =
       expectedAuth === "disabled"
@@ -231,6 +231,14 @@ try {
     const missingLearnerText = requiredLearnerText.filter(
       (text) => !bodyText.includes(text),
     );
+    if (expectedAuth === "disabled") {
+      const homeSurfaceCount = await page.locator('[data-smoke="blossom-home"]').count();
+      if (homeSurfaceCount !== 1) {
+        errors.pageErrors.push(
+          `learner home surface missing or duplicated: expected 1, found ${homeSurfaceCount}`,
+        );
+      }
+    }
     const presentForbiddenText = forbiddenLearnerText.filter(
       (text) => bodyText.includes(text),
     );
