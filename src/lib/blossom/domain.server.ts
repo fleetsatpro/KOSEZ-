@@ -366,7 +366,11 @@ export async function getTandemCandidates(userId: string): Promise<TandemCandida
     left join blossom_tandem_connection incoming
       on incoming.user_id = p.user_id and incoming.partner_user_id = $1
     where p.user_id <> $1
-      and lower(coalesce(p.preferences->>'tandemOpen', 'false')) = 'true'
+      and (
+        lower(coalesce(p.preferences->>'tandemOpen', 'false')) = 'true'
+        or mine.status is not null
+        or incoming.status is not null
+      )
       and coalesce(mine.status, 'suggested') <> 'blocked'
       and coalesce(incoming.status, 'none') <> 'blocked'
     order by display_name asc`,
