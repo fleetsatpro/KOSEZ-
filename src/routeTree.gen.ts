@@ -34,6 +34,7 @@ import { Route as AppLearnProgressRouteImport } from './routes/_app/learn.progre
 import { Route as AppLearnHistoryRouteImport } from './routes/_app/learn.history'
 import { Route as AppLearnLabsRouteImport } from './routes/_app/learn.labs'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ApiAuthRouteImport } from './routes/api/auth/$'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -159,6 +160,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthRoute = ApiAuthRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/pronlab/$setId': typeof AppPronlabSetIdRoute
   '/tandem/$id': typeof AppTandemIdRoute
   '/login': typeof LoginRoute
+  '/api/auth/$': typeof ApiAuthRoute
 }
 export interface FileRoutesByTo {
   '/connect': typeof AppConnectRoute
@@ -272,6 +279,7 @@ export interface FileRouteTypes {
     | '/learn/history'
     | '/learn/labs'
     | '/login'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/connect'
@@ -298,6 +306,7 @@ export interface FileRouteTypes {
     | '/learn/history'
     | '/learn/labs'
     | '/login'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/_app'
@@ -324,11 +333,13 @@ export interface FileRouteTypes {
     | '/_app/osez/$id'
     | '/_app/pronlab/$setId'
     | '/_app/tandem/$id'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  ApiAuthRoute: typeof ApiAuthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -508,6 +519,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -617,6 +635,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute,
+  ApiAuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
