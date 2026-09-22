@@ -117,7 +117,7 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
       [userId],
     ),
     sql.query(
-      "select id, idempotency_key, event_type, source_id, payload, occurred_at from blossom_activity_event where user_id = $1 order by occurred_at desc limit 500",
+      "select id, idempotency_key, event_type, source_id, payload, occurred_at from blossom_activity_event where user_id = $1 order by occurred_at asc",
       [userId],
     ),
     sql.query(
@@ -125,7 +125,7 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
       [userId],
     ),
     sql.query(
-      "select id, item_id, score, seconds, tip, metadata, created_at from blossom_pronlab_attempt where user_id = $1 order by created_at asc limit 5000",
+      "select id, item_id, score, seconds, tip, metadata, created_at from blossom_pronlab_attempt where user_id = $1 order by created_at asc",
       [userId],
     ),
     sql.query(
