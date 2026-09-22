@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Headphones, LibraryBig, MessageCircle, Mic2, RotateCcw, Target } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Headphones, LibraryBig, MessageCircle, Mic2, PenLine, RotateCcw, Target, type LucideIcon } from "lucide-react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -17,23 +17,29 @@ export const Route = createFileRoute("/_app/learn/curriculum/$unitId")({
   component: CurriculumUnit,
 });
 
-function lessonIcon(kind: LessonKind) {
+function lessonIcon(kind: LessonKind): LucideIcon {
   switch (kind) {
     case "mission": return Target;
     case "speak": return Mic2;
     case "pronlab": return Headphones;
     case "library": return LibraryBig;
     case "review": return RotateCcw;
+    case "grammar": return BookOpen;
+    case "listening": return Headphones;
+    case "writing": return PenLine;
   }
 }
 
-function lessonLink(kind: LessonKind) {
+function lessonLink(kind: LessonKind): "/mission" | "/osez" | "/pronlab" | "/library" | "/learn/review" | "/learn/labs" {
   switch (kind) {
     case "mission": return "/mission";
     case "speak": return "/osez";
     case "pronlab": return "/pronlab";
     case "library": return "/library";
     case "review": return "/learn/review";
+    case "grammar":
+    case "listening":
+    case "writing": return "/learn/labs";
   }
 }
 

@@ -16,7 +16,10 @@ export type ActivityType =
   | "TANDEM_COMPLETED"
   | "HOMEWORK_COMPLETED"
   | "IMMERSION_ATTENDED"
-  | "REVIEW_COMPLETED";
+  | "REVIEW_COMPLETED"
+  | "GRAMMAR_COMPLETED"
+  | "LISTENING_COMPLETED"
+  | "WRITING_COMPLETED";
 
 export type ActivityEvent = {
   id: string;
@@ -38,6 +41,9 @@ export const POINTS: Record<ActivityType, number> = {
   HOMEWORK_COMPLETED: 4,
   IMMERSION_ATTENDED: 12,
   REVIEW_COMPLETED: 3,
+  GRAMMAR_COMPLETED: 4,
+  LISTENING_COMPLETED: 4,
+  WRITING_COMPLETED: 4,
 };
 
 export const STAGES: ReadonlyArray<{
