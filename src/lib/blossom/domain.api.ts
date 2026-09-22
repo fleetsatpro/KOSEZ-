@@ -4,6 +4,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import {
   addTeacherNote,
   completeChallenge,
+  getAdminWorkspace,
   getBlossomAccessContext,
   getConnectPeers,
   getGuardianWorkspace,
@@ -20,6 +21,10 @@ import {
 import type { JsonObject } from "./backend.server";
 
 const metadataJson = z.string().trim().max(20000).optional();
+
+export const getAdminWorkspaceOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getAdminWorkspace(context.userId));
 
 export const getBlossomWorkspaceAccess = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
