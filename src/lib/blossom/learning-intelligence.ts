@@ -135,12 +135,13 @@ function pronunciationEvidence(attempts: PronlabAttempt[]): LearningEvidence[] {
   }));
 }
 
-function vocabularyEvidence(vocabulary: Array<{ word: string; gloss: string }>): LearningEvidence[] {
-  const now = new Date().toISOString();
-  return vocabulary.map(() => ({
+function vocabularyEvidence(
+  vocabulary: Array<{ word: string; gloss: string; firstSavedAt?: string; updatedAt?: string }>,
+): LearningEvidence[] {
+  return vocabulary.map((word) => ({
     domainId: "vocabulary",
     kind: "vocabulary",
-    createdAt: now,
+    createdAt: word.updatedAt ?? word.firstSavedAt ?? "1970-01-01T00:00:00.000Z",
     direct: false,
     label: "Mot sauvegardé",
   }));
@@ -198,13 +199,6 @@ function domainSignal(
     lastSeenAt,
     signal: age <= 3 ? "fresh" : age <= 14 ? "active" : "fading",
   };
-}
-
-function isCorrectReview(item: ScheduledReviewItem, submissions: LearningSubmission[]): boolean {
-  const latest = submissions
-    .filter((submission) => submission.kind === "review" && submission.taskId === item.sourceKey)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-  return Boolean(latest?.result.correct === true || latest?.checks.includes("correct"));
 }
 
 function recommendation(
@@ -316,7 +310,9 @@ export function buildLearningIntelligence(
 ): LearningIntelligence {
   const evidence = collectLearningEvidence(log, attempts, submissions, vocabulary);
   const domains = LEARNING_DOMAINS.map((domain) => domainSignal(domain.id, evidence, now));
-  const dates = evidence.map((item) => item.createdAt);
+  const dates = evidence
+    .filter((item) => item.kind !== "vocabulary")
+    .map((item) => item.createdAt);
   const activeDays14 = uniqueDays(dates, now, 14);
   const activeDays30 = uniqueDays(dates, now, 30);
   const momentum = Math.round(Math.min(100, (activeDays14 / 14) * 100));
