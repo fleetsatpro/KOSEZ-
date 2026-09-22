@@ -120,5 +120,6 @@ export type BackendState = {
   completedChallenges: string[];
   tandemStatus: Record<string, "suggested" | "pending" | "accepted" | "blocked" | "paused">;
   bookingCatalogueIds: string[];
+  bookingStatuses: Record<string, "requested" | "confirmed">;
   waitlistIds: string[];
 };
