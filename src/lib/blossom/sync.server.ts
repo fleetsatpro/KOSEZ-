@@ -16,6 +16,9 @@ import {
   saveLearningSubmission,
   requestCatalogueBooking,
   requestWaitlist,
+  addTeacherNote,
+  saveHomework,
+  completeHomeworkForLearner,
 } from "./domain.server";
 import type { SyncMutation, SyncResult } from "./sync-types";
 
@@ -94,6 +97,9 @@ const operationSchema = z.enum([
   "booking.request",
   "waitlist.request",
   "analytics.record",
+  "teacher.note",
+  "teacher.homework",
+  "homework.complete",
 ]);
 
 const mutationSchema = z.object({
@@ -172,6 +178,25 @@ const analyticsPayloadSchema = z.object({
     z.string().trim().max(80),
     z.union([z.string().max(500), z.number().finite(), z.boolean()]),
   ).refine((value) => Object.keys(value).length <= 24),
+});
+
+const teacherNotePayloadSchema = z.object({
+  id: z.string().uuid().optional(),
+  learnerUserId: z.string().trim().min(1).max(200),
+  tags: z.array(z.string().trim().min(1).max(60)).max(20),
+  note: z.string().trim().max(5000),
+});
+
+const teacherHomeworkPayloadSchema = z.object({
+  id: z.string().uuid().optional(),
+  learnerUserId: z.string().trim().min(1).max(200),
+  title: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(5000),
+  status: z.enum(["draft", "sent"]),
+});
+
+const homeworkCompletePayloadSchema = z.object({
+  homeworkId: z.string().uuid(),
 });
 
 
@@ -328,6 +353,32 @@ async function applyMutation(
           payload.occurredAt,
         ],
       );
+      return { mutationId: mutation.mutationId, status: "applied" };
+    }
+    case "teacher.note": {
+      const payload = teacherNotePayloadSchema.parse(mutation.payload);
+      await addTeacherNote(userId, {
+        id: payload.id ?? mutation.mutationId,
+        learnerUserId: payload.learnerUserId,
+        tags: payload.tags,
+        note: payload.note,
+      });
+      return { mutationId: mutation.mutationId, status: "applied" };
+    }
+    case "teacher.homework": {
+      const payload = teacherHomeworkPayloadSchema.parse(mutation.payload);
+      await saveHomework(userId, {
+        id: payload.id ?? mutation.mutationId,
+        learnerUserId: payload.learnerUserId,
+        title: payload.title,
+        body: payload.body,
+        status: payload.status,
+      });
+      return { mutationId: mutation.mutationId, status: "applied" };
+    }
+    case "homework.complete": {
+      const payload = homeworkCompletePayloadSchema.parse(mutation.payload);
+      await completeHomeworkForLearner(userId, payload.homeworkId);
       return { mutationId: mutation.mutationId, status: "applied" };
     }
   }
