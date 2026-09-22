@@ -35,8 +35,6 @@ function PronlabSetPage() {
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const assigned = useBlossom((s) => s.assignedSetIds);
   const record = useBlossom((s) => s.recordPronlabAttempt);
-  const consent = useBlossom((s) => s.exportConsent);
-  const setConsent = useBlossom((s) => s.setExportConsent);
   const [index, setIndex] = useState(0);
   const [heard, setHeard] = useState(false);
   const [lastAttempt, setLastAttempt] = useState<PronlabAttempt | null>(null);
