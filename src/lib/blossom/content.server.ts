@@ -103,11 +103,11 @@ export async function getPublishedContent(): Promise<PublishedContent> {
   const result = codeFallbackContent();
   const eventMap = new Map(result.events.map((event) => [event.id, event]));
   const catalogueMap = new Map(result.catalogue.map((item) => [item.id, item]));
-  const archivedKeys = new Set<string>();
+  const hiddenKeys = new Set<string>();
 
   for (const row of rows) {
-    if (String(row.state) === "archived") {
-      archivedKeys.add(String(row.content_key));
+    if (String(row.state) !== "published") {
+      hiddenKeys.add(String(row.content_key));
       continue;
     }
     try {
@@ -123,7 +123,7 @@ export async function getPublishedContent(): Promise<PublishedContent> {
     }
   }
 
-  for (const key of archivedKeys) {
+  for (const key of hiddenKeys) {
     eventMap.delete(key);
     catalogueMap.delete(key);
   }
