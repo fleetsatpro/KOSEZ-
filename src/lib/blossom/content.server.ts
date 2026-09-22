@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { getSql } from "@/lib/db";
+import { BlossomForbiddenError } from "./domain.server";
 import {
   CATALOGUE,
   EVENTS,
@@ -86,7 +87,7 @@ async function assertAdmin(userId: string) {
     "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
     [userId],
   );
-  if (!rows[0]) throw new Error("admin-required");
+  if (!rows[0]) throw new BlossomForbiddenError("Admin access is required.");
 }
 
 function validatePayload(kind: ContentKind, payload: unknown) {
@@ -388,6 +389,18 @@ export async function publishContent(
     throw new Error("content-revision-conflict");
   }
   const payload = validatePayload(kind, rows[0].draft_payload);
+
+  if (kind === "event") {
+    const registrations = await sql.query(
+      "select count(*)::integer as count from blossom_event_registration where event_id = $1 and status = 'joined'",
+      [contentKey],
+    );
+    const joined = Number(registrations[0]?.count ?? 0);
+    const capacity = Number((payload as EventItem).spots ?? 0);
+    if (capacity < joined) {
+      throw new Error("content-capacity-below-registrations");
+    }
+  }
 
   const updated = await sql.query(
     "update blossom_content_item set published_payload = $2::jsonb, published_revision = draft_revision, state = 'published', published_by = $3, published_at = current_timestamp, updated_by = $3, updated_at = current_timestamp where content_key = $1 and draft_revision = $4 returning content_key, kind, published_revision",
