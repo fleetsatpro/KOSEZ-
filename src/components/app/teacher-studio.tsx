@@ -92,8 +92,6 @@ export function TeacherStudio() {
   const homework = useBlossom((s) => s.homework);
   const saveDraft = useBlossom((s) => s.saveHomeworkDraft);
   const sendHomework = useBlossom((s) => s.sendHomework);
-  const assignSet = useBlossom((s) => s.assignSet);
-  const assigned = useBlossom((s) => s.assignedSetIds);
   const { access, pending: accessPending } = useBlossomWorkspaceAccess();
 
   const [roster, setRoster] = useState<TeacherRow[]>([]);
@@ -344,19 +342,10 @@ export function TeacherStudio() {
                   })}
                 </ul>
 
-                <Button
-                  className="mt-5 w-full"
-                  variant="secondary"
-                  onClick={() => {
-                    assignSet("set-th");
-                    toast("Remédiation Pron’Lab assignée au compte sélectionné dans LEARN.");
-                  }}
-                  disabled={assigned.includes("set-th") || !noteStudent}
-                >
-                  {assigned.includes("set-th")
-                    ? "Remédiation déjà assignée sur cet appareil"
-                    : "Assigner une remédiation Pron’Lab"}
-                </Button>
+                <p className="mt-5 rounded-xl border border-border bg-surface-2/45 p-4 text-xs leading-5 text-muted">
+                  Les signaux servent à préparer le cours. La décision d’assigner
+                  un travail précis reste dans le circuit pédagogique de l’enseignant.
+                </p>
               </Surface>
 
               <Surface>
