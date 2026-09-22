@@ -35,7 +35,7 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Start dev server for auth invariants
+      - name: Start auth-on dev server
         run: |
           npm run dev -- --force > /tmp/kosez-dev.log 2>&1 &
           echo $! > /tmp/kosez-dev.pid
@@ -48,6 +48,19 @@ jobs:
           cat /tmp/kosez-dev.log
           exit 1
 
+      - name: Start auth-disabled learner smoke server
+        run: |
+          VITE_AUTH_ENABLED=false npm run dev -- --force --port 8081 > /tmp/kosez-smoke.log 2>&1 &
+          echo $! > /tmp/kosez-smoke.pid
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:8081/__app-env > /tmp/kosez-smoke-env.json; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/kosez-smoke.log
+          exit 1
+
       - name: Auth invariants
         run: npm run check:auth -- --dev-url http://127.0.0.1:8080
 
@@ -55,13 +68,18 @@ jobs:
         run: npx playwright install chromium
 
       - name: Browser smoke
-        run: node scripts/browser-smoke.mjs http://127.0.0.1:8080/ "$GITHUB_WORKSPACE/.smoke/app.png"
+        env:
+          BROWSER_SMOKE_EXPECT_AUTH: "disabled"
+        run: node scripts/browser-smoke.mjs http://127.0.0.1:8081/ "$GITHUB_WORKSPACE/.smoke/app.png"
 
-      - name: Stop dev server
+      - name: Stop dev servers
         if: always()
         run: |
           if [ -f /tmp/kosez-dev.pid ]; then
             kill "$(cat /tmp/kosez-dev.pid)" || true
+          fi
+          if [ -f /tmp/kosez-smoke.pid ]; then
+            kill "$(cat /tmp/kosez-smoke.pid)" || true
           fi
 
       - name: Upload browser smoke evidence
