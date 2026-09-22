@@ -361,7 +361,7 @@ function MoiPage() {
                 <div className="min-w-0">
                   <p className="font-medium leading-5">{item.title}</p>
                   <p className="mt-0.5 text-xs text-subtle">
-                    {item.kind === "class" ? "Cours" : "Événement"}
+                    Événement
                   </p>
                 </div>
                 <span className="shrink-0 text-xs tabular-nums text-muted">
