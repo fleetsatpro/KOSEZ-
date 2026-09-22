@@ -2,7 +2,7 @@ import { Mic2, Users } from "lucide-react";
 import type {
   MissionChallenge,
   MissionMode,
-  MissionStep ,
+  MissionStep,
   MissionReflection,
 } from "@/lib/blossom/mission";
 
