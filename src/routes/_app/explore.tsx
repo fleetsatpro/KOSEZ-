@@ -89,6 +89,7 @@ function ExplorePage() {
   const joinEvent = useBlossom((s) => s.joinEvent);
   const leaveEvent = useBlossom((s) => s.leaveEvent);
   const enrolled = useBlossom((s) => s.enrolledIds);
+  const bookingStatuses = useBlossom((s) => s.bookingStatuses);
   const enroll = useBlossom((s) => s.enroll);
   const plan = useBlossom((s) => s.plan);
   const waitlist = useBlossom((s) => s.waitlistIds);
@@ -324,6 +325,7 @@ function ExplorePage() {
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           {CATALOGUE.map((item) => {
             const active = enrolled.includes(item.id);
+            const bookingStatus = bookingStatuses[item.id];
             return (
               <article
                 key={item.id}
@@ -359,16 +361,18 @@ function ExplorePage() {
                         disabled={active}
                         onClick={() => {
                           enroll(item.id);
-                          toast("Ajouté à votre parcours LEARN.");
+                          toast("Demande d’inscription enregistrée.");
                         }}
                       >
                         {active ? (
                           <>
                             <Check className="size-4" />
-                            Dans votre parcours
+                            {bookingStatus === "confirmed"
+                              ? "Inscription confirmée"
+                              : "Demande envoyée"}
                           </>
                         ) : (
-                          "Ajouter à mon parcours"
+                          "Demander l’inscription"
                         )}
                       </Button>
                       <Button asChild variant="ghost" className="min-h-11">
