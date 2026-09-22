@@ -19,7 +19,8 @@ export type SyncOperation =
   | "tandem.status"
   | "learning.submission"
   | "booking.request"
-  | "waitlist.request";
+  | "waitlist.request"
+  | "analytics.record";
 
 export type SyncMutation = {
   mutationId: string;
