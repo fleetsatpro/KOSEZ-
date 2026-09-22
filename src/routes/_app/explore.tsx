@@ -85,6 +85,7 @@ function downloadCalendar(event: EventItem) {
 
 function ExplorePage() {
   const joined = useBlossom((s) => s.joinedEventIds);
+  const eventRegistrationCounts = useBlossom((s) => s.eventRegistrationCounts);
   const joinEvent = useBlossom((s) => s.joinEvent);
   const leaveEvent = useBlossom((s) => s.leaveEvent);
   const enrolled = useBlossom((s) => s.enrolledIds);
@@ -209,9 +210,10 @@ function ExplorePage() {
         <div className="mt-5 grid gap-5">
           {upcomingEvents.map((event) => {
             const isIn = joined.includes(event.id);
+            const registered = eventRegistrationCounts[event.id] ?? 0;
             const remaining = Math.max(
               0,
-              event.spots - event.taken - (isIn ? 1 : 0),
+              event.spots - registered,
             );
 
             return (
@@ -260,7 +262,7 @@ function ExplorePage() {
                     </span>
                     <span className="flex items-center gap-2">
                       <Users className="size-3.5 text-primary" />
-                      {event.taken}/{event.spots} inscrits
+                      {registered}/{event.spots} inscrits
                     </span>
                   </div>
 
