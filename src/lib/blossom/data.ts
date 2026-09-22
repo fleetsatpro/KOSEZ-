@@ -1,4 +1,4 @@
-import type { ActivityEvent, PronlabAttempt, StageId, TandemPartner } from "./engine";
+import type { ActivityEvent, PronlabAttempt, StageId } from "./engine";
 
 export const LEARNER = {
   firstName: "Camille",
