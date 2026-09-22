@@ -34,12 +34,13 @@ function LearningLabs() {
 
 function GrammarLab() {
   const completeActivity = useBlossom((s) => s.completeActivity);
+  const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const [index, setIndex] = useState(0), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
   const task = GRAMMAR_TASKS[index]!, answered = choice !== null;
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
     if (!answered) return;
-    if (index >= GRAMMAR_TASKS.length - 1) { completeActivity("GRAMMAR_COMPLETED", `grammar-${new Date().toISOString()}`, `Grammaire · ${correct + (choice === task.answer ? 1 : 0)}/${GRAMMAR_TASKS.length}`); setFinished(true); return; }
+    if (index >= GRAMMAR_TASKS.length - 1) { saveLearningSubmission({ taskId: task.id, kind: "grammar", content: choice ?? "", checks: [choice === task.answer ? "correct" : "incorrect"], result: { correct: choice === task.answer, target: task.target } }); completeActivity("GRAMMAR_COMPLETED", `grammar-${new Date().toISOString()}`, `Grammaire · ${correct + (choice === task.answer ? 1 : 0)}/${GRAMMAR_TASKS.length}`); setFinished(true); return; }
     setIndex((v) => v + 1); setChoice(null);
   }
   if (finished) return <LabComplete title="Grammaire terminée" detail={`${correct} bonnes réponses sur ${GRAMMAR_TASKS.length}. Cette trace mesure une séance de pratique, pas un niveau CEFR.`} />;
@@ -55,12 +56,13 @@ function GrammarLab() {
 
 function ListeningLab() {
   const completeActivity = useBlossom((s) => s.completeActivity);
+  const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const [index, setIndex] = useState(0), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
   const task = LISTENING_TASKS[index]!, answered = choice !== null;
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
     if (!answered) return;
-    if (index >= LISTENING_TASKS.length - 1) { completeActivity("LISTENING_COMPLETED", `listening-${new Date().toISOString()}`, `Écoute · ${correct + (choice === task.answer ? 1 : 0)}/${LISTENING_TASKS.length}`); setFinished(true); return; }
+    if (index >= LISTENING_TASKS.length - 1) { saveLearningSubmission({ taskId: task.id, kind: "listening", content: choice ?? "", checks: [choice === task.answer ? "correct" : "incorrect"], result: { correct: choice === task.answer, level: task.level } }); completeActivity("LISTENING_COMPLETED", `listening-${new Date().toISOString()}`, `Écoute · ${correct + (choice === task.answer ? 1 : 0)}/${LISTENING_TASKS.length}`); setFinished(true); return; }
     setIndex((v) => v + 1); setChoice(null);
   }
   if (finished) return <LabComplete title="Écoute terminée" detail={`${correct} bonnes réponses sur ${LISTENING_TASKS.length}. Vous avez travaillé des détails concrets : heure, lieu, prix et option.`} />;
@@ -75,9 +77,10 @@ function ListeningLab() {
 
 function WritingLab() {
   const completeActivity = useBlossom((s) => s.completeActivity);
+  const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const [promptIndex, setPromptIndex] = useState(0), [draft, setDraft] = useState(""), [checks, setChecks] = useState<string[]>([]), [submitted, setSubmitted] = useState(false);
   const prompt = useMemo(() => WRITING_PROMPTS[promptIndex % WRITING_PROMPTS.length]!, [promptIndex]);
-  function submit() { if (!draft.trim()) return; completeActivity("WRITING_COMPLETED", `writing-${new Date().toISOString()}`, `Écrit · ${prompt.id} · ${checks.length}/${prompt.checks.length} auto-vérifications`); setSubmitted(true); }
+  function submit() { if (!draft.trim()) return; saveLearningSubmission({ taskId: prompt.id, kind: "writing", content: draft.trim(), checks, result: { checkCount: checks.length, checkTotal: prompt.checks.length } }); completeActivity("WRITING_COMPLETED", `writing-${new Date().toISOString()}`, `Écrit · ${prompt.id} · ${checks.length}/${prompt.checks.length} auto-vérifications`); setSubmitted(true); }
   function next() { setPromptIndex((v) => (v + 1) % WRITING_PROMPTS.length); setDraft(""); setChecks([]); setSubmitted(false); }
   return <Surface className="mt-6 p-5 sm:p-7">
     <div className="flex items-start justify-between gap-3"><div><Eyebrow>Écrit · pratique guidée</Eyebrow><h2 className="mt-2 font-display text-3xl tracking-tight">{prompt.title}</h2></div><PenLine className="size-5 text-primary" /></div>

@@ -15,6 +15,7 @@ import {
 } from "@/lib/blossom/sync-client";
 import { mergeMissionSessions } from "@/lib/blossom/sync-merge";
 import type { MissionSession } from "@/lib/blossom/mission";
+import type { LearningSubmission } from "@/lib/blossom/store";
 import type { BackendState, SyncJsonValue, SyncMutation, SyncResult } from "@/lib/blossom/sync-types";
 import { POINTS, type ActivityEvent, type PronlabAttempt } from "@/lib/blossom/engine";
 import { useBlossom } from "@/lib/blossom/store";
@@ -156,6 +157,23 @@ function mergeBackendState(remote: BackendState): void {
     ...remote.tandemStatus,
   };
 
+  const submissionById = new Map<string, LearningSubmission>(
+    current.learningSubmissions.map((submission) => [submission.id, submission]),
+  );
+  for (const submission of remote.learningSubmissions) {
+    submissionById.set(submission.id, {
+      id: submission.id,
+      taskId: submission.taskId,
+      kind: submission.kind,
+      content: submission.content,
+      checks: submission.checks,
+      result: submission.result,
+      createdAt: submission.createdAt,
+      updatedAt: submission.updatedAt,
+    });
+  }
+
+
   useBlossom.setState({
     learner: { ...current.learner, ...profilePatch },
     plan: profilePlan,
@@ -175,6 +193,7 @@ function mergeBackendState(remote: BackendState): void {
     waitlistIds: [...waitlistIds],
     immersionDone: [...immersionDone],
     tandemStatus,
+    learningSubmissions: [...submissionById.values()].sort((a, b) => timestamp(a.createdAt) - timestamp(b.createdAt)),
   });
 }
 

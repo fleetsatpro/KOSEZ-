@@ -62,6 +62,17 @@ export type Homework = {
   createdAt: string;
 };
 
+export type LearningSubmission = {
+  id: string;
+  taskId: string;
+  kind: "grammar" | "listening" | "writing";
+  content: string;
+  checks: string[];
+  result: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type TeacherNote = {
   id: string;
   studentId: string;
@@ -87,6 +98,7 @@ type AppState = {
   tandemReports: Record<string, number>;
   homework: Homework[];
   teacherNotes: TeacherNote[];
+  learningSubmissions: LearningSubmission[];
   warmup: string | null;
   exportConsent: boolean;
   vocabulary: { word: string; gloss: string }[];
@@ -147,6 +159,7 @@ type AppState = {
   setTandemOpen: (value: boolean) => void;
   reportTandem: (partnerId: string) => { count: number; escalated: boolean };
   addTeacherNote: (studentId: string, tags: string[], text: string) => void;
+  saveLearningSubmission: (input: Omit<LearningSubmission, "id" | "createdAt" | "updatedAt"> & { taskId: string }) => void;
   saveWarmup: (text: string) => void;
   saveHomeworkDraft: (studentId: string, title: string, body: string) => void;
   sendHomework: (id: string) => void;
@@ -251,6 +264,7 @@ export const useBlossom = create<AppState>()(
       tandemReports: {},
       homework: [],
       teacherNotes: [],
+      learningSubmissions: [],
       warmup: null,
       exportConsent: false,
       vocabulary: [],
@@ -626,6 +640,30 @@ export const useBlossom = create<AppState>()(
         });
         return { count, escalated: count >= 2 };
       },
+      saveLearningSubmission: (input) => {
+        const mutation = createMutation({
+          operation: "learning.submission",
+          entityId: input.taskId,
+          payload: {
+            taskId: input.taskId,
+            kind: input.kind,
+            content: input.content,
+            checks: input.checks,
+            result: input.result as SyncJsonValue,
+          },
+        });
+        const now = new Date().toISOString();
+        const submission: LearningSubmission = {
+          ...input,
+          id: mutation.mutationId,
+          createdAt: now,
+          updatedAt: now,
+        };
+        set({
+          learningSubmissions: [...get().learningSubmissions.filter((item) => item.id !== submission.id), submission],
+        });
+        void enqueueMutation(mutation);
+      },
       addTeacherNote: (studentId, tags, text) => {
         const note: TeacherNote = {
           id: `note-${Date.now()}`,
@@ -790,6 +828,7 @@ export const useBlossom = create<AppState>()(
           tandemReports: {},
           homework: [],
           teacherNotes: [],
+          learningSubmissions: [],
           warmup: null,
           exportConsent: false,
           vocabulary: [],

@@ -13,6 +13,7 @@ import {
   registerEvent,
   saveVocabulary,
   setTandemStatus,
+  saveLearningSubmission,
 } from "./domain.server";
 import type { SyncMutation, SyncResult } from "./sync-types";
 
@@ -87,6 +88,7 @@ const operationSchema = z.enum([
   "event.register",
   "challenge.complete",
   "tandem.status",
+  "learning.submission",
 ]);
 
 const mutationSchema = z.object({
@@ -131,6 +133,15 @@ const eventPayloadSchema = z.object({
 const tandemPayloadSchema = z.object({
   status: z.enum(["suggested", "pending", "accepted", "blocked", "paused"]),
   metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+
+const submissionPayloadSchema = z.object({
+  taskId: z.string().trim().min(1).max(160),
+  kind: z.enum(["grammar", "listening", "writing"]),
+  content: z.string().max(20000),
+  checks: z.array(z.string().trim().max(160)).max(24).optional(),
+  result: z.record(z.string(), z.unknown()).optional(),
 });
 
 const profilePayloadSchema = z.object({
@@ -246,6 +257,18 @@ async function applyMutation(
         partnerUserId: mutation.entityId,
         status: payload.status,
         metadata: payload.metadata ?? {},
+      });
+      return { mutationId: mutation.mutationId, status: "applied" };
+    }
+    case "learning.submission": {
+      const payload = submissionPayloadSchema.parse(mutation.payload);
+      await saveLearningSubmission(userId, {
+        id: mutation.mutationId,
+        taskId: payload.taskId,
+        kind: payload.kind,
+        content: payload.content,
+        checks: payload.checks ?? [],
+        result: payload.result ?? {},
       });
       return { mutationId: mutation.mutationId, status: "applied" };
     }

@@ -47,6 +47,17 @@ export type BlossomPronlabAttemptRecord = {
   createdAt: string;
 };
 
+export type BlossomSubmissionRecord = {
+  id: string;
+  taskId: string;
+  kind: "grammar" | "listening" | "writing";
+  content: string;
+  checks: string[];
+  result: JsonObject;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type BlossomVocabularyRecord = {
   word: string;
   gloss: string;
@@ -61,6 +72,7 @@ export type BlossomBackendState = {
   missionSessions: Record<string, BlossomMissionRecord>;
   pronlabAttempts: BlossomPronlabAttemptRecord[];
   vocabulary: BlossomVocabularyRecord[];
+  learningSubmissions: BlossomSubmissionRecord[];
   eventRegistrations: Record<string, "joined" | "waitlist" | "cancelled">;
   completedChallenges: string[];
   tandemStatus: Record<string, "suggested" | "pending" | "accepted" | "blocked" | "paused">;
@@ -111,7 +123,7 @@ function mapActivity(row: Record<string, unknown>): BlossomActivityRecord {
 
 export async function readBlossomState(userId: string): Promise<BlossomBackendState> {
   const sql = await getSql();
-  const [profiles, activity, missions, pronlab, vocabulary, registrations, challenges, tandem] = await Promise.all([
+  const [profiles, activity, missions, pronlab, vocabulary, submissions, registrations, challenges, tandem] = await Promise.all([
     sql.query(
       "select user_id, display_name, target_language, level, timezone, preferences, created_at, updated_at from blossom_profile where user_id = $1",
       [userId],
@@ -130,6 +142,10 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
     ),
     sql.query(
       "select word, gloss, metadata, first_saved_at, updated_at from blossom_vocabulary where user_id = $1 order by updated_at desc",
+      [userId],
+    ),
+    sql.query(
+      "select id, task_id, kind, content, checks, result, created_at, updated_at from blossom_learning_submission where user_id = $1 order by created_at asc",
       [userId],
     ),
     sql.query(
@@ -167,6 +183,16 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
       tip: (row.tip as string | null) ?? null,
       metadata: jsonObject(row.metadata),
       createdAt: iso(row.created_at),
+    })),
+    learningSubmissions: submissions.map((row) => ({
+      id: String(row.id),
+      taskId: String(row.task_id),
+      kind: String(row.kind) as "grammar" | "listening" | "writing",
+      content: String(row.content),
+      checks: Array.isArray(row.checks) ? row.checks.map(String) : [],
+      result: jsonObject(row.result),
+      createdAt: iso(row.created_at),
+      updatedAt: iso(row.updated_at),
     })),
     vocabulary: vocabulary.map((row) => ({
       word: String(row.word),
@@ -306,5 +332,43 @@ export async function saveBlossomMissionSession(
           updatedAt: iso(current[0].updated_at),
         }
       : null,
+  };
+}
+
+export async function saveBlossomLearningSubmission(
+  userId: string,
+  input: {
+    id?: string;
+    taskId: string;
+    kind: "grammar" | "listening" | "writing";
+    content: string;
+    checks?: string[];
+    result?: JsonObject;
+  },
+): Promise<BlossomSubmissionRecord> {
+  const sql = await getSql();
+  const id = input.id ?? randomUUID();
+  const rows = await sql.query(
+    "insert into blossom_learning_submission (id, user_id, task_id, kind, content, checks, result) values ($1::uuid, $2, $3, $4, $5, $6::jsonb, $7::jsonb) on conflict (id) do update set task_id = excluded.task_id, kind = excluded.kind, content = excluded.content, checks = excluded.checks, result = excluded.result, updated_at = current_timestamp returning id, task_id, kind, content, checks, result, created_at, updated_at",
+    [
+      id,
+      userId,
+      input.taskId,
+      input.kind,
+      input.content,
+      JSON.stringify(input.checks ?? []),
+      JSON.stringify(input.result ?? {}),
+    ],
+  );
+  if (!rows[0]) throw new Error("learning-submission-write-failed");
+  return {
+    id: String(rows[0].id),
+    taskId: String(rows[0].task_id),
+    kind: String(rows[0].kind) as "grammar" | "listening" | "writing",
+    content: String(rows[0].content),
+    checks: Array.isArray(rows[0].checks) ? rows[0].checks.map(String) : [],
+    result: jsonObject(rows[0].result),
+    createdAt: iso(rows[0].created_at),
+    updatedAt: iso(rows[0].updated_at),
   };
 }
