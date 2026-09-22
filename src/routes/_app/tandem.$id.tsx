@@ -124,7 +124,12 @@ function TandemSession() {
   function finish() {
     const activePartner = partner;
     if (!activePartner) return;
-    complete("TANDEM_COMPLETED", `tandem-${activePartner.id}`);
+    complete(
+      "TANDEM_COMPLETED",
+      `tandem-${activePartner.id}`,
+      undefined,
+      { minutes: 60 },
+    );
     toast("Session terminée. Votre participation est enregistrée.");
     navigate({ to: "/tandem" });
   }
