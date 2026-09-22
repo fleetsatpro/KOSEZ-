@@ -82,6 +82,12 @@ export function LearnDashboard() {
   const journey = useJourney();
   const skillProfile = buildSkillProfile(log, attempts, vocab);
   const nextAction = nextLearningAction(log, attempts, vocab);
+  const nextActionHref =
+    nextAction.kind === "pronlab"
+      ? "/pronlab"
+      : nextAction.kind === "library"
+        ? "/library"
+        : "/mission";
 
   const sets = setsForLanguage(useBlossom((s) => s.languageId));
   const libraryOk = planAllows(plan, "library");
@@ -441,7 +447,7 @@ export function LearnDashboard() {
 
       <section className="mt-10 grid gap-4 lg:grid-cols-[1.15fr_.85fr]">
         <Link
-          to="/learn/review"
+          to={nextActionHref}
           className="group relative overflow-hidden rounded-2xl bg-fg p-6 text-primary-foreground shadow-[var(--shadow-border)] sm:p-7"
         >
           <div className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full border border-primary-foreground/10" />
@@ -489,22 +495,26 @@ export function LearnDashboard() {
           </Link>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            ["/learn/curriculum", "Parcours", `${CURRICULUM_UNITS.length} unités A2`, GraduationCap],
-            ["/learn/review", "Révision", "Mémoire en circulation", RotateCcw],
-            ["/learn/progress", "Compétences", "9 domaines documentés", ChartNoAxesCombined],
-            ["/learn/history", "Historique", "Actions + preuves", History],
-          ].map(([href, label, detail, Icon]) => (
-            <Link
-              key={String(href)}
-              to={href as "/learn/curriculum"}
-              className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60"
-            >
-              <Icon className="size-4 text-primary" />
-              <p className="mt-5 font-display text-xl tracking-tight">{String(label)}</p>
-              <p className="mt-1 text-xs text-muted">{String(detail)}</p>
-            </Link>
-          ))}
+          <Link to="/learn/curriculum" className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
+            <GraduationCap className="size-4 text-primary" />
+            <p className="mt-5 font-display text-xl tracking-tight">Parcours</p>
+            <p className="mt-1 text-xs text-muted">{CURRICULUM_UNITS.length} unités A2</p>
+          </Link>
+          <Link to="/learn/review" className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
+            <RotateCcw className="size-4 text-primary" />
+            <p className="mt-5 font-display text-xl tracking-tight">Révision</p>
+            <p className="mt-1 text-xs text-muted">Mémoire en circulation</p>
+          </Link>
+          <Link to="/learn/progress" className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
+            <ChartNoAxesCombined className="size-4 text-primary" />
+            <p className="mt-5 font-display text-xl tracking-tight">Compétences</p>
+            <p className="mt-1 text-xs text-muted">9 domaines documentés</p>
+          </Link>
+          <Link to="/learn/history" className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
+            <History className="size-4 text-primary" />
+            <p className="mt-5 font-display text-xl tracking-tight">Historique</p>
+            <p className="mt-1 text-xs text-muted">Actions + preuves</p>
+          </Link>
         </div>
       </section>
 
