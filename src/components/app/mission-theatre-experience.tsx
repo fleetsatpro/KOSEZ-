@@ -6,7 +6,6 @@ import {
   ChevronDown,
   MapPin,
   Sprout,
-  Sparkles,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -100,6 +99,9 @@ function SceneReel({
   modeOpen,
   onModeOpen,
   onMode,
+  challengeOpen,
+  onChallengeOpen,
+  onChallenge,
   onStart,
 }: {
   mission: ReturnType<typeof personaliseMission>;
@@ -108,6 +110,9 @@ function SceneReel({
   modeOpen: boolean;
   onModeOpen: (next: boolean) => void;
   onMode: (next: MissionMode) => void;
+  challengeOpen: boolean;
+  onChallengeOpen: (next: boolean) => void;
+  onChallenge: (next: MissionChallenge) => void;
   onStart: () => void;
 }) {
   const scene = TODAY_MISSION;
@@ -162,51 +167,95 @@ function SceneReel({
         <div className="mt-9 border-t border-white/10 pt-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-md">
-              <button
-                type="button"
-                aria-expanded={modeOpen}
-                onClick={() => onModeOpen(!modeOpen)}
-                className="inline-flex min-h-11 items-center gap-2 text-xs font-semibold text-white/75 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-              >
-                Changer de mode · {MODES[mode].title}
-                <ChevronDown className={modeOpen ? "size-3.5 rotate-180 transition-transform" : "size-3.5 transition-transform"} />
-              </button>
-
-              {modeOpen ? (
-                <div className="mt-3 grid gap-2 rounded-2xl border border-white/10 bg-black/30 p-2 backdrop-blur-xl sm:grid-cols-2">
-                  {(["real-world", "practice"] as const).map((item) => {
-                    const selected = item === mode;
-                    const Icon = MODES[item].icon;
-                    return (
-                      <button
-                        type="button"
-                        key={item}
-                        aria-pressed={selected}
-                        onClick={() => {
-                          onMode(item);
-                          onModeOpen(false);
-                        }}
-                        className={[
-                          "flex min-h-14 items-center gap-3 rounded-xl px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
-                          selected
-                            ? "bg-primary text-primary-foreground"
-                            : "text-white/75 hover:bg-white/10 hover:text-white",
-                        ].join(" ")}
-                      >
-                        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-black/15">
-                          <Icon className="size-4" />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block text-xs font-semibold">{MODES[item].title}</span>
-                          <span className={selected ? "mt-0.5 block text-[10px] text-primary-foreground/65" : "mt-0.5 block text-[10px] text-white/45"}>
-                            {MODES[item].kicker}
-                          </span>
-                        </span>
-                      </button>
-                    );
-                  })}
+              <div className="flex flex-wrap items-center gap-4">
+                <div>
+                  <button
+                    type="button"
+                    aria-expanded={modeOpen}
+                    onClick={() => onModeOpen(!modeOpen)}
+                    className="inline-flex min-h-11 items-center gap-2 text-xs font-semibold text-white/75 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                  >
+                    Mode · {MODES[mode].title}
+                    <ChevronDown className={modeOpen ? "size-3.5 rotate-180 transition-transform" : "size-3.5 transition-transform"} />
+                  </button>
+                  {modeOpen ? (
+                    <div className="mt-3 grid gap-2 rounded-2xl border border-white/10 bg-black/30 p-2 backdrop-blur-xl sm:grid-cols-2">
+                      {(["real-world", "practice"] as const).map((item) => {
+                        const selected = item === mode;
+                        const Icon = MODES[item].icon;
+                        return (
+                          <button
+                            type="button"
+                            key={item}
+                            aria-pressed={selected}
+                            onClick={() => {
+                              onMode(item);
+                              onModeOpen(false);
+                            }}
+                            className={[
+                              "flex min-h-14 items-center gap-3 rounded-xl px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                              selected
+                                ? "bg-primary text-primary-foreground"
+                                : "text-white/75 hover:bg-white/10 hover:text-white",
+                            ].join(" ")}
+                          >
+                            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-black/15">
+                              <Icon className="size-4" />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block text-xs font-semibold">{MODES[item].title}</span>
+                              <span className={selected ? "mt-0.5 block text-[10px] text-primary-foreground/65" : "mt-0.5 block text-[10px] text-white/45"}>
+                                {MODES[item].kicker}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+
+                <div>
+                  <button
+                    type="button"
+                    aria-expanded={challengeOpen}
+                    onClick={() => onChallengeOpen(!challengeOpen)}
+                    className="inline-flex min-h-11 items-center gap-2 text-xs font-semibold text-white/75 underline decoration-white/20 underline-offset-4 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                  >
+                    Pression · {CHALLENGES[challenge].title}
+                    <ChevronDown className={challengeOpen ? "size-3.5 rotate-180 transition-transform" : "size-3.5 transition-transform"} />
+                  </button>
+                  {challengeOpen ? (
+                    <div className="mt-3 grid gap-2 rounded-2xl border border-white/10 bg-black/30 p-2 backdrop-blur-xl sm:grid-cols-2">
+                      {(["core", "stretch"] as const).map((item) => {
+                        const selected = item === challenge;
+                        return (
+                          <button
+                            type="button"
+                            key={item}
+                            aria-pressed={selected}
+                            onClick={() => {
+                              onChallenge(item);
+                              onChallengeOpen(false);
+                            }}
+                            className={[
+                              "min-h-14 rounded-xl px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                              selected
+                                ? "bg-primary text-primary-foreground"
+                                : "text-white/75 hover:bg-white/10 hover:text-white",
+                            ].join(" ")}
+                          >
+                            <span className="block text-xs font-semibold">{CHALLENGES[item].title}</span>
+                            <span className={selected ? "mt-0.5 block text-[10px] text-primary-foreground/65" : "mt-0.5 block text-[10px] text-white/45"}>
+                              {CHALLENGES[item].kicker}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
             </div>
 
             <Button
@@ -424,6 +473,7 @@ export function MissionTheatreExperience() {
     run?.reflection ?? DEFAULT_REFLECTION,
   );
   const [modeOpen, setModeOpen] = useState(false);
+  const [challengeOpen, setChallengeOpen] = useState(false);
   const [growth, setGrowth] = useState<GrowthSnapshot | null>(null);
 
   useEffect(() => {
@@ -452,6 +502,7 @@ export function MissionTheatreExperience() {
     setSaved(false);
     setReflection(DEFAULT_REFLECTION);
     setModeOpen(false);
+    setChallengeOpen(false);
     track("mission_session_started", { mode, challenge });
   }
 
@@ -562,6 +613,9 @@ export function MissionTheatreExperience() {
           modeOpen={modeOpen}
           onModeOpen={setModeOpen}
           onMode={setMode}
+          challengeOpen={challengeOpen}
+          onChallengeOpen={setChallengeOpen}
+          onChallenge={setChallenge}
           onStart={startSession}
         />
       </div>
