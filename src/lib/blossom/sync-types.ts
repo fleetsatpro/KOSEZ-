@@ -8,23 +8,26 @@ export type SyncJsonValue =
 
 export type SyncJsonObject = { [key: string]: SyncJsonValue };
 
-export type SyncOperation =
-  | "profile.upsert"
-  | "activity.append"
-  | "mission.save"
-  | "pronlab.attempt"
-  | "vocabulary.upsert"
-  | "event.register"
-  | "challenge.complete"
-  | "tandem.status"
-  | "tandem.report"
-  | "learning.submission"
-  | "booking.request"
-  | "waitlist.request"
-  | "analytics.record"
-  | "teacher.note"
-  | "teacher.homework"
-  | "homework.complete";
+export const SYNC_OPERATIONS = [
+  "profile.upsert",
+  "activity.append",
+  "mission.save",
+  "pronlab.attempt",
+  "vocabulary.upsert",
+  "event.register",
+  "challenge.complete",
+  "tandem.status",
+  "tandem.report",
+  "learning.submission",
+  "booking.request",
+  "waitlist.request",
+  "analytics.record",
+  "teacher.note",
+  "teacher.homework",
+  "homework.complete",
+] as const;
+
+export type SyncOperation = (typeof SYNC_OPERATIONS)[number];
 
 export type SyncMutation = {
   mutationId: string;
