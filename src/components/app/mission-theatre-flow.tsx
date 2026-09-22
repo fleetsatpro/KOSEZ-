@@ -26,7 +26,7 @@ import {
   type MissionRun,
   summariseMissionHistory,
 } from "@/lib/blossom/mission";
-import { CHALLENGES, MODES, deriveSceneBeats, formatDuration, speakModel } from "./mission-theatre-shared";
+import { MODES, deriveSceneBeats, formatDuration, speakModel } from "./mission-theatre-shared";
 
 export function PrepareStage({
   objective,
