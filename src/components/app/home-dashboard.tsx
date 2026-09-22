@@ -18,6 +18,7 @@ import {
   TODAY_MISSION,
   WEEK_SPEAKING,
   planAllows,
+  PRONLAB_SETS,
 } from "@/lib/blossom/data";
 import {
   hasSource,
@@ -26,6 +27,12 @@ import {
   resolveMemory,
 } from "@/lib/blossom/engine";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
+import { OrganismStatus } from "@/components/app/organism-status";
+import { CourageRibbon } from "@/components/app/courage-ribbon";
+import {
+  courageDaysFromLog,
+  strugglingFocus,
+} from "@/lib/blossom/organism";
 import { todayLabel } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +58,11 @@ export function HomeDashboard() {
   const activeSpeakingDays = WEEK_SPEAKING.filter((day) => day.minutes > 0).length;
   const maxSpeaking = Math.max(...WEEK_SPEAKING.map((day) => day.minutes), 1);
   const stageProgress = Math.round(journey.progress * 100);
+  const minerals = useBlossom((s) => s.mineralSnapshot);
+  const struggle = strugglingFocus(
+    attempts,
+    PRONLAB_SETS.flatMap((s) => s.items),
+  );
 
   return (
     <div className="stagger-in kosez-home">
@@ -280,6 +292,21 @@ export function HomeDashboard() {
         </article>
       </section>
 
+      <section className="mt-5 grid gap-4 lg:grid-cols-2">
+        <OrganismStatus minerals={minerals} />
+        <div className="rounded-xl border border-border/70 bg-surface p-4 shadow-[var(--shadow-border)]">
+          <CourageRibbon days={courageDaysFromLog(log)} />
+          {struggle ? (
+            <p className="mt-3 text-xs leading-5 text-muted">
+              Son de la semaine :{" "}
+              <Link to="/pronlab" className="font-semibold text-primary underline">
+                {struggle.focus || struggle.phrase}
+              </Link>
+            </p>
+          ) : null}
+        </div>
+      </section>
+
       <section className="kosez-quick-actions mt-5 border-t border-border pt-5" aria-label="Accès rapides">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -351,4 +378,3 @@ function Checkpoint({
     </div>
   );
 }
-
