@@ -36,7 +36,7 @@ A practice workspace where learners make **one useful real-world language gestur
 ## Repo map
 
 - `src/components/app/` — product UI (shell, onboarding, home, mission, role workspaces, welcome, …)
-- `src/lib/blossom/` — domain engine, mission sessions, sync, persistence, access control, safety
+- `src/lib/blossom/` — domain engine, mission sessions, sync, persistence, access control, safety, published content
 - `src/routes/_app/` — app routes
 - `src/styles.css` — tokens + modern-ui
 - `.github/workflows/ci.yml` — test, typecheck, lint, production build
@@ -46,6 +46,9 @@ A practice workspace where learners make **one useful real-world language gestur
 - One primary CTA per screen
 - Authenticated state is isolated per user; fresh accounts begin without seeded learner activity
 - Sensitive role surfaces fail closed against verified server relationships
+- Admin content is revisioned, audited, publish-gated, archiveable, and persisted server-side
+- Event capacity is database-enforced and offline mutations reconcile against authoritative server state
+- Tandem discovery is opt-in; reports are durable and surfaced to Admin safety operations
 - Client-side scores never become trusted evidence without a verified provider
 - Plant growth must feel causal after real gestures
 - CI green: `npm test` · `npm run typecheck` · `npm run lint` · `npm run build`
