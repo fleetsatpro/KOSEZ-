@@ -64,7 +64,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const journey = useJourney();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const hideChrome =
-    pathname.startsWith("/osez/") || pathname.startsWith("/tandem/");
+    pathname === "/mission" || pathname.startsWith("/osez/") || pathname.startsWith("/tandem/");
 
   useEffect(() => {
     setMounted(true);
