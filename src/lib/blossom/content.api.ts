@@ -50,6 +50,8 @@ const catalogueContentSchema = z.object({
   schedule: z.string().trim().min(1).max(240),
   price: z.string().trim().min(1).max(160),
   image: z.string().trim().max(500),
+  early: z.boolean().optional(),
+  companion: z.boolean().optional(),
 });
 
 export const getPublishedContentOnServer = createServerFn({ method: "GET" })
