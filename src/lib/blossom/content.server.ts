@@ -135,7 +135,8 @@ export async function getPublishedContent(): Promise<PublishedContent> {
   const hiddenKeys = new Set<string>();
 
   for (const row of rows) {
-    if (String(row.state) !== "published") {
+    const state = String(row.state);
+    if (state === "archived" || !row.published_payload) {
       hiddenKeys.add(String(row.content_key));
       continue;
     }
@@ -263,7 +264,7 @@ export async function saveContentDraft(
   }
 
   const rows = await sql.query(
-    "insert into blossom_content_item (content_key, kind, draft_payload, published_payload, draft_revision, published_revision, state, updated_by) values ($1, $2, $3::jsonb, null, 1, 0, 'draft', $4) on conflict (content_key) do update set draft_payload = excluded.draft_payload, draft_revision = blossom_content_item.draft_revision + 1, updated_by = excluded.updated_by, updated_at = current_timestamp where blossom_content_item.draft_revision = $5 returning content_key, kind, draft_revision, published_revision, state",
+    "insert into blossom_content_item (content_key, kind, draft_payload, published_payload, draft_revision, published_revision, state, updated_by) values ($1, $2, $3::jsonb, null, 1, 0, 'draft', $4) on conflict (content_key) do update set draft_payload = excluded.draft_payload, draft_revision = blossom_content_item.draft_revision + 1, state = case when blossom_content_item.state = 'archived' then 'archived' else 'draft' end, updated_by = excluded.updated_by, updated_at = current_timestamp where blossom_content_item.draft_revision = $5 returning content_key, kind, draft_revision, published_revision, state",
     [
       contentKey,
       input.kind,
