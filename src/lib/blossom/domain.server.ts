@@ -243,3 +243,32 @@ export async function writeAuditEvent(
     ],
   );
 }
+
+export async function saveLearningSubmission(
+  userId: string,
+  input: {
+    id?: string;
+    taskId: string;
+    kind: "grammar" | "listening" | "writing";
+    content: string;
+    checks?: string[];
+    result?: Record<string, unknown>;
+  },
+) {
+  const sql = await getSql();
+  const id = input.id ?? randomUUID();
+  const rows = await sql.query(
+    "insert into blossom_learning_submission (id, user_id, task_id, kind, content, checks, result) values ($1::uuid, $2, $3, $4, $5, $6::jsonb, $7::jsonb) on conflict (id) do update set content = excluded.content, checks = excluded.checks, result = excluded.result, updated_at = current_timestamp returning id, task_id, kind, content, checks, result, created_at, updated_at",
+    [
+      id,
+      userId,
+      input.taskId,
+      input.kind,
+      input.content,
+      JSON.stringify(input.checks ?? []),
+      JSON.stringify(input.result ?? {}),
+    ],
+  );
+  if (!rows[0]) throw new Error("learning-submission-write-failed");
+  return rows[0];
+}

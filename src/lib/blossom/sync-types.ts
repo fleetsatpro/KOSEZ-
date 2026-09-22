@@ -16,7 +16,8 @@ export type SyncOperation =
   | "vocabulary.upsert"
   | "event.register"
   | "challenge.complete"
-  | "tandem.status";
+  | "tandem.status"
+  | "learning.submission";
 
 export type SyncMutation = {
   mutationId: string;
@@ -76,6 +77,17 @@ export type BackendPronlabAttempt = {
   createdAt: string;
 };
 
+export type BackendSubmission = {
+  id: string;
+  taskId: string;
+  kind: "grammar" | "listening" | "writing";
+  content: string;
+  checks: string[];
+  result: SyncJsonObject;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type BackendVocabulary = {
   word: string;
   gloss: string;
@@ -99,7 +111,9 @@ export type BackendState = {
   missionSessions: Record<string, BackendMission>;
   pronlabAttempts: BackendPronlabAttempt[];
   vocabulary: BackendVocabulary[];
+  learningSubmissions: BackendSubmission[];
   eventRegistrations: Record<string, "joined" | "waitlist" | "cancelled">;
   completedChallenges: string[];
   tandemStatus: Record<string, "suggested" | "pending" | "accepted" | "blocked" | "paused">;
+  learningSubmissions: BackendSubmission[];
 };
