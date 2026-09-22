@@ -18,6 +18,7 @@ import { TeacherStudio } from "@/components/app/teacher-studio";
 import { OrgStudio } from "@/components/app/org-studio";
 import { ChildHome } from "@/components/app/child-home";
 import { Wordmark } from "@/components/app/primitives";
+import { UserButton } from "@/lib/auth/gates";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
@@ -219,6 +220,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               })}
             </div>
           </nav>
+
+          <div className="mb-4 rounded-2xl border border-border bg-bg/70 px-4 py-3 shadow-[var(--shadow-border)]">
+            <UserButton />
+          </div>
 
           <div className="mt-auto rounded-2xl border border-border bg-bg/70 p-4 shadow-[var(--shadow-border)]">
             <div className="flex items-center justify-between gap-3">
