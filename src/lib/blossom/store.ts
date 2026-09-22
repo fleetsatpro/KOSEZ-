@@ -114,6 +114,7 @@ type AppState = {
   learner: LearnerProfile;
   activityLog: typeof INITIAL_LOG;
   joinedEventIds: string[];
+  eventRegistrationCounts: Record<string, number>;
   enrolledIds: string[];
   pronlabAttempts: PronlabAttempt[];
   assignedSetIds: string[];
@@ -285,6 +286,7 @@ export const useBlossom = create<AppState>()(
       learner: NEW_LEARNER,
       activityLog: [],
       joinedEventIds: [],
+      eventRegistrationCounts: {},
       enrolledIds: [],
       pronlabAttempts: [],
       assignedSetIds: [],
@@ -577,7 +579,13 @@ export const useBlossom = create<AppState>()(
       },
       joinEvent: (id) => {
         if (get().joinedEventIds.includes(id)) return;
-        set({ joinedEventIds: [...get().joinedEventIds, id] });
+        set({
+          joinedEventIds: [...get().joinedEventIds, id],
+          eventRegistrationCounts: {
+            ...get().eventRegistrationCounts,
+            [id]: (get().eventRegistrationCounts[id] ?? 0) + 1,
+          },
+        });
         queueSyncMutation({
           operation: "event.register",
           entityId: id,
@@ -588,6 +596,10 @@ export const useBlossom = create<AppState>()(
       leaveEvent: (id) => {
         set({
           joinedEventIds: get().joinedEventIds.filter((item) => item !== id),
+          eventRegistrationCounts: {
+            ...get().eventRegistrationCounts,
+            [id]: Math.max(0, (get().eventRegistrationCounts[id] ?? 1) - 1),
+          },
         });
         queueSyncMutation({
           operation: "event.register",
@@ -865,6 +877,7 @@ export const useBlossom = create<AppState>()(
           syncOwnerUserId: null,
           activityLog: [],
           joinedEventIds: [],
+          eventRegistrationCounts: {},
           enrolledIds: [],
           parentMode: false,
           teacherMode: false,
