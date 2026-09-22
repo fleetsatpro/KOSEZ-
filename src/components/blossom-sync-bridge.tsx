@@ -230,16 +230,7 @@ function mergeBackendState(remote: BackendState): void {
     backendMissionRevisions: revisions,
     joinedEventIds: [...joinedEventIds],
     eventRegistrationCounts: {
-      ...remote.eventRegistrationCounts,
-      ...Object.fromEntries(
-        [...joinedEventIds].map((eventId) => [
-          eventId,
-          Math.max(
-            Number(remote.eventRegistrationCounts?.[eventId] ?? 0),
-            current.eventRegistrationCounts[eventId] ?? 0,
-          ),
-        ]),
-      ),
+      ...(remote.eventRegistrationCounts ?? {}),
     },
     immersionDone: [...immersionDone],
     tandemStatus,
@@ -250,14 +241,8 @@ function mergeBackendState(remote: BackendState): void {
       ...current.bookingStatuses,
       ...(remote.bookingStatuses ?? {}),
     },
-    enrolledIds: [...new Set([
-      ...current.enrolledIds,
-      ...(remote.bookingCatalogueIds ?? []),
-    ])],
-    waitlistIds: [...new Set([
-      ...current.waitlistIds,
-      ...(remote.waitlistIds ?? []),
-    ])],
+    enrolledIds: [...(remote.bookingCatalogueIds ?? [])],
+    waitlistIds: [...(remote.waitlistIds ?? [])],
   });
 }
 
@@ -386,6 +371,41 @@ async function flushOutbox(): Promise<void> {
         } else if (mutation.operation === "waitlist.request") {
           useBlossom.setState({
             waitlistIds: state.waitlistIds.filter((id) => id !== mutation.entityId),
+          });
+        } else if (mutation.operation === "tandem.status") {
+          const next = { ...state.tandemStatus };
+          delete next[mutation.entityId];
+          useBlossom.setState({ tandemStatus: next });
+        } else if (mutation.operation === "teacher.note") {
+          useBlossom.setState({
+            teacherNotes: state.teacherNotes.filter((note) => note.id !== mutation.mutationId),
+          });
+        } else if (mutation.operation === "teacher.homework") {
+          const status =
+            typeof mutation.payload.status === "string"
+              ? mutation.payload.status
+              : undefined;
+          useBlossom.setState({
+            homework:
+              status === "sent"
+                ? state.homework.map((homework) =>
+                    homework.id === mutation.entityId
+                      ? { ...homework, status: "draft" as const }
+                      : homework,
+                  )
+                : state.homework.filter((homework) => homework.id !== mutation.mutationId),
+          });
+        } else if (mutation.operation === "homework.complete") {
+          useBlossom.setState({
+            homework: state.homework.map((homework) =>
+              homework.id === mutation.entityId
+                ? { ...homework, status: "sent" as const }
+                : homework,
+            ),
+          });
+        } else if (mutation.operation === "activity.append") {
+          useBlossom.setState({
+            activityLog: state.activityLog.filter((event) => event.id !== mutation.mutationId),
           });
         }
 
