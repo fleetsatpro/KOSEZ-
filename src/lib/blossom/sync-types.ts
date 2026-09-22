@@ -102,6 +102,26 @@ export type BackendVocabulary = {
   updatedAt: string;
 };
 
+export type BackendHomework = {
+  id: string;
+  authorUserId: string;
+  learnerUserId: string;
+  title: string;
+  body: string;
+  status: "draft" | "sent" | "done";
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BackendTeacherNote = {
+  id: string;
+  teacherUserId: string;
+  learnerUserId: string;
+  tags: string[];
+  note: string;
+  createdAt: string;
+};
+
 export type BackendState = {
   profile: {
     userId: string;
@@ -125,4 +145,6 @@ export type BackendState = {
   bookingCatalogueIds: string[];
   bookingStatuses: Record<string, "requested" | "confirmed">;
   waitlistIds: string[];
+  homework: BackendHomework[];
+  teacherNotes: BackendTeacherNote[];
 };
