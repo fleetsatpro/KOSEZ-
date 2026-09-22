@@ -598,6 +598,11 @@ export const useBlossom = create<AppState>()(
       enroll: (id) => {
         if (get().enrolledIds.includes(id)) return;
         set({ enrolledIds: [...get().enrolledIds, id] });
+        queueSyncMutation({
+          operation: "booking.request",
+          entityId: id,
+          payload: { catalogueItemId: id },
+        });
         track("booking_created");
       },
       recordPronlabAttempt: (itemId, seconds) => {
@@ -807,6 +812,11 @@ export const useBlossom = create<AppState>()(
       joinWaitlist: (id) => {
         if (get().waitlistIds.includes(id)) return;
         set({ waitlistIds: [...get().waitlistIds, id] });
+        queueSyncMutation({
+          operation: "waitlist.request",
+          entityId: id,
+          payload: { itemId: id },
+        });
         track("immersion_waitlist", { id });
       },
       inviteOrgSeat: () => {
