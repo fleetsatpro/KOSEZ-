@@ -93,6 +93,7 @@ const operationSchema = z.enum([
   "learning.submission",
   "booking.request",
   "waitlist.request",
+  "analytics.record",
 ]);
 
 const mutationSchema = z.object({
@@ -163,6 +164,16 @@ const catalogueBookingPayloadSchema = z.object({
 const waitlistPayloadSchema = z.object({
   itemId: z.string().trim().min(1).max(160),
 });
+
+const analyticsPayloadSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  occurredAt: z.string().datetime(),
+  props: z.record(
+    z.string().trim().max(80),
+    z.union([z.string().max(500), z.number().finite(), z.boolean()]),
+  ).refine((value) => Object.keys(value).length <= 24),
+});
+
 
 async function storeResult(
   userId: string,
@@ -302,6 +313,21 @@ async function applyMutation(
     case "waitlist.request": {
       const payload = waitlistPayloadSchema.parse(mutation.payload);
       await requestWaitlist(userId, payload.itemId);
+      return { mutationId: mutation.mutationId, status: "applied" };
+    }
+    case "analytics.record": {
+      const payload = analyticsPayloadSchema.parse(mutation.payload);
+      const sql = await getSql();
+      await sql.query(
+        "insert into blossom_analytics_event (id, user_id, name, props, occurred_at) values ($1::uuid, $2, $3, $4::jsonb, $5::timestamptz) on conflict (id) do nothing",
+        [
+          mutation.mutationId,
+          userId,
+          payload.name,
+          JSON.stringify(payload.props ?? {}),
+          payload.occurredAt,
+        ],
+      );
       return { mutationId: mutation.mutationId, status: "applied" };
     }
   }
