@@ -577,5 +577,6 @@ export async function restoreContentDraft(
     draftRevision,
     publishedRevision: Number(rows[0].published_revision),
     state: String(rows[0].state) as ContentState,
+    payload: payload as ContentPayload,
   };
 }
