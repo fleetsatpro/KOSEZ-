@@ -69,24 +69,177 @@ export async function getTeacherWorkspace(userId: string): Promise<TeacherWorksp
       coalesce(p.display_name, tl.learner_user_id) as name,
       p.level,
       max(a.occurred_at) as last_activity,
-      count(*) filter (where a.occurred_at >= current_timestamp - interval '7 days')::integer as activities_this_week,
+      count(*) filter (
+        where a.occurred_at >= current_timestamp - interval '7 days'
+      )::integer as activities_this_week,
       coalesce(sum(
         case
           when a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
-           and coalesce(a.payload->>'minutes','') ~ '^[0-9]+
+           and coalesce(a.payload->>'minutes','') ~ '^[0-9]+$'
+          then (a.payload->>'minutes')::integer
+          else 0
+        end
+      ), 0)::integer as speaking_minutes,
+      coalesce(pr.attempts, 0)::integer as pronlab_attempts,
+      coalesce(pr.best_score, 0)::integer as pronlab_best
+    from blossom_teacher_link tl
+    left join blossom_profile p on p.user_id = tl.learner_user_id
+    left join blossom_activity_event a on a.user_id = tl.learner_user_id
+    left join lateral (
+      select count(*) as attempts, max(score) as best_score
+      from blossom_pronlab_attempt
+      where user_id = tl.learner_user_id
+    ) pr on true
+    where tl.teacher_user_id = $1 and tl.status = 'active'
+    group by tl.learner_user_id, p.display_name, p.level, pr.attempts, pr.best_score
+    order by last_activity desc nulls last, name asc`,
+    [userId],
+  );
+  return rows.map((row) => ({
+    id: String(row.id),
+    name: String(row.name),
+    level: row.level ? String(row.level) : null,
+    lastActivity: row.last_activity
+      ? new Date(String(row.last_activity)).toISOString()
+      : null,
+    activitiesThisWeek: Number(row.activities_this_week ?? 0),
+    speakingMinutes: Number(row.speaking_minutes ?? 0),
+    pronlabAttempts: Number(row.pronlab_attempts ?? 0),
+    pronlabBest: Number(row.pronlab_best ?? 0),
+  }));
+}
+
+export type GuardianWorkspaceLearner = {
+  id: string;
+  name: string;
+  level: string | null;
+  lastActivity: string | null;
+  activitiesThisWeek: number;
+  speakingMinutes: number;
+};
+
+export async function getGuardianWorkspace(userId: string): Promise<GuardianWorkspaceLearner[]> {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `select
+      gl.learner_user_id as id,
+      coalesce(p.display_name, gl.learner_user_id) as name,
+      p.level,
+      max(a.occurred_at) as last_activity,
+      count(*) filter (
+        where a.occurred_at >= current_timestamp - interval '7 days'
+      )::integer as activities_this_week,
+      coalesce(sum(
+        case
+          when a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
+           and coalesce(a.payload->>'minutes','') ~ '^[0-9]+$'
+          then (a.payload->>'minutes')::integer
+          else 0
+        end
+      ), 0)::integer as speaking_minutes
+    from blossom_guardian_link gl
+    left join blossom_profile p on p.user_id = gl.learner_user_id
+    left join blossom_activity_event a on a.user_id = gl.learner_user_id
+    where gl.guardian_user_id = $1 and gl.status = 'active'
+    group by gl.learner_user_id, p.display_name, p.level
+    order by name asc`,
+    [userId],
+  );
+  return rows.map((row) => ({
+    id: String(row.id),
+    name: String(row.name),
+    level: row.level ? String(row.level) : null,
+    lastActivity: row.last_activity
+      ? new Date(String(row.last_activity)).toISOString()
+      : null,
+    activitiesThisWeek: Number(row.activities_this_week ?? 0),
+    speakingMinutes: Number(row.speaking_minutes ?? 0),
+  }));
+}
+
+export type OrganizationWorkspace = {
+  id: string;
+  name: string;
+  city: string | null;
+  members: Array<{
+    id: string;
+    name: string;
+    role: string;
+    status: string;
+  }>;
+};
+
+export async function getOrganizationWorkspace(
+  userId: string,
+): Promise<OrganizationWorkspace | null> {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `select
+      o.id,
+      o.name,
+      o.metadata,
+      m.user_id,
+      m.role,
+      m.status,
+      coalesce(p.display_name, m.user_id) as display_name
+    from blossom_organization o
+    join blossom_organization_member me
+      on me.organization_id = o.id
+     and me.user_id = $1
+     and me.status = 'active'
+     and me.role in ('owner','admin','teacher')
+    join blossom_organization_member m
+      on m.organization_id = o.id
+     and m.status = 'active'
+    left join blossom_profile p on p.user_id = m.user_id
+    order by m.role, display_name`,
+    [userId],
+  );
+  if (!rows[0]) return null;
+
+  const metadata =
+    rows[0].metadata && typeof rows[0].metadata === "object"
+      ? (rows[0].metadata as Record<string, unknown>)
+      : {};
+
+  return {
+    id: String(rows[0].id),
+    name: String(rows[0].name),
+    city: typeof metadata.city === "string" ? metadata.city : null,
+    members: rows.map((row) => ({
+      id: String(row.user_id),
+      name: String(row.display_name),
+      role: String(row.role),
+      status: String(row.status),
+    })),
+  };
+}
+
+export async function requestCatalogueBooking(
+  userId: string,
+  catalogueItemId: string,
+) {
   const sql = await getSql();
   const rows = await sql.query(
     `insert into blossom_booking_request (id, user_id, catalogue_item_id, status)
      values ($1::uuid, $2, $3, 'requested')
      on conflict (user_id, catalogue_item_id)
-     do update set status = 'requested', updated_at = current_timestamp
-     where blossom_booking_request.status <> 'cancelled'
+     do update set
+       status = case
+         when blossom_booking_request.status = 'confirmed'
+           then blossom_booking_request.status
+         else 'requested'
+       end,
+       updated_at = current_timestamp
      returning id, catalogue_item_id, status, payment_status, created_at, updated_at`,
     [randomUUID(), userId, catalogueItemId],
   );
   if (rows[0]) return rows[0];
+
   const current = await sql.query(
-    "select id, catalogue_item_id, status, payment_status, created_at, updated_at from blossom_booking_request where user_id = $1 and catalogue_item_id = $2",
+    `select id, catalogue_item_id, status, payment_status, created_at, updated_at
+     from blossom_booking_request
+     where user_id = $1 and catalogue_item_id = $2`,
     [userId, catalogueItemId],
   );
   if (!current[0]) throw new Error("booking-request-write-failed");
@@ -99,20 +252,27 @@ export async function requestWaitlist(userId: string, itemId: string) {
     `insert into blossom_waitlist_request (id, user_id, item_id, status)
      values ($1::uuid, $2, $3, 'requested')
      on conflict (user_id, item_id)
-     do update set status = 'requested', updated_at = current_timestamp
-     where blossom_waitlist_request.status <> 'notified'
+     do update set
+       status = case
+         when blossom_waitlist_request.status = 'notified'
+           then blossom_waitlist_request.status
+         else 'requested'
+       end,
+       updated_at = current_timestamp
      returning id, item_id, status, created_at, updated_at`,
     [randomUUID(), userId, itemId],
   );
   if (rows[0]) return rows[0];
+
   const current = await sql.query(
-    "select id, item_id, status, created_at, updated_at from blossom_waitlist_request where user_id = $1 and item_id = $2",
+    `select id, item_id, status, created_at, updated_at
+     from blossom_waitlist_request
+     where user_id = $1 and item_id = $2`,
     [userId, itemId],
   );
   if (!current[0]) throw new Error("waitlist-write-failed");
   return current[0];
 }
-
 
 export type PronlabAttemptInput = {
   itemId: string;
