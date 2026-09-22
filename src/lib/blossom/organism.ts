@@ -3,9 +3,9 @@
  * Pure functions over activityLog / pronlabAttempts. Engine remains source of points.
  */
 
-import type { ActivityEvent, ActivityType, PronlabAttempt } from "./engine";
-import { summarisePronlabItem } from "./engine";
-import type { PronlabItem } from "./data";
+import type { ActivityEvent, ActivityType, PronlabAttempt } from "./engine.ts";
+import { summarisePronlabItem } from "./engine.ts";
+import type { PronlabItem } from "./data.ts";
 
 export type GrowthKind = "root" | "stem" | "leaf" | "flower" | "mineral";
 
