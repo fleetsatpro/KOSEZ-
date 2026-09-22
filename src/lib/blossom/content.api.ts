@@ -5,6 +5,7 @@ import {
   getAdminContentItems,
   getPublishedContent,
   publishContent,
+  archiveContent,
   saveContentDraft,
 } from "./content.server";
 
@@ -73,6 +74,18 @@ export const saveAdminContentDraftOnServer = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) =>
     saveContentDraft(context.userId, data),
+  );
+
+export const archiveAdminContentOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      contentKey: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,159}$/),
+      expectedPublishedRevision: z.number().int().positive(),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    archiveContent(context.userId, data.contentKey, data.expectedPublishedRevision),
   );
 
 export const publishAdminContentOnServer = createServerFn({ method: "POST" })
