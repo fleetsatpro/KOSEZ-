@@ -32,7 +32,7 @@ function Curriculum() {
           </p>
           <div className="mt-7 flex flex-wrap gap-2">
             <Badge className="border-primary-foreground/10 bg-primary-foreground/8 text-primary-foreground">
-              A2 · 6 unités
+              A2 → B1 · 10 unités
             </Badge>
             <Badge className="border-primary-foreground/10 bg-primary-foreground/8 text-primary-foreground">
               {CURRICULUM_UNITS.reduce((sum, unit) => sum + unit.lessons.length, 0)} pratiques

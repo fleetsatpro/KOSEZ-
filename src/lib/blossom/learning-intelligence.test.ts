@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buildLearningIntelligence, buildWeeklyLearningBrief } from "./learning-intelligence.ts";
+import { CURRICULUM_UNITS } from "./learning-os.ts";
 import type { ReviewPlan } from "./review-scheduler.ts";
 import type { LearningSubmission } from "./store.ts";
 
@@ -110,8 +111,29 @@ test("weekly brief counts dated evidence and keeps review accuracy explicit", ()
     ],
     "2026-09-22T12:00:00.000Z",
   );
-  assert.equal(brief.activeDays, 3);
+  assert.equal(brief.activeDays, 2);
   assert.equal(brief.reviewsAttempted, 2);
   assert.equal(brief.reviewAccuracy, 50);
   assert.equal(brief.directEvidenceCount >= 3, true);
+});
+
+
+test("curriculum acknowledgements follow the lesson objectives and stay non-direct", () => {
+  const lesson = CURRICULUM_UNITS[1]!.lessons.find((item) => item.id === "u2-l4")!;
+  const result = buildLearningIntelligence(
+    [{
+      id: "lesson",
+      type: "LESSON_COMPLETED",
+      sourceId: lesson.id,
+      createdAt: "2026-09-22T10:00:00.000Z",
+    }],
+    [],
+    [],
+    [],
+    plan(),
+    "2026-09-22T12:00:00.000Z",
+  );
+  assert.ok((result.domains.find((item) => item.domainId === "grammar")?.evidenceCount ?? 0) > 0);
+  assert.equal(result.domains.find((item) => item.domainId === "grammar")?.directEvidenceCount, 0);
+  assert.equal(result.domains.find((item) => item.domainId === "speaking")?.evidenceCount, 0);
 });

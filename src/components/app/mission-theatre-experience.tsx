@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   LEARNER_MEMORY,
-  TODAY_MISSION,
+  missionForLevel,
   planAllows,
 } from "@/lib/blossom/data";
 import {
@@ -70,8 +70,10 @@ function useReducedMotion() {
 
 function CinematicTop({
   step,
+  language,
 }: {
   step: MissionStep;
+  language: string;
 }) {
   return (
     <div className="mx-auto flex w-full max-w-[1240px] items-center justify-between gap-4 px-5 py-4 lg:px-8">
@@ -86,7 +88,7 @@ function CinematicTop({
       <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-subtle">
         <span>{String(["brief", "prepare", "execute", "reflect"].indexOf(step) + 1).padStart(2, "0")}</span>
         <span className="size-1 rounded-full bg-subtle" aria-hidden />
-        <span>{TODAY_MISSION.language}</span>
+        <span>{language}</span>
       </div>
     </div>
   );
@@ -94,6 +96,7 @@ function CinematicTop({
 
 function SceneReel({
   mission,
+  personalised,
   mode,
   challenge,
   modeOpen,
@@ -104,7 +107,13 @@ function SceneReel({
   onChallenge,
   onStart,
 }: {
-  mission: ReturnType<typeof personaliseMission>;
+  mission: {
+    sceneImage?: string;
+    level: string;
+    durationMin: number;
+    place: string;
+  };
+  personalised: ReturnType<typeof personaliseMission>;
   mode: MissionMode;
   challenge: MissionChallenge;
   modeOpen: boolean;
@@ -115,7 +124,7 @@ function SceneReel({
   onChallenge: (next: MissionChallenge) => void;
   onStart: () => void;
 }) {
-  const scene = TODAY_MISSION;
+  const scene = mission;
   return (
     <section className="relative min-h-[calc(100svh-73px)] overflow-hidden">
       <img
@@ -146,10 +155,10 @@ function SceneReel({
             Focus du jour
           </p>
           <h1 className="mt-3 max-w-4xl font-display text-[clamp(3rem,8vw,6.8rem)] font-semibold leading-[0.88] tracking-[-0.065em] text-white">
-            {mission.title}
+            {personalised.title}
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-7 text-white/75 sm:text-lg">
-            {mission.prompt}
+            {personalised.prompt}
           </p>
 
           <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3 text-xs text-white/65">
@@ -443,6 +452,7 @@ export function MissionTheatreExperience() {
   const log = useBlossom((state) => state.activityLog);
   const attempts = useBlossom((state) => state.pronlabAttempts);
   const plan = useBlossom((state) => state.plan);
+  const learner = useBlossom((state) => state.learner);
   const sessions = useBlossom((state) => state.missionSessions);
   const startMissionRun = useBlossom((state) => state.startMissionRun);
   const recordMissionAttempt = useBlossom((state) => state.recordMissionAttempt);
@@ -451,7 +461,8 @@ export function MissionTheatreExperience() {
   const completeMissionSession = useBlossom((state) => state.completeMissionSession);
   const reopenMissionSession = useBlossom((state) => state.reopenMissionSession);
 
-  const session = sessions[TODAY_MISSION.id];
+  const todayMission = missionForLevel(learner.level);
+  const session = sessions[todayMission.id];
   const run = activeMissionRun(session);
   const completedRuns = session?.runs.filter((item) => item.completedAt) ?? [];
   const previousRun = completedRuns.at(-1) ?? null;
@@ -460,7 +471,7 @@ export function MissionTheatreExperience() {
     : null;
   const history = summariseMissionHistory(session?.runs ?? []);
   const recommendedChallenge = nextMissionChallenge(previousEvaluation?.outcome);
-  const already = hasSource(log, TODAY_MISSION.id);
+  const already = hasSource(log, todayMission.id);
   const journey = journeySnapshot(log);
   const reducedMotion = useReducedMotion();
 
@@ -494,15 +505,15 @@ export function MissionTheatreExperience() {
   const memoryEnabled = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
   const objective = missionObjective(
-    TODAY_MISSION,
+    todayMission,
     memory,
     memoryEnabled,
     previousEvaluation?.outcome,
   );
-  const personalised = personaliseMission(TODAY_MISSION, memory, memoryEnabled);
+  const personalised = personaliseMission(todayMission, memory, memoryEnabled);
 
   function startSession() {
-    const id = startMissionRun(TODAY_MISSION.id, mode, challenge);
+    const id = startMissionRun(todayMission.id, mode, challenge);
     if (!id) return;
     setStep("prepare");
     setSaved(false);
@@ -514,7 +525,7 @@ export function MissionTheatreExperience() {
 
   function finishAttempt(seconds: number) {
     const ok = recordMissionAttempt(
-      TODAY_MISSION.id,
+      todayMission.id,
       "mission",
       "microphone",
       seconds,
@@ -526,7 +537,7 @@ export function MissionTheatreExperience() {
 
   function finishRealWorld() {
     const ok = recordMissionAttempt(
-      TODAY_MISSION.id,
+      todayMission.id,
       "mission",
       "manual",
       0,
@@ -537,7 +548,7 @@ export function MissionTheatreExperience() {
   }
 
   function saveReflection(nextReflection: MissionReflection = reflection) {
-    const ok = saveMissionReflection(TODAY_MISSION.id, nextReflection);
+    const ok = saveMissionReflection(todayMission.id, nextReflection);
     if (!ok) {
       toast("Faites d'abord le geste de la mission.");
       return;
@@ -546,14 +557,14 @@ export function MissionTheatreExperience() {
   }
 
   function useSupport() {
-    const persisted = recordMissionSupport(TODAY_MISSION.id);
+    const persisted = recordMissionSupport(todayMission.id);
     if (!persisted && reflection.supportUsed) return;
     setReflection((current) => ({ ...current, supportUsed: true }));
   }
 
   function finishSession() {
     const before = journeySnapshot(useBlossom.getState().activityLog);
-    const result = completeMissionSession(TODAY_MISSION.id);
+    const result = completeMissionSession(todayMission.id);
     if (result.reason === "already") {
       navigate({ to: "/" });
       return;
@@ -568,8 +579,8 @@ export function MissionTheatreExperience() {
     setGrowth({ before, after, evaluation });
     setStep("brief");
     setGrowthVisible();
-    track("gesture_commit", { missionId: TODAY_MISSION.id, outcome: evaluation.outcome });
-    track("growth_played", { missionId: TODAY_MISSION.id, stage: after.stage.id });
+    track("gesture_commit", { missionId: todayMission.id, outcome: evaluation.outcome });
+    track("growth_played", { missionId: todayMission.id, stage: after.stage.id });
   }
 
   function setGrowthVisible() {
@@ -587,7 +598,7 @@ export function MissionTheatreExperience() {
   function replayStretch() {
     setGrowthVisibility(false);
     setGrowth(null);
-    const id = startMissionRun(TODAY_MISSION.id, "real-world", "stretch");
+    const id = startMissionRun(todayMission.id, "real-world", "stretch");
     if (!id) return;
     setChallenge("stretch");
     setMode("real-world");
@@ -611,9 +622,10 @@ export function MissionTheatreExperience() {
   if (step === "brief") {
     return (
       <div className="min-h-[100svh]">
-        <CinematicTop step={step} />
+        <CinematicTop step={step} language={todayMission.language} />
         <SceneReel
-          mission={personalised}
+          mission={todayMission}
+          personalised={personalised}
           mode={mode}
           challenge={challenge}
           modeOpen={modeOpen}
@@ -630,7 +642,7 @@ export function MissionTheatreExperience() {
 
   return (
     <div className="min-h-[100svh] bg-bg">
-      <CinematicTop step={step} />
+      <CinematicTop step={step} language={todayMission.language} />
       <Page className="max-w-[1120px] pb-24 lg:pb-12">
         <ProgressRail step={step} completed={already && Boolean(session?.runs.some((item) => item.completedAt))} />
 
@@ -651,7 +663,7 @@ export function MissionTheatreExperience() {
               run={run}
               onWarmup={(seconds) => {
                 recordMissionAttempt(
-                  TODAY_MISSION.id,
+                  todayMission.id,
                   "warmup",
                   "microphone",
                   seconds,
@@ -669,7 +681,7 @@ export function MissionTheatreExperience() {
               challenge={run?.challenge ?? challenge}
               objective={objective}
               attemptCount={missionAttemptCount(run, "mission")}
-              durationMin={TODAY_MISSION.durationMin}
+              durationMin={todayMission.durationMin}
               supportUsed={Boolean(reflection.supportUsed || run?.supportUsed)}
               onSupportUsed={useSupport}
               onFinished={finishAttempt}
@@ -701,7 +713,7 @@ export function MissionTheatreExperience() {
               }}
               onSave={saveReflection}
               onRedo={() => {
-                const reopened = reopenMissionSession(TODAY_MISSION.id);
+                const reopened = reopenMissionSession(todayMission.id);
                 if (!reopened) {
                   toast("Cette session ne peut plus être reprise.");
                   return;

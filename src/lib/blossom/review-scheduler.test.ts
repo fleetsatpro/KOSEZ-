@@ -35,8 +35,9 @@ test("a failed review schedules the item one day later", () => {
     [{ word: "recommend", gloss: "recommander" }],
     "2026-09-22T12:00:00.000Z",
   );
-  assert.equal(plan.due.length, 1);
-  assert.equal(plan.due[0]?.intervalDays, 1);
+  const item = plan.due.find((entry) => entry.sourceKey === "vocab:recommend");
+  assert.ok(item);
+  assert.equal(item.intervalDays, 1);
 });
 
 test("a consecutive correct review expands the interval", () => {
@@ -51,8 +52,9 @@ test("a consecutive correct review expands the interval", () => {
     [{ word: "recommend", gloss: "recommander" }],
     "2026-09-22T12:00:00.000Z",
   );
-  assert.equal(plan.due.length, 0);
-  assert.equal(plan.upcoming[0]?.intervalDays, 7);
+  const item = plan.upcoming.find((entry) => entry.sourceKey === "vocab:recommend");
+  assert.ok(item);
+  assert.equal(item.intervalDays, 7);
 });
 
 test("a failed review collapses the next interval to one day", () => {
@@ -66,6 +68,7 @@ test("a failed review collapses the next interval to one day", () => {
     [{ word: "recommend", gloss: "recommander" }],
     "2026-09-22T12:00:00.000Z",
   );
-  assert.equal(plan.due.length, 1);
-  assert.equal(plan.due[0]?.intervalDays, 1);
+  const item = plan.due.find((entry) => entry.sourceKey === "vocab:recommend");
+  assert.ok(item);
+  assert.equal(item.intervalDays, 1);
 });

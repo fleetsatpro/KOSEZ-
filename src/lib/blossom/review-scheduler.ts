@@ -1,7 +1,7 @@
-import { PRONLAB_SETS, TODAY_MISSION } from "./data";
-import { summarisePronlabItem, type PronlabAttempt } from "./engine";
-import type { LearningSubmission } from "./store";
-import type { ReviewItem } from "./learning-os";
+import { PRONLAB_SETS, TODAY_MISSION } from "./data.ts";
+import { summarisePronlabItem, type PronlabAttempt } from "./engine.ts";
+import type { LearningSubmission } from "./store.ts";
+import type { ReviewItem } from "./learning-os.ts";
 
 export type ScheduledReviewItem = ReviewItem & {
   dueAt: string;

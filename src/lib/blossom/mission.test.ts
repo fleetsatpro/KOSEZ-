@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { TODAY_MISSION, LEARNER_MEMORY } from "./data.ts";
+import { TODAY_MISSION, LEARNER_MEMORY, missionForLevel } from "./data.ts";
 import {
   activeMissionRun,
   appendMissionAttempt,
@@ -292,4 +292,22 @@ test("reflection preserves lifeline support as explicit evidence", () => {
   );
 
   assert.equal(activeMissionRun(session)?.reflection?.supportUsed, true);
+});
+
+
+test("daily mission changes with the learner's level", () => {
+  assert.equal(missionForLevel("A2").id, "mission-today");
+  assert.equal(missionForLevel("B1").id, "mission-today-b1");
+  assert.equal(missionForLevel("B1").level, "B1");
+});
+
+
+test("B1 daily mission carries a full real-world scene contract", () => {
+  const mission = missionForLevel("B1");
+  assert.equal(mission.level, "B1");
+  assert.ok(mission.scene);
+  assert.ok((mission.scene?.conversationTurns.length ?? 0) >= 4);
+  assert.ok((mission.successSignals?.length ?? 0) >= 3);
+  assert.ok(mission.realWorldInstruction);
+  assert.ok(mission.stretch);
 });

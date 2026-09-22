@@ -2,6 +2,10 @@ name: CI
 
 # Strict verification: lockfile, tests, types, lint, production build
 
+concurrency:
+  group: kosez-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]

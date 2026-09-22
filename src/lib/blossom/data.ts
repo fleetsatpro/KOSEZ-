@@ -170,6 +170,103 @@ export const TODAY_MISSION: Mission = {
   },
 };
 
+export const B1_TODAY_MISSION: Mission = {
+  id: "mission-today-b1",
+  title: "The plan changed — find another way",
+  prompt:
+    "Expliquez à un collègue qu'un plan vient de changer, proposez une alternative et vérifiez que la nouvelle solution lui convient.",
+  context:
+    "Cinq à huit minutes. L'objectif n'est pas de réciter un texte : c'est de garder l'échange vivant quand la situation dévie.",
+  durationMin: 6,
+  level: "B1",
+  language: "English",
+  place: "Au bureau, à Saint-Pierre",
+  sceneImage: "/images/atelier.jpg",
+  supportPhrase: "The plan has changed. Could we… instead?",
+  successSignals: [
+    "Vous décrivez clairement ce qui a changé.",
+    "Vous proposez une alternative avec une raison.",
+    "Vous vérifiez l'accord de l'autre personne.",
+    "Vous gardez une formulation coopérative même si la première solution ne fonctionne plus.",
+  ],
+  realWorldInstruction:
+    "Imaginez un changement réel cette semaine : retard, salle indisponible, rendez-vous déplacé. Expliquez-le en anglais et proposez une alternative.",
+  stretch:
+    "Ajoutez une deuxième option ou reconnaissez une contrainte avant de conclure.",
+  scene: {
+    time: "15:42 · plan de travail bouleversé",
+    atmosphere: "La salle prévue est occupée ; deux collègues attendent une solution.",
+    sensoryCue: "Un couloir animé, des pas derrière la porte, un téléphone qui vibre.",
+    people: [
+      {
+        role: "Collègue",
+        name: "Noah",
+        intent: "Il veut avancer sans perdre dix minutes à chercher une solution parfaite.",
+      },
+      {
+        role: "Collègue",
+        name: "Maya",
+        intent: "Elle peut accepter une alternative si elle comprend le compromis.",
+      },
+    ],
+    pressure:
+      "Le groupe doit décider rapidement, mais une bonne solution doit encore laisser une place à l'autre personne.",
+    culturalNote:
+      "Une proposition coopérative laisse une porte ouverte : expliquer le problème puis demander « Would that work for you? » garde l'échange partagé.",
+    languageKit: [
+      {
+        phrase: "The plan has changed.",
+        meaning: "Le plan a changé.",
+        use: "Poser le contexte sans longue introduction.",
+      },
+      {
+        phrase: "Could we… instead?",
+        meaning: "Est-ce qu'on pourrait plutôt… ?",
+        use: "Proposer une alternative sans imposer.",
+      },
+      {
+        phrase: "That might work, but…",
+        meaning: "Ça pourrait fonctionner, mais…",
+        use: "Nuancer une proposition.",
+      },
+      {
+        phrase: "Would that work for you?",
+        meaning: "Est-ce que cela vous conviendrait ?",
+        use: "Vérifier l'accord.",
+      },
+    ],
+    rescuePhrases: [
+      {
+        phrase: "What I mean is…",
+        meaning: "Reformuler sans repartir de zéro.",
+      },
+      {
+        phrase: "We could also try…",
+        meaning: "Ouvrir une deuxième option.",
+      },
+      {
+        phrase: "Let me make sure I understand.",
+        meaning: "Vérifier une contrainte avant de conclure.",
+      },
+    ],
+    conversationTurns: [
+      { label: "Constater", goal: "Dire clairement ce qui a changé." },
+      { label: "Proposer", goal: "Présenter une alternative et sa raison." },
+      { label: "Nuancer", goal: "Reconnaître une contrainte ou un compromis.", optional: true },
+      { label: "Vérifier", goal: "Demander si la solution convient." },
+    ],
+    constraints: [
+      "Ne récitez pas un script complet.",
+      "Une proposition utile vaut mieux qu'une liste d'options.",
+      "L'autre personne doit avoir un espace explicite pour accepter ou modifier la solution.",
+    ],
+  },
+};
+
+export function missionForLevel(level: string): Mission {
+  return level === "B1" ? B1_TODAY_MISSION : TODAY_MISSION;
+}
+
 export const UPCOMING_MISSIONS: Mission[] = [
   {
     id: "mission-tomorrow",
@@ -707,6 +804,80 @@ export const PRONLAB_SETS: PronlabSetDef[] = [
         tip: "Après la réponse, relancez : « And for the evening? »",
         model: "What do you recommend around here?",
         problemSegment: "recommend",
+      },
+    ],
+  },
+  {
+    id: "set-b1-rhythm",
+    title: "B1 · rythme et intention",
+    blurb: "Accent de mot, groupes de souffle et intonation : faire entendre une idée, pas seulement les mots.",
+    kind: "sentence",
+    unlockAfter: "set-free",
+    items: [
+      {
+        id: "b1-rhythm-1",
+        phrase: "I would probably choose the earlier train.",
+        hint: "Faites entendre la préférence : probably et earlier restent légers, choose porte le cœur du message.",
+        ipa: "/aɪ wʊd ˈprɒbəbli tʃuːz ði ˈɜːliə treɪn/",
+        kind: "sentence",
+        focus: "sentence stress",
+        level: "B1",
+        strength: "L'idée principale ressort sans marteler chaque mot.",
+        tip: "L'accent tombe surtout sur choose et earlier ; les petits mots se réduisent.",
+        model: "I would probably choose the earlier train.",
+        problemSegment: "choose / earlier",
+      },
+      {
+        id: "b1-rhythm-2",
+        phrase: "I enjoyed it, although the final part felt rushed.",
+        hint: "Ne donnez pas le même poids aux deux parties. L'intonation doit signaler le contraste.",
+        ipa: "/aɪ ɪnˈdʒɔɪd ɪt ɔːlˈðəʊ ðə ˈfaɪnl pɑːt felt rʌʃt/",
+        kind: "sentence",
+        focus: "contraste / intonation",
+        level: "B1",
+        strength: "Le contraste devient audible, pas seulement grammatical.",
+        tip: "Gardez une chute légère après enjoyed it, puis relancez sur although.",
+        model: "I enjoyed it, although the final part felt rushed.",
+        problemSegment: "although",
+      },
+      {
+        id: "b1-rhythm-3",
+        phrase: "Could we move the meeting to Friday afternoon?",
+        hint: "La demande est polie : ne transformez pas could en mot le plus fort.",
+        ipa: "/kʊd wiː muːv ðə ˈmiːtɪŋ tə ˈfraɪdeɪ ˌɑːftəˈnuːn/",
+        kind: "sentence",
+        focus: "réduction + demande",
+        level: "B1",
+        strength: "La demande reste naturelle et coopérative.",
+        tip: "Move et Friday portent davantage l'information que could we.",
+        model: "Could we move the meeting to Friday afternoon?",
+        problemSegment: "Could we",
+      },
+      {
+        id: "b1-rhythm-4",
+        phrase: "That might work, but we should check the timing first.",
+        hint: "Marquez la réserve : might work puis but crée un virage prosodique.",
+        ipa: "/ðæt maɪt wɜːk bət wiː ʃʊd tʃek ðə ˈtaɪmɪŋ fɜːst/",
+        kind: "sentence",
+        focus: "modalisation",
+        level: "B1",
+        strength: "La prudence est audible dans la voix.",
+        tip: "Might work doit rester moins affirmatif que a strong yes.",
+        model: "That might work, but we should check the timing first.",
+        problemSegment: "might",
+      },
+      {
+        id: "b1-rhythm-5",
+        phrase: "What I mean is that we need a simpler option.",
+        hint: "Utilisez what I mean is comme une réparation fluide, puis portez l'idée sur simpler option.",
+        ipa: "/wɒt aɪ miːn ɪz ðæt wi niːd ə ˈsɪmplə ˈɒpʃn/",
+        kind: "sentence",
+        focus: "repair + focus",
+        level: "B1",
+        strength: "Vous corrigez votre trajectoire sans repartir de zéro.",
+        tip: "Après la micro-pause, donnez le poids à simpler option.",
+        model: "What I mean is that we need a simpler option.",
+        problemSegment: "What I mean",
       },
     ],
   },

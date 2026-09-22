@@ -1,9 +1,14 @@
-import type { ActivityEvent, ActivityType, PronlabAttempt } from "./engine";
-import type { LearningSubmission } from "./store";
-import { summarisePronlabItem } from "./engine";
-import { PRONLAB_SETS } from "./data";
-import type { ScheduledReviewItem, ReviewPlan } from "./review-scheduler";
-import { LEARNING_DOMAINS, type LearningDomainId } from "./learning-os";
+import type { ActivityEvent, ActivityType, PronlabAttempt } from "./engine.ts";
+import type { LearningSubmission } from "./store.ts";
+import { summarisePronlabItem } from "./engine.ts";
+import { PRONLAB_SETS } from "./data.ts";
+import type { ScheduledReviewItem, ReviewPlan } from "./review-scheduler.ts";
+import {
+  CAN_DO_OBJECTIVES,
+  CURRICULUM_UNITS,
+  LEARNING_DOMAINS,
+  type LearningDomainId,
+} from "./learning-os.ts";
 
 export type LearningEvidenceKind =
   | "mission"
@@ -14,7 +19,8 @@ export type LearningEvidenceKind =
   | "pronunciation"
   | "vocabulary"
   | "review"
-  | "tandem";
+  | "tandem"
+  | "lesson";
 
 export type LearningEvidence = {
   domainId: LearningDomainId;
@@ -93,6 +99,30 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
     IMMERSION_ATTENDED: { kind: "mission", domains: ["speaking", "listening", "interaction"], direct: false, label: "Immersion" },
     DIAGNOSTIC_COMPLETED: { kind: "review", domains: ["speaking", "listening", "writing", "grammar", "interaction"], direct: false, label: "Repère" },
   };
+
+  if (event.type === "LESSON_COMPLETED") {
+    const lesson = CURRICULUM_UNITS
+      .flatMap((unit) => unit.lessons)
+      .find((candidate) => candidate.id === event.sourceId);
+    if (!lesson) return [];
+
+    const domains = [
+      ...new Set(
+        lesson.objectiveIds
+          .map((id) => CAN_DO_OBJECTIVES.find((objective) => objective.id === id)?.domain)
+          .filter((id): id is LearningDomainId => Boolean(id)),
+      ),
+    ];
+    return domains.map((domainId) => ({
+      domainId,
+      kind: "lesson" as const,
+      createdAt: event.createdAt,
+      direct: false,
+      label: "Pratique du parcours",
+      freshnessKnown: true,
+    }));
+  }
+
   const entry = map[event.type];
   if (!entry) return [];
   return entry.domains.map((domainId) => ({

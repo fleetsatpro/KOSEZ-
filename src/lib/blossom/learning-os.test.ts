@@ -22,8 +22,10 @@ test("skill profile distinguishes evidence coverage from unmeasured skills", () 
   assert.equal(profile.find((x) => x.domain.id === "writing")!.evidenceCount, 0);
 });
 
-test("curriculum has a connected A2 spine", () => {
-  assert.equal(CURRICULUM_UNITS.length, 6);
+test("curriculum has a connected A2 → B1 spine", () => {
+  assert.equal(CURRICULUM_UNITS.length, 10);
+  assert.ok(CURRICULUM_UNITS.slice(0, 6).every((unit) => unit.level === "A2"));
+  assert.ok(CURRICULUM_UNITS.slice(6).every((unit) => unit.level === "B1"));
   assert.ok(CURRICULUM_UNITS.every((unit) => unit.lessons.length >= 3));
   assert.ok(CURRICULUM_UNITS.flatMap((unit) => unit.objectives).length >= 12);
   assert.ok(curriculumUnitProgress(CURRICULUM_UNITS[0]!, [], [], []) >= 0);
@@ -36,4 +38,15 @@ test("curriculum includes direct practice labs", () => {
   assert.ok(kinds.has("grammar"));
   assert.ok(kinds.has("listening"));
   assert.ok(kinds.has("writing"));
+});
+
+
+test("curriculum completion is explicit and unit-specific", () => {
+  const unit = CURRICULUM_UNITS[0]!;
+  const log = [
+    { id: "lesson-1", type: "LESSON_COMPLETED" as const, sourceId: unit.lessons[0]!.id, createdAt: "2026-09-22T10:00:00.000Z" },
+  ];
+  assert.equal(unit.lessons.filter((lesson) => log.some((event) => event.sourceId === lesson.id)).length, 1);
+  assert.ok(curriculumUnitProgress(unit, log, [], []) > 0);
+  assert.ok(curriculumUnitProgress(CURRICULUM_UNITS[6]!, log, [], []) < 50);
 });

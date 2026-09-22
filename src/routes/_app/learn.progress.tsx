@@ -4,6 +4,8 @@ import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { CAN_DO_OBJECTIVES, LEARNING_DOMAINS, buildSkillProfile } from "@/lib/blossom/learning-os";
+import { buildLearningIntelligence } from "@/lib/blossom/learning-intelligence";
+import { buildReviewPlan } from "@/lib/blossom/review-scheduler";
 import { useBlossom } from "@/lib/blossom/store";
 
 export const Route = createFileRoute("/_app/learn/progress")({
@@ -14,7 +16,10 @@ function ProgressPage() {
   const log = useBlossom((s) => s.activityLog);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const vocabulary = useBlossom((s) => s.vocabulary);
+  const submissions = useBlossom((s) => s.learningSubmissions);
   const profile = buildSkillProfile(log, attempts, vocabulary);
+  const reviewPlan = buildReviewPlan(submissions, attempts, vocabulary);
+  const intelligence = buildLearningIntelligence(log, attempts, vocabulary, submissions, reviewPlan);
   const documented = profile.filter((item) => item.coverage >= 60).length;
   const blindSpots = profile.filter((item) => item.evidenceCount === 0);
 
@@ -44,9 +49,58 @@ function ProgressPage() {
         <Surface>
           <p className="text-xs uppercase tracking-[0.16em] text-muted">Can-Do</p>
           <p className="mt-2 font-display text-4xl tabular-nums">{CAN_DO_OBJECTIVES.length}</p>
-          <p className="mt-1 text-xs text-muted">objectifs reliés au parcours A2</p>
+          <p className="mt-1 text-xs text-muted">objectifs reliés au parcours A2 → B1</p>
         </Surface>
       </section>
+
+      <section className="mt-6 grid gap-3 sm:grid-cols-3">
+        <Surface>
+          <p className="text-xs uppercase tracking-[0.16em] text-muted">Momentum · 14 jours</p>
+          <p className="mt-2 font-display text-4xl tabular-nums text-primary">{intelligence.momentum}%</p>
+          <p className="mt-1 text-xs text-muted">{intelligence.activeDays14} jours réellement actifs</p>
+        </Surface>
+        <Surface>
+          <p className="text-xs uppercase tracking-[0.16em] text-muted">Largeur du profil</p>
+          <p className="mt-2 font-display text-4xl tabular-nums">{intelligence.breadth}%</p>
+          <p className="mt-1 text-xs text-muted">{intelligence.domains.filter((d) => d.evidenceCount > 0).length}/{intelligence.domains.length} domaines mesurés</p>
+        </Surface>
+        <Surface>
+          <p className="text-xs uppercase tracking-[0.16em] text-muted">Mémoire · maintenant</p>
+          <p className="mt-2 font-display text-4xl tabular-nums">{intelligence.dueNow}</p>
+          <p className="mt-1 text-xs text-muted">{intelligence.highPriorityDue} priorité(s) haute</p>
+        </Surface>
+      </section>
+
+      <Surface className="mt-4 border border-primary/15 bg-primary/5">
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="min-w-0 flex-1">
+            <Eyebrow>{intelligence.next.eyebrow}</Eyebrow>
+            <h2 className="mt-2 font-display text-2xl tracking-tight">{intelligence.next.title}</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{intelligence.next.body}</p>
+          </div>
+          <Link
+            to={
+              intelligence.next.kind === "review"
+                ? "/learn/review"
+                : intelligence.next.kind === "mission"
+                  ? "/mission"
+                  : intelligence.next.kind === "pronlab"
+                    ? "/pronlab"
+                    : intelligence.next.kind === "library"
+                      ? "/library"
+                      : "/learn/labs"
+            }
+            className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
+          >
+            Agir maintenant <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {intelligence.next.reasons.map((reason) => (
+            <Badge key={reason} variant="outline">{reason}</Badge>
+          ))}
+        </div>
+      </Surface>
 
       <section className="mt-8">
         <div className="flex items-end justify-between gap-4">
