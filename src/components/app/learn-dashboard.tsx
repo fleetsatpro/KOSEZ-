@@ -79,6 +79,8 @@ export function LearnDashboard() {
   const assigned = useBlossom((s) => s.assignedSetIds);
   const plan = useBlossom((s) => s.plan);
   const journey = useJourney();
+  const skillProfile = buildSkillProfile(log, attempts, vocab);
+  const nextAction = nextLearningAction(log, attempts, vocab);
 
   const sets = setsForLanguage(useBlossom((s) => s.languageId));
   const libraryOk = planAllows(plan, "library");
@@ -445,18 +447,10 @@ export function LearnDashboard() {
           <div className="relative">
             <Eyebrow className="text-primary-foreground/55">PROCHAINE ACTION · mémoire</Eyebrow>
             <h2 className="mt-3 max-w-2xl font-display text-3xl tracking-tight sm:text-4xl">
-              {nextLearningAction(
-                useBlossom.getState().activityLog,
-                useBlossom.getState().pronlabAttempts,
-                useBlossom.getState().vocabulary,
-              ).title}
+{nextAction.title}
             </h2>
             <p className="mt-3 max-w-xl text-sm leading-6 text-primary-foreground/65">
-              {nextLearningAction(
-                useBlossom.getState().activityLog,
-                useBlossom.getState().pronlabAttempts,
-                useBlossom.getState().vocabulary,
-              ).body}
+{nextAction.body}
             </p>
             <span className="mt-6 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
               Réviser maintenant <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -471,7 +465,7 @@ export function LearnDashboard() {
               useBlossom.getState().activityLog,
               useBlossom.getState().pronlabAttempts,
               useBlossom.getState().vocabulary,
-            ).slice(0, 6).map((entry) => (
+            .slice(0, 6).map((entry) => (
               <div key={entry.domain.id}>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-muted">{entry.domain.shortLabel}</span>
