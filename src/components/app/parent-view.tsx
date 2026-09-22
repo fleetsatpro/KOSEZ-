@@ -7,6 +7,7 @@ import {
   NEXT_CLASS,
   WEEK_SPEAKING,
 } from "@/lib/blossom/data";
+import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { formatLongDate } from "@/lib/utils";
 import { Eyebrow, Page, Surface } from "./primitives";
@@ -21,6 +22,33 @@ export function ParentView() {
   const childWords = useBlossom((s) => s.childWords);
   const minutes = WEEK_SPEAKING.reduce((sum, d) => sum + d.minutes, 0);
   const [who, setWho] = useState<Who>("emile");
+  const { access, pending: accessPending } = useBlossomWorkspaceAccess();
+
+  if (accessPending) {
+    return (
+      <Page className="max-w-lg">
+        <Eyebrow>Espace parent</Eyebrow>
+        <p className="mt-3 text-sm text-muted">Vérification des autorisations…</p>
+      </Page>
+    );
+  }
+
+  if (!access.isGuardian) {
+    return (
+      <Page className="max-w-lg">
+        <Eyebrow>Espace parent</Eyebrow>
+        <h1 className="mt-2 font-display text-2xl">Accès non disponible</h1>
+        <p className="mt-3 text-sm leading-6 text-muted">Aucun lien parent actif n’est associé à ce compte.</p>
+        <Button
+          variant="secondary"
+          className="mt-6"
+          onClick={() => setParentMode(false)}
+        >
+          Revenir au voyage
+        </Button>
+      </Page>
+    );
+  }
 
   return (
     <Page className="max-w-lg">
