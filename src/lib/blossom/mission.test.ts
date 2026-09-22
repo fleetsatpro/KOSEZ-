@@ -208,3 +208,32 @@ test("reopening a mission clears saved reflection without deleting execution his
   assert.equal(missionAttemptCount(activeMissionRun(reopened), "mission"), 1);
   assert.equal(missionStepFromRun(activeMissionRun(reopened)), "reflect");
 });
+
+test("reflection preserves lifeline support as explicit evidence", () => {
+  let session = beginMissionRun(
+    createMissionSession("mission-today"),
+    "real-world",
+    "core",
+    "2026-09-20T12:00:00.000Z",
+    "run-support",
+  );
+  session = appendMissionAttempt(
+    session,
+    { kind: "mission", capture: "manual", seconds: 0 },
+    "2026-09-20T12:01:00.000Z",
+    "attempt-support",
+  );
+  session = saveMissionReflection(
+    session,
+    {
+      objectiveAchieved: true,
+      stayedInTargetLanguage: "yes",
+      confidence: 4,
+      friction: "none",
+      supportUsed: true,
+    },
+    "2026-09-20T12:02:00.000Z",
+  );
+
+  assert.equal(activeMissionRun(session)?.reflection?.supportUsed, true);
+});

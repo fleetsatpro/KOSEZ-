@@ -13,12 +13,10 @@ export const STEPS: Array<{ id: MissionStep; label: string }> = [
   { id: "reflect", label: "Ancrer" },
 ];
 
-export const MODES: Record<MissionMode, {
-  title: string;
-  kicker: string;
-  body: string;
-  icon: typeof Users;
-}> = {
+export const MODES: Record<
+  MissionMode,
+  { title: string; kicker: string; body: string; icon: typeof Users }
+> = {
   "real-world": {
     title: "Terrain",
     kicker: "Dans la vraie vie",
@@ -28,16 +26,15 @@ export const MODES: Record<MissionMode, {
   practice: {
     title: "Studio",
     kicker: "Répétition guidée",
-    body: "Parlez ici. Le micro mesure uniquement la durée de votre prise de parole.",
+    body: "Parlez ici. Le micro mesure uniquement la durée de votre prise.",
     icon: Mic2,
   },
 };
 
-export const CHALLENGES: Record<MissionChallenge, {
-  title: string;
-  kicker: string;
-  body: string;
-}> = {
+export const CHALLENGES: Record<
+  MissionChallenge,
+  { title: string; kicker: string; body: string }
+> = {
   core: {
     title: "Fondation",
     kicker: "Le geste essentiel",
@@ -52,10 +49,50 @@ export const CHALLENGES: Record<MissionChallenge, {
 
 export const DEFAULT_REFLECTION: MissionReflection = {
   objectiveAchieved: true,
-  stayedInTargetLanguage: "partly" as const,
-  confidence: 3 as const,
-  friction: "hesitation" as const,
+  stayedInTargetLanguage: "partly",
+  confidence: 3,
+  friction: "hesitation",
+  supportUsed: false,
 };
+
+export type SceneBeat = {
+  id: string;
+  label: string;
+  phrase: string;
+  detail: string;
+  relancePhrase?: string;
+};
+
+export function deriveSceneBeats(
+  objective: ReturnType<typeof import("@/lib/blossom/mission").missionObjective>,
+): SceneBeat[] {
+  const kit = objective.scene?.languageKit ?? [];
+  const turns = objective.scene?.conversationTurns ?? [];
+
+  return [
+    {
+      id: "opening",
+      label: "Ouverture",
+      phrase: kit[0]?.phrase ?? objective.supportPhrase,
+      detail: turns[0]?.goal ?? "Créer l'ouverture sans attendre la phrase parfaite.",
+      relancePhrase: kit[1]?.phrase,
+    },
+    {
+      id: "choice",
+      label: "Choix",
+      phrase: kit[1]?.phrase ?? objective.supportPhrase,
+      detail: turns[1]?.goal ?? "Faire un choix simple et continuer l'échange.",
+      relancePhrase: kit[2]?.phrase,
+    },
+    {
+      id: "close",
+      label: "Clôture",
+      phrase: kit[2]?.phrase ?? "Sounds good, thank you.",
+      detail: turns[2]?.goal ?? "Fermer l'échange naturellement.",
+      relancePhrase: kit[3]?.phrase,
+    },
+  ];
+}
 
 export function formatDuration(seconds: number) {
   if (seconds < 60) return `${seconds} s`;

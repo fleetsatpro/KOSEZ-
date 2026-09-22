@@ -22,6 +22,8 @@ export type MissionReflection = {
   confidence: 1 | 2 | 3 | 4 | 5;
   friction: "hesitation" | "vocabulary" | "switching" | "confidence" | "none";
   note?: string;
+  /** True when a lifeline was used during execution. It remains evidence, never a penalty. */
+  supportUsed?: boolean;
 };
 
 export type MissionRun = {
