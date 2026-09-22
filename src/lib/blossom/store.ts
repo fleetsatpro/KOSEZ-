@@ -971,7 +971,7 @@ export const useBlossom = create<AppState>()(
           childMode: false,
           pronlabAttempts: [],
           tandemStatus: {},
-          tandemOpen: true,
+          tandemOpen: false,
           tandemReports: {},
           homework: [],
           teacherNotes: [],
