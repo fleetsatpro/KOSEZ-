@@ -27,7 +27,7 @@ export async function reportTandem(
   );
 
   await sql.query(
-    "update blossom_tandem_connection set status = 'blocked', updated_at = current_timestamp where user_id = $1 and partner_user_id = $2",
+    "update blossom_tandem_connection set status = 'blocked', updated_at = current_timestamp where (user_id = $1 and partner_user_id = $2) or (user_id = $2 and partner_user_id = $1)",
     [reporterUserId, partnerUserId],
   );
 
