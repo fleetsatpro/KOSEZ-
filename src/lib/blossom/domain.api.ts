@@ -10,6 +10,20 @@ import {
   saveVocabulary,
   setTandemStatus,
 } from "./domain.server";
+import type { JsonObject } from "./backend.server";
+
+const metadataJson = z.string().trim().max(20000).optional();
+
+function parseJsonObject(value: string | undefined): JsonObject {
+  if (!value) return {};
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return parsed as JsonObject;
+  } catch {
+    throw new Error("invalid-json-object");
+  }
+}
 
 export const recordPronlabAttemptOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -19,11 +33,17 @@ export const recordPronlabAttemptOnServer = createServerFn({ method: "POST" })
       score: z.number().int().min(0).max(100),
       seconds: z.number().finite().int().nonnegative().max(3600),
       tip: z.string().trim().max(500).nullable().optional(),
-      metadata: z.record(z.string(), z.unknown()).optional(),
+      metadataJson,
       idempotencyKey: z.string().uuid().nullable().optional(),
     }),
   )
-  .handler(async ({ context, data }) => recordPronlabAttempt(context.userId, data));
+  .handler(async ({ context, data }) => {
+    await recordPronlabAttempt(context.userId, {
+      ...data,
+      metadata: parseJsonObject(data.metadataJson),
+    });
+    return { ok: true as const };
+  });
 
 export const saveVocabularyOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -31,10 +51,16 @@ export const saveVocabularyOnServer = createServerFn({ method: "POST" })
     z.object({
       word: z.string().trim().min(1).max(120),
       gloss: z.string().trim().min(1).max(240),
-      metadata: z.record(z.string(), z.unknown()).optional(),
+      metadataJson,
     }),
   )
-  .handler(async ({ context, data }) => saveVocabulary(context.userId, data));
+  .handler(async ({ context, data }) => {
+    await saveVocabulary(context.userId, {
+      ...data,
+      metadata: parseJsonObject(data.metadataJson),
+    });
+    return { ok: true as const };
+  });
 
 export const setTandemStatusOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -42,10 +68,16 @@ export const setTandemStatusOnServer = createServerFn({ method: "POST" })
     z.object({
       partnerUserId: z.string().trim().min(1).max(200),
       status: z.enum(["suggested", "pending", "accepted", "blocked", "paused"]),
-      metadata: z.record(z.string(), z.unknown()).optional(),
+      metadataJson,
     }),
   )
-  .handler(async ({ context, data }) => setTandemStatus(context.userId, data));
+  .handler(async ({ context, data }) => {
+    await setTandemStatus(context.userId, {
+      ...data,
+      metadata: parseJsonObject(data.metadataJson),
+    });
+    return { ok: true as const };
+  });
 
 export const registerBlossomEvent = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -55,16 +87,18 @@ export const registerBlossomEvent = createServerFn({ method: "POST" })
       status: z.enum(["joined", "waitlist", "cancelled"]),
     }),
   )
-  .handler(async ({ context, data }) =>
-    registerEvent(context.userId, data.eventId, data.status),
-  );
+  .handler(async ({ context, data }) => {
+    await registerEvent(context.userId, data.eventId, data.status);
+    return { ok: true as const };
+  });
 
 export const completeBlossomChallenge = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(z.object({ challengeId: z.string().trim().min(1).max(120) }))
-  .handler(async ({ context, data }) =>
-    completeChallenge(context.userId, data.challengeId),
-  );
+  .handler(async ({ context, data }) => {
+    await completeChallenge(context.userId, data.challengeId);
+    return { ok: true as const };
+  });
 
 export const saveBlossomHomework = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -77,7 +111,10 @@ export const saveBlossomHomework = createServerFn({ method: "POST" })
       status: z.enum(["draft", "sent", "done"]),
     }),
   )
-  .handler(async ({ context, data }) => saveHomework(context.userId, data));
+  .handler(async ({ context, data }) => {
+    await saveHomework(context.userId, data);
+    return { ok: true as const };
+  });
 
 export const saveBlossomTeacherNote = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -88,4 +125,7 @@ export const saveBlossomTeacherNote = createServerFn({ method: "POST" })
       note: z.string().trim().min(1).max(5000),
     }),
   )
-  .handler(async ({ context, data }) => addTeacherNote(context.userId, data));
+  .handler(async ({ context, data }) => {
+    await addTeacherNote(context.userId, data);
+    return { ok: true as const };
+  });
