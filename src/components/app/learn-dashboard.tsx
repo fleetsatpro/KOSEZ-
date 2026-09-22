@@ -28,7 +28,7 @@ import {
 import { summarisePronlabItem } from "@/lib/blossom/engine";
 import { buildSkillProfile, CURRICULUM_UNITS } from "@/lib/blossom/learning-os";
 import { buildReviewPlan } from "@/lib/blossom/review-scheduler";
-import { buildLearningIntelligence } from "@/lib/blossom/learning-intelligence";
+import { buildLearningIntelligence, buildWeeklyLearningBrief } from "@/lib/blossom/learning-intelligence";
 import { isSetUnlocked, useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
@@ -92,6 +92,12 @@ export function LearnDashboard() {
     vocab,
     submissions,
     reviewPlan,
+  );
+  const weeklyBrief = buildWeeklyLearningBrief(
+    log,
+    attempts,
+    vocab,
+    submissions,
   );
   const nextAction = intelligence.next;
   const nextActionHref =
@@ -290,6 +296,48 @@ export function LearnDashboard() {
             Ouvrir la mémoire <ArrowRight className="size-3.5" />
           </Link>
         </article>
+      </section>
+
+      <section className="mt-8 rounded-2xl bg-surface p-5 shadow-[var(--shadow-border)] sm:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-2xl">
+            <Eyebrow>Cette semaine · lecture du parcours</Eyebrow>
+            <h2 className="mt-2 font-display text-2xl tracking-tight sm:text-3xl">{weeklyBrief.headline}</h2>
+            <p className="mt-3 text-sm leading-6 text-muted">
+              Cette vue rassemble les traces datées de la semaine pour éviter de confondre activité ponctuelle, régularité et compétence réellement observée.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="rounded-xl bg-surface-2/55 px-3.5 py-3">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-subtle">Jours actifs</p>
+              <p className="mt-1 font-display text-2xl tabular-nums">{weeklyBrief.activeDays}</p>
+            </div>
+            <div className="rounded-xl bg-surface-2/55 px-3.5 py-3">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-subtle">Preuves</p>
+              <p className="mt-1 font-display text-2xl tabular-nums">{weeklyBrief.evidenceCount}</p>
+            </div>
+            <div className="rounded-xl bg-primary/8 px-3.5 py-3">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-subtle">Rappel</p>
+              <p className="mt-1 font-display text-2xl tabular-nums text-primary">{weeklyBrief.reviewAccuracy === null ? "—" : `${weeklyBrief.reviewAccuracy}%`}</p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-5 grid gap-3 lg:grid-cols-3">
+          {weeklyBrief.highlights.map((highlight) => (
+            <div key={highlight} className="rounded-xl border border-border bg-surface-2/35 p-4 text-sm leading-6 text-muted">
+              {highlight}
+            </div>
+          ))}
+        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <Link to="/learn/history" className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+            Inspecter les traces <ArrowRight className="size-3.5" />
+          </Link>
+          <span className="text-subtle">·</span>
+          <Link to="/learn/progress" className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+            Voir les compétences <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
       </section>
 
       <section className="mt-8">
