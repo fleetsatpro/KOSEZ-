@@ -6,7 +6,6 @@ import {
 import { syncBlossom } from "@/lib/blossom/sync.api";
 import {
   createMutation,
-  enqueueMutation,
   listPendingMutations,
   markConflict,
   removeMutation,
@@ -18,7 +17,7 @@ import { mergeMissionSessions } from "@/lib/blossom/sync-merge";
 import type { MissionSession } from "@/lib/blossom/mission";
 import type { BackendState, SyncJsonValue, SyncMutation, SyncResult } from "@/lib/blossom/sync-types";
 import { POINTS, type ActivityEvent, type PronlabAttempt } from "@/lib/blossom/engine";
-import { LEARNER, INITIAL_LOG, INITIAL_PRONLAB_ATTEMPTS } from "@/lib/blossom/data";
+import { LEARNER } from "@/lib/blossom/data";
 import { useBlossom } from "@/lib/blossom/store";
 
 const SYNC_INTERVAL_MS = 45_000;
@@ -272,6 +271,8 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
   const { user, isPending } = useCurrentUserState();
   const activeUserRef = useRef<string | null>(null);
   const syncingRef = useRef(false);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
 
   useEffect(() => {
     if (isPending) return;
@@ -302,11 +303,11 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
         if (disposed) return;
         const finalRemote = await getBlossomBackendState();
         if (!disposed) mergeBackendState(finalRemote as BackendState);
-        onReady?.();
+        onReadyRef.current?.();
       } catch (error) {
         if (!disposed) {
           console.warn("[blossom-sync] deferred", error);
-          onReady?.();
+          onReadyRef.current?.();
         }
       } finally {
         syncingRef.current = false;
@@ -329,7 +330,7 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
       window.removeEventListener("online", onOnline);
       window.clearInterval(timer);
     };
-  }, [isPending, user?.id, onReady]);
+  }, [isPending, user?.id]);
 
   return null;
 }
