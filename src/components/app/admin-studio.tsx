@@ -3,7 +3,10 @@ import { Activity, Building2, ClipboardList, ShieldCheck, Users } from "lucide-r
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getAdminWorkspaceOnServer } from "@/lib/blossom/domain.api";
+import {
+  getAdminSafetySummaryOnServer,
+  getAdminWorkspaceOnServer,
+} from "@/lib/blossom/domain.api";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { useBlossom } from "@/lib/blossom/store";
 
@@ -20,14 +23,21 @@ export function AdminStudio() {
   const setAdminMode = useBlossom((s) => s.setAdminMode);
   const { access, pending: accessPending } = useBlossomWorkspaceAccess();
   const [workspace, setWorkspace] = useState<AdminWorkspace | null>(null);
+  const [safety, setSafety] = useState<Awaited<ReturnType<typeof getAdminSafetySummaryOnServer>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
     setError(null);
-    void getAdminWorkspaceOnServer()
-      .then(setWorkspace)
+    Promise.all([
+      getAdminWorkspaceOnServer(),
+      getAdminSafetySummaryOnServer(),
+    ])
+      .then(([data, safetyData]) => {
+        setWorkspace(data);
+        setSafety(safetyData);
+      })
       .catch(() => setError("Impossible de charger le centre opérationnel."))
       .finally(() => setLoading(false));
   }
@@ -100,6 +110,50 @@ export function AdminStudio() {
         <Metric icon={Activity} label="Enseignants" value={workspace.teachers} />
         <Metric icon={Users} label="Parents" value={workspace.guardians} />
         <Metric icon={Building2} label="Organisations" value={workspace.activeOrganizations} />
+      </section>
+
+      <section className="mt-5">
+        <Surface>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Eyebrow>Sécurité · Tandem</Eyebrow>
+              <h2 className="mt-2 font-display text-2xl">Signalements récents</h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                {safety?.openReports ?? 0} dossier
+                {(safety?.openReports ?? 0) !== 1 ? "s" : ""} ouvert
+                {(safety?.openReports ?? 0) !== 1 ? "s" : ""} ou en revue.
+              </p>
+            </div>
+            <ShieldCheck className="size-5 text-primary" strokeWidth={1.7} />
+          </div>
+
+          {!safety?.recentReports.length ? (
+            <p className="mt-6 text-sm text-muted">Aucun signalement enregistré.</p>
+          ) : (
+            <div className="mt-5 overflow-x-auto">
+              <table className="w-full min-w-[42rem] text-left text-sm">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-[0.16em] text-subtle">
+                    <th className="pb-3 font-semibold">Statut</th>
+                    <th className="pb-3 font-semibold">Signalement</th>
+                    <th className="pb-3 font-semibold">Personne concernée</th>
+                    <th className="pb-3 font-semibold">Quand</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {safety.recentReports.map((report) => (
+                    <tr key={report.id} className="border-t border-border">
+                      <td className="py-3"><Badge variant="outline">{report.status}</Badge></td>
+                      <td className="py-3 text-muted">{report.reason}</td>
+                      <td className="py-3 text-muted">{report.partnerUserId}</td>
+                      <td className="py-3 text-subtle">{relative(report.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Surface>
       </section>
 
       <section className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
