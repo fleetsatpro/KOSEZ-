@@ -50,7 +50,7 @@ export function HomeDashboard() {
   const progress = Math.max(4, Math.round(journey.progress * 100));
 
   return (
-    <div className="kosez-home relative min-h-[calc(100dvh-5.5rem)] lg:min-h-dvh">
+    <div data-smoke="blossom-home" className="kosez-home relative min-h-[calc(100dvh-5.5rem)] lg:min-h-dvh">
       {/* —— Living stage (full-bleed plant) —— */}
       <div className="relative isolate min-h-[72dvh] overflow-hidden lg:min-h-dvh">
         <img
