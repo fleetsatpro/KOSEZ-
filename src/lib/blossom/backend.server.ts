@@ -75,6 +75,7 @@ export type BlossomBackendState = {
   vocabulary: BlossomVocabularyRecord[];
   learningSubmissions: BlossomSubmissionRecord[];
   eventRegistrations: Record<string, "joined" | "waitlist" | "cancelled">;
+  eventRegistrationCounts: Record<string, number>;
   completedChallenges: string[];
   bookingCatalogueIds: string[];
   waitlistIds: string[];
@@ -126,7 +127,7 @@ function mapActivity(row: Record<string, unknown>): BlossomActivityRecord {
 
 export async function readBlossomState(userId: string): Promise<BlossomBackendState> {
   const sql = await getSql();
-  const [profiles, activity, missions, pronlab, vocabulary, submissions, registrations, challenges, tandem, bookings, waitlists] = await Promise.all([
+  const [profiles, activity, missions, pronlab, vocabulary, submissions, registrations, eventCounts, challenges, tandem, bookings, waitlists] = await Promise.all([
     sql.query(
       "select user_id, display_name, target_language, level, timezone, preferences, created_at, updated_at from blossom_profile where user_id = $1",
       [userId],
@@ -154,6 +155,9 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
     sql.query(
       "select event_id, status from blossom_event_registration where user_id = $1 and status <> 'cancelled'",
       [userId],
+    ),
+    sql.query(
+      "select event_id, count(*)::integer as registered from blossom_event_registration where status = 'joined' group by event_id",
     ),
     sql.query(
       "select challenge_id from blossom_challenge_completion where user_id = $1 order by completed_at asc",
@@ -214,6 +218,9 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
     })),
     eventRegistrations: Object.fromEntries(
       registrations.map((row) => [String(row.event_id), String(row.status) as "joined" | "waitlist" | "cancelled"]),
+    ),
+    eventRegistrationCounts: Object.fromEntries(
+      eventCounts.map((row) => [String(row.event_id), Number(row.registered ?? 0)]),
     ),
     completedChallenges: challenges.map((row) => String(row.challenge_id)),
     bookingCatalogueIds: bookings.map((row) => String(row.catalogue_item_id)),
