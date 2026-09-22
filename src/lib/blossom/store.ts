@@ -252,6 +252,7 @@ function queueProfileSync(
   exportConsent: boolean,
   tandemOpen: boolean,
 ): void {
+  const state = useBlossom.getState();
   queueSyncMutation({
     operation: "profile.upsert",
     entityId: "profile",
@@ -274,6 +275,9 @@ function queueProfileSync(
         warmup,
         exportConsent,
         tandemOpen,
+        immersionPhase: state.immersionPhase,
+        childMissionDone: state.childMissionDone,
+        childWords: state.childWords,
       },
     },
   });
@@ -898,7 +902,18 @@ export const useBlossom = create<AppState>()(
           payload: { word: key, gloss, metadata: {} },
         });
       },
-      setImmersionPhase: (phase) => set({ immersionPhase: phase }),
+      setImmersionPhase: (phase) => {
+        const current = get();
+        set({ immersionPhase: phase });
+        queueProfileSync(
+          current.learner,
+          current.languageId,
+          current.plan,
+          current.warmup,
+          current.exportConsent,
+          current.tandemOpen,
+        );
+      },
       completeChallenge: (id) => {
         if (get().immersionDone.includes(id)) return;
         set({ immersionDone: [...get().immersionDone, id] });
@@ -908,10 +923,30 @@ export const useBlossom = create<AppState>()(
           payload: {},
         });
       },
-      completeChildMission: () => set({ childMissionDone: true }),
+      completeChildMission: () => {
+        const current = get();
+        set({ childMissionDone: true });
+        queueProfileSync(
+          current.learner,
+          current.languageId,
+          current.plan,
+          current.warmup,
+          current.exportConsent,
+          current.tandemOpen,
+        );
+      },
       markChildWord: (id) => {
-        if (get().childWords.includes(id)) return;
-        set({ childWords: [...get().childWords, id] });
+        const current = get();
+        if (current.childWords.includes(id)) return;
+        set({ childWords: [...current.childWords, id] });
+        queueProfileSync(
+          current.learner,
+          current.languageId,
+          current.plan,
+          current.warmup,
+          current.exportConsent,
+          current.tandemOpen,
+        );
       },
       joinWaitlist: (id) => {
         if (get().waitlistIds.includes(id)) return;
