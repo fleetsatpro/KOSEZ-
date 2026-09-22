@@ -68,6 +68,9 @@ const VIEWPORTS = [
   { name: "mobile", width: 390, height: 844, screenshot: mobilePng },
 ];
 
+const SMOKE_STATE_KEY = "kosez-blossom-v2";
+const SMOKE_ROUTES = ["/", "/explore", "/connect", "/learn", "/moi"];
+
 mkdirSync(dirname(outPng), { recursive: true });
 
 function compareAgainstBaseline(verdict) {
@@ -103,6 +106,26 @@ try {
     const page = await browser.newPage({
       viewport: { width: vp.width, height: vp.height },
     });
+    await page.addInitScript((storageKey) => {
+      window.localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          state: {
+            hasEntered: true,
+            learner: {
+              firstName: "Smoke",
+              lastName: "Check",
+              level: "A2",
+              goal: "Tester le parcours réel sans données personnelles.",
+              interests: ["Cuisine"],
+              practiceWindow: "12:00 – 13:00",
+              coachVoice: "Posé, précis, jamais infantilisant.",
+            },
+          },
+          version: 0,
+        }),
+      );
+    }, SMOKE_STATE_KEY);
     page.on("console", (msg) => {
       if (msg.type() === "error") errors.consoleErrors.push(msg.text());
     });
@@ -112,6 +135,28 @@ try {
     const resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
     const status = resp?.status() ?? 0;
     await page.waitForTimeout(1000);
+
+    const routeChecks = [];
+    for (const route of SMOKE_ROUTES) {
+      const response = route === "/"
+        ? resp
+        : await page.goto(new URL(route, url).href, {
+            waitUntil: "domcontentloaded",
+            timeout: timeoutMs,
+          });
+      const routeStatus = response?.status() ?? 0;
+      routeChecks.push({
+        route,
+        status: routeStatus,
+        url: new URL(route, url).href,
+      });
+      if (routeStatus === 0 || routeStatus >= 400) {
+        errors.pageErrors.push(`route ${route} returned HTTP ${routeStatus}`);
+      }
+      await page.waitForTimeout(250);
+    }
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+    await page.waitForTimeout(500);
 
     const title = await page.title();
     const hasCanvas = (await page.locator("canvas").count()) > 0;
@@ -139,6 +184,7 @@ try {
       consoleErrors: errors.consoleErrors,
       pageErrors: errors.pageErrors,
       screenshot: vp.screenshot,
+      routeChecks,
     };
   }
 
