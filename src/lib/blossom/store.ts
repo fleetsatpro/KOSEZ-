@@ -30,9 +30,6 @@ import {
 import {
   findPronlabItem,
   findPronlabSet,
-  INITIAL_LOG,
-  INITIAL_PRONLAB_ATTEMPTS,
-  LEARNER,
   PRONLAB_SETS,
   type PlanId,
 } from "./data";
@@ -65,13 +62,19 @@ export type LearnerProfile = {
 };
 
 export const NEW_LEARNER: LearnerProfile = {
-  ...LEARNER,
   firstName: "",
   lastName: "",
+  city: "Saint-Pierre",
   avatar: "",
+  nativeLanguage: "Français",
+  creole: "Créole réunionnais",
+  targetLanguage: "English",
+  level: "A2",
   goal: "",
   interests: [],
   practiceWindow: "",
+  coach: "Léo",
+  coachVoice: "Posé, précis, jamais infantilisant.",
 };
 
 
@@ -114,7 +117,7 @@ type AppState = {
   adminMode: boolean;
   childMode: boolean;
   learner: LearnerProfile;
-  activityLog: typeof INITIAL_LOG;
+  activityLog: ActivityEvent[];
   joinedEventIds: string[];
   eventRegistrationCounts: Record<string, number>;
   enrolledIds: string[];
