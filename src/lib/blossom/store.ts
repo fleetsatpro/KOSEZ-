@@ -48,7 +48,21 @@ import {
   type PhonemeLeaf,
 } from "./organism";
 
-export type LearnerProfile = typeof LEARNER;
+export type LearnerProfile = {
+  firstName: string;
+  lastName: string;
+  city: string;
+  avatar: string;
+  nativeLanguage: string;
+  creole: string;
+  targetLanguage: string;
+  level: string;
+  goal: string;
+  interests: string[];
+  practiceWindow: string;
+  coach: string;
+  coachVoice: string;
+};
 
 export const NEW_LEARNER: LearnerProfile = {
   ...LEARNER,
@@ -58,7 +72,6 @@ export const NEW_LEARNER: LearnerProfile = {
   goal: "",
   interests: [],
   practiceWindow: "",
-  coachVoice: "Posé, précis, jamais infantilisant.",
 };
 
 
