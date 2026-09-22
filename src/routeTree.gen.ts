@@ -24,6 +24,7 @@ import { Route as AppPronlabRouteImport } from './routes/_app/pronlab'
 import { Route as AppTandemRouteImport } from './routes/_app/tandem'
 import { Route as AppLibraryIdRouteImport } from './routes/_app/library.$id'
 import { Route as AppOsezIdRouteImport } from './routes/_app/osez.$id'
+import { Route as AppOsezPulseRouteImport } from './routes/_app/osez.pulse'
 import { Route as AppPronlabSetIdRouteImport } from './routes/_app/pronlab.$setId'
 import { Route as AppTandemIdRouteImport } from './routes/_app/tandem.$id'
 
@@ -101,6 +102,11 @@ const AppOsezIdRoute = AppOsezIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppOsezRoute,
 } as any)
+const AppOsezPulseRoute = AppOsezPulseRouteImport.update({
+  id: '/pulse',
+  path: '/pulse',
+  getParentRoute: () => AppOsezRoute,
+} as any)
 const AppPronlabSetIdRoute = AppPronlabSetIdRouteImport.update({
   id: '/$setId',
   path: '/$setId',
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/mission': typeof AppMissionRoute
   '/moi': typeof AppMoiRoute
   '/osez': typeof AppOsezRouteWithChildren
+  '/osez/pulse': typeof AppOsezPulseRoute
   '/plant': typeof AppPlantRoute
   '/pronlab': typeof AppPronlabRouteWithChildren
   '/tandem': typeof AppTandemRouteWithChildren
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/mission': typeof AppMissionRoute
   '/moi': typeof AppMoiRoute
   '/osez': typeof AppOsezRouteWithChildren
+  '/osez/pulse': typeof AppOsezPulseRoute
   '/plant': typeof AppPlantRoute
   '/pronlab': typeof AppPronlabRouteWithChildren
   '/tandem': typeof AppTandemRouteWithChildren
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/_app/mission': typeof AppMissionRoute
   '/_app/moi': typeof AppMoiRoute
   '/_app/osez': typeof AppOsezRouteWithChildren
+  '/_app/osez/pulse': typeof AppOsezPulseRoute
   '/_app/plant': typeof AppPlantRoute
   '/_app/pronlab': typeof AppPronlabRouteWithChildren
   '/_app/tandem': typeof AppTandemRouteWithChildren
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/mission'
     | '/moi'
     | '/osez'
+    | '/osez/pulse'
     | '/plant'
     | '/pronlab'
     | '/tandem'
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/mission'
     | '/moi'
     | '/osez'
+    | '/osez/pulse'
     | '/plant'
     | '/pronlab'
     | '/tandem'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/_app/mission'
     | '/_app/moi'
     | '/_app/osez'
+    | '/_app/osez/pulse'
     | '/_app/plant'
     | '/_app/pronlab'
     | '/_app/tandem'
@@ -337,6 +349,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOsezIdRouteImport
       parentRoute: typeof AppOsezRoute
     }
+    '/_app/osez/pulse': {
+      id: '/_app/osez/pulse'
+      path: '/pulse'
+      fullPath: '/osez/pulse'
+      preLoaderRoute: typeof AppOsezPulseRouteImport
+      parentRoute: typeof AppOsezRoute
+    }
     '/_app/pronlab/$setId': {
       id: '/_app/pronlab/$setId'
       path: '/$setId'
@@ -368,10 +387,12 @@ const AppLibraryRouteWithChildren = AppLibraryRoute._addFileChildren(
 
 interface AppOsezRouteChildren {
   AppOsezIdRoute: typeof AppOsezIdRoute
+  AppOsezPulseRoute: typeof AppOsezPulseRoute
 }
 
 const AppOsezRouteChildren: AppOsezRouteChildren = {
   AppOsezIdRoute: AppOsezIdRoute,
+  AppOsezPulseRoute: AppOsezPulseRoute,
 }
 
 const AppOsezRouteWithChildren =
