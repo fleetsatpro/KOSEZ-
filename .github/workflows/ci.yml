@@ -51,6 +51,12 @@ jobs:
       - name: Auth invariants
         run: npm run check:auth -- --dev-url http://127.0.0.1:8080
 
+      - name: Install Chromium for browser smoke
+        run: npx playwright install chromium
+
+      - name: Browser smoke
+        run: node scripts/browser-smoke.mjs http://127.0.0.1:8080/ "$GITHUB_WORKSPACE/.smoke/app.png"
+
       - name: Stop dev server
         if: always()
         run: |
