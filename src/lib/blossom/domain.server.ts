@@ -158,6 +158,32 @@ export async function getGuardianWorkspace(userId: string): Promise<GuardianWork
   }));
 }
 
+async function getServerPlan(userId: string): Promise<"centre" | "digital" | "premium"> {
+  const sql = await getSql();
+  const rows = await sql.query(
+    "select plan from blossom_subscription where user_id = $1 and status = 'active' limit 1",
+    [userId],
+  );
+  const plan = String(rows[0]?.plan ?? "centre");
+  return plan === "premium" || plan === "digital" ? plan : "centre";
+}
+
+function assertFeaturePlan(
+  plan: "centre" | "digital" | "premium",
+  feature: "tandem" | "immersionEarly",
+) {
+  if (feature === "tandem" && plan === "digital") {
+    throw new BlossomForbiddenError(
+      "Le tandem n'est pas inclus dans cette formule.",
+    );
+  }
+  if (feature === "immersionEarly" && plan === "digital") {
+    throw new BlossomForbiddenError(
+      "L'accès anticipé n'est pas inclus dans cette formule.",
+    );
+  }
+}
+
 export type ConnectPeer = {
   id: string;
   name: string;
@@ -235,6 +261,7 @@ function prefStringArray(preferences: Record<string, unknown>, key: string) {
 }
 
 export async function getTandemCandidates(userId: string): Promise<TandemCandidate[]> {
+  assertFeaturePlan(await getServerPlan(userId), "tandem");
   const sql = await getSql();
   const rows = await sql.query(
     `select
@@ -286,6 +313,7 @@ export async function getTandemSession(
   userId: string,
   partnerUserId: string,
 ): Promise<TandemCandidate | null> {
+  assertFeaturePlan(await getServerPlan(userId), "tandem");
   const candidates = await getTandemCandidates(userId);
   const partner = candidates.find((candidate) => candidate.id === partnerUserId);
   if (!partner || partner.myStatus !== "accepted" || partner.incomingStatus !== "accepted") {
@@ -499,6 +527,7 @@ export async function setTandemStatus(
     metadata?: Record<string, unknown>;
   },
 ) {
+  assertFeaturePlan(await getServerPlan(userId), "tandem");
   if (userId === input.partnerUserId) {
     throw new BlossomForbiddenError("A tandem partner must be a different learner.");
   }
