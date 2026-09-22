@@ -72,15 +72,17 @@ async function gotoWithRetry(page, targetUrl, options, attempts = 3) {
   let lastError = null;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      return await page.goto(targetUrl, options);
+      const response = await page.goto(targetUrl, options);
+      if (response) return response;
+      lastError = new Error(`navigation returned no response: ${targetUrl}`);
     } catch (error) {
       lastError = error;
-      if (attempt < attempts) {
-        await page.waitForTimeout(300 * attempt);
-      }
+    }
+    if (attempt < attempts) {
+      await page.waitForTimeout(300 * attempt);
     }
   }
-  throw lastError;
+  throw lastError ?? new Error(`navigation failed: ${targetUrl}`);
 }
 
 const SMOKE_STATE_KEY = "kosez-blossom-v2";
