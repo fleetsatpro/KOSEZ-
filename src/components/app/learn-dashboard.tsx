@@ -73,6 +73,7 @@ const PILLARS = [
 
 export function LearnDashboard() {
   const enrolledIds = useBlossom((s) => s.enrolledIds);
+  const bookingStatuses = useBlossom((s) => s.bookingStatuses);
   const log = useBlossom((s) => s.activityLog);
   const homework = useBlossom((s) => s.homework).filter(
     (item) => item.studentId === "camille" && (item.status === "sent" || item.status === "done"),
@@ -408,7 +409,7 @@ export function LearnDashboard() {
               </h2>
             </div>
             <span className="rounded-full bg-surface-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-              {enrolled.length} parcours
+              {enrolled.length} demande{enrolled.length > 1 ? "s" : ""}
             </span>
           </div>
 
@@ -437,7 +438,11 @@ export function LearnDashboard() {
                       {item.level} · {item.format} · {item.schedule}
                     </p>
                   </div>
-                  <Badge>Actif</Badge>
+                  <Badge>
+                    {bookingStatuses[item.id] === "confirmed"
+                      ? "Confirmé"
+                      : "Demande envoyée"}
+                  </Badge>
                 </div>
               ))}
             </div>
