@@ -745,13 +745,7 @@ export async function registerEvent(
   const existingStatus = String(existing[0]?.status ?? "");
   const existingSeat = existing[0]?.seat_no;
   if (existingStatus === "joined" && existingSeat != null) {
-    return {
-      user_id: userId,
-      event_id: eventId,
-      status: "joined",
-      created_at: null,
-      updated_at: null,
-    };
+    return existing[0];
   }
 
   for (let seat = 1; seat <= event.spots; seat += 1) {
@@ -789,13 +783,7 @@ export async function registerEvent(
             String(nowExisting[0].status) === "joined" &&
             nowExisting[0].seat_no != null
           ) {
-            return {
-              user_id: userId,
-              event_id: eventId,
-              status: "joined",
-              created_at: null,
-              updated_at: null,
-            };
+            return nowExisting[0];
           }
           existing.push(nowExisting[0] as typeof existing[number]);
         }
