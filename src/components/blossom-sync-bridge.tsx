@@ -430,16 +430,44 @@ async function flushOutbox(): Promise<void> {
             typeof mutation.payload.status === "string"
               ? mutation.payload.status
               : undefined;
-          useBlossom.setState({
-            homework:
-              status === "sent"
-                ? state.homework.map((homework) =>
-                    homework.id === mutation.entityId
-                      ? { ...homework, status: "draft" as const }
-                      : homework,
-                  )
-                : state.homework.filter((homework) => homework.id !== mutation.mutationId),
-          });
+          const rollback =
+            mutation.payload.rollback &&
+            typeof mutation.payload.rollback === "object" &&
+            !Array.isArray(mutation.payload.rollback)
+              ? (mutation.payload.rollback as Record<string, unknown>)
+              : null;
+          if (
+            status === "draft" &&
+            rollback &&
+            typeof rollback.title === "string" &&
+            typeof rollback.body === "string" &&
+            typeof rollback.updatedAt === "string"
+          ) {
+            useBlossom.setState({
+              homework: state.homework.map((homework) =>
+                homework.id === mutation.entityId
+                  ? {
+                      ...homework,
+                      title: rollback.title,
+                      body: rollback.body,
+                      status: "draft" as const,
+                      updatedAt: rollback.updatedAt,
+                    }
+                  : homework,
+              ),
+            });
+          } else {
+            useBlossom.setState({
+              homework:
+                status === "sent"
+                  ? state.homework.map((homework) =>
+                      homework.id === mutation.entityId
+                        ? { ...homework, status: "draft" as const }
+                        : homework,
+                    )
+                  : state.homework.filter((homework) => homework.id !== mutation.mutationId),
+            });
+          }
         } else if (mutation.operation === "homework.complete") {
           useBlossom.setState({
             homework: state.homework.map((homework) =>
