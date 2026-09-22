@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { getAdminSafetySummary } from "./safety.server";
+import { getAdminSafetySummary, updateAdminSafetyReport } from "./safety.server";
 import {
   addTeacherNote,
   completeChallenge,
@@ -26,6 +26,18 @@ const metadataJson = z.string().trim().max(20000).optional();
 export const getAdminWorkspaceOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => getAdminWorkspace(context.userId));
+
+export const updateAdminSafetyReportOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      reportId: z.string().uuid(),
+      status: z.enum(["reviewing", "resolved", "dismissed"]),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    updateAdminSafetyReport(context.userId, data.reportId, data.status),
+  );
 
 export const getAdminSafetySummaryOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
