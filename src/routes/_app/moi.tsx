@@ -16,6 +16,7 @@ import {
 } from "@/lib/blossom/data";
 import { countByType, resolveMemory } from "@/lib/blossom/engine";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
+import { LeoLetterCard } from "@/components/app/leo-letter-card";
 import { formatShortDate } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/moi")({
@@ -32,6 +33,9 @@ function MoiPage() {
   const setOrgMode = useBlossom((s) => s.setOrgMode);
   const setChildMode = useBlossom((s) => s.setChildMode);
   const resetJourney = useBlossom((s) => s.resetJourney);
+  const leoLetters = useBlossom((s) => s.leoLetters);
+  const markLeoLetterRead = useBlossom((s) => s.markLeoLetterRead);
+  const latestLetter = leoLetters[0] ?? null;
   const vocab = useBlossom((s) => s.vocabulary);
   const plan = useBlossom((s) => s.plan);
   const setPlan = useBlossom((s) => s.setPlan);
@@ -291,6 +295,16 @@ function MoiPage() {
           })}
         </ul>
       </Surface>
+
+      <LeoLetterCard
+        letter={latestLetter}
+        onRead={
+          latestLetter
+            ? () => markLeoLetterRead(latestLetter.id)
+            : undefined
+        }
+        className="mt-8"
+      />
 
       <div className="mt-6 flex flex-col gap-2">
         <Button variant="secondary" onClick={() => setTeacherMode(true)}>
