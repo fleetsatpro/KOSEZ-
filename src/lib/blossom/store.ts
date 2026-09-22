@@ -17,6 +17,7 @@ import {
   evaluateMission,
   finishMissionRun,
   reopenMissionRun,
+  recordMissionSupport as persistMissionSupport,
   saveMissionReflection,
   type MissionCapture,
   type MissionChallenge,
@@ -101,6 +102,7 @@ type AppState = {
     capture: MissionCapture,
     seconds: number,
   ) => boolean;
+  recordMissionSupport: (missionId: string) => boolean;
   saveMissionReflection: (
     missionId: string,
     reflection: MissionReflection,
@@ -231,6 +233,20 @@ export const useBlossom = create<AppState>()(
           capture,
           seconds: Math.max(0, Math.round(seconds)),
         });
+        return true;
+      },
+      recordMissionSupport: (missionId) => {
+        const current = get().missionSessions[missionId];
+        if (!current || !activeMissionRun(current)) return false;
+        const next = persistMissionSupport(current);
+        if (next === current) return false;
+        set({
+          missionSessions: {
+            ...get().missionSessions,
+            [missionId]: next,
+          },
+        });
+        track("mission_lifeline_used", { missionId });
         return true;
       },
       reopenMissionSession: (missionId) => {
