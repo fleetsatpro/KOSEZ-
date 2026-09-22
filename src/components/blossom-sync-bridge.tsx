@@ -328,18 +328,17 @@ async function flushOutbox(): Promise<void> {
             typeof mutation.payload.status === "string"
               ? mutation.payload.status
               : undefined;
-          if (status === "joined") {
-            state.joinedEventIds.includes(mutation.entityId) &&
-              useBlossom.setState({
-                joinedEventIds: state.joinedEventIds.filter((id) => id !== mutation.entityId),
-                eventRegistrationCounts: {
-                  ...state.eventRegistrationCounts,
-                  [mutation.entityId]: Math.max(
-                    0,
-                    (state.eventRegistrationCounts[mutation.entityId] ?? 1) - 1,
-                  ),
-                },
-              });
+          if (status === "joined" && state.joinedEventIds.includes(mutation.entityId)) {
+            useBlossom.setState({
+              joinedEventIds: state.joinedEventIds.filter((id) => id !== mutation.entityId),
+              eventRegistrationCounts: {
+                ...state.eventRegistrationCounts,
+                [mutation.entityId]: Math.max(
+                  0,
+                  (state.eventRegistrationCounts[mutation.entityId] ?? 1) - 1,
+                ),
+              },
+            });
           }
         } else if (mutation.operation === "booking.request") {
           useBlossom.setState({
