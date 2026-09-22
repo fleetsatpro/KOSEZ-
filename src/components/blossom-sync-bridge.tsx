@@ -111,10 +111,19 @@ function mergeBackendState(remote: BackendState): void {
   );
   for (const entry of remote.vocabulary) {
     const key = entry.word.toLowerCase();
-    if (!vocabularyByWord.has(key)) {
+    const local = vocabularyByWord.get(key);
+    const remoteUpdatedAt = entry.updatedAt;
+    const localUpdatedAt = local?.updatedAt;
+    if (
+      !local ||
+      !localUpdatedAt ||
+      (remoteUpdatedAt && timestamp(remoteUpdatedAt) >= timestamp(localUpdatedAt))
+    ) {
       vocabularyByWord.set(key, {
         word: key,
         gloss: entry.gloss,
+        firstSavedAt: entry.firstSavedAt,
+        updatedAt: remoteUpdatedAt,
       });
     }
   }
