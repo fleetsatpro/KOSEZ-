@@ -274,18 +274,17 @@ export function personaliseMission(
   memory: LearnerMemory,
   enabled: boolean,
 ): { title: string; prompt: string; context: string; leo: string | null } {
-  if (!enabled) {
-    return { ...base, leo: null };
-  }
+  if (!enabled) return { ...base, leo: null };
+
+  const hasConcreteMemory = !memory.hesitation.startsWith("Aucun");
   return {
-    title: "I'll have what you recommend",
-    prompt:
-      "Au déjeuner, ouvrez par « What do you recommend? » puis commandez avec « I'll have… » — pas « I want ». Aujourd'hui, contournez les TH : Pron'Lab s'en charge.",
-    context: `Vous hésitez encore sur ${memory.hesitation}. Cette mission ancre la structure évitée, là où vous êtes déjà à l'aise : ${memory.confidence}.`,
+    ...base,
+    context: hasConcreteMemory
+      ? `${base.context} Repère actuel : ${memory.hesitation}.`
+      : base.context,
     leo: memory.leoNote,
   };
 }
-
 export function cafeMemoryHint(
   turnHint: string,
   speaker: "ai" | "you",
