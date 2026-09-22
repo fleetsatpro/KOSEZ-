@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BookOpen,
-  CalendarDays,
   ChartNoAxesCombined,
   Compass,
   History,
@@ -49,6 +48,15 @@ const NAV = [
     hint: ["/moi"],
     description: "Votre espace",
   },
+] as const;
+
+const SECONDARY_NAV = [
+  { to: "/learn/curriculum", label: "Parcours", icon: Sprout },
+  { to: "/learn/review", label: "Réviser", icon: RotateCcw },
+  { to: "/learn/progress", label: "Compétences", icon: ChartNoAxesCombined },
+  { to: "/learn/history", label: "Historique", icon: History },
+  { to: "/connect", label: "Connecter", icon: User },
+  { to: "/explore", label: "Explorer", icon: Compass },
 ] as const;
 
 function isActive(pathname: string, hint: readonly string[]) {
