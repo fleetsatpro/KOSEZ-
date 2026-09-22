@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
-import { CATALOGUE, EVENTS, MARKETPLACE } from "./data";
+import { MARKETPLACE } from "./data";
+import { getPublishedContent } from "./content.server";
 
 export class BlossomForbiddenError extends Error {
   readonly status = 403;
@@ -477,7 +478,8 @@ export async function requestCatalogueBooking(
   userId: string,
   catalogueItemId: string,
 ) {
-  if (!CATALOGUE.some((item) => item.id === catalogueItemId)) {
+  const { catalogue } = await getPublishedContent();
+  if (!catalogue.some((item) => item.id === catalogueItemId)) {
     throw new Error("unknown-catalogue-item");
   }
   const sql = await getSql();
@@ -718,7 +720,8 @@ export async function registerEvent(
   eventId: string,
   status: "joined" | "waitlist" | "cancelled",
 ) {
-  const event = EVENTS.find((item) => item.id === eventId);
+  const { events } = await getPublishedContent();
+  const event = events.find((item) => item.id === eventId);
   if (!event) throw new Error("unknown-event");
 
   const sql = await getSql();
