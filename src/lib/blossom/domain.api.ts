@@ -5,6 +5,9 @@ import {
   addTeacherNote,
   completeChallenge,
   getBlossomAccessContext,
+  getGuardianWorkspace,
+  getOrganizationWorkspace,
+  getTeacherWorkspace,
   recordPronlabAttempt,
   registerEvent,
   saveHomework,
@@ -18,6 +21,18 @@ const metadataJson = z.string().trim().max(20000).optional();
 export const getBlossomWorkspaceAccess = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => getBlossomAccessContext(context.userId));
+
+export const getTeacherWorkspaceOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getTeacherWorkspace(context.userId));
+
+export const getGuardianWorkspaceOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getGuardianWorkspace(context.userId));
+
+export const getOrganizationWorkspaceOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getOrganizationWorkspace(context.userId));
 
 
 function parseJsonObject(value: string | undefined): JsonObject {
