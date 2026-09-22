@@ -722,34 +722,90 @@ export async function registerEvent(
   if (!event) throw new Error("unknown-event");
 
   const sql = await getSql();
-  if (status === "joined") {
-    const existing = await sql.query(
-      "select status from blossom_event_registration where user_id = $1 and event_id = $2",
-      [userId, eventId],
+
+  if (status !== "joined") {
+    const rows = await sql.query(
+      "insert into blossom_event_registration (user_id, event_id, status, seat_no) values ($1, $2, $3, null) on conflict (user_id, event_id) do update set status = excluded.status, seat_no = null, updated_at = current_timestamp returning user_id, event_id, status, created_at, updated_at",
+      [userId, eventId, status],
     );
-    const alreadyJoined = String(existing[0]?.status ?? "") === "joined";
-    if (!alreadyJoined) {
-      const counts = await sql.query(
-        "select count(*)::integer as registered from blossom_event_registration where event_id = $1 and status = 'joined'",
-        [eventId],
-      );
-      if (Number(counts[0]?.registered ?? 0) >= event.spots) {
-        throw new Error("event-full");
+    if (!rows[0]) throw new Error("event-registration-write-failed");
+
+    await writeAuditEvent(userId, {
+      action: `event.registration.${status}`,
+      resourceType: "event",
+      resourceId: eventId,
+    });
+    return rows[0];
+  }
+
+  const existing = await sql.query(
+    "select status, seat_no from blossom_event_registration where user_id = $1 and event_id = $2",
+    [userId, eventId],
+  );
+  const existingStatus = String(existing[0]?.status ?? "");
+  const existingSeat = existing[0]?.seat_no;
+  if (existingStatus === "joined" && existingSeat != null) {
+    return {
+      user_id: userId,
+      event_id: eventId,
+      status: "joined",
+      created_at: null,
+      updated_at: null,
+    };
+  }
+
+  for (let seat = 1; seat <= event.spots; seat += 1) {
+    try {
+      let rows: Record<string, unknown>[] = [];
+
+      if (existing[0]) {
+        rows = await sql.query(
+          "update blossom_event_registration set status = 'joined', seat_no = $3, updated_at = current_timestamp where user_id = $1 and event_id = $2 and not exists (select 1 from blossom_event_registration where event_id = $2 and seat_no = $3 and user_id <> $1) returning user_id, event_id, status, created_at, updated_at",
+          [userId, eventId, seat],
+        );
+      } else {
+        rows = await sql.query(
+          "insert into blossom_event_registration (user_id, event_id, status, seat_no) values ($1, $2, 'joined', $3) on conflict do nothing returning user_id, event_id, status, created_at, updated_at",
+          [userId, eventId, seat],
+        );
       }
+
+      if (rows[0]) {
+        await writeAuditEvent(userId, {
+          action: "event.registration.joined",
+          resourceType: "event",
+          resourceId: eventId,
+        });
+        return rows[0];
+      }
+
+      if (!existing[0]) {
+        const nowExisting = await sql.query(
+          "select status, seat_no from blossom_event_registration where user_id = $1 and event_id = $2",
+          [userId, eventId],
+        );
+        if (nowExisting[0]) {
+          if (
+            String(nowExisting[0].status) === "joined" &&
+            nowExisting[0].seat_no != null
+          ) {
+            return {
+              user_id: userId,
+              event_id: eventId,
+              status: "joined",
+              created_at: null,
+              updated_at: null,
+            };
+          }
+          existing.push(nowExisting[0] as typeof existing[number]);
+        }
+      }
+    } catch (error) {
+      if ((error as { code?: string })?.code !== "23505") throw error;
     }
   }
 
-  const rows = await sql.query(
-    "insert into blossom_event_registration (user_id, event_id, status) values ($1, $2, $3) on conflict (user_id, event_id) do update set status = excluded.status, updated_at = current_timestamp returning user_id, event_id, status, created_at, updated_at",
-    [userId, eventId, status],
-  );
-  if (!rows[0]) throw new Error("event-registration-write-failed");
-  await writeAuditEvent(userId, {
-    action: `event.registration.${status}`,
-    resourceType: "event",
-    resourceId: eventId,
-  });
-  return rows[0];
+  throw new Error("event-full");
 }
 
 export async function completeChallenge(userId: string, challengeId: string) {
