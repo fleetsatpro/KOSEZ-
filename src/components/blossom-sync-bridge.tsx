@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
   getBlossomBackendState,
@@ -438,6 +439,7 @@ async function flushOutbox(): Promise<void> {
           mutationId: result.mutationId,
           errorCode: result.errorCode,
         });
+        toast("Une action n’a pas pu être synchronisée. Votre écran a été remis à l’état confirmé.");
         progressed = true;
       }
     }
