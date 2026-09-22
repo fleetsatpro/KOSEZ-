@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { CalendarDays, Check, Clock3, Download, MapPin, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
@@ -9,8 +10,10 @@ import {
   EVENTS,
   MARKETPLACE,
   planAllows,
+  type CatalogueItem,
   type EventItem,
 } from "@/lib/blossom/data";
+import { getPublishedContentOnServer } from "@/lib/blossom/content.api";
 import { useBlossom } from "@/lib/blossom/store";
 import { formatLongDate } from "@/lib/utils";
 
@@ -95,9 +98,28 @@ function ExplorePage() {
   const waitlist = useBlossom((s) => s.waitlistIds);
   const joinWaitlist = useBlossom((s) => s.joinWaitlist);
   const earlyOk = planAllows(plan, "immersionEarly");
+  const [events, setEvents] = useState<EventItem[]>(EVENTS);
+  const [catalogue, setCatalogue] = useState<CatalogueItem[]>(CATALOGUE);
+
+  useEffect(() => {
+    let disposed = false;
+    void getPublishedContentOnServer()
+      .then((published) => {
+        if (disposed) return;
+        setEvents(published.events);
+        setCatalogue(published.catalogue);
+      })
+      .catch(() => {
+        // Authenticated discovery keeps the authored runtime catalogue as its
+        // safe fallback when the content registry is temporarily unavailable.
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   const now = Date.now();
-  const upcomingEvents = EVENTS
+  const upcomingEvents = events
     .filter((event) => eventDate(event).getTime() > now)
     .sort((a, b) => eventDate(a).getTime() - eventDate(b).getTime());
   const joinedUpcoming = upcomingEvents.filter((event) => joined.includes(event.id));
@@ -323,7 +345,7 @@ function ExplorePage() {
         </div>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          {CATALOGUE.map((item) => {
+          {catalogue.map((item) => {
             const active = enrolled.includes(item.id);
             const bookingStatus = bookingStatuses[item.id];
             return (
