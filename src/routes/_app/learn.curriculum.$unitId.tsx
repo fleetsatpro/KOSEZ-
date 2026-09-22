@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Headphones, LibraryBig, MessageCircle, Mic2, RotateCcw, Target, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Headphones, LibraryBig, MessageCircle, Mic2, PenLine, RotateCcw, Target, type LucideIcon } from "lucide-react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -24,6 +24,9 @@ function lessonIcon(kind: LessonKind): LucideIcon {
     case "pronlab": return Headphones;
     case "library": return LibraryBig;
     case "review": return RotateCcw;
+    case "grammar": return BookOpen;
+    case "listening": return Headphones;
+    case "writing": return PenLine;
   }
 }
 
