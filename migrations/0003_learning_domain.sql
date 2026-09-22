@@ -7,6 +7,7 @@ create table if not exists blossom_pronlab_attempt (
   id uuid primary key,
   user_id text not null,
   item_id text not null,
+  idempotency_key uuid,
   score integer not null check (score >= 0),
   seconds integer not null check (seconds >= 0),
   tip text,
@@ -39,6 +40,10 @@ create unique index if not exists blossom_tandem_pair_idx
   on blossom_tandem_connection (user_id, partner_user_id);
 create index if not exists blossom_tandem_partner_idx
   on blossom_tandem_connection (partner_user_id);
+
+create unique index if not exists blossom_pronlab_user_idempotency_idx
+  on blossom_pronlab_attempt (user_id, idempotency_key)
+  where idempotency_key is not null;
 
 create table if not exists blossom_homework (
   id uuid primary key,
