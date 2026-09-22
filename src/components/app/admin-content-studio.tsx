@@ -68,10 +68,67 @@ export function AdminContentStudio() {
     if (!selected) return;
     setSaving(true);
     try {
-      const payload = { ...draft, id: selected.contentKey };
-      const result = selected.kind === "event"
-        ? await saveAdminContentDraftOnServer({ data: { kind: "event", contentKey: selected.contentKey, payload } } as never)
-        : await saveAdminContentDraftOnServer({ data: { kind: "catalogue", contentKey: selected.contentKey, payload } } as never);
+      if (selected.kind === "event") {
+        const payload = {
+          id: selected.contentKey,
+          title: String(draft.title ?? ""),
+          blurb: String(draft.blurb ?? ""),
+          date: String(draft.date ?? ""),
+          time: String(draft.time ?? ""),
+          place: String(draft.place ?? ""),
+          language: String(draft.language ?? ""),
+          spots: Number(draft.spots ?? 0),
+          image: String(draft.image ?? ""),
+          host: String(draft.host ?? ""),
+        };
+        const result = await saveAdminContentDraftOnServer({
+          data: { kind: "event", contentKey: selected.contentKey, payload },
+        });
+        setItems((current) =>
+          current.map((item) =>
+            item.contentKey === selected.contentKey
+              ? { ...item, draftPayload: payload, draftRevision: result.draftRevision, state: "draft" }
+              : item,
+          ),
+        );
+        toast("Brouillon événement enregistré.");
+        return;
+      }
+
+      const payload = {
+        id: selected.contentKey,
+        kind:
+          String(draft.kind ?? selected.draftPayload.kind) as
+            | "course"
+            | "individual"
+            | "group"
+            | "immersion"
+            | "workshop"
+            | "event"
+            | "pronlab",
+        title: String(draft.title ?? ""),
+        description: String(draft.description ?? ""),
+        language: String(draft.language ?? ""),
+        level: String(draft.level ?? ""),
+        format: String(draft.format ?? ""),
+        instructor: String(draft.instructor ?? ""),
+        location: String(draft.location ?? ""),
+        capacity: Number(draft.capacity ?? 0),
+        schedule: String(draft.schedule ?? ""),
+        price: String(draft.price ?? ""),
+        image: String(draft.image ?? ""),
+      };
+      const result = await saveAdminContentDraftOnServer({
+        data: { kind: "catalogue", contentKey: selected.contentKey, payload },
+      });
+      setItems((current) =>
+        current.map((item) =>
+          item.contentKey === selected.contentKey
+            ? { ...item, draftPayload: payload, draftRevision: result.draftRevision, state: "draft" }
+            : item,
+        ),
+      );
+      toast("Brouillon programme enregistré.");
       setItems((current) => current.map((item) => item.contentKey === selected.contentKey ? { ...item, draftPayload: payload, draftRevision: result.draftRevision, state: "draft" } : item));
       toast("Brouillon enregistré.");
     } catch {
