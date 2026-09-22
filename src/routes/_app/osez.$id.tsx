@@ -273,20 +273,20 @@ function SpeakRoom() {
           <Eyebrow>Bilan privé</Eyebrow>
           <h1 className="mt-2 font-display text-3xl tracking-tight sm:text-4xl">{room.title}</h1>
           <p className="mt-2 text-sm text-muted">
-            Avec {room.cast.name} ·{" "}
+            Scène générée pour votre niveau · Avec {room.cast.name} ·{" "}
             <span className="tabular-nums">
               {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")}
             </span>{" "}
-            · {yourTurns} prise{yourTurns > 1 ? "s" : ""} de parole
+            · {yourTurns} réponse{yourTurns > 1 ? "s" : ""} enregistrée{yourTurns > 1 ? "s" : ""}
           </p>
 
           <div className="mt-8 space-y-3">
             <Surface className="border border-primary/15 bg-primary/5">
-              <Eyebrow>Force</Eyebrow>
+              <Eyebrow>Repère de la scène</Eyebrow>
               <p className="mt-2 text-sm leading-7">{room.debrief.strength}</p>
             </Surface>
             <Surface>
-              <Eyebrow>À ajuster</Eyebrow>
+              <Eyebrow>À essayer ensuite</Eyebrow>
               <p className="mt-2 text-sm leading-7">{room.debrief.improvement}</p>
             </Surface>
             <Surface>
@@ -294,7 +294,7 @@ function SpeakRoom() {
               <p className="mt-2 font-display text-xl leading-snug tracking-tight">{room.debrief.model}</p>
             </Surface>
             <Surface>
-              <Eyebrow>Note</Eyebrow>
+              <Eyebrow>Contexte</Eyebrow>
               <p className="mt-2 text-sm leading-7 text-muted">{room.culturalNote}</p>
             </Surface>
           </div>
