@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { TODAY_MISSION, LEARNER_MEMORY } from "./data.ts";
+import { TODAY_MISSION, LEARNER_MEMORY, missionForLevel } from "./data.ts";
 import {
   activeMissionRun,
   appendMissionAttempt,
