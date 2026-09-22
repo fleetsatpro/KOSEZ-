@@ -12,11 +12,13 @@ A practice workspace where learners make **one useful real-world language gestur
 | **Welcome** | First micro-commitment: preview today’s mission, then enter |
 | **Home (BLOSSOM)** | One primary action (Focus du jour) + plant as emotional center |
 | **Mission** | Brief → Prepare → Execute → Reflect (Terrain or Studio) |
-| **Osez** | Speak now |
-| **Atelier** | Learn · Pron’Lab · Library · Immersion |
-| **Moi** | Profile, plan, role modes |
+| **OSEZ** | Speak now |
+| **EXPLORE** | Real-world encounters, programmes, immersions |
+| **CONNECT** | Shared presence, Tandem |
+| **LEARN** | Curriculum, Pron’Lab, Library, review, labs |
+| **MOI** | Identity, plan, role workspaces |
 
-**Primary nav (4):** BLOSSOM · OSEZ · ATELIER · MOI
+**Primary nav (6):** BLOSSOM · OSEZ · EXPLORE · CONNECT · LEARN · MOI
 
 ## Design system
 
@@ -33,8 +35,8 @@ A practice workspace where learners make **one useful real-world language gestur
 
 ## Repo map
 
-- `src/components/app/` — product UI (shell, onboarding, home, mission, plant, welcome, …)
-- `src/lib/blossom/` — engine, mission sessions, data, store
+- `src/components/app/` — product UI (shell, onboarding, home, mission, role workspaces, welcome, …)
+- `src/lib/blossom/` — domain engine, mission sessions, sync, persistence, access control, safety
 - `src/routes/_app/` — app routes
 - `src/styles.css` — tokens + modern-ui
 - `.github/workflows/ci.yml` — test, typecheck, lint, production build
@@ -42,9 +44,12 @@ A practice workspace where learners make **one useful real-world language gestur
 ## Quality bar
 
 - One primary CTA per screen
+- Authenticated state is isolated per user; fresh accounts begin without seeded learner activity
+- Sensitive role surfaces fail closed against verified server relationships
+- Client-side scores never become trusted evidence without a verified provider
 - Plant growth must feel causal after real gestures
 - CI green: `npm test` · `npm run typecheck` · `npm run lint` · `npm run build`
-- French UI copy; practice content often English for the demo learner
+- French UI copy; practice content can be English by default, with target-language content selected from the learner profile
 
 ## North star
 
