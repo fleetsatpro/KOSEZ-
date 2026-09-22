@@ -11,6 +11,9 @@ import {
   Sprout,
   User,
   UserRound,
+  CloudCheck,
+  CloudOff,
+  LoaderCircle,
 } from "lucide-react";
 import { Welcome } from "@/components/app/welcome";
 import { ParentView } from "@/components/app/parent-view";
@@ -23,6 +26,7 @@ import { UserButton } from "@/lib/auth/gates";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { cn } from "@/lib/utils";
+import { outboxCount, syncChangeEventName } from "@/lib/blossom/sync-client";
 
 const NAV = [
   {
@@ -86,6 +90,59 @@ function isActive(pathname: string, hint: readonly string[]) {
   );
 }
 
+function SyncStatus() {
+  const [pending, setPending] = useState(0);
+  const [online, setOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+
+  useEffect(() => {
+    let disposed = false;
+    const refresh = () => {
+      setOnline(typeof navigator === "undefined" ? true : navigator.onLine);
+      void outboxCount().then((count) => {
+        if (!disposed) setPending(count);
+      });
+    };
+
+    refresh();
+    const changeEvent = syncChangeEventName();
+    window.addEventListener(changeEvent, refresh);
+    window.addEventListener("online", refresh);
+    window.addEventListener("offline", refresh);
+    const timer = window.setInterval(refresh, 5000);
+    return () => {
+      disposed = true;
+      window.removeEventListener(changeEvent, refresh);
+      window.removeEventListener("online", refresh);
+      window.removeEventListener("offline", refresh);
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const icon = !online ? (
+    <CloudOff className="size-3.5 text-muted" strokeWidth={1.7} />
+  ) : pending ? (
+    <LoaderCircle className="size-3.5 animate-spin text-primary" strokeWidth={1.7} />
+  ) : (
+    <CloudCheck className="size-3.5 text-primary" strokeWidth={1.7} />
+  );
+  const label = !online ? "Hors connexion" : pending ? "Synchronisation" : "Synchronisé";
+  const detail = !online
+    ? pending === 1 ? "1 changement en attente" : pending + " changements en attente"
+    : pending ? pending === 1 ? "1 changement en attente" : pending + " changements en attente"
+    : "Aucun changement en attente";
+
+  return (
+    <div className="flex items-center gap-2" aria-live="polite">
+      {icon}
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-subtle">{label}</p>
+        <p className="mt-0.5 truncate text-[11px] text-muted">{detail}</p>
+      </div>
+    </div>
+  );
+}
 export function AppShell({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const hasEntered = useBlossom((s) => s.hasEntered);
@@ -248,7 +305,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="mb-4 rounded-2xl border border-border bg-bg/70 px-4 py-3 shadow-[var(--shadow-border)]">
-            <UserButton />
+            <SyncStatus />
+            <div className="mt-3 border-t border-border pt-3">
+              <UserButton />
+            </div>
           </div>
 
           <div className="mt-auto rounded-2xl border border-border bg-bg/70 p-4 shadow-[var(--shadow-border)]">
