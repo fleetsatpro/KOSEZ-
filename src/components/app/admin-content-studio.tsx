@@ -246,7 +246,7 @@ export function AdminContentStudio() {
             </div>
             <div className="flex gap-2">
               <Button variant="secondary" disabled={saving || publishing || !changed} onClick={save}><Save className="size-4" />{saving ? "Enregistrement…" : "Enregistrer"}</Button>
-              <Button disabled={saving || publishing || changed || selected.state === "published" || selected.draftRevision <= 0} onClick={publish}><Send className="size-4" />{publishing ? "Publication…" : "Publier"}</Button><Button variant="outline" disabled={saving || publishing || selected.state !== "published"} onClick={archive}>Archiver</Button>
+              <Button disabled={saving || publishing || changed || selected.state === "published" || selected.draftRevision <= 0} onClick={publish}><Send className="size-4" />{publishing ? "Publication…" : "Publier"}</Button><Button variant="outline" disabled={saving || publishing || changed || selected.state !== "published"} onClick={archive}>Archiver</Button>
             </div>
           </div>
 
