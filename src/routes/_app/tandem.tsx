@@ -191,10 +191,10 @@ function TandemPage() {
                 {tandemOpen ? (
                   <>
                     <Pause className="size-3.5" />
-                    Pause
+                    Mettre en pause
                   </>
                 ) : (
-                  "Rouvrir"
+                  "Activer le tandem"
                 )}
               </Button>
             </div>
