@@ -1,36 +1,96 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Mic, MapPin, Sparkles, Clock, Check } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import {
+  ArrowRight,
+  Mic,
+  MapPin,
+  Sparkles,
+  Clock,
+  Check,
+  RefreshCw,
+  Wand2,
+} from "lucide-react";
 import { Eyebrow, Page } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
-import { SCENARIOS, LEARNER_MEMORY, planAllows } from "@/lib/blossom/data";
+import { Button } from "@/components/ui/button";
+import { LEARNER_MEMORY, planAllows } from "@/lib/blossom/data";
 import { hasSource } from "@/lib/blossom/engine";
 import {
   courageDaysFromLog,
   courageRibbon,
   todaysPulseDare,
 } from "@/lib/blossom/organism";
+import { generateRoomCatalog } from "@/lib/blossom/speak-engine";
+import { isLlmAvailable } from "@/lib/blossom/speak-llm";
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/osez")({
   component: OsezPage,
 });
 
 const STREET_PROTOCOL = [
-  "Choisissez un lieu réel — café, marché, comptoir.",
-  "Une phrase claire, sans traduire à voix haute.",
+  "Choisissez un lieu reel — cafe, marche, comptoir.",
+  "Une phrase claire, sans traduire a voix haute.",
   "Revenez ici ou via la mission Terrain pour noter le geste.",
 ] as const;
 
+const TOPIC_SUGGESTIONS = [
+  "Commander un cafe a la vanille",
+  "Demander mon chemin au marche",
+  "Parler de mon weekend sur la cote",
+  "Check-in a l'aeroport Roland Garros",
+  "Presenter mon parcours en entretien",
+  "Negocier le prix des gousses",
+  "Expliquer un retard de vol",
+  "Inviter quelqu'un a marcher au front de mer",
+];
+
 function OsezPage() {
+  const navigate = useNavigate();
   const log = useBlossom((s) => s.activityLog);
   const plan = useBlossom((s) => s.plan);
+  const learner = useBlossom((s) => s.learner);
   const memoryOn = planAllows(plan, "memory");
   const dare = todaysPulseDare();
   const courageDays = courageDaysFromLog(log);
   const cells = courageRibbon(courageDays);
   const spoken = cells.filter(Boolean).length;
-  const roomsDone = SCENARIOS.filter((s) => hasSource(log, `speak-${s.id}`)).length;
+  const llmOn = isLlmAvailable();
+
+  const [topic, setTopic] = useState("");
+  const [building, setBuilding] = useState(false);
+
+  const rooms = useMemo(
+    () =>
+      generateRoomCatalog({
+        level: learner.level,
+        firstName: learner.firstName,
+        friction: memoryOn ? LEARNER_MEMORY.hesitation : null,
+        interests: learner.interests,
+        entropy: "hub-daily",
+      }),
+    [learner.level, learner.firstName, learner.interests, memoryOn],
+  );
+
+  const roomsDone = rooms.filter((r) => hasSource(log, `speak-${r.id}`)).length;
+
+  function launchTopic(raw?: string) {
+    const t = (raw ?? topic).trim();
+    if (!t) {
+      toast("Ecrivez un sujet — n'importe lequel.");
+      return;
+    }
+    setBuilding(true);
+    try {
+      sessionStorage.setItem("kosez-speak-topic", t.slice(0, 120));
+    } catch {
+      /* ignore */
+    }
+    navigate({ to: "/osez/$id", params: { id: "topic" } });
+    setBuilding(false);
+  }
 
   return (
     <Page className="kosez-feature-page max-w-4xl">
@@ -40,18 +100,17 @@ function OsezPage() {
           Parler maintenant
         </h1>
         <p className="mt-3 text-sm leading-7 text-muted sm:text-base">
-          Trois portes. Une seule suffit aujourd'hui. Le bilan vient après
-          — jamais pendant.
+          Rooms vivantes — recomposees a chaque entree. Sujet libre, lieu,
+          pression, monde reel. Le bilan vient apres, jamais pendant.
           {memoryOn ? (
             <>
               {" "}
-              Léo garde en tête « {LEARNER_MEMORY.avoided} » sans vous brusquer.
+              Leo garde « {LEARNER_MEMORY.avoided} » sans vous brusquer.
             </>
           ) : null}
         </p>
       </header>
 
-      {/* Courage atmosphere strip */}
       <section
         className="mt-8 rounded-2xl border border-border/70 bg-surface/80 p-4 sm:p-5"
         aria-label="Ruban de courage"
@@ -68,7 +127,7 @@ function OsezPage() {
           {cells.map((on, i) => (
             <li
               key={i}
-              title={on ? "Geste ce jour-là" : "Terre en jachère"}
+              title={on ? "Geste ce jour-la" : "Terre en jachere"}
               className={cn(
                 "size-2 rounded-full sm:size-2.5",
                 on
@@ -78,13 +137,66 @@ function OsezPage() {
             />
           ))}
         </ul>
-        <p className="mt-2 text-[11px] leading-5 text-subtle">
-          Les trous ne sont pas un échec — terre en jachère. Un seul jour de
-          parole rallume le fil.
-        </p>
       </section>
 
-      {/* Three doors — denser */}
+      <section className="mt-8 rounded-2xl border border-primary/25 bg-primary/8 p-5 sm:p-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <Wand2 className="size-4 text-primary" />
+          <Eyebrow className="text-primary">Sujet libre</Eyebrow>
+          {llmOn ? (
+            <Badge className="bg-primary/20 text-primary">LLM en ligne</Badge>
+          ) : (
+            <Badge variant="outline">Essaim local</Badge>
+          )}
+        </div>
+        <h2 className="mt-3 font-display text-2xl tracking-tight sm:text-3xl">
+          N'importe quel sujet
+        </h2>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+          Ecrivez ce que vous voulez travailler. L'essaim compose une room
+          unique — et si un modele open-source est branche, il l'enrichit
+          en temps reel.
+        </p>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <input
+            type="text"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") launchTopic();
+            }}
+            placeholder="Ex. : expliquer un retard, commander des litchis…"
+            className="h-12 flex-1 rounded-xl border border-border/70 bg-bg px-4 text-sm text-fg outline-none ring-primary/40 placeholder:text-subtle focus:ring-2"
+            maxLength={120}
+            aria-label="Sujet libre"
+          />
+          <Button
+            className="h-12 shrink-0"
+            disabled={building}
+            onClick={() => launchTopic()}
+          >
+            {building ? "Composition…" : "Composer la room"}
+            <ArrowRight className="size-4" />
+          </Button>
+        </div>
+        <ul className="mt-4 flex flex-wrap gap-2">
+          {TOPIC_SUGGESTIONS.map((s) => (
+            <li key={s}>
+              <button
+                type="button"
+                onClick={() => {
+                  setTopic(s);
+                  launchTopic(s);
+                }}
+                className="rounded-full border border-border/60 bg-surface px-3 py-1.5 text-xs text-muted transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                {s}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <div className="mt-8 grid gap-4 lg:grid-cols-3">
         <Link
           to="/osez/pulse"
@@ -122,8 +234,7 @@ function OsezPage() {
             Street
           </h2>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Le monde réel. Vous parlez, puis vous notez. Aucun micro dans
-            l'app — la preuve, c'est le geste.
+            Le monde reel. Vous parlez, puis vous notez.
           </p>
           <ol className="mt-4 space-y-2 border-t border-border/60 pt-4">
             {STREET_PROTOCOL.map((step, i) => (
@@ -155,41 +266,57 @@ function OsezPage() {
             Tandem
           </h2>
           <p className="mt-2 flex-1 text-sm leading-6 text-muted">
-            Une constellation de présences — pas un feed. Vous choisissez qui
-            vous entend, et pour quoi.
+            Une constellation de presences — pas un feed.
           </p>
           <p className="mt-5 inline-flex items-center gap-1 border-t border-border/60 pt-4 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-            Ouvrir la constellation
+            Ouvrir
             <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
           </p>
         </Link>
       </div>
 
-      {/* Speak rooms — denser cards */}
       <div className="mt-12 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="font-display text-2xl tracking-tight sm:text-3xl">
             Speak Rooms
           </h2>
           <p className="mt-2 max-w-lg text-sm text-muted">
-            Conversations guidées. Vous parlez. Le bilan arrive après — pas
-            pendant.
+            Catalogue du jour — lieu, pression, evenement reel.
           </p>
         </div>
         <p className="text-xs tabular-nums text-subtle">
-          {roomsDone} / {SCENARIOS.length} faites
+          {roomsDone} / {rooms.length} ancrees
         </p>
       </div>
 
+      <Link
+        to="/osez/$id"
+        params={{ id: "live" }}
+        className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-primary/25 bg-primary/8 p-5 transition-transform hover:-translate-y-0.5"
+      >
+        <div className="flex items-start gap-3">
+          <span className="flex size-10 items-center justify-center rounded-xl bg-primary/20 text-primary">
+            <RefreshCw className="size-4" strokeWidth={1.7} />
+          </span>
+          <div>
+            <p className="font-display text-xl tracking-tight">Room libre</p>
+            <p className="mt-1 text-sm text-muted">
+              L'essaim choisit lieu, pression et ancrage du jour.
+            </p>
+          </div>
+        </div>
+        <ArrowRight className="size-4 shrink-0 text-primary" />
+      </Link>
+
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        {SCENARIOS.map((scene) => {
+        {rooms.map((scene) => {
           const done = hasSource(log, `speak-${scene.id}`);
           return (
             <Link
               key={scene.id}
               to="/osez/$id"
-              params={{ id: scene.id }}
-              className="group overflow-hidden rounded-2xl border border-border/50 bg-surface shadow-[var(--shadow-border)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-border-hover)]"
+              params={{ id: scene.place.archetype }}
+              className="group overflow-hidden rounded-2xl border border-border/50 bg-surface shadow-[var(--shadow-border)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5"
             >
               <div className="relative aspect-[16/10] overflow-hidden">
                 <img
@@ -202,7 +329,16 @@ function OsezPage() {
                   aria-hidden
                 />
                 <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-4">
-                  <h3 className="font-display text-2xl text-white">{scene.title}</h3>
+                  <div className="min-w-0">
+                    <h3 className="font-display text-2xl text-white">
+                      {scene.titleFr}
+                    </h3>
+                    {scene.event ? (
+                      <p className="mt-0.5 truncate text-[11px] text-primary/90">
+                        {scene.event.title}
+                      </p>
+                    ) : null}
+                  </div>
                   <Badge
                     variant={done ? "default" : "outline"}
                     className={cn(
@@ -212,7 +348,7 @@ function OsezPage() {
                   >
                     {done ? (
                       <span className="inline-flex items-center gap-1">
-                        <Check className="size-3" /> Faite
+                        <Check className="size-3" /> Ancree
                       </span>
                     ) : (
                       `${scene.durationMin} min`
@@ -222,10 +358,13 @@ function OsezPage() {
               </div>
               <div className="p-4">
                 <p className="text-sm leading-6 text-muted">{scene.setting}</p>
-                <p className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
-                  Entrer dans la room
-                  <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
-                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-subtle">
+                  <span>{scene.cast.name}</span>
+                  <span aria-hidden>·</span>
+                  <span>{scene.pressure.label}</span>
+                  <span aria-hidden>·</span>
+                  <span>{scene.turns.length} tours</span>
+                </div>
               </div>
             </Link>
           );
