@@ -412,6 +412,9 @@ export async function requestCatalogueBooking(
 }
 
 export async function requestWaitlist(userId: string, itemId: string) {
+  const item = MARKETPLACE.find((entry) => entry.id === itemId);
+  if (!item) throw new Error("unknown-waitlist-item");
+  if (item.early) assertFeaturePlan(await getServerPlan(userId), "immersionEarly");
   const sql = await getSql();
   const rows = await sql.query(
     `insert into blossom_waitlist_request (id, user_id, item_id, status)
