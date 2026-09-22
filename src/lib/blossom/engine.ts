@@ -15,7 +15,8 @@ export type ActivityType =
   | "REAL_WORLD_BONUS"
   | "TANDEM_COMPLETED"
   | "HOMEWORK_COMPLETED"
-  | "IMMERSION_ATTENDED";
+  | "IMMERSION_ATTENDED"
+  | "REVIEW_COMPLETED";
 
 export type ActivityEvent = {
   id: string;
@@ -36,6 +37,7 @@ export const POINTS: Record<ActivityType, number> = {
   TANDEM_COMPLETED: 10,
   HOMEWORK_COMPLETED: 4,
   IMMERSION_ATTENDED: 12,
+  REVIEW_COMPLETED: 3,
 };
 
 export const STAGES: ReadonlyArray<{
