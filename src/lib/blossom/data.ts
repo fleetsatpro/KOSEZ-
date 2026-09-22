@@ -389,6 +389,8 @@ export type CatalogueItem = {
   schedule: string;
   price: string;
   image: string;
+  early?: boolean;
+  companion?: boolean;
 };
 
 export const CATALOGUE: CatalogueItem[] = [
