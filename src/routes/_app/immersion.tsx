@@ -25,6 +25,7 @@ const PHASES = [
  */
 function ImmersionPage() {
   const [published, setPublished] = useState<CatalogueItem | null>(null);
+  const [registryStatus, setRegistryStatus] = useState<"loading" | "available" | "unavailable" | "error">("loading");
   const phase = useBlossom((s) => s.immersionPhase);
   const setPhase = useBlossom((s) => s.setImmersionPhase);
   const done = useBlossom((s) => s.immersionDone);
@@ -32,16 +33,46 @@ function ImmersionPage() {
   const complete = useBlossom((s) => s.completeActivity);
   const doneCount = done.length;
   const total = IMMERSION.challenges.length;
+
+  if (registryStatus === "loading") {
+    return (
+      <Page className="max-w-2xl">
+        <Eyebrow>Companion · Immersion</Eyebrow>
+        <p className="mt-4 text-sm text-muted">Vérification de l’expérience publiée…</p>
+      </Page>
+    );
+  }
+
+  if (registryStatus === "unavailable") {
+    return (
+      <Page className="max-w-2xl">
+        <Eyebrow>Companion · Immersion</Eyebrow>
+        <Surface className="mt-6">
+          <h1 className="font-display text-2xl">Cette expérience n’est plus publiée.</h1>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Le contenu a été retiré du registre public. Retournez dans EXPLORE
+            pour voir les expériences actuellement disponibles.
+          </p>
+          <Button asChild className="mt-5" variant="secondary">
+            <Link to="/explore">Retour à EXPLORE</Link>
+          </Button>
+        </Surface>
+      </Page>
+    );
+  }
+
   useEffect(() => {
     let disposed = false;
     void getPublishedContentOnServer()
       .then((content) => {
         if (!disposed) {
-          setPublished(content.catalogue.find((item) => item.id === IMMERSION.id) ?? null);
+          const item = content.catalogue.find((entry) => entry.id === IMMERSION.id) ?? null;
+          setPublished(item);
+          setRegistryStatus(item ? "available" : "unavailable");
         }
       })
       .catch(() => {
-        // The authored Companion remains usable when the registry is unavailable.
+        if (!disposed) setRegistryStatus("error");
       });
     return () => {
       disposed = true;
