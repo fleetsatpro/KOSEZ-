@@ -49,6 +49,7 @@ export type TeacherWorkspaceLearner = {
   name: string;
   level: string | null;
   lastActivity: string | null;
+  activitiesThisWeek: number;
   speakingMinutes: number;
   pronlabAttempts: number;
   pronlabBest: number;
@@ -62,6 +63,7 @@ export async function getTeacherWorkspace(userId: string): Promise<TeacherWorksp
       coalesce(p.display_name, tl.learner_user_id) as name,
       p.level,
       max(a.occurred_at) as last_activity,
+      count(*) filter (where a.occurred_at >= current_timestamp - interval '7 days')::integer as activities_this_week,
       coalesce(sum(
         case
           when a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
@@ -415,6 +417,7 @@ export async function saveLearningSubmission(
     name: String(row.name),
     level: row.level ? String(row.level) : null,
     lastActivity: row.last_activity ? new Date(String(row.last_activity)).toISOString() : null,
+    activitiesThisWeek: Number(row.activities_this_week ?? 0),
     speakingMinutes: Number(row.speaking_minutes ?? 0),
     pronlabAttempts: Number(row.pronlab_attempts ?? 0),
     pronlabBest: Number(row.pronlab_best ?? 0),
