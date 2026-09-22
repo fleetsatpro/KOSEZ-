@@ -524,3 +524,58 @@ export async function publishContent(
     publishedRevision: Number(updated[0].published_revision),
   };
 }
+
+
+export async function restoreContentDraft(
+  userId: string,
+  input: {
+    contentKey: string;
+    channel: "draft" | "published" | "archived";
+    revision: number;
+    expectedDraftRevision: number;
+  },
+) {
+  await assertAdmin(userId);
+  const contentKey = contentKeySchema.parse(input.contentKey);
+  const sql = await getSql();
+
+  const historyRows = await sql.query(
+    "select kind, payload from blossom_content_revision where content_key = $1 and channel = $2 and revision = $3",
+    [contentKey, input.channel, input.revision],
+  );
+  if (!historyRows[0]) throw new Error("content-history-not-found");
+
+  const kind = String(historyRows[0].kind) as ContentKind;
+  const payload = validatePayload(kind, historyRows[0].payload);
+
+  const rows = await sql.query(
+    "update blossom_content_item set draft_payload = $2::jsonb, draft_revision = draft_revision + 1, state = case when state = 'archived' then 'archived' else 'draft' end, updated_by = $3, updated_at = current_timestamp where content_key = $1 and draft_revision = $4 returning draft_revision, published_revision, state",
+    [contentKey, JSON.stringify(payload), userId, input.expectedDraftRevision],
+  );
+  if (!rows[0]) throw new Error("content-revision-conflict");
+
+  const draftRevision = Number(rows[0].draft_revision);
+  await recordContentRevision(userId, contentKey, kind, draftRevision, "draft", payload);
+
+  await sql.query(
+    "insert into blossom_audit_event (id, actor_user_id, action, resource_type, resource_id, metadata) values ($1::uuid, $2, 'content.draft_restored', 'content', $3, $4::jsonb)",
+    [
+      randomUUID(),
+      userId,
+      contentKey,
+      JSON.stringify({
+        fromChannel: input.channel,
+        fromRevision: input.revision,
+        draftRevision,
+      }),
+    ],
+  );
+
+  return {
+    contentKey,
+    kind,
+    draftRevision,
+    publishedRevision: Number(rows[0].published_revision),
+    state: String(rows[0].state) as ContentState,
+  };
+}
