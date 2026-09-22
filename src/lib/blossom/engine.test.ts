@@ -81,7 +81,7 @@ test("tandem matching ranks language direction and shared interests", () => {
     speaks: "Français",
     wants: "English",
     level: "A2",
-    interests: LEARNER.interests,
+    interests: [...LEARNER.interests],
     window: LEARNER.practiceWindow,
   };
   const noah = {
