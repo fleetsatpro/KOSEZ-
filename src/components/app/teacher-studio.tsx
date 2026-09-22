@@ -14,6 +14,7 @@ import {
   findPronlabItem,
 } from "@/lib/blossom/data";
 import { pronlabFlags } from "@/lib/blossom/engine";
+import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { useBlossom } from "@/lib/blossom/store";
 
 type Tab = "prep" | "roster" | "lecture";
@@ -64,6 +65,7 @@ export function TeacherStudio() {
   const sendHomework = useBlossom((s) => s.sendHomework);
   const assignSet = useBlossom((s) => s.assignSet);
   const assigned = useBlossom((s) => s.assignedSetIds);
+  const { access, pending: accessPending } = useBlossomWorkspaceAccess();
   const [tab, setTab] = useState<Tab>("prep");
   const [noteStudent, setNoteStudent] = useState("camille");
   const [noteText, setNoteText] = useState("");
@@ -156,6 +158,32 @@ export function TeacherStudio() {
         }
       : s,
   ).sort((a, b) => b.flags.length - a.flags.length);
+
+  if (accessPending) {
+    return (
+      <Page>
+        <Eyebrow>Studio enseignant</Eyebrow>
+        <p className="mt-3 text-sm text-muted">Vérification des autorisations…</p>
+      </Page>
+    );
+  }
+
+  if (!access.isTeacher) {
+    return (
+      <Page>
+        <Eyebrow>Studio enseignant</Eyebrow>
+        <h1 className="mt-2 font-display text-2xl">Accès non disponible</h1>
+        <p className="mt-3 text-sm leading-6 text-muted">Vous n’avez pas de relation enseignant active sur ce compte.</p>
+        <Button
+          variant="secondary"
+          className="mt-6"
+          onClick={() => setTeacherMode(false)}
+        >
+          Revenir au voyage
+        </Button>
+      </Page>
+    );
+  }
 
   return (
     <Page>
