@@ -21,7 +21,7 @@ import {
   completeHomeworkForLearner,
 } from "./domain.server";
 import { reportTandem } from "./safety.server";
-import type { SyncMutation, SyncResult } from "./sync-types";
+import { SYNC_OPERATIONS, type SyncMutation, type SyncResult } from "./sync-types";
 
 const SYNC_TIMEOUT_MS = 120_000;
 
@@ -95,24 +95,7 @@ async function claimMutation(
   return claimed[0] ? "claimed" : "busy";
 }
 
-const operationSchema = z.enum([
-  "profile.upsert",
-  "activity.append",
-  "mission.save",
-  "pronlab.attempt",
-  "vocabulary.upsert",
-  "event.register",
-  "challenge.complete",
-  "tandem.status",
-  "tandem.report",
-  "learning.submission",
-  "booking.request",
-  "waitlist.request",
-  "analytics.record",
-  "teacher.note",
-  "teacher.homework",
-  "homework.complete",
-]);
+const operationSchema = z.enum(SYNC_OPERATIONS);
 
 const mutationSchema = z.object({
   mutationId: z.string().uuid(),
