@@ -49,7 +49,7 @@ function ProgressPage() {
         <Surface>
           <p className="text-xs uppercase tracking-[0.16em] text-muted">Can-Do</p>
           <p className="mt-2 font-display text-4xl tabular-nums">{CAN_DO_OBJECTIVES.length}</p>
-          <p className="mt-1 text-xs text-muted">objectifs reliés au parcours A2</p>
+          <p className="mt-1 text-xs text-muted">objectifs reliés au parcours A2 → B1</p>
         </Surface>
       </section>
 
