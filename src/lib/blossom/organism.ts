@@ -282,7 +282,7 @@ export function composeLeoLetter(
   const leaves = growth.filter((g) => g.kind === "leaf").length;
   const status = organismStatusLine(minerals);
   const body = [
-    `${firstName},`,
+    `${firstName || "Vous"},`
     ``,
     status,
     roots > 0
