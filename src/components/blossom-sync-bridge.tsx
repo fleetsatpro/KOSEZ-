@@ -46,6 +46,9 @@ function mergeBackendState(remote: BackendState): void {
   let profileLanguageId = current.languageId;
   let profileExportConsent = current.exportConsent;
   let profileTandemOpen = current.tandemOpen;
+  let profileImmersionPhase = current.immersionPhase;
+  let profileChildMissionDone = current.childMissionDone;
+  const profileChildWords = new Set(current.childWords);
 
   if (remote.profile) {
     const displayName = remote.profile.displayName?.trim();
@@ -67,6 +70,17 @@ function mergeBackendState(remote: BackendState): void {
     }
     if (typeof prefs.tandemOpen === "boolean") {
       profileTandemOpen = prefs.tandemOpen;
+    }
+    if (prefs.immersionPhase === "pre" || prefs.immersionPhase === "during" || prefs.immersionPhase === "post") {
+      profileImmersionPhase = prefs.immersionPhase;
+    }
+    if (typeof prefs.childMissionDone === "boolean") {
+      profileChildMissionDone = profileChildMissionDone || prefs.childMissionDone;
+    }
+    if (Array.isArray(prefs.childWords)) {
+      for (const wordId of prefs.childWords) {
+        if (typeof wordId === "string" && wordId.trim()) profileChildWords.add(wordId);
+      }
     }
   }
 
@@ -220,6 +234,9 @@ function mergeBackendState(remote: BackendState): void {
     languageId: profileLanguageId,
     exportConsent: profileExportConsent,
     tandemOpen: profileTandemOpen,
+    immersionPhase: profileImmersionPhase,
+    childMissionDone: profileChildMissionDone,
+    childWords: [...profileChildWords],
     activityLog: [...activity.values()].sort(
       (a, b) => timestamp(a.createdAt) - timestamp(b.createdAt),
     ),
