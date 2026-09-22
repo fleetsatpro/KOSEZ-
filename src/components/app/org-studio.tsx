@@ -3,6 +3,7 @@ import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { INTELLIGENCE, ORG, ORG_MEMBERS } from "@/lib/blossom/data";
+import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { useBlossom } from "@/lib/blossom/store";
 
 export function OrgStudio() {
@@ -13,6 +14,33 @@ export function OrgStudio() {
   const requestInvoice = useBlossom((s) => s.requestInvoice);
   const used = ORG.used + orgInvites;
   const remaining = Math.max(0, ORG.seats - used);
+  const { access, pending: accessPending } = useBlossomWorkspaceAccess();
+
+  if (accessPending) {
+    return (
+      <Page>
+        <Eyebrow>Espace entreprise</Eyebrow>
+        <p className="mt-3 text-sm text-muted">Vérification des autorisations…</p>
+      </Page>
+    );
+  }
+
+  if (!access.isOrgStaff) {
+    return (
+      <Page>
+        <Eyebrow>Espace entreprise</Eyebrow>
+        <h1 className="mt-2 font-display text-2xl">Accès non disponible</h1>
+        <p className="mt-3 text-sm leading-6 text-muted">Aucun rôle entreprise actif n’est associé à ce compte.</p>
+        <Button
+          variant="secondary"
+          className="mt-6"
+          onClick={() => setOrgMode(false)}
+        >
+          Revenir au voyage
+        </Button>
+      </Page>
+    );
+  }
 
   return (
     <Page>
