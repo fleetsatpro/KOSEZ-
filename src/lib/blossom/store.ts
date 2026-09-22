@@ -583,7 +583,7 @@ export const useBlossom = create<AppState>()(
           entityId: id,
           payload: { status: "joined" },
         });
-        track("event_joined");
+        track("event_registration_requested");
       },
       leaveEvent: (id) => {
         set({
@@ -603,7 +603,7 @@ export const useBlossom = create<AppState>()(
           entityId: id,
           payload: { catalogueItemId: id },
         });
-        track("booking_created");
+        track("booking_requested");
       },
       recordPronlabAttempt: (itemId, seconds) => {
         const item = findPronlabItem(itemId);
