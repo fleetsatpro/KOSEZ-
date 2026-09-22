@@ -358,20 +358,32 @@ export async function appendBlossomActivity(
     if (existing[0]) return mapActivity(existing[0]);
   }
 
-  const rows = await sql.query(
-    "insert into blossom_activity_event (id, user_id, idempotency_key, event_type, source_id, payload, occurred_at) values ($1::uuid, $2, $3::uuid, $4, $5, $6::jsonb, coalesce($7::timestamptz, current_timestamp)) on conflict (user_id, idempotency_key) do update set idempotency_key = excluded.idempotency_key returning id, idempotency_key, event_type, source_id, payload, occurred_at",
-    [
-      id,
-      userId,
-      key,
-      input.eventType,
-      input.sourceId ?? null,
-      JSON.stringify(input.payload ?? {}),
-      input.occurredAt ?? null,
-    ],
-  );
-  if (!rows[0]) throw new Error("activity-write-failed");
-  return mapActivity(rows[0]);
+  try {
+    const rows = await sql.query(
+      "insert into blossom_activity_event (id, user_id, idempotency_key, event_type, source_id, payload, occurred_at) values ($1::uuid, $2, $3::uuid, $4, $5, $6::jsonb, coalesce($7::timestamptz, current_timestamp)) on conflict (user_id, idempotency_key) do update set idempotency_key = excluded.idempotency_key returning id, idempotency_key, event_type, source_id, payload, occurred_at",
+      [
+        id,
+        userId,
+        key,
+        input.eventType,
+        input.sourceId ?? null,
+        JSON.stringify(input.payload ?? {}),
+        input.occurredAt ?? null,
+      ],
+    );
+    if (!rows[0]) throw new Error("activity-write-failed");
+    return mapActivity(rows[0]);
+  } catch (error) {
+    if ((error as { code?: string })?.code !== "23505" || !input.sourceId) {
+      throw error;
+    }
+    const existing = await sql.query(
+      "select id, idempotency_key, event_type, source_id, payload, occurred_at from blossom_activity_event where user_id = $1 and event_type = $2 and source_id = $3 limit 1",
+      [userId, input.eventType, input.sourceId],
+    );
+    if (!existing[0]) throw error;
+    return mapActivity(existing[0]);
+  }
 }
 
 export type SaveMissionResult =
