@@ -2,7 +2,12 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   BookOpen,
+  CalendarDays,
+  ChartNoAxesCombined,
+  Compass,
+  History,
   Mic,
+  RotateCcw,
   Sprout,
   User,
 } from "lucide-react";
@@ -167,6 +172,30 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </nav>
 
+          <nav className="mt-8" aria-label="Espaces secondaires">
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">Explorer</p>
+            <div className="mt-2 grid gap-0.5">
+              {SECONDARY_NAV.map((item) => {
+                const Icon = item.icon;
+                const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={cn(
+                      "flex min-h-10 items-center gap-2.5 rounded-lg px-3 text-xs font-medium text-muted transition hover:bg-surface-2 hover:text-fg",
+                      active && "bg-primary/8 text-primary",
+                    )}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <Icon className="size-3.5" strokeWidth={1.7} />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+
           <div className="mt-auto rounded-2xl border border-border bg-bg/70 p-4 shadow-[var(--shadow-border)]">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -194,7 +223,27 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
       )}
 
-      <div className={cn("min-h-dvh", !hideChrome && "lg:pl-[246px]")}>{children}</div>
+      <div className={cn("min-h-dvh", !hideChrome && "lg:pl-[246px]")}>
+        {!hideChrome && (
+          <nav className="border-b border-border/60 bg-bg/80 px-4 py-2 backdrop-blur-md lg:hidden" aria-label="Navigation secondaire">
+            <div className="mx-auto flex max-w-full gap-1 overflow-x-auto pb-0.5">
+              {SECONDARY_NAV.slice(0, 6).map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={cn(
+                    "shrink-0 rounded-full border border-transparent px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-subtle transition",
+                    (pathname === item.to || pathname.startsWith(`${item.to}/`)) && "border-primary/20 bg-primary/8 text-primary",
+                  )}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </nav>
+        )}
+        {children}
+      </div>
 
       {!hideChrome && (
         <nav
