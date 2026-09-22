@@ -6,6 +6,7 @@ const DB_VERSION = 1;
 const OUTBOX_FALLBACK_KEY = "kosez-blossom-outbox-v1";
 const DEVICE_KEY = "kosez-blossom-device-id";
 const CHANGE_EVENT = "kosez:sync-needed";
+let activeOwnerId: string | null = null;
 
 export type StoredMutation = SyncMutation & {
   state: "pending" | "conflict";
@@ -98,11 +99,17 @@ export function syncChangeEventName(): string {
   return CHANGE_EVENT;
 }
 
+export function setSyncOwner(userId: string | null): void {
+  activeOwnerId = userId;
+  emitSyncNeeded();
+}
+
 export function createMutation(
   input: Omit<SyncMutation, "mutationId" | "deviceId" | "createdAt">,
 ): SyncMutation {
   return {
     ...input,
+    ...(activeOwnerId ? { ownerUserId: activeOwnerId } : {}),
     mutationId: randomUuid(),
     deviceId: getDeviceId(),
     createdAt: new Date().toISOString(),
@@ -111,6 +118,9 @@ export function createMutation(
 
 export async function enqueueMutation(mutation: SyncMutation): Promise<void> {
   const item: StoredMutation = { ...mutation, state: "pending" };
+  if (!item.ownerUserId && activeOwnerId) {
+    item.ownerUserId = activeOwnerId;
+  }
   if (hasIndexedDb()) {
     try {
       await txRequest("readwrite", (store) => store.put(item));
@@ -131,15 +141,25 @@ export async function listPendingMutations(): Promise<StoredMutation[]> {
   if (hasIndexedDb()) {
     try {
       const rows = await txRequest<StoredMutation[]>("readonly", (store) => store.getAll());
-      return rows
-        .filter((row) => row.state === "pending")
+          return rows
+        .filter(
+          (row) =>
+            row.state === "pending" &&
+            Boolean(activeOwnerId) &&
+            row.ownerUserId === activeOwnerId,
+        )
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     } catch {
       // fallback below
     }
   }
   return readFallback()
-    .filter((row) => row.state === "pending")
+    .filter(
+      (row) =>
+        row.state === "pending" &&
+        Boolean(activeOwnerId) &&
+        row.ownerUserId === activeOwnerId,
+    )
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
