@@ -720,11 +720,14 @@ export async function registerEvent(
   eventId: string,
   status: "joined" | "waitlist" | "cancelled",
 ) {
-  const { events } = await getPublishedContent();
-  const event = events.find((item) => item.id === eventId);
-  if (!event) throw new Error("unknown-event");
-
   const sql = await getSql();
+  const event =
+    status === "joined" || status === "waitlist"
+      ? (await getPublishedContent()).events.find((item) => item.id === eventId)
+      : null;
+  if ((status === "joined" || status === "waitlist") && !event) {
+    throw new Error("unknown-event");
+  }
 
   if (status !== "joined") {
     const rows = await sql.query(
