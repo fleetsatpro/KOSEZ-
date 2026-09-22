@@ -33,7 +33,7 @@ A practice workspace where learners make **one useful real-world language gestur
 
 ## Repo map
 
-- `src/components/app/` — product UI (shell, home, mission, plant, welcome, …)
+- `src/components/app/` — product UI (shell, onboarding, home, mission, plant, welcome, …)
 - `src/lib/blossom/` — engine, mission sessions, data, store
 - `src/routes/_app/` — app routes
 - `src/styles.css` — tokens + modern-ui
