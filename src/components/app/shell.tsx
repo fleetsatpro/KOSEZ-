@@ -118,7 +118,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [access.isAdmin, accessPending, adminMode]);
 
   if (!mounted || !hasEntered) return <Welcome />;
-  if (!accessPending && access.isChild) {
+  if (!accessPending && childMode && access.isChild) {
     return (
       <div className="child-skin paper-grain min-h-dvh bg-bg text-fg">
         <ChildHome />
