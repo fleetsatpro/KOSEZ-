@@ -4,6 +4,7 @@ import { TODAY_MISSION, LEARNER_MEMORY } from "./data.ts";
 import {
   activeMissionRun,
   appendMissionAttempt,
+  recordMissionSupport,
   beginMissionRun,
   createMissionSession,
   evaluateMission,
@@ -42,6 +43,30 @@ test("completed runs create a new run while preserving history", () => {
   assert.equal(session.runs.length, 2);
   assert.equal(activeMissionRun(session)?.id, "run-2");
   assert.equal(session.runs[0]?.completedAt, "2026-09-20T07:03:00.000Z");
+});
+
+test("non-finite attempt durations are normalised before timestamps are derived", () => {
+  const session = beginMissionRun(
+    createMissionSession("mission-today"),
+    "practice",
+    "core",
+    "2026-09-20T06:00:00.000Z",
+    "run-safe-time",
+  );
+  const next = appendMissionAttempt(
+    session,
+    {
+      kind: "mission",
+      capture: "microphone",
+      seconds: Number.NaN,
+    },
+    "2026-09-20T06:01:00.000Z",
+    "attempt-safe-time",
+  );
+  const attempt = activeMissionRun(next)?.attempts[0];
+  assert.equal(attempt?.seconds, 0);
+  assert.equal(attempt?.startedAt, "2026-09-20T06:01:00.000Z");
+  assert.equal(Number.isNaN(new Date(attempt?.startedAt ?? "").getTime()), false);
 });
 
 test("mission attempts preserve capture method and duration", () => {
@@ -207,6 +232,37 @@ test("reopening a mission clears saved reflection without deleting execution his
   assert.equal(activeMissionRun(reopened)?.reflection, null);
   assert.equal(missionAttemptCount(activeMissionRun(reopened), "mission"), 1);
   assert.equal(missionStepFromRun(activeMissionRun(reopened)), "reflect");
+});
+
+test("lifeline support persists before reflection and is carried into the saved reflection", () => {
+  let session = beginMissionRun(
+    createMissionSession("mission-today"),
+    "real-world",
+    "core",
+    "2026-09-20T11:30:00.000Z",
+    "run-support-persist",
+  );
+  session = recordMissionSupport(session, "2026-09-20T11:31:00.000Z");
+  assert.equal(activeMissionRun(session)?.supportUsed, true);
+
+  session = appendMissionAttempt(
+    session,
+    { kind: "mission", capture: "manual", seconds: 0 },
+    "2026-09-20T11:32:00.000Z",
+    "attempt-support-persist",
+  );
+  session = saveMissionReflection(
+    session,
+    {
+      objectiveAchieved: true,
+      stayedInTargetLanguage: "yes",
+      confidence: 4,
+      friction: "none",
+    },
+    "2026-09-20T11:33:00.000Z",
+  );
+
+  assert.equal(activeMissionRun(session)?.reflection?.supportUsed, true);
 });
 
 test("reflection preserves lifeline support as explicit evidence", () => {
