@@ -411,6 +411,7 @@ export function activityLabel(type: ActivityType): string {
     HOMEWORK_COMPLETED: "Devoir terminé",
     IMMERSION_ATTENDED: "Immersion suivie",
     REVIEW_COMPLETED: "Révision terminée",
+    DIAGNOSTIC_COMPLETED: "Repère indicatif enregistré",
   };
   return labels[type] ?? "Activité";
 }
