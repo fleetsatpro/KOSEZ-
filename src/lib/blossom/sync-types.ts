@@ -21,6 +21,7 @@ export type SyncOperation =
 export type SyncMutation = {
   mutationId: string;
   deviceId: string;
+  ownerUserId?: string;
   operation: SyncOperation;
   entityId: string;
   expectedRevision?: number;
