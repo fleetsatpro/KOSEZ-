@@ -446,6 +446,7 @@ export function MissionTheatreExperience() {
   const sessions = useBlossom((state) => state.missionSessions);
   const startMissionRun = useBlossom((state) => state.startMissionRun);
   const recordMissionAttempt = useBlossom((state) => state.recordMissionAttempt);
+  const recordMissionSupport = useBlossom((state) => state.recordMissionSupport);
   const saveMissionReflection = useBlossom((state) => state.saveMissionReflection);
   const completeMissionSession = useBlossom((state) => state.completeMissionSession);
   const reopenMissionSession = useBlossom((state) => state.reopenMissionSession);
@@ -479,11 +480,16 @@ export function MissionTheatreExperience() {
   useEffect(() => {
     if (run?.mode) setMode(run.mode);
     if (run?.challenge) setChallenge(run.challenge);
+    if (run?.supportUsed) {
+      setReflection((current) =>
+        current.supportUsed ? current : { ...current, supportUsed: true },
+      );
+    }
     if (run?.reflection) {
       setReflection(run.reflection);
       setSaved(true);
     }
-  }, [run?.id, run?.mode, run?.challenge, run?.reflection]);
+  }, [run?.id, run?.mode, run?.challenge, run?.supportUsed, run?.reflection]);
 
   const memoryEnabled = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
@@ -530,8 +536,8 @@ export function MissionTheatreExperience() {
     setStep("reflect");
   }
 
-  function saveReflection() {
-    const ok = saveMissionReflection(TODAY_MISSION.id, reflection);
+  function saveReflection(nextReflection: MissionReflection = reflection) {
+    const ok = saveMissionReflection(TODAY_MISSION.id, nextReflection);
     if (!ok) {
       toast("Faites d'abord le geste de la mission.");
       return;
@@ -540,9 +546,9 @@ export function MissionTheatreExperience() {
   }
 
   function useSupport() {
-    if (reflection.supportUsed) return;
+    const persisted = recordMissionSupport(TODAY_MISSION.id);
+    if (!persisted && reflection.supportUsed) return;
     setReflection((current) => ({ ...current, supportUsed: true }));
-    track("mission_lifeline_used", { missionId: TODAY_MISSION.id });
   }
 
   function finishSession() {
@@ -664,7 +670,7 @@ export function MissionTheatreExperience() {
               objective={objective}
               attemptCount={missionAttemptCount(run, "mission")}
               durationMin={TODAY_MISSION.durationMin}
-              supportUsed={Boolean(reflection.supportUsed)}
+              supportUsed={Boolean(reflection.supportUsed || run?.supportUsed)}
               onSupportUsed={useSupport}
               onFinished={finishAttempt}
               onManualDone={finishRealWorld}
