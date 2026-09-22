@@ -599,6 +599,44 @@ export const BEAT_LIBRARY: Record<string, DialogueBeat[]> = {
       recovery: ["Just one more thing…", "Quickly — …", "I'll be brief."],
     },
   ],
+  challenge: [
+    {
+      id: "challenge-compare",
+      goal: "Comparer et justifier",
+      youHint: "Comparez deux options et expliquez laquelle vous préférez.",
+      aiOpeners: [
+        "We could take the bus or walk. Which would you choose?",
+        "The market is busier, but the seafront is closer. What would you recommend?",
+        "Would you rather meet in the morning or later in the afternoon?",
+      ],
+      recovery: ["It depends on…", "On the other hand…", "I'd prefer… because…"],
+      stretch: "Ajoutez un critère explicite : time, cost, convenience, atmosphere.",
+    },
+    {
+      id: "challenge-counterpoint",
+      goal: "Nuancer et répondre à un autre point de vue",
+      youHint: "Reconnaissez une idée puis précisez votre propre position.",
+      aiOpeners: [
+        "I see your point, but I think the later option would work better.",
+        "That could be useful. What might be the downside?",
+        "Some people prefer the crowded place. What do you think?",
+      ],
+      recovery: ["I agree up to a point, but…", "On the other hand…", "That may be true, although…"],
+      stretch: "Ajoutez une réserve avant votre conclusion.",
+    },
+    {
+      id: "challenge-solve",
+      goal: "Résoudre un imprévu",
+      youHint: "Décrivez le problème, proposez une alternative et vérifiez l'accord.",
+      aiOpeners: [
+        "The room is ready, but the key card isn't working. What should we do?",
+        "The meeting room is occupied. Can we find another option?",
+        "Your train is delayed. How could we adjust the plan?",
+      ],
+      recovery: ["Could we… instead?", "Would it be possible to…?", "Let's try…"],
+      stretch: "Proposez une solution puis demandez si elle convient.",
+    },
+  ],
 };
 
 export const LEVEL_KITS: Record<

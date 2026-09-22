@@ -164,6 +164,7 @@ function beatAgent(
   place: PlaceNode,
   pressure: PressurePattern,
   hasEvent: boolean,
+  level: string,
 ): DialogueBeat[] {
   const openPool =
     place.archetype === "social"
@@ -185,6 +186,10 @@ function beatAgent(
   const close = pick(rng, BEAT_LIBRARY.close);
 
   const sequence: DialogueBeat[] = [open, choose];
+
+  if (level === "B1" || level === "B2") {
+    sequence.push(pick(rng, BEAT_LIBRARY.challenge));
+  }
 
   if (pressure.timePressure === "high" || pressure.socialRisk === "high") {
     if (rng() < 0.85) sequence.push(pick(rng, BEAT_LIBRARY.pressure));
@@ -378,7 +383,7 @@ export function generateLivingRoom(input: GenerateInput = {}): LivingRoom {
   const { place, event } = worldAgent(rng, input, now);
   const cast = castAgent(rng, place);
   const pressure = pressureAgent(rng, place);
-  const beats = beatAgent(rng, place, pressure, Boolean(event));
+  const beats = beatAgent(rng, place, pressure, Boolean(event), level);
   const turns = voiceAgent(rng, beats, cast, event, level);
   const debrief = debriefAgent(rng, place, pressure, cast, event);
   const memoryWhisper = memoryAgent(input.friction, firstName);
