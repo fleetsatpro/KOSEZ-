@@ -116,6 +116,7 @@ export type BackendState = {
   vocabulary: BackendVocabulary[];
   learningSubmissions: BackendSubmission[];
   eventRegistrations: Record<string, "joined" | "waitlist" | "cancelled">;
+  eventRegistrationCounts: Record<string, number>;
   completedChallenges: string[];
   tandemStatus: Record<string, "suggested" | "pending" | "accepted" | "blocked" | "paused">;
   bookingCatalogueIds: string[];
