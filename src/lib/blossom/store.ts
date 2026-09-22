@@ -7,6 +7,7 @@ import {
   hasSource,
   journeySnapshot,
   summarisePronlabItem,
+  type ActivityEvent,
   type ActivityType,
   type PronlabAttempt,
 } from "./engine";
