@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Check } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { GrowthCeremony } from "@/components/app/growth-ceremony";
 import { Eyebrow, Page } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { track } from "@/lib/analytics";
@@ -15,9 +16,13 @@ export const Route = createFileRoute("/_app/osez/pulse")({
 function PulsePage() {
   const dare = todaysPulseDare();
   const completePulse = useBlossom((s) => s.completePulse);
+  const growthEvents = useBlossom((s) => s.growthEvents);
+  const minerals = useBlossom((s) => s.mineralSnapshot);
+  const mineralsBefore = useRef(minerals);
   const [secondsLeft, setSecondsLeft] = useState(dare.seconds);
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(false);
+  const [ceremonyOpen, setCeremonyOpen] = useState(false);
 
   useEffect(() => {
     if (!running || done) return;
@@ -30,6 +35,7 @@ function PulsePage() {
   }, [running, secondsLeft, done]);
 
   function start() {
+    mineralsBefore.current = useBlossom.getState().mineralSnapshot;
     setRunning(true);
     track("pulse_started", { dareId: dare.id });
   }
@@ -39,9 +45,11 @@ function PulsePage() {
     setRunning(false);
     completePulse(dare.id, dare.seconds - Math.max(0, secondsLeft), offline);
     track("pulse_complete", { dareId: dare.id, offline });
+    setCeremonyOpen(true);
   }
 
   const progress = ((dare.seconds - secondsLeft) / dare.seconds) * 100;
+  const latestEvent = growthEvents[0] ?? null;
 
   return (
     <Page className="kosez-feature-page max-w-lg">
@@ -85,14 +93,14 @@ function PulsePage() {
             ) : (
               <>
                 <Button className="h-12 w-full" onClick={() => finish(false)}>
-                  J&apos;ai parlé
+                  J'ai parlé
                 </Button>
                 <Button
                   variant="ghost"
                   className="w-full"
                   onClick={() => finish(true)}
                 >
-                  Je l&apos;ai fait hors ligne
+                  Je l'ai fait hors ligne
                 </Button>
               </>
             )}
@@ -100,9 +108,9 @@ function PulsePage() {
         ) : (
           <div className="mt-8 w-full rounded-2xl border border-primary/25 bg-primary/5 p-5 text-center">
             <Check className="mx-auto size-6 text-primary" />
-            <p className="mt-3 font-display text-2xl">C&apos;est noté.</p>
+            <p className="mt-3 font-display text-2xl">C'est noté.</p>
             <p className="mt-2 text-sm text-muted">
-              La terre s&apos;en souvient. La tige s&apos;épaissit.
+              La terre s'en souvient. La tige s'épaissit.
             </p>
             <Button asChild className="mt-5">
               <Link to="/">Retour à BLOSSOM</Link>
@@ -110,6 +118,14 @@ function PulsePage() {
           </div>
         )}
       </div>
+
+      <GrowthCeremony
+        open={ceremonyOpen}
+        event={latestEvent}
+        minerals={minerals}
+        previousMinerals={mineralsBefore.current}
+        onDismiss={() => setCeremonyOpen(false)}
+      />
     </Page>
   );
 }
