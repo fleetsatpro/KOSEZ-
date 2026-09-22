@@ -10,6 +10,7 @@ import {
   RotateCcw,
   Sprout,
   User,
+  UserRound,
 } from "lucide-react";
 import { Welcome } from "@/components/app/welcome";
 import { ParentView } from "@/components/app/parent-view";
@@ -25,7 +26,7 @@ const NAV = [
     to: "/",
     label: "BLOSSOM",
     icon: Sprout,
-    hint: ["/", "/plant", "/mission", "/explore", "/connect", "/tandem"],
+    hint: ["/", "/plant", "/mission"],
     description: "Votre parcours",
   },
   {
@@ -36,16 +37,30 @@ const NAV = [
     description: "Parler maintenant",
   },
   {
+    to: "/explore",
+    label: "EXPLORE",
+    icon: Compass,
+    hint: ["/explore", "/immersion"],
+    description: "Le monde réel",
+  },
+  {
+    to: "/connect",
+    label: "CONNECT",
+    icon: User,
+    hint: ["/connect", "/tandem"],
+    description: "Présences & tandem",
+  },
+  {
     to: "/learn",
-    label: "ATELIER",
+    label: "LEARN",
     icon: BookOpen,
-    hint: ["/learn", "/pronlab", "/library", "/immersion"],
+    hint: ["/learn", "/pronlab", "/library"],
     description: "Pratiquer & ancrer",
   },
   {
     to: "/moi",
     label: "MOI",
-    icon: User,
+    icon: UserRound,
     hint: ["/moi"],
     description: "Votre espace",
   },
@@ -53,12 +68,11 @@ const NAV = [
 
 const SECONDARY_NAV = [
   { to: "/learn/curriculum", label: "Parcours", icon: Sprout },
+  { to: "/pronlab", label: "Pron'Lab", icon: Mic },
   { to: "/learn/review", label: "Réviser", icon: RotateCcw },
   { to: "/learn/progress", label: "Compétences", icon: ChartNoAxesCombined },
   { to: "/learn/history", label: "Historique", icon: History },
   { to: "/learn/labs", label: "Labs", icon: FlaskConical },
-  { to: "/connect", label: "Connecter", icon: User },
-  { to: "/explore", label: "Explorer", icon: Compass },
 ] as const;
 
 function isActive(pathname: string, hint: readonly string[]) {
@@ -237,7 +251,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {!hideChrome && (
           <nav className="border-b border-border/60 bg-bg/80 px-4 py-2 backdrop-blur-md lg:hidden" aria-label="Navigation secondaire">
             <div className="mx-auto flex max-w-full gap-1 overflow-x-auto pb-0.5">
-              {SECONDARY_NAV.slice(0, 6).map((item) => (
+              {SECONDARY_NAV.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
@@ -261,7 +275,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           aria-label="Navigation principale"
         >
-          <ul className="grid grid-cols-4 px-1 pt-1">
+          <ul className="grid grid-cols-6 px-1 pt-1">
             {NAV.map((item) => {
               const Icon = item.icon;
               const active = isActive(pathname, item.hint);
