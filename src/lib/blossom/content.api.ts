@@ -61,11 +61,13 @@ export const saveAdminContentDraftOnServer = createServerFn({ method: "POST" })
         kind: z.literal("event"),
         contentKey: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,159}$/),
         payload: eventContentSchema,
+        expectedDraftRevision: z.number().int().nonnegative(),
       }),
       z.object({
         kind: z.literal("catalogue"),
         contentKey: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,159}$/),
         payload: catalogueContentSchema,
+        expectedDraftRevision: z.number().int().nonnegative(),
       }),
     ]),
   )
@@ -78,8 +80,9 @@ export const publishAdminContentOnServer = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       contentKey: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,159}$/),
+      expectedDraftRevision: z.number().int().positive(),
     }),
   )
   .handler(async ({ context, data }) =>
-    publishContent(context.userId, data.contentKey),
+    publishContent(context.userId, data.contentKey, data.expectedDraftRevision),
   );
