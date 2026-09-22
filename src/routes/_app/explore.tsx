@@ -467,7 +467,7 @@ function ExplorePage() {
                     >
                       {waiting ? "Demande déjà envoyée" : "Demander une place"}
                     </Button>
-                  )
+                  )}
                 </div>
               </article>
             );
