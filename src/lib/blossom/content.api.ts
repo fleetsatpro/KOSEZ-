@@ -8,6 +8,7 @@ import {
   archiveContent,
   saveContentDraft,
   getContentRevisionHistory,
+  restoreContentDraft,
 } from "./content.server";
 
 const eventContentSchema = z.object({
@@ -119,4 +120,19 @@ export const getAdminContentHistoryOnServer = createServerFn({ method: "GET" })
   )
   .handler(async ({ context, data }) =>
     getContentRevisionHistory(context.userId, data.contentKey),
+  );
+
+
+export const restoreAdminContentDraftOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      contentKey: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,159}$/),
+      channel: z.enum(["draft", "published", "archived"]),
+      revision: z.number().int().positive(),
+      expectedDraftRevision: z.number().int().nonnegative(),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    restoreContentDraft(context.userId, data),
   );
