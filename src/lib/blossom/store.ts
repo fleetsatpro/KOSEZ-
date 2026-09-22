@@ -118,6 +118,8 @@ type AppState = {
   joinedEventIds: string[];
   eventRegistrationCounts: Record<string, number>;
   enrolledIds: string[];
+  /** Server-assigned Pron’Lab sets. No client-side assignment mutation exists. */
+  assignedSetIds: string[];
   bookingStatuses: Record<string, "requested" | "confirmed">;
   pronlabAttempts: PronlabAttempt[];
   tandemStatus: Record<string, TandemStatus>;
@@ -287,6 +289,7 @@ export const useBlossom = create<AppState>()(
       joinedEventIds: [],
       eventRegistrationCounts: {},
       enrolledIds: [],
+      assignedSetIds: [],
       bookingStatuses: {},
       pronlabAttempts: [],
       tandemStatus: {},
@@ -940,6 +943,7 @@ export const useBlossom = create<AppState>()(
           joinedEventIds: [],
           eventRegistrationCounts: {},
           enrolledIds: [],
+          assignedSetIds: [],
           parentMode: false,
           teacherMode: false,
           childMode: false,
