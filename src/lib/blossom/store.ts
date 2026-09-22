@@ -111,6 +111,7 @@ type AppState = {
   parentMode: boolean;
   teacherMode: boolean;
   orgMode: boolean;
+  adminMode: boolean;
   childMode: boolean;
   learner: LearnerProfile;
   activityLog: typeof INITIAL_LOG;
@@ -155,6 +156,7 @@ type AppState = {
   setParentMode: (value: boolean) => void;
   setTeacherMode: (value: boolean) => void;
   setOrgMode: (value: boolean) => void;
+  setAdminMode: (value: boolean) => void;
   setChildMode: (value: boolean) => void;
   claimProof: () => void;
   updateLearner: (patch: Partial<LearnerProfile>) => void;
@@ -284,6 +286,7 @@ export const useBlossom = create<AppState>()(
       parentMode: false,
       teacherMode: false,
       orgMode: false,
+      adminMode: false,
       childMode: false,
       learner: NEW_LEARNER,
       activityLog: [],
@@ -331,7 +334,9 @@ export const useBlossom = create<AppState>()(
       setTeacherMode: (value) =>
         set({ teacherMode: value, parentMode: false, orgMode: false, childMode: false }),
       setOrgMode: (value) =>
-        set({ orgMode: value, parentMode: false, teacherMode: false, childMode: false }),
+        set({ orgMode: value, parentMode: false, teacherMode: false, adminMode: false, childMode: false }),
+      setAdminMode: (value) =>
+        set({ adminMode: value, parentMode: false, teacherMode: false, orgMode: false, childMode: false }),
       setChildMode: (value) =>
         set({ childMode: value, parentMode: false, teacherMode: false, orgMode: false }),
       claimProof: () => set({ proofClaimed: true }),
