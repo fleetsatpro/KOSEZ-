@@ -517,8 +517,8 @@ interface AppLearnRouteChildren {
   AppLearnReviewRoute: typeof AppLearnReviewRoute
   AppLearnProgressRoute: typeof AppLearnProgressRoute
   AppLearnHistoryRoute: typeof AppLearnHistoryRoute
-}
   AppLearnLabsRoute: typeof AppLearnLabsRoute
+}
 
 const AppLearnRouteChildren: AppLearnRouteChildren = {
   AppLearnCurriculumRoute: AppLearnCurriculumRoute,
@@ -526,8 +526,8 @@ const AppLearnRouteChildren: AppLearnRouteChildren = {
   AppLearnReviewRoute: AppLearnReviewRoute,
   AppLearnProgressRoute: AppLearnProgressRoute,
   AppLearnHistoryRoute: AppLearnHistoryRoute,
-}
   AppLearnLabsRoute: AppLearnLabsRoute,
+}
 
 const AppLearnRouteWithChildren = AppLearnRoute._addFileChildren(
   AppLearnRouteChildren,
