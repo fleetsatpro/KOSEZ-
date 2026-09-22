@@ -203,6 +203,14 @@ function mergeBackendState(remote: BackendState): void {
     immersionDone: [...immersionDone],
     tandemStatus,
     learningSubmissions: [...submissionById.values()].sort((a, b) => timestamp(a.createdAt) - timestamp(b.createdAt)),
+    enrolledIds: [...new Set([
+      ...current.enrolledIds,
+      ...(remote.bookingCatalogueIds ?? []),
+    ])],
+    waitlistIds: [...new Set([
+      ...current.waitlistIds,
+      ...(remote.waitlistIds ?? []),
+    ])],
   });
 }
 
