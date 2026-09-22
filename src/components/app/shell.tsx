@@ -20,6 +20,7 @@ import { ChildHome } from "@/components/app/child-home";
 import { Wordmark } from "@/components/app/primitives";
 import { UserButton } from "@/lib/auth/gates";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
+import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -91,6 +92,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const teacherMode = useBlossom((s) => s.teacherMode);
   const orgMode = useBlossom((s) => s.orgMode);
   const childMode = useBlossom((s) => s.childMode);
+  const setChildMode = useBlossom((s) => s.setChildMode);
+  const { access, pending: accessPending } = useBlossomWorkspaceAccess();
   const journey = useJourney();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const hideChrome =
@@ -101,12 +104,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   if (!mounted || !hasEntered) return <Welcome />;
-  if (childMode) {
+  if (!accessPending && (access.isChild || childMode && access.isChild)) {
     return (
       <div className="child-skin paper-grain min-h-dvh bg-bg text-fg">
         <ChildHome />
       </div>
     );
+  }
+
+  if (childMode && !accessPending && !access.isChild) {
+    setChildMode(false);
   }
   if (parentMode) {
     return (
