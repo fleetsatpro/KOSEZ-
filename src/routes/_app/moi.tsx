@@ -14,11 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   attendanceProof,
-  CPF_NARRATIVE,
   EVENTS,
   LANGUAGE_MODULES,
   LEARNER_MEMORY,
-  NEXT_CLASS,
   planAllows,
   PLANS,
   PLANT_IMAGE,
@@ -47,6 +45,7 @@ function MoiPage() {
   const learner = useBlossom((s) => s.learner);
   const joined = useBlossom((s) => s.joinedEventIds);
   const enrolled = useBlossom((s) => s.enrolledIds);
+  const syncOwnerUserId = useBlossom((s) => s.syncOwnerUserId);
   const log = useBlossom((s) => s.activityLog);
   const setParentMode = useBlossom((s) => s.setParentMode);
   const setTeacherMode = useBlossom((s) => s.setTeacherMode);
@@ -59,18 +58,17 @@ function MoiPage() {
   const latestLetter = leoLetters[0] ?? null;
   const vocab = useBlossom((s) => s.vocabulary);
   const plan = useBlossom((s) => s.plan);
-  const setPlan = useBlossom((s) => s.setPlan);
   const languageId = useBlossom((s) => s.languageId);
   const setLanguage = useBlossom((s) => s.setLanguage);
-  const proofClaimed = useBlossom((s) => s.proofClaimed);
-  const claimProof = useBlossom((s) => s.claimProof);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const memoryOn = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
   const completeHomework = useBlossom((s) => s.completeHomework);
   const homework = useBlossom((s) => s.homework).filter(
-    (h) => h.studentId === "camille" && (h.status === "sent" || h.status === "done"),
+    (h) =>
+      h.studentId === syncOwnerUserId &&
+      (h.status === "sent" || h.status === "done"),
   );
   const journey = useJourney();
   const proof = attendanceProof({
@@ -86,12 +84,6 @@ function MoiPage() {
   const progress = Math.max(4, Math.round(journey.progress * 100));
 
   const calendar = [
-    {
-      id: NEXT_CLASS.id,
-      title: NEXT_CLASS.title,
-      when: `${formatShortDate(NEXT_CLASS.date)} · ${NEXT_CLASS.time}`,
-      kind: "class" as const,
-    },
     ...EVENTS.filter((e) => joined.includes(e.id)).map((e) => ({
       id: e.id,
       title: e.title,
@@ -304,53 +296,23 @@ function MoiPage() {
       <Surface className="mt-4 !p-5 sm:!p-6">
         <Eyebrow>Formule</Eyebrow>
         <p className="mt-3 text-sm leading-7 text-muted">
-          Le centre reste le hub. Digital et Premium ouvrent le voyage à
-          distance — sans en faire une appli générique.
+          Votre formule est gérée par K’Osez. Les fonctions Premium et les
+          droits d’accès viennent du serveur ; cette page ne peut pas
+          s’auto-attribuer un abonnement.
         </p>
-        <ul className="mt-5 space-y-3">
-          {PLANS.map((item) => {
-            const active = plan === item.id;
-            return (
-              <li
-                key={item.id}
-                className={cn(
-                  "rounded-xl px-4 py-4 transition-colors",
-                  active
-                    ? "bg-primary/10 ring-1 ring-primary/25"
-                    : "bg-surface-2",
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium">{item.name}</p>
-                    <p className="mt-0.5 text-xs text-subtle">{item.price}</p>
-                  </div>
-                  {active ? (
-                    <Badge>Actuelle</Badge>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => {
-                        setPlan(item.id);
-                        toast(
-                          item.id === "centre"
-                            ? "Formule centre. Le parcours en salle reste le cœur."
-                            : "Demande enregistrée. Un conseiller confirme l'abonnement.",
-                        );
-                      }}
-                    >
-                      Choisir
-                    </Button>
-                  )}
-                </div>
-                <p className="mt-2 text-sm leading-6 text-muted">{item.blurb}</p>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="mt-5 rounded-xl border border-border bg-surface-2/50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-subtle">
+            Niveau d’accès actuel
+          </p>
+          <p className="mt-2 font-display text-xl">
+            {plan === "premium" ? "Premium" : plan === "centre" ? "Centre" : "Digital"}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-muted">
+            Les changements d’abonnement et paiements nécessitent un workflow
+            serveur dédié et une confirmation côté K’Osez.
+          </p>
+        </div>
       </Surface>
-
       {/* Homework */}
       {homework.length > 0 && (
         <Surface className="mt-4 !p-5">
@@ -414,7 +376,7 @@ function MoiPage() {
         </p>
       </Surface>
 
-      {/* Preuves — cinema density */}
+      {/* Preuves */}
       <Surface className="mt-4 !p-5 sm:!p-6">
         <div className="flex items-center gap-2">
           <Shield className="size-4 text-primary" strokeWidth={1.7} />
@@ -433,25 +395,16 @@ function MoiPage() {
             </li>
           ))}
         </ul>
-        {proofClaimed ? (
-          <p className="mt-5 text-sm text-primary">Preuve versée dans MOI.</p>
-        ) : (
-          <Button
-            className="mt-5 w-full"
-            disabled={!proof.ready}
-            onClick={() => {
-              claimProof();
-              toast("Attestation de régularité — pas un diplôme.");
-            }}
-          >
-            {proof.ready ? "Émettre l'attestation" : "Cycle encore ouvert"}
-          </Button>
-        )}
-        {proofClaimed && (
-          <p className="mt-4 text-sm leading-7 text-muted">{CPF_NARRATIVE.body}</p>
-        )}
+        <div className="mt-5 rounded-xl border border-border bg-surface-2/50 p-4">
+          <p className="text-sm font-medium">
+            {proof.ready ? "Cycle prêt à être vérifié" : "Cycle encore ouvert"}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-muted">
+            L’émission d’une attestation officielle reste une opération du centre.
+            K’Osez n’affiche pas de faux certificat comme s’il avait été signé.
+          </p>
+        </div>
       </Surface>
-
       {/* Languages */}
       <Surface className="mt-4 !p-5">
         <Eyebrow>Langues du centre</Eyebrow>
