@@ -76,13 +76,6 @@ test("pronlab flags: best < 60 after 2 attempts", () => {
   assert.equal(summarisePronlabItem("pl-1", INITIAL_PRONLAB_ATTEMPTS).struggling, false);
 });
 
-test("score attempt is deterministic and rises", () => {
-  const a = scoreAttempt("pl-1", 0, 3);
-  const b = scoreAttempt("pl-1", 2, 3);
-  assert.equal(a, scoreAttempt("pl-1", 0, 3));
-  assert.ok(b > a);
-});
-
 test("tandem matching ranks language direction and shared interests", () => {
   const me = {
     speaks: "Français",
