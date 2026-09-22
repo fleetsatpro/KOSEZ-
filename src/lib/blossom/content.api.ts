@@ -71,14 +71,12 @@ export const saveAdminContentDraftOnServer = createServerFn({ method: "POST" })
         contentKey: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,159}$/),
         expectedDraftRevision: z.number().int().nonnegative(),
         payload: eventContentSchema,
-        expectedDraftRevision: z.number().int().nonnegative(),
       }),
       z.object({
         kind: z.literal("catalogue"),
         contentKey: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,159}$/),
         expectedDraftRevision: z.number().int().nonnegative(),
         payload: catalogueContentSchema,
-        expectedDraftRevision: z.number().int().nonnegative(),
       }),
     ]),
   )
