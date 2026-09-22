@@ -20,7 +20,10 @@ export type SyncOperation =
   | "learning.submission"
   | "booking.request"
   | "waitlist.request"
-  | "analytics.record";
+  | "analytics.record"
+  | "teacher.note"
+  | "teacher.homework"
+  | "homework.complete";
 
 export type SyncMutation = {
   mutationId: string;
