@@ -363,7 +363,7 @@ export function ExecuteStage({
   onManualDone: () => void;
 }) {
   const beats = deriveSceneBeats(objective);
-  const visibleBeats = challenge === "stretch" ? beats : beats.slice(0, 3);
+  const visibleBeats = challenge === "stretch" ? beats : beats.slice(0, 2);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const selectedBeat = visibleBeats[Math.min(selectedIndex, visibleBeats.length - 1)]!;
   const lifelines = objective.scene?.rescuePhrases.slice(0, 2) ?? [];
@@ -390,6 +390,22 @@ export function ExecuteStage({
 
         <div className="flex flex-1 flex-col justify-center py-8">
           <div className="mx-auto w-full max-w-4xl text-center">
+            {objective.scene ? (
+              <div className="mx-auto mb-7 grid max-w-5xl gap-px overflow-hidden rounded-2xl border border-border bg-border/70 text-left sm:grid-cols-3">
+                <div className="bg-surface/90 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-subtle">Moment</p>
+                  <p className="mt-1 text-sm font-semibold">{objective.scene.time}</p>
+                </div>
+                <div className="bg-surface/90 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-subtle">Autour de vous</p>
+                  <p className="mt-1 text-sm leading-5 text-muted">{objective.scene.sensoryCue}</p>
+                </div>
+                <div className="bg-surface/90 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-subtle">Pression utile</p>
+                  <p className="mt-1 text-sm leading-5 text-muted">{objective.scene.pressure}</p>
+                </div>
+              </div>
+            ) : null
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-subtle">Votre geste maintenant</p>
             <h2 className="mt-4 font-display text-5xl leading-[0.92] tracking-tight sm:text-7xl">
               {selectedBeat.label}
@@ -540,7 +556,7 @@ export function ReflectionStage({
   run: MissionRun | null;
   history: ReturnType<typeof summariseMissionHistory>;
   onChange: (next: MissionReflection) => void;
-  onSave: () => void;
+  onSave: (next?: MissionReflection) => void;
   onRedo: () => void;
   onFinish: () => void;
 }) {
@@ -567,8 +583,9 @@ export function ReflectionStage({
   }
 
   function chooseConfidence(value: MissionReflection["confidence"]) {
-    onChange({ ...draft, confidence: value });
-    queueMicrotask(onSave);
+    const next = { ...draft, confidence: value };
+    onChange(next);
+    queueMicrotask(() => onSave(next));
   }
 
   return (
