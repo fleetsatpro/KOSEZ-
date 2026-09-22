@@ -35,8 +35,28 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Start dev server for auth invariants
+        run: |
+          npm run dev > /tmp/kosez-dev.log 2>&1 &
+          echo $! > /tmp/kosez-dev.pid
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:8080/__app-env > /tmp/kosez-env.json; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/kosez-dev.log
+          exit 1
+
       - name: Auth invariants
-        run: npm run check:auth
+        run: npm run check:auth -- --dev-url http://127.0.0.1:8080
+
+      - name: Stop dev server
+        if: always()
+        run: |
+          if [ -f /tmp/kosez-dev.pid ]; then
+            kill "$(cat /tmp/kosez-dev.pid)" || true
+          fi
 
       - name: Lint
         run: npm run lint
