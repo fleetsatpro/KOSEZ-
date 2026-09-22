@@ -91,6 +91,7 @@ type AppState = {
   languageId: string;
   missionSessions: Record<string, MissionSession>;
   backendMissionRevisions: Record<string, number>;
+  syncOwnerUserId: string | null;
   enter: () => void;
   setParentMode: (value: boolean) => void;
   setTeacherMode: (value: boolean) => void;
@@ -206,6 +207,7 @@ export const useBlossom = create<AppState>()(
       languageId: "en",
       missionSessions: {},
       backendMissionRevisions: {},
+      syncOwnerUserId: null,
       enter: () => {
         if (!get().hasEntered) track("onboarding_completed");
         set({ hasEntered: true });
@@ -616,6 +618,7 @@ export const useBlossom = create<AppState>()(
       resetJourney: () =>
         set({
           learner: LEARNER,
+          syncOwnerUserId: null,
           activityLog: INITIAL_LOG,
           joinedEventIds: [],
           enrolledIds: ["cat-a2"],
