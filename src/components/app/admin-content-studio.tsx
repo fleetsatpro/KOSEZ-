@@ -139,8 +139,6 @@ export function AdminContentStudio() {
         ),
       );
       toast("Brouillon programme enregistré.");
-      setItems((current) => current.map((item) => item.contentKey === selected.contentKey ? { ...item, draftPayload: payload, draftRevision: result.draftRevision, state: "draft" } : item));
-      toast("Brouillon enregistré.");
     } catch {
       toast("Le brouillon n’a pas pu être enregistré.");
     } finally { setSaving(false); }
