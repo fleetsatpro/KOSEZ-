@@ -197,20 +197,6 @@ export function pronlabFlags(attempts: PronlabAttempt[], itemIds: string[]) {
     .sort((a, b) => a.bestScore - b.bestScore);
 }
 
-const SCORE_CURVE = [48, 57, 66, 74, 81, 87, 91, 94];
-
-export function scoreAttempt(
-  itemId: string,
-  priorCount: number,
-  seconds: number,
-): number {
-  const i = Math.min(priorCount, SCORE_CURVE.length - 1);
-  const base = SCORE_CURVE[i] ?? 48;
-  const duration = seconds >= 1 ? 3 : -4;
-  const jitter = (itemId.charCodeAt(itemId.length - 1) % 5) - 2;
-  return Math.max(32, Math.min(97, base + duration + jitter));
-}
-
 export type TandemPartner = {
   id: string;
   name: string;
