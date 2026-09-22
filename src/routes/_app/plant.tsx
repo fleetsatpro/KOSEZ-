@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, Sprout } from "lucide-react";
 import { BlossomPlant } from "@/components/app/plant";
+import { SceneReel } from "@/components/app/scene-reel";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { STAGES, nextStage } from "@/lib/blossom/engine";
-import { useJourney } from "@/lib/blossom/store";
+import { organismStatusLine } from "@/lib/blossom/organism";
+import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/plant")({
@@ -14,25 +16,37 @@ export const Route = createFileRoute("/_app/plant")({
 
 function PlantPage() {
   const journey = useJourney();
+  const minerals = useBlossom((s) => s.mineralSnapshot);
+  const growthEvents = useBlossom((s) => s.growthEvents);
   const upcoming = nextStage(journey.stage.id);
+  const leoLine = organismStatusLine(minerals);
   const reqs = [
     {
       label: "Missions",
+      detail: "Gestes ancrés, y compris terrain",
       current: journey.missions.current,
       required: journey.missions.required,
     },
     {
       label: "Parole",
+      detail: "Speak rooms, Pulse, tandem",
       current: journey.speak.current,
       required: journey.speak.required,
     },
     {
       label: "Pron'Lab",
+      detail: "Sons répétés jusqu'à tenue",
       current: journey.pronlab.current,
       required: journey.pronlab.required,
     },
   ];
   const stageProgress = Math.round(journey.progress * 100);
+  const mineralRows = [
+    { key: "mission", label: "Mission", value: minerals.mission },
+    { key: "parole", label: "Parole", value: minerals.parole },
+    { key: "pron", label: "Pron", value: minerals.pron },
+    { key: "social", label: "Lien", value: minerals.social },
+  ] as const;
 
   return (
     <Page className="kosez-feature-page max-w-4xl">
@@ -51,6 +65,9 @@ function PlantPage() {
         <p className="mt-3 text-sm leading-7 text-muted sm:text-base">
           Chaque geste utile nourrit la plante. Pas de course — une croissance
           visible, mesurable, ancrée dans ce que vous osez vraiment dire.
+        </p>
+        <p className="mt-4 rounded-xl border border-border/60 bg-surface-2/40 px-4 py-3 text-sm leading-6 text-fg">
+          {leoLine}
         </p>
       </header>
 
@@ -105,22 +122,25 @@ function PlantPage() {
               return (
                 <li
                   key={item.label}
-                  className="flex min-h-12 items-center justify-between rounded-xl border border-border/70 bg-surface-2/50 px-4"
+                  className="rounded-xl border border-border/70 bg-surface-2/50 px-4 py-3"
                 >
-                  <span className="text-sm">{item.label}</span>
-                  <span
-                    className={cn(
-                      "flex items-center gap-2 text-sm tabular-nums",
-                      met ? "text-primary" : "text-muted",
-                    )}
-                  >
-                    <span>
-                      {Math.min(item.current, item.required)} / {item.required}
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium">{item.label}</span>
+                    <span
+                      className={cn(
+                        "flex items-center gap-2 text-sm tabular-nums",
+                        met ? "text-primary" : "text-muted",
+                      )}
+                    >
+                      <span>
+                        {Math.min(item.current, item.required)} / {item.required}
+                      </span>
+                      {met && (
+                        <Check className="size-4" aria-label="Objectif atteint" />
+                      )}
                     </span>
-                    {met && (
-                      <Check className="size-4" aria-label="Objectif atteint" />
-                    )}
-                  </span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-subtle">{item.detail}</p>
                 </li>
               );
             })}
@@ -142,8 +162,44 @@ function PlantPage() {
         </Surface>
       </div>
 
+      {/* Minerals — soil of the organism */}
+      <Surface className="mt-8">
+        <Eyebrow>Minéraux · 14 jours</Eyebrow>
+        <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+          Quatre nutriments. Le plus bas oriente le prochain geste utile — sans
+          culpabiliser.
+        </p>
+        <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {mineralRows.map((m) => (
+            <div
+              key={m.key}
+              className="rounded-xl border border-border/60 bg-surface-2/40 px-3 py-4 text-center"
+            >
+              <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-subtle">
+                {m.label}
+              </dt>
+              <dd className="mt-1 font-display text-2xl tabular-nums text-primary">
+                {m.value}
+              </dd>
+              <div className="mx-auto mt-2 h-1 max-w-[4rem] overflow-hidden rounded-full bg-border/50">
+                <div
+                  className="h-full rounded-full bg-primary/80"
+                  style={{ width: `${Math.max(4, m.value)}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </dl>
+      </Surface>
+
+      <SceneReel events={growthEvents} className="mt-6" limit={10} />
+
       <Surface className="mt-8">
         <Eyebrow>Les cinq stades</Eyebrow>
+        <p className="mt-2 max-w-xl text-sm text-muted">
+          Graine → croissance → épanouissement → fleurs → indépendance. Chaque
+          seuil demande des gestes, pas seulement des points.
+        </p>
         <ol className="mt-5 grid gap-2 sm:grid-cols-5">
           {STAGES.map((stage, index) => {
             const current = stage.id === journey.stage.id;
