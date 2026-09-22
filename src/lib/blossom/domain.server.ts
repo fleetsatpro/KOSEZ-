@@ -158,6 +158,142 @@ export async function getGuardianWorkspace(userId: string): Promise<GuardianWork
   }));
 }
 
+export type ConnectPeer = {
+  id: string;
+  name: string;
+  level: string | null;
+  city: string | null;
+  interests: string[];
+  lastSeen: string | null;
+  sharedEvents: number;
+};
+
+export async function getConnectPeers(userId: string): Promise<ConnectPeer[]> {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `select
+      p.user_id as id,
+      coalesce(nullif(p.display_name, ''), p.user_id) as name,
+      p.level,
+      p.preferences->>'city' as city,
+      p.preferences->'interests' as interests,
+      max(their.updated_at) as last_seen,
+      count(distinct mine.event_id)::integer as shared_events
+    from blossom_event_registration mine
+    join blossom_event_registration their
+      on their.event_id = mine.event_id
+     and their.status = 'joined'
+     and their.user_id <> $1
+    join blossom_profile p on p.user_id = their.user_id
+    where mine.user_id = $1
+      and mine.status = 'joined'
+    group by p.user_id, p.display_name, p.level, p.preferences
+    order by shared_events desc, last_seen desc nulls last
+    limit 24`,
+    [userId],
+  );
+
+  return rows.map((row) => ({
+    id: String(row.id),
+    name: String(row.name),
+    level: row.level ? String(row.level) : null,
+    city: typeof row.city === "string" ? row.city : null,
+    interests: Array.isArray(row.interests) ? row.interests.map(String) : [],
+    lastSeen: row.last_seen ? new Date(String(row.last_seen)).toISOString() : null,
+    sharedEvents: Number(row.shared_events ?? 0),
+  }));
+}
+
+export type TandemCandidate = {
+  id: string;
+  name: string;
+  city: string | null;
+  speaks: string;
+  speaksLevel: string;
+  wants: string;
+  wantsLevel: string;
+  interests: string[];
+  window: string;
+  goal: string;
+  initials: string;
+  myStatus: "suggested" | "pending" | "accepted" | "blocked" | "paused";
+  incomingStatus: "none" | "pending" | "accepted" | "blocked" | "paused";
+};
+
+function prefString(
+  preferences: Record<string, unknown>,
+  key: string,
+  fallback: string,
+) {
+  const value = preferences[key];
+  return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function prefStringArray(preferences: Record<string, unknown>, key: string) {
+  const value = preferences[key];
+  return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+}
+
+export async function getTandemCandidates(userId: string): Promise<TandemCandidate[]> {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `select
+      p.user_id,
+      coalesce(nullif(p.display_name, ''), p.user_id) as display_name,
+      p.level,
+      p.target_language,
+      p.preferences,
+      coalesce(mine.status, 'suggested') as my_status,
+      coalesce(incoming.status, 'none') as incoming_status
+    from blossom_profile p
+    left join blossom_tandem_connection mine
+      on mine.user_id = $1 and mine.partner_user_id = p.user_id
+    left join blossom_tandem_connection incoming
+      on incoming.user_id = p.user_id and incoming.partner_user_id = $1
+    where p.user_id <> $1
+      and coalesce(mine.status, 'suggested') <> 'blocked'
+      and coalesce(incoming.status, 'none') <> 'blocked'
+    order by display_name asc`,
+    [userId],
+  );
+
+  return rows.map((row) => {
+    const preferences =
+      row.preferences && typeof row.preferences === "object"
+        ? (row.preferences as Record<string, unknown>)
+        : {};
+    const name = String(row.display_name);
+    const target = String(row.target_language);
+    return {
+      id: String(row.user_id),
+      name,
+      city: prefString(preferences, "city", "La Réunion"),
+      speaks: prefString(preferences, "nativeLanguage", "Langue non renseignée"),
+      speaksLevel: prefString(preferences, "nativeLevel", "—"),
+      wants: target,
+      wantsLevel: row.level ? String(row.level) : "—",
+      interests: prefStringArray(preferences, "interests"),
+      window: prefString(preferences, "practiceWindow", "Créneau non renseigné"),
+      goal: prefString(preferences, "goal", "Objectif non renseigné"),
+      initials: name.slice(0, 1).toUpperCase(),
+      myStatus: String(row.my_status) as TandemCandidate["myStatus"],
+      incomingStatus: String(row.incoming_status) as TandemCandidate["incomingStatus"],
+    };
+  });
+}
+
+export async function getTandemSession(
+  userId: string,
+  partnerUserId: string,
+): Promise<TandemCandidate | null> {
+  const candidates = await getTandemCandidates(userId);
+  const partner = candidates.find((candidate) => candidate.id === partnerUserId);
+  if (!partner || partner.myStatus !== "accepted" || partner.incomingStatus !== "accepted") {
+    throw new BlossomForbiddenError("Cette session tandem n'est pas ouverte pour ce compte.");
+  }
+  return partner;
+}
+
 export type OrganizationWorkspace = {
   id: string;
   name: string;
