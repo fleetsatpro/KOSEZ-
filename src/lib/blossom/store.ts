@@ -37,6 +37,17 @@ import {
   PRONLAB_SETS,
   type PlanId,
 } from "./data";
+import {
+  buildPhonemeLeaves,
+  composeLeoLetter,
+  computeMinerals,
+  growthEventForActivity,
+  pushGrowthEvent,
+  type GrowthEvent,
+  type LeoLetter,
+  type MineralSnapshot,
+  type PhonemeLeaf,
+} from "./organism";
 
 export type LearnerProfile = typeof LEARNER;
 
@@ -92,6 +103,10 @@ type AppState = {
   missionSessions: Record<string, MissionSession>;
   backendMissionRevisions: Record<string, number>;
   syncOwnerUserId: string | null;
+  growthEvents: GrowthEvent[];
+  mineralSnapshot: MineralSnapshot;
+  phonemeLeaves: PhonemeLeaf[];
+  leoLetters: LeoLetter[];
   enter: () => void;
   setParentMode: (value: boolean) => void;
   setTeacherMode: (value: boolean) => void;
@@ -146,6 +161,9 @@ type AppState = {
   inviteOrgSeat: () => { ok: boolean };
   requestInvoice: () => void;
   setLanguage: (id: string) => void;
+  completePulse: (dareId: string, seconds: number, offline: boolean) => void;
+  markLeoLetterRead: (id: string) => void;
+  refreshOrganism: () => void;
   resetJourney: () => void;
 };
 
@@ -249,6 +267,13 @@ export const useBlossom = create<AppState>()(
       missionSessions: {},
       backendMissionRevisions: {},
       syncOwnerUserId: null,
+      growthEvents: [],
+      mineralSnapshot: computeMinerals(INITIAL_LOG),
+      phonemeLeaves: buildPhonemeLeaves(
+        INITIAL_PRONLAB_ATTEMPTS,
+        PRONLAB_SETS.flatMap((s) => s.items),
+      ),
+      leoLetters: [],
       enter: () => {
         if (!get().hasEntered) track("onboarding_completed");
         set({ hasEntered: true });
@@ -471,7 +496,31 @@ export const useBlossom = create<AppState>()(
           note,
         };
         const nextLog = [...log, event];
-        set({ activityLog: nextLog });
+        const ge = growthEventForActivity(type, sourceId, event.createdAt);
+        const growthEvents = ge
+          ? pushGrowthEvent(get().growthEvents, ge)
+          : get().growthEvents;
+        const mineralSnapshot = computeMinerals(nextLog);
+        const phonemeLeaves = buildPhonemeLeaves(
+          get().pronlabAttempts,
+          PRONLAB_SETS.flatMap((s) => s.items),
+        );
+        let leoLetters = get().leoLetters;
+        const letter = composeLeoLetter(
+          mineralSnapshot,
+          growthEvents,
+          get().learner.firstName,
+        );
+        if (!leoLetters.some((l) => l.id === letter.id)) {
+          leoLetters = [letter, ...leoLetters].slice(0, 12);
+        }
+        set({
+          activityLog: nextLog,
+          growthEvents,
+          mineralSnapshot,
+          phonemeLeaves,
+          leoLetters,
+        });
         void enqueueMutation(mutation);
         const after = journeySnapshot(nextLog).stage.id;
         if (type === "MISSION_COMPLETED") track("mission_completed");
@@ -702,6 +751,28 @@ export const useBlossom = create<AppState>()(
           current.exportConsent,
         );
       },
+      completePulse: (dareId, seconds, offline) => {
+        get().completeActivity(
+          "SPEAK_COMPLETED",
+          `pulse-${dareId}`,
+          offline ? "pulse-offline" : `pulse-${Math.max(0, Math.round(seconds))}s`,
+        );
+      },
+      markLeoLetterRead: (id) =>
+        set({
+          leoLetters: get().leoLetters.map((l) =>
+            l.id === id ? { ...l, read: true } : l,
+          ),
+        }),
+      refreshOrganism: () => {
+        const log = get().activityLog;
+        const attempts = get().pronlabAttempts;
+        const items = PRONLAB_SETS.flatMap((s) => s.items);
+        set({
+          mineralSnapshot: computeMinerals(log),
+          phonemeLeaves: buildPhonemeLeaves(attempts, items),
+        });
+      },
       resetJourney: () =>
         set({
           learner: LEARNER,
@@ -735,6 +806,13 @@ export const useBlossom = create<AppState>()(
           languageId: "en",
           missionSessions: {},
           backendMissionRevisions: {},
+          growthEvents: [],
+          mineralSnapshot: computeMinerals(INITIAL_LOG),
+          phonemeLeaves: buildPhonemeLeaves(
+            INITIAL_PRONLAB_ATTEMPTS,
+            PRONLAB_SETS.flatMap((s) => s.items),
+          ),
+          leoLetters: [],
         }),
     }),
     {
