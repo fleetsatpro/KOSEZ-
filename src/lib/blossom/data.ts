@@ -453,56 +453,6 @@ export const CATALOGUE: CatalogueItem[] = [
   },
 ];
 
-export const MISSION_FEEDBACK = {
-  strength: "Vous avez posé la question jusqu'au bout, sans revenir au français.",
-  improvement: "Remplacez « I want » par « I'll have » — plus naturel au restaurant comme à la cantine.",
-  model: "I'll have what you recommend.",
-  note: "La réussite, ici, c'est d'avoir parlé. Le reste se affine.",
-};
-
-export const SPEAK_FEEDBACK: Record<
-  string,
-  { strength: string; improvement: string; model: string }
-> = {
-  cafe: {
-    strength: "Vous avez tenu l'échange dans la langue cible.",
-    improvement: "Essayez « I'll have the catch of the day, please » plutôt que « I want ».",
-    model: "I'll have the catch of the day, please.",
-  },
-  airport: {
-    strength: "Les informations essentielles étaient claires.",
-    improvement: "Ajoutez « Could you tell me… » pour l'heure d'embarquement.",
-    model: "Could you tell me what time we board?",
-  },
-  interview: {
-    strength: "Votre présentation tenait en quelques phrases nettes.",
-    improvement: "Terminez par un objectif : « I'd like to… ».",
-    model: "I'd like to get more confident speaking with clients.",
-  },
-  hotel: {
-    strength: "Vous avez confirmé l'essentiel sans vous perdre.",
-    improvement: "Une question ouverte change le ton : « What would you recommend for dinner? »",
-    model: "What would you recommend for dinner?",
-  },
-  social: {
-    strength: "Le rythme était naturel. On vous entendait, pas le manuel.",
-    improvement: "Relancez avec « What about you? » pour garder l'échange.",
-    model: "It's been a full week. What about you?",
-  },
-  shopping: {
-    strength: "Vous avez demandé le prix — c'est déjà l'acte réel.",
-    improvement: "« How much is this? » est plus direct que « What is the price? »",
-    model: "How much is this? I'd like three, please.",
-  },
-  university: {
-    strength: "Vous avez expliqué ce que vous cherchiez.",
-    improvement: "Une relance courte : « Is it far from here? »",
-    model: "I'm looking for the seminar room. Is it far from here?",
-  },
-};
-
-export type PronlabKind = "phoneme" | "word" | "sentence" | "spontaneous";
-
 export type PronlabItem = {
   id: string;
   phrase: string;
@@ -899,25 +849,6 @@ export const TANDEM_PROMPTS = {
     "Parlez d'une personne qui vous a fait progresser.",
     "Qu'est-ce que vous faites le dimanche, simplement ?",
   ],
-};
-
-export const TANDEM_DEBRIEF: Record<string, { strength: string; improvement: string }> = {
-  noah: {
-    strength: "You stayed in English when the food came up — that's the real test.",
-    improvement: "Try « I'll have » instead of « I want » when you order.",
-  },
-  ines: {
-    strength: "You asked a question back. The exchange lived.",
-    improvement: "A short « What about you? » keeps the turn going.",
-  },
-  hugo: {
-    strength: "The music talk had a rhythm. You weren't reciting.",
-    improvement: "Name one concrete detail — a song title, a place.",
-  },
-  maya: {
-    strength: "You described the market without switching.",
-    improvement: "« How much is this? » is enough. Don't build a longer sentence yet.",
-  },
 };
 
 export const TEACHER_TAGS = [
