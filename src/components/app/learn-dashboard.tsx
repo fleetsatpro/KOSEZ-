@@ -26,7 +26,7 @@ import {
   setsForLanguage,
 } from "@/lib/blossom/data";
 import { summarisePronlabItem } from "@/lib/blossom/engine";
-import { buildSkillProfile, nextLearningAction, CURRICULUM_UNITS } from "@/lib/blossom/learning-os";
+import { buildSkillProfile, CURRICULUM_UNITS } from "@/lib/blossom/learning-os";
 import { buildReviewPlan } from "@/lib/blossom/review-scheduler";
 import { buildLearningIntelligence } from "@/lib/blossom/learning-intelligence";
 import { isSetUnlocked, useBlossom, useJourney } from "@/lib/blossom/store";
@@ -101,7 +101,9 @@ export function LearnDashboard() {
         ? "/library"
         : nextAction.kind === "mission"
           ? "/mission"
-          : "/learn/review";
+          : nextAction.kind === "labs"
+            ? "/learn/labs"
+            : "/learn/review";
 
   const sets = setsForLanguage(useBlossom((s) => s.languageId));
   const libraryOk = planAllows(plan, "library");
