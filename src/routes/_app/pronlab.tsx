@@ -17,9 +17,10 @@ export const Route = createFileRoute("/_app/pronlab")({
 function PronlabHub() {
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const assigned = useBlossom((s) => s.assignedSetIds);
+  const syncOwnerUserId = useBlossom((s) => s.syncOwnerUserId);
   const languageId = useBlossom((s) => s.languageId);
   const homework = useBlossom((s) => s.homework).filter(
-    (h) => h.status === "sent" && h.studentId === "camille",
+    (h) => h.status === "sent" && h.studentId === syncOwnerUserId,
   );
   const sets = setsForLanguage(languageId);
   const allItems = PRONLAB_SETS.flatMap((s) => s.items);
