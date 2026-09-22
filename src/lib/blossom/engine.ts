@@ -300,5 +300,4 @@ export function cafeMemoryHint(
   _enabled: boolean,
 ): string {
   return turnHint;
-}  return turnHint;
 }
