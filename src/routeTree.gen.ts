@@ -27,6 +27,12 @@ import { Route as AppOsezIdRouteImport } from './routes/_app/osez.$id'
 import { Route as AppOsezPulseRouteImport } from './routes/_app/osez.pulse'
 import { Route as AppPronlabSetIdRouteImport } from './routes/_app/pronlab.$setId'
 import { Route as AppTandemIdRouteImport } from './routes/_app/tandem.$id'
+import { Route as AppLearnCurriculumRouteImport } from './routes/_app/learn.curriculum'
+import { Route as AppLearnCurriculumUnitIdRouteImport } from './routes/_app/learn.curriculum.$unitId'
+import { Route as AppLearnReviewRouteImport } from './routes/_app/learn.review'
+import { Route as AppLearnProgressRouteImport } from './routes/_app/learn.progress'
+import { Route as AppLearnHistoryRouteImport } from './routes/_app/learn.history'
+import { Route as LoginRouteImport } from './routes/login'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -117,13 +123,48 @@ const AppTandemIdRoute = AppTandemIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppTandemRoute,
 } as any)
+const AppLearnCurriculumRoute = AppLearnCurriculumRouteImport.update({
+  id: '/curriculum',
+  path: '/curriculum',
+  getParentRoute: () => AppLearnRoute,
+} as any)
+const AppLearnCurriculumUnitIdRoute = AppLearnCurriculumUnitIdRouteImport.update({
+  id: '/curriculum/$unitId',
+  path: '/curriculum/$unitId',
+  getParentRoute: () => AppLearnRoute,
+} as any)
+const AppLearnReviewRoute = AppLearnReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
+  getParentRoute: () => AppLearnRoute,
+} as any)
+const AppLearnProgressRoute = AppLearnProgressRouteImport.update({
+  id: '/progress',
+  path: '/progress',
+  getParentRoute: () => AppLearnRoute,
+} as any)
+const AppLearnHistoryRoute = AppLearnHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => AppLearnRoute,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/connect': typeof AppConnectRoute
   '/explore': typeof AppExploreRoute
   '/immersion': typeof AppImmersionRoute
-  '/learn': typeof AppLearnRoute
+  '/learn': typeof AppLearnRouteWithChildren
+  '/learn/curriculum': typeof AppLearnCurriculumRoute
+  '/learn/curriculum/$unitId': typeof AppLearnCurriculumUnitIdRoute
+  '/learn/review': typeof AppLearnReviewRoute
+  '/learn/progress': typeof AppLearnProgressRoute
+  '/learn/history': typeof AppLearnHistoryRoute
   '/library': typeof AppLibraryRouteWithChildren
   '/mission': typeof AppMissionRoute
   '/moi': typeof AppMoiRoute
@@ -136,12 +177,18 @@ export interface FileRoutesByFullPath {
   '/osez/$id': typeof AppOsezIdRoute
   '/pronlab/$setId': typeof AppPronlabSetIdRoute
   '/tandem/$id': typeof AppTandemIdRoute
+  '/login': typeof LoginRoute
 }
 export interface FileRoutesByTo {
   '/connect': typeof AppConnectRoute
   '/explore': typeof AppExploreRoute
   '/immersion': typeof AppImmersionRoute
-  '/learn': typeof AppLearnRoute
+  '/learn': typeof AppLearnRouteWithChildren
+  '/learn/curriculum': typeof AppLearnCurriculumRoute
+  '/learn/curriculum/$unitId': typeof AppLearnCurriculumUnitIdRoute
+  '/learn/review': typeof AppLearnReviewRoute
+  '/learn/progress': typeof AppLearnProgressRoute
+  '/learn/history': typeof AppLearnHistoryRoute
   '/library': typeof AppLibraryRouteWithChildren
   '/mission': typeof AppMissionRoute
   '/moi': typeof AppMoiRoute
@@ -236,6 +283,12 @@ export interface FileRouteTypes {
     | '/_app/osez/$id'
     | '/_app/pronlab/$setId'
     | '/_app/tandem/$id'
+    | '/_app/learn/curriculum'
+    | '/_app/learn/curriculum/$unitId'
+    | '/_app/learn/review'
+    | '/_app/learn/progress'
+    | '/_app/learn/history'
+    | '/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -373,6 +426,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppLearnRouteChildren {
+  AppLearnCurriculumRoute: typeof AppLearnCurriculumRoute
+  AppLearnCurriculumUnitIdRoute: typeof AppLearnCurriculumUnitIdRoute
+  AppLearnReviewRoute: typeof AppLearnReviewRoute
+  AppLearnProgressRoute: typeof AppLearnProgressRoute
+  AppLearnHistoryRoute: typeof AppLearnHistoryRoute
+}
+
+const AppLearnRouteChildren: AppLearnRouteChildren = {
+  AppLearnCurriculumRoute: AppLearnCurriculumRoute,
+  AppLearnCurriculumUnitIdRoute: AppLearnCurriculumUnitIdRoute,
+  AppLearnReviewRoute: AppLearnReviewRoute,
+  AppLearnProgressRoute: AppLearnProgressRoute,
+  AppLearnHistoryRoute: AppLearnHistoryRoute,
+}
+
+const AppLearnRouteWithChildren = AppLearnRoute._addFileChildren(AppLearnRouteChildren)
+
 interface AppLibraryRouteChildren {
   AppLibraryIdRoute: typeof AppLibraryIdRoute
 }
@@ -426,7 +497,7 @@ interface AppRouteChildren {
   AppConnectRoute: typeof AppConnectRoute
   AppExploreRoute: typeof AppExploreRoute
   AppImmersionRoute: typeof AppImmersionRoute
-  AppLearnRoute: typeof AppLearnRoute
+  AppLearnRoute: typeof AppLearnRouteWithChildren
   AppLibraryRoute: typeof AppLibraryRouteWithChildren
   AppMissionRoute: typeof AppMissionRoute
   AppMoiRoute: typeof AppMoiRoute
@@ -441,7 +512,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppConnectRoute: AppConnectRoute,
   AppExploreRoute: AppExploreRoute,
   AppImmersionRoute: AppImmersionRoute,
-  AppLearnRoute: AppLearnRoute,
+  AppLearnRoute: AppLearnRouteWithChildren,
   AppLibraryRoute: AppLibraryRouteWithChildren,
   AppMissionRoute: AppMissionRoute,
   AppMoiRoute: AppMoiRoute,
