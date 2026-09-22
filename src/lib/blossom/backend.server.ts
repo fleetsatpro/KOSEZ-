@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
+import { normalizeMutationTime } from "./sync-causality";
 
 export type JsonValue =
   | null
@@ -226,12 +227,7 @@ export async function upsertBlossomProfile(
   },
 ): Promise<BlossomProfileRecord> {
   const sql = await getSql();
-  const causalTime = input.mutationCreatedAt
-    ? new Date(Math.min(
-        new Date(input.mutationCreatedAt).getTime(),
-        Date.now() + 5 * 60_000,
-      )).toISOString()
-    : null;
+  const causalTime = normalizeMutationTime(input.mutationCreatedAt);
 
   const rows = await sql.query(
     "insert into blossom_profile (user_id, display_name, target_language, level, timezone, preferences, updated_at) values ($1, $2, $3, $4, $5, $6::jsonb, coalesce($7::timestamptz, current_timestamp)) on conflict (user_id) do update set display_name = excluded.display_name, target_language = excluded.target_language, level = excluded.level, timezone = excluded.timezone, preferences = excluded.preferences, updated_at = excluded.updated_at where blossom_profile.updated_at <= excluded.updated_at returning user_id, display_name, target_language, level, timezone, preferences, created_at, updated_at",
