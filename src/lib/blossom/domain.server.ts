@@ -14,6 +14,7 @@ export type BlossomAccessContext = {
   isTeacher: boolean;
   isGuardian: boolean;
   isOrgStaff: boolean;
+  isChild: boolean;
 };
 
 export async function getBlossomAccessContext(userId: string): Promise<BlossomAccessContext> {
@@ -33,7 +34,11 @@ export async function getBlossomAccessContext(userId: string): Promise<BlossomAc
         where user_id = $1
           and status = 'active'
           and role in ('owner','admin','teacher')
-      ) as is_org_staff`,
+      ) as is_org_staff,
+      exists(
+        select 1 from blossom_guardian_link
+        where learner_user_id = $1 and status = 'active'
+      ) as is_child`,
     [userId],
   );
   const row = rows[0] ?? {};
@@ -41,6 +46,7 @@ export async function getBlossomAccessContext(userId: string): Promise<BlossomAc
     isTeacher: Boolean(row.is_teacher),
     isGuardian: Boolean(row.is_guardian),
     isOrgStaff: Boolean(row.is_org_staff),
+    isChild: Boolean(row.is_child),
   };
 }
 
