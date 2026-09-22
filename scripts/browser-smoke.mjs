@@ -62,6 +62,7 @@ if (baselineRequested) {
 }
 
 const timeoutMs = Number(process.env.BROWSER_SMOKE_TIMEOUT_MS || 45000);
+const expectedAuth = process.env.BROWSER_SMOKE_EXPECT_AUTH;
 
 const VIEWPORTS = [
   { name: "desktop", width: 1280, height: 800, screenshot: outPng },
@@ -257,7 +258,6 @@ try {
   // The CI learner smoke intentionally runs on an auth-disabled isolated server
   // so it can inspect the actual learner UI. Auth correctness is checked
   // separately against the production-mode auth-on server.
-  const expectedAuth = process.env.BROWSER_SMOKE_EXPECT_AUTH;
   const authWarnings =
     expectedAuth === "disabled"
       ? []
