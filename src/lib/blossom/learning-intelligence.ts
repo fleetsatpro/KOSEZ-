@@ -1,6 +1,7 @@
 import type { ActivityEvent, ActivityType, PronlabAttempt } from "./engine";
 import type { LearningSubmission } from "./store";
-import { summarisePronlabItem, PRONLAB_SETS } from "./engine";
+import { summarisePronlabItem } from "./engine";
+import { PRONLAB_SETS } from "./data";
 import type { ScheduledReviewItem, ReviewPlan } from "./review-scheduler";
 import { LEARNING_DOMAINS, type LearningDomainId } from "./learning-os";
 
