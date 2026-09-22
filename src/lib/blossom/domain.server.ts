@@ -44,6 +44,46 @@ export async function getBlossomAccessContext(userId: string): Promise<BlossomAc
   };
 }
 
+export async function requestCatalogueBooking(userId: string, catalogueItemId: string) {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `insert into blossom_booking_request (id, user_id, catalogue_item_id, status)
+     values ($1::uuid, $2, $3, 'requested')
+     on conflict (user_id, catalogue_item_id)
+     do update set status = 'requested', updated_at = current_timestamp
+     where blossom_booking_request.status <> 'cancelled'
+     returning id, catalogue_item_id, status, payment_status, created_at, updated_at`,
+    [randomUUID(), userId, catalogueItemId],
+  );
+  if (rows[0]) return rows[0];
+  const current = await sql.query(
+    "select id, catalogue_item_id, status, payment_status, created_at, updated_at from blossom_booking_request where user_id = $1 and catalogue_item_id = $2",
+    [userId, catalogueItemId],
+  );
+  if (!current[0]) throw new Error("booking-request-write-failed");
+  return current[0];
+}
+
+export async function requestWaitlist(userId: string, itemId: string) {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `insert into blossom_waitlist_request (id, user_id, item_id, status)
+     values ($1::uuid, $2, $3, 'requested')
+     on conflict (user_id, item_id)
+     do update set status = 'requested', updated_at = current_timestamp
+     where blossom_waitlist_request.status <> 'notified'
+     returning id, item_id, status, created_at, updated_at`,
+    [randomUUID(), userId, itemId],
+  );
+  if (rows[0]) return rows[0];
+  const current = await sql.query(
+    "select id, item_id, status, created_at, updated_at from blossom_waitlist_request where user_id = $1 and item_id = $2",
+    [userId, itemId],
+  );
+  if (!current[0]) throw new Error("waitlist-write-failed");
+  return current[0];
+}
+
 
 export type PronlabAttemptInput = {
   itemId: string;
