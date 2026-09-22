@@ -17,7 +17,6 @@ import { mergeMissionSessions } from "@/lib/blossom/sync-merge";
 import type { MissionSession } from "@/lib/blossom/mission";
 import type { BackendState, SyncJsonValue, SyncMutation, SyncResult } from "@/lib/blossom/sync-types";
 import { POINTS, type ActivityEvent, type PronlabAttempt } from "@/lib/blossom/engine";
-import { LEARNER } from "@/lib/blossom/data";
 import { useBlossom } from "@/lib/blossom/store";
 
 const SYNC_INTERVAL_MS = 45_000;
@@ -280,6 +279,7 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
     if (!user) {
       setSyncOwner(null);
       useBlossom.getState().resetJourney();
+      onReadyRef.current?.();
       return;
     }
 
