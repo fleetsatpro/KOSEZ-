@@ -199,7 +199,6 @@ function mergeBackendState(remote: BackendState): void {
     missionSessions,
     backendMissionRevisions: revisions,
     joinedEventIds: [...joinedEventIds],
-    waitlistIds: [...waitlistIds],
     immersionDone: [...immersionDone],
     tandemStatus,
     learningSubmissions: [...submissionById.values()].sort((a, b) => timestamp(a.createdAt) - timestamp(b.createdAt)),
