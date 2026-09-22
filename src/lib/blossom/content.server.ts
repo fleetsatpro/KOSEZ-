@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { getSql } from "@/lib/db";
-import { CATALOGUE, EVENTS, type CatalogueItem, type EventItem } from "./data";
+import {
+  CATALOGUE,
+  EVENTS,
+  MARKETPLACE,
+  type CatalogueItem,
+  type EventItem,
+} from "./data";
 
 const contentKeySchema = z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,159}$/);
 
@@ -46,6 +52,8 @@ const cataloguePayloadSchema = z.object({
   schedule: z.string().trim().min(1).max(240),
   price: z.string().trim().min(1).max(160),
   image: z.string().trim().max(500),
+  early: z.boolean().optional(),
+  companion: z.boolean().optional(),
 });
 
 export type ContentKind = "event" | "catalogue";
@@ -94,16 +102,53 @@ function mapPublishedRow(row: Record<string, unknown>) {
 }
 
 function codeFallbackContent(): PublishedContent {
+  const immersionCatalogue: CatalogueItem[] = MARKETPLACE.map((item) => ({
+    id: item.id,
+    kind: "immersion",
+    title: item.title,
+    description: item.blurb,
+    language: "English",
+    level: "A2+",
+    format: "Immersion",
+    instructor: "Équipe K'Osez",
+    location: item.place,
+    capacity: item.spots,
+    schedule: item.dates,
+    price: item.price,
+    image: item.image,
+    early: item.early,
+    companion: item.companion,
+  }));
+
   return {
     events: [...EVENTS],
-    catalogue: [...CATALOGUE],
+    catalogue: [...CATALOGUE, ...immersionCatalogue],
   };
 }
 
 async function ensureBootstrapContent(sql: Awaited<ReturnType<typeof getSql>>) {
+  const immersionCatalogue: CatalogueItem[] = MARKETPLACE.map((item) => ({
+    id: item.id,
+    kind: "immersion",
+    title: item.title,
+    description: item.blurb,
+    language: "English",
+    level: "A2+",
+    format: "Immersion",
+    instructor: "Équipe K'Osez",
+    location: item.place,
+    capacity: item.spots,
+    schedule: item.dates,
+    price: item.price,
+    image: item.image,
+    early: item.early,
+    companion: item.companion,
+  }));
+
   const authored = [
     ...EVENTS.map((event) => ({ kind: "event" as const, item: event })),
     ...CATALOGUE.map((item) => ({ kind: "catalogue" as const, item })),
+    ...immersionCatalogue.map((item) => ({ kind: "catalogue" as const, item })),
   ];
 
   const existingRows = await sql.query(
