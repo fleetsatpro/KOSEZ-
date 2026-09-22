@@ -7,7 +7,7 @@ const OUTBOX_FALLBACK_KEY = "kosez-blossom-outbox-v1";
 const DEVICE_KEY = "kosez-blossom-device-id";
 const CHANGE_EVENT = "kosez:sync-needed";
 
-type StoredMutation = SyncMutation & {
+export type StoredMutation = SyncMutation & {
   state: "pending" | "conflict";
   conflict?: Extract<SyncResult, { status: "conflict" }>;
 };
@@ -131,12 +131,16 @@ export async function listPendingMutations(): Promise<StoredMutation[]> {
   if (hasIndexedDb()) {
     try {
       const rows = await txRequest<StoredMutation[]>("readonly", (store) => store.getAll());
-      return rows.filter((row) => row.state === "pending");
+      return rows
+        .filter((row) => row.state === "pending")
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     } catch {
       // fallback below
     }
   }
-  return readFallback().filter((row) => row.state === "pending");
+  return readFallback()
+    .filter((row) => row.state === "pending")
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
 export async function markConflict(
@@ -184,6 +188,8 @@ export async function replaceConflictWithMutation(
   conflictMutationId: string,
   merged: SyncMutation,
 ): Promise<void> {
-  await removeMutation(conflictMutationId);
+  // Enqueue first. If storage fails, the conflict record remains intact and no
+  // local command is silently discarded.
   await enqueueMutation(merged);
+  await removeMutation(conflictMutationId);
 }
