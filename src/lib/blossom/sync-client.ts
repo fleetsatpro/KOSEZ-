@@ -204,6 +204,40 @@ export async function outboxCount(): Promise<number> {
   return (await listPendingMutations()).length;
 }
 
+export async function mutationStatusCounts(): Promise<{
+  pending: number;
+  conflicts: number;
+}> {
+  if (hasIndexedDb()) {
+    try {
+      const rows = await txRequest<StoredMutation[]>("readonly", (store) => store.getAll());
+      return rows
+        .filter((row) => Boolean(activeOwnerId) && row.ownerUserId === activeOwnerId)
+        .reduce(
+          (acc, row) => {
+            if (row.state === "pending") acc.pending += 1;
+            if (row.state === "conflict") acc.conflicts += 1;
+            return acc;
+          },
+          { pending: 0, conflicts: 0 },
+        );
+    } catch {
+      // fallback below
+    }
+  }
+
+  return readFallback()
+    .filter((row) => Boolean(activeOwnerId) && row.ownerUserId === activeOwnerId)
+    .reduce(
+      (acc, row) => {
+        if (row.state === "pending") acc.pending += 1;
+        if (row.state === "conflict") acc.conflicts += 1;
+        return acc;
+      },
+      { pending: 0, conflicts: 0 },
+    );
+}
+
 export async function replaceConflictWithMutation(
   conflictMutationId: string,
   merged: SyncMutation,
