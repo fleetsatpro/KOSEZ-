@@ -983,44 +983,12 @@ export const TEACHER_TAGS = [
   "Confiance",
 ] as const;
 
-export const WARMUP_DRAFT = `Six minutes. Autour de la table, sans fiches.
-
-1. Chacun dit ce qu'il a mangé hier — une phrase, en anglais.
-2. Vous relancez avec « How was it? »
-3. Deux paires : commander au marché. Trente secondes chacune.
-
-Focus du jour : TH (Camille, Hugo), volume (Hugo). Inès reprend une mission, sans commentaire public.`;
-
 export const LEARNER_MEMORY = {
   hesitation: "Aucun point de friction confirmé",
   avoided: "Aucune structure évitée confirmée",
   confidence: "Aucune compétence encore assez documentée",
   leoNote:
     "Votre mémoire de pratique se construit à partir de vos traces réelles. Léo précisera ses repères au fur et à mesure.",
-};
-
-export const CHILD = {
-  firstName: "Émile",
-  lastName: "Morel",
-  age: 9,
-  city: "Saint-Pierre",
-  targetLanguage: "English",
-  level: "A1",
-  relation: "Fils de Camille",
-  nextWorkshop: "Atelier samedi 10:00 · Maison K'Osez",
-  speakingMinutes: 11,
-  activitiesDone: 3,
-  stageLabel: "Graine",
-  mission: {
-    title: "Hello, my name is…",
-    prompt:
-      "Dis ton prénom, ton âge, et un aliment que tu aimes — en anglais. Une minute.",
-  },
-  words: [
-    { id: "cw-1", word: "hello", ipa: "/həˈləʊ/", tip: "Le H est un souffle. Pas « ello »." },
-    { id: "cw-2", word: "please", ipa: "/pliːz/", tip: "Please est long. Le S vibre." },
-    { id: "cw-3", word: "thank you", ipa: "/θæŋk ju/", tip: "Thank : la langue entre les dents, un souffle." },
-  ],
 };
 
 export type LibraryDoc = {
@@ -1146,25 +1114,6 @@ export const PLANS: Array<{
     blurb: "Mémoire Léo, tandem prioritaire, bibliothèque, immersions en avant-première.",
     perks: ["Tout Digital", "Mémoire Léo", "Tandem prioritaire", "Bibliothèque", "Immersions anticipées"],
   },
-];
-
-export const ORG = {
-  id: "org-canne",
-  name: "Atelier Canne",
-  city: "Saint-Pierre",
-  seats: 8,
-  used: 6,
-  framing: "QVT · anglais de service",
-  invoice: "Facture trimestrielle — le centre confirme, jamais le client.",
-};
-
-export const ORG_MEMBERS = [
-  { id: "camille", name: "Camille Morel", role: "Salle", minutes: 44, stage: "En croissance", last: "Mission du jour" },
-  { id: "hugo", name: "Hugo Laurent", role: "Cuisine", minutes: 9, stage: "Graine", last: "Pron'Lab" },
-  { id: "ines", name: "Inès Patel", role: "Réception", minutes: 18, stage: "En croissance", last: "Il y a 6 jours" },
-  { id: "noah", name: "Noah Bennett", role: "Saison", minutes: 62, stage: "Épanoui", last: "Speak · Café" },
-  { id: "maya", name: "Maya Chen", role: "Pâtisserie", minutes: 27, stage: "En croissance", last: "Tandem" },
-  { id: "lea-s", name: "Léa S.", role: "Salle", minutes: 33, stage: "En croissance", last: "Cours du soir" },
 ];
 
 export const LANGUAGE_MODULES = [
