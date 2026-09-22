@@ -27,6 +27,8 @@ import {
 } from "@/lib/blossom/data";
 import { summarisePronlabItem } from "@/lib/blossom/engine";
 import { buildSkillProfile, nextLearningAction, CURRICULUM_UNITS } from "@/lib/blossom/learning-os";
+import { buildReviewPlan } from "@/lib/blossom/review-scheduler";
+import { buildLearningIntelligence } from "@/lib/blossom/learning-intelligence";
 import { isSetUnlocked, useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
@@ -78,17 +80,28 @@ export function LearnDashboard() {
   const completeHomework = useBlossom((s) => s.completeHomework);
   const vocab = useBlossom((s) => s.vocabulary);
   const attempts = useBlossom((s) => s.pronlabAttempts);
+  const submissions = useBlossom((s) => s.learningSubmissions);
   const assigned = useBlossom((s) => s.assignedSetIds);
   const plan = useBlossom((s) => s.plan);
   const journey = useJourney();
   const skillProfile = buildSkillProfile(log, attempts, vocab);
-  const nextAction = nextLearningAction(log, attempts, vocab);
+  const reviewPlan = buildReviewPlan(submissions, attempts, vocab);
+  const intelligence = buildLearningIntelligence(
+    log,
+    attempts,
+    vocab,
+    submissions,
+    reviewPlan,
+  );
+  const nextAction = intelligence.next;
   const nextActionHref =
     nextAction.kind === "pronlab"
       ? "/pronlab"
       : nextAction.kind === "library"
         ? "/library"
-        : "/mission";
+        : nextAction.kind === "mission"
+          ? "/mission"
+          : "/learn/review";
 
   const sets = setsForLanguage(useBlossom((s) => s.languageId));
   const libraryOk = planAllows(plan, "library");
@@ -154,8 +167,15 @@ export function LearnDashboard() {
             </span>
           </div>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-primary-foreground/70">
-            {activeHomework ? activeHomework.body : activeSet ? activeSet.blurb : libraryOk && LIBRARY[0] ? LIBRARY[0].blurb : "Choisissez une situation courte et faites entrer la langue dans votre semaine."}
+            {intelligence.next.body}
           </p>
+          <div className="mt-5 grid gap-2 sm:grid-cols-2">
+            {intelligence.next.reasons.slice(0, 2).map((reason) => (
+              <div key={reason} className="rounded-xl bg-primary-foreground/7 px-3.5 py-3 text-xs leading-5 text-primary-foreground/65">
+                {reason}
+              </div>
+            ))}
+          </div>
           {activeHomework ? (
             <Button
               size="lg"
@@ -236,6 +256,36 @@ export function LearnDashboard() {
           >
             Ouvrir Pron'Lab
             <ArrowRight className="size-3.5" />
+          </Link>
+        </article>
+      </section>
+
+
+      <section className="mt-8 grid gap-4 lg:grid-cols-3">
+        <article className="rounded-2xl bg-surface p-5 shadow-[var(--shadow-border)] sm:p-6">
+          <Eyebrow>Momentum · 14 jours</Eyebrow>
+          <div className="mt-3 flex items-end justify-between gap-4">
+            <p className="font-display text-4xl tabular-nums">{intelligence.momentum}%</p>
+            <span className="text-xs text-muted">{intelligence.activeDays14} jours actifs</span>
+          </div>
+          <Progress className="mt-4 h-1.5" value={intelligence.momentum} />
+          <p className="mt-3 text-xs leading-5 text-muted">Mesure de régularité, pas de niveau.</p>
+        </article>
+        <article className="rounded-2xl bg-surface p-5 shadow-[var(--shadow-border)] sm:p-6">
+          <Eyebrow>Breadth · couverture</Eyebrow>
+          <div className="mt-3 flex items-end justify-between gap-4">
+            <p className="font-display text-4xl tabular-nums">{intelligence.breadth}%</p>
+            <span className="text-xs text-muted">{skillProfile.filter((item) => item.evidenceCount > 0).length}/{skillProfile.length} domaines</span>
+          </div>
+          <Progress className="mt-4 h-1.5" value={intelligence.breadth} />
+          <p className="mt-3 text-xs leading-5 text-muted">Largeur des traces observées dans le parcours.</p>
+        </article>
+        <article className="rounded-2xl border border-primary/15 bg-primary/5 p-5 shadow-[var(--shadow-border)] sm:p-6">
+          <Eyebrow>Mémoire · maintenant</Eyebrow>
+          <p className="mt-3 font-display text-4xl tabular-nums text-primary">{intelligence.dueNow}</p>
+          <p className="mt-1 text-xs text-muted">rappel{intelligence.dueNow === 1 ? "" : "s"} dû{intelligence.dueNow === 1 ? "" : "s"} aujourd'hui</p>
+          <Link to="/learn/review" className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+            Ouvrir la mémoire <ArrowRight className="size-3.5" />
           </Link>
         </article>
       </section>
