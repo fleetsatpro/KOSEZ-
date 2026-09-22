@@ -615,6 +615,7 @@ export const useBlossom = create<AppState>()(
       setLanguage: (id) => set({ languageId: id }),
       resetJourney: () =>
         set({
+          learner: LEARNER,
           activityLog: INITIAL_LOG,
           joinedEventIds: [],
           enrolledIds: ["cat-a2"],
