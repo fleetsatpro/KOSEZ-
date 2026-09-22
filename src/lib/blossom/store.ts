@@ -290,7 +290,7 @@ export const useBlossom = create<AppState>()(
       bookingStatuses: {},
       pronlabAttempts: [],
       tandemStatus: {},
-      tandemOpen: true,
+      tandemOpen: false,
       tandemReports: {},
       homework: [],
       teacherNotes: [],
