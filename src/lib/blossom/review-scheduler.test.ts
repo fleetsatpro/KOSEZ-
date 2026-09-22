@@ -27,7 +27,7 @@ function submission(
   };
 }
 
-test("a first correct review schedules the item three days later only after the initial day", () => {
+test("a failed review schedules the item one day later", () => {
   const first = submission("1", "vocab:recommend", iso(2), false);
   const plan = buildReviewPlan(
     [first],
@@ -51,8 +51,8 @@ test("a consecutive correct review expands the interval", () => {
     [{ word: "recommend", gloss: "recommander" }],
     "2026-09-22T12:00:00.000Z",
   );
-  assert.equal(plan.due.length, 1);
-  assert.equal(plan.due[0]?.intervalDays, 7);
+  assert.equal(plan.due.length, 0);
+  assert.equal(plan.upcoming[0]?.intervalDays, 7);
 });
 
 test("a failed review collapses the next interval to one day", () => {
