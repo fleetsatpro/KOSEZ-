@@ -76,7 +76,7 @@ function PronlabSetPage() {
       <Page className="max-w-xl">
         <p className="font-display text-2xl">Pas encore.</p>
         <p className="mt-2 text-sm text-muted">
-          Ce set s'ouvre après le précédent, ou si Léa l'assigne.
+          Ce set s'ouvre après le précédent dans votre parcours.
         </p>
         <Button asChild className="mt-6">
           <Link to="/pronlab">Les sets</Link>
