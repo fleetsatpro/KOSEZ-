@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Check, MapPin, Backpack, Users, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
-import { IMMERSION } from "@/lib/blossom/data";
+import { IMMERSION, type CatalogueItem } from "@/lib/blossom/data";
+import { getPublishedContentOnServer } from "@/lib/blossom/content.api";
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +24,7 @@ const PHASES = [
  * Three phases · real place · story that enters BLOSSOM.
  */
 function ImmersionPage() {
+  const [published, setPublished] = useState<CatalogueItem | null>(null);
   const phase = useBlossom((s) => s.immersionPhase);
   const setPhase = useBlossom((s) => s.setImmersionPhase);
   const done = useBlossom((s) => s.immersionDone);
@@ -29,6 +32,22 @@ function ImmersionPage() {
   const complete = useBlossom((s) => s.completeActivity);
   const doneCount = done.length;
   const total = IMMERSION.challenges.length;
+  useEffect(() => {
+    let disposed = false;
+    void getPublishedContentOnServer()
+      .then((content) => {
+        if (!disposed) {
+          setPublished(content.catalogue.find((item) => item.id === IMMERSION.id) ?? null);
+        }
+      })
+      .catch(() => {
+        // The authored Companion remains usable when the registry is unavailable.
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
 
   return (
     <Page className="kosez-feature-page max-w-2xl">
@@ -54,15 +73,15 @@ function ImmersionPage() {
           <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7 text-white">
             <Eyebrow className="text-white/55">Companion · Immersion</Eyebrow>
             <h1 className="mt-1 font-display text-3xl tracking-tight sm:text-4xl">
-              {IMMERSION.title}
+              {published?.title ?? IMMERSION.title}
             </h1>
             <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/70">
               <span className="inline-flex items-center gap-1">
                 <MapPin className="size-3.5" />
-                {IMMERSION.place}
+                {published?.location ?? IMMERSION.place}
               </span>
               <span aria-hidden>·</span>
-              <span>{IMMERSION.dates}</span>
+              <span>{published?.schedule ?? IMMERSION.dates}</span>
             </p>
           </div>
         </div>
