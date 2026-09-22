@@ -244,7 +244,14 @@ function mergeBackendState(remote: BackendState): void {
     },
     enrolledIds: [...(remote.bookingCatalogueIds ?? [])],
     waitlistIds: [...(remote.waitlistIds ?? [])],
+    childMissionDone: remote.activity.some(
+      (event) =>
+        event.eventType === "MISSION_COMPLETED" &&
+        event.sourceId === "child-mission",
+    ),
   });
+
+  useBlossom.getState().refreshOrganism();
 }
 
 async function resolveMissionConflict(
