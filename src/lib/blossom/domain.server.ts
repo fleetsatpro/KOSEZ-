@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
+import { normalizeMutationTime } from "./sync-causality";
 
 export class BlossomForbiddenError extends Error {
   readonly status = 403;
@@ -61,12 +62,7 @@ export async function saveVocabulary(
   },
 ) {
   const sql = await getSql();
-  const causalTime = input.mutationCreatedAt
-    ? new Date(Math.min(
-        new Date(input.mutationCreatedAt).getTime(),
-        Date.now() + 5 * 60_000,
-      )).toISOString()
-    : null;
+  const causalTime = normalizeMutationTime(input.mutationCreatedAt);
   const rows = await sql.query(
     "insert into blossom_vocabulary (user_id, word, gloss, metadata, updated_at) values ($1, $2, $3, $4::jsonb, coalesce($5::timestamptz, current_timestamp)) on conflict (user_id, word) do update set gloss = excluded.gloss, metadata = excluded.metadata, updated_at = excluded.updated_at where blossom_vocabulary.updated_at <= excluded.updated_at returning word, gloss, metadata, first_saved_at, updated_at",
     [
