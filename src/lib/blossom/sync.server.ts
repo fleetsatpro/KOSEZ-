@@ -424,6 +424,21 @@ export async function syncBlossomBatch(
   deviceId: string,
   mutations: SyncMutation[],
 ): Promise<SyncResult[]> {
+  if (mutations.length > 50) {
+    throw new Error("sync-batch-too-large");
+  }
+  if (
+    mutations.some((mutation) => {
+      try {
+        return JSON.stringify(mutation).length > 40_000;
+      } catch {
+        return true;
+      }
+    })
+  ) {
+    throw new Error("sync-mutation-too-large");
+  }
+
   const sql = await getSql();
   await sql.query(
     "insert into blossom_sync_device (user_id, device_id, user_agent, last_seen_at) values ($1, $2, $3, current_timestamp) on conflict (user_id, device_id) do update set last_seen_at = current_timestamp, user_agent = excluded.user_agent",
