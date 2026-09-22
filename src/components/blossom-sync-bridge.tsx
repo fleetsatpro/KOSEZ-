@@ -40,7 +40,7 @@ function mergeBackendState(remote: BackendState): void {
   const current = useBlossom.getState();
 
   let profilePatch: Partial<typeof current.learner> = {};
-  let profilePlan = current.plan;
+  let profilePlan: typeof current.plan = remote.plan ?? current.plan;
   let profileWarmup = current.warmup;
   let profileLanguageId = current.languageId;
   let profileExportConsent = current.exportConsent;
@@ -57,9 +57,6 @@ function mergeBackendState(remote: BackendState): void {
     if (remote.profile.level) profilePatch.level = remote.profile.level;
     if (remote.profile.targetLanguage) profileLanguageId = remote.profile.targetLanguage;
     const prefs = remote.profile.preferences;
-    if (typeof prefs.plan === "string" && ["centre", "digital", "premium"].includes(prefs.plan)) {
-      profilePlan = prefs.plan as typeof current.plan;
-    }
     if (typeof prefs.warmup === "string" || prefs.warmup === null) {
       profileWarmup = prefs.warmup as string | null;
     }
