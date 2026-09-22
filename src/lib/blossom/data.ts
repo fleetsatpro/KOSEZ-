@@ -170,6 +170,103 @@ export const TODAY_MISSION: Mission = {
   },
 };
 
+export const B1_TODAY_MISSION: Mission = {
+  id: "mission-today-b1",
+  title: "The plan changed — find another way",
+  prompt:
+    "Expliquez à un collègue qu'un plan vient de changer, proposez une alternative et vérifiez que la nouvelle solution lui convient.",
+  context:
+    "Cinq à huit minutes. L'objectif n'est pas de réciter un texte : c'est de garder l'échange vivant quand la situation dévie.",
+  durationMin: 6,
+  level: "B1",
+  language: "English",
+  place: "Au bureau, à Saint-Pierre",
+  sceneImage: "/images/atelier.jpg",
+  supportPhrase: "The plan has changed. Could we… instead?",
+  successSignals: [
+    "Vous décrivez clairement ce qui a changé.",
+    "Vous proposez une alternative avec une raison.",
+    "Vous vérifiez l'accord de l'autre personne.",
+    "Vous gardez une formulation coopérative même si la première solution ne fonctionne plus.",
+  ],
+  realWorldInstruction:
+    "Imaginez un changement réel cette semaine : retard, salle indisponible, rendez-vous déplacé. Expliquez-le en anglais et proposez une alternative.",
+  stretch:
+    "Ajoutez une deuxième option ou reconnaissez une contrainte avant de conclure.",
+  scene: {
+    time: "15:42 · plan de travail bouleversé",
+    atmosphere: "La salle prévue est occupée ; deux collègues attendent une solution.",
+    sensoryCue: "Un couloir animé, des pas derrière la porte, un téléphone qui vibre.",
+    people: [
+      {
+        role: "Collègue",
+        name: "Noah",
+        intent: "Il veut avancer sans perdre dix minutes à chercher une solution parfaite.",
+      },
+      {
+        role: "Collègue",
+        name: "Maya",
+        intent: "Elle peut accepter une alternative si elle comprend le compromis.",
+      },
+    ],
+    pressure:
+      "Le groupe doit décider rapidement, mais une bonne solution doit encore laisser une place à l'autre personne.",
+    culturalNote:
+      "Une proposition coopérative laisse une porte ouverte : expliquer le problème puis demander « Would that work for you? » garde l'échange partagé.",
+    languageKit: [
+      {
+        phrase: "The plan has changed.",
+        meaning: "Le plan a changé.",
+        use: "Poser le contexte sans longue introduction.",
+      },
+      {
+        phrase: "Could we… instead?",
+        meaning: "Est-ce qu'on pourrait plutôt… ?",
+        use: "Proposer une alternative sans imposer.",
+      },
+      {
+        phrase: "That might work, but…",
+        meaning: "Ça pourrait fonctionner, mais…",
+        use: "Nuancer une proposition.",
+      },
+      {
+        phrase: "Would that work for you?",
+        meaning: "Est-ce que cela vous conviendrait ?",
+        use: "Vérifier l'accord.",
+      },
+    ],
+    rescuePhrases: [
+      {
+        phrase: "What I mean is…",
+        meaning: "Reformuler sans repartir de zéro.",
+      },
+      {
+        phrase: "We could also try…",
+        meaning: "Ouvrir une deuxième option.",
+      },
+      {
+        phrase: "Let me make sure I understand.",
+        meaning: "Vérifier une contrainte avant de conclure.",
+      },
+    ],
+    conversationTurns: [
+      { label: "Constater", goal: "Dire clairement ce qui a changé." },
+      { label: "Proposer", goal: "Présenter une alternative et sa raison." },
+      { label: "Nuancer", goal: "Reconnaître une contrainte ou un compromis.", optional: true },
+      { label: "Vérifier", goal: "Demander si la solution convient." },
+    ],
+    constraints: [
+      "Ne récitez pas un script complet.",
+      "Une proposition utile vaut mieux qu'une liste d'options.",
+      "L'autre personne doit avoir un espace explicite pour accepter ou modifier la solution.",
+    ],
+  },
+};
+
+export function missionForLevel(level: string): Mission {
+  return level === "B1" ? B1_TODAY_MISSION : TODAY_MISSION;
+}
+
 export const UPCOMING_MISSIONS: Mission[] = [
   {
     id: "mission-tomorrow",
