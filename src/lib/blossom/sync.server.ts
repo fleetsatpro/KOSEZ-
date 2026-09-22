@@ -49,6 +49,16 @@ function intValue(value: unknown, fallback = 0): number {
     : fallback;
 }
 
+function boundedJson(value: unknown, maxBytes: number, maxKeys = 40) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  if (Object.keys(value as Record<string, unknown>).length > maxKeys) return false;
+  try {
+    return JSON.stringify(value).length <= maxBytes;
+  } catch {
+    return false;
+  }
+}
+
 async function claimMutation(
   userId: string,
   mutation: SyncMutation,
@@ -117,8 +127,8 @@ const mutationSchema = z.object({
 const activityPayloadSchema = z.object({
   eventType: z.string().trim().min(1).max(100),
   sourceId: z.string().trim().max(200).nullable().optional(),
-  payload: z.record(z.string(), z.unknown()).optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
+  payload: z.record(z.string(), z.unknown()).optional().refine((value) => boundedJson(value, 12000, 40)),
+  metadata: z.record(z.string(), z.unknown()).optional().refine((value) => boundedJson(value, 8000, 24)),
   occurredAt: z.string().datetime().optional(),
 });
 
@@ -131,13 +141,13 @@ const pronlabPayloadSchema = z.object({
   score: z.number().int().min(0).max(100),
   seconds: z.number().int().nonnegative().max(3600),
   tip: z.string().trim().max(500).nullable().optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional().refine((value) => boundedJson(value, 8000, 24)),
 });
 
 const vocabularyPayloadSchema = z.object({
   word: z.string().trim().min(1).max(120),
   gloss: z.string().trim().min(1).max(240),
-  metadata: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional().refine((value) => boundedJson(value, 8000, 24)),
 });
 
 const eventPayloadSchema = z.object({
@@ -168,7 +178,9 @@ const profilePayloadSchema = z.object({
   targetLanguage: z.string().trim().min(2).max(16),
   level: z.string().trim().max(16).nullable().optional(),
   timezone: z.string().trim().max(80).nullable().optional(),
-  preferences: z.record(z.string(), z.unknown()).optional(),
+  preferences: z.record(z.string(), z.unknown())
+    .optional()
+    .refine((value) => boundedJson(value, 12000, 40)),
 });
 
 const catalogueBookingPayloadSchema = z.object({
