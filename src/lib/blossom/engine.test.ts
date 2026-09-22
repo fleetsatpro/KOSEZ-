@@ -83,8 +83,34 @@ test("tandem matching ranks language direction and shared interests", () => {
     interests: LEARNER.interests,
     window: LEARNER.practiceWindow,
   };
-  const noah = TANDEM_PARTNERS.find((p) => p.id === "noah")!;
-  const maya = TANDEM_PARTNERS.find((p) => p.id === "maya")!;
+  const noah = {
+    id: "noah",
+    name: "Noah",
+    city: "Saint-Pierre",
+    speaks: "English",
+    speaksLevel: "C1",
+    wants: "Français",
+    wantsLevel: "A2",
+    interests: ["Cuisine", "Océan"],
+    window: "12:00 – 13:00",
+    goal: "Parler français à table.",
+    initials: "N",
+    avatar: null,
+  };
+  const maya = {
+    id: "maya",
+    name: "Maya",
+    city: "Saint-Denis",
+    speaks: "English",
+    speaksLevel: "B2",
+    wants: "Français",
+    wantsLevel: "A2",
+    interests: ["Voyage"],
+    window: "09:00 – 10:00",
+    goal: "Tenir une conversation.",
+    initials: "M",
+    avatar: null,
+  };
   assert.ok(tandemMatchScore(me, noah) > tandemMatchScore(me, maya));
   assert.ok(tandemMatchScore(me, noah) >= 60);
 });
