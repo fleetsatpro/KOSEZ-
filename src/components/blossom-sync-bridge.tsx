@@ -15,7 +15,7 @@ import {
 } from "@/lib/blossom/sync-client";
 import { mergeMissionSessions } from "@/lib/blossom/sync-merge";
 import type { MissionSession } from "@/lib/blossom/mission";
-import type { LearningSubmission } from "@/lib/blossom/store";
+import type { LearningSubmission, Homework, TeacherNote } from "@/lib/blossom/store";
 import type { BackendState, SyncJsonValue, SyncMutation, SyncResult } from "@/lib/blossom/sync-types";
 import { POINTS, type ActivityEvent, type PronlabAttempt } from "@/lib/blossom/engine";
 import { useBlossom } from "@/lib/blossom/store";
@@ -166,6 +166,34 @@ function mergeBackendState(remote: BackendState): void {
     ...remote.tandemStatus,
   };
 
+  const homeworkById = new Map<string, Homework>(
+    current.homework.map((item) => [item.id, item]),
+  );
+  for (const item of remote.homework) {
+    homeworkById.set(item.id, {
+      id: item.id,
+      studentId: item.learnerUserId,
+      title: item.title,
+      body: item.body,
+      status: item.status,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    });
+  }
+
+  const teacherNotesById = new Map<string, TeacherNote>(
+    current.teacherNotes.map((note) => [note.id, note]),
+  );
+  for (const note of remote.teacherNotes) {
+    teacherNotesById.set(note.id, {
+      id: note.id,
+      studentId: note.learnerUserId,
+      tags: note.tags,
+      text: note.note,
+      createdAt: note.createdAt,
+    });
+  }
+
   const submissionById = new Map<string, LearningSubmission>(
     current.learningSubmissions.map((submission) => [submission.id, submission]),
   );
@@ -214,6 +242,8 @@ function mergeBackendState(remote: BackendState): void {
     immersionDone: [...immersionDone],
     tandemStatus,
     learningSubmissions: [...submissionById.values()].sort((a, b) => timestamp(a.createdAt) - timestamp(b.createdAt)),
+    homework: [...homeworkById.values()].sort((a, b) => timestamp(b.updatedAt) - timestamp(a.updatedAt)),
+    teacherNotes: [...teacherNotesById.values()].sort((a, b) => timestamp(b.createdAt) - timestamp(a.createdAt)),
     bookingStatuses: {
       ...current.bookingStatuses,
       ...(remote.bookingStatuses ?? {}),
