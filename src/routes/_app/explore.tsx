@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   CATALOGUE,
   EVENTS,
-  MARKETPLACE,
   planAllows,
   type CatalogueItem,
   type EventItem,
@@ -100,6 +99,8 @@ function ExplorePage() {
   const earlyOk = planAllows(plan, "immersionEarly");
   const [events, setEvents] = useState<EventItem[]>(EVENTS);
   const [catalogue, setCatalogue] = useState<CatalogueItem[]>(CATALOGUE);
+  const programmes = catalogue.filter((item) => item.kind !== "immersion");
+  const immersions = catalogue.filter((item) => item.kind === "immersion");
 
   useEffect(() => {
     let disposed = false;
@@ -345,7 +346,7 @@ function ExplorePage() {
         </div>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          {catalogue.map((item) => {
+          {programmes.map((item) => {
             const active = enrolled.includes(item.id);
             const bookingStatus = bookingStatuses[item.id];
             return (
@@ -429,9 +430,9 @@ function ExplorePage() {
         </div>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          {MARKETPLACE.map((item) => {
+          {immersions.map((item) => {
             const waiting = waitlist.includes(item.id);
-            const locked = item.early && !earlyOk;
+            const locked = item.early === true && !earlyOk;
 
             return (
               <article
@@ -454,18 +455,18 @@ function ExplorePage() {
                       </h3>
                     </div>
                     <Badge variant="outline">
-                      Capacité · {item.spots}
+                      Capacité · {item.capacity}
                     </Badge>
                   </div>
 
                   <p className="mt-2 text-sm leading-6 text-muted">
-                    {item.blurb}
+                    {item.description}
                   </p>
                   <p className="mt-3 text-xs text-subtle">
-                    {item.dates} · {item.place}
+                    {item.schedule} · {item.location}
                   </p>
 
-                  {item.companion ? (
+                  {item.companion === true ? (
                     <Button asChild className="mt-5 min-h-11 w-full">
                       <Link to="/immersion">Ouvrir Companion</Link>
                     </Button>
