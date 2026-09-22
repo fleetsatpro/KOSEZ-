@@ -65,6 +65,28 @@ export function AdminContentStudio() {
 
   useEffect(() => { if (selected) setDraft({ ...selected.draftPayload }); }, [selected]);
 
+  function createItem(kind: "event" | "catalogue") {
+    const token = typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID().slice(0, 8)
+      : String(Date.now());
+    const id = (kind === "event" ? "evt-admin-" : "cat-admin-") + token;
+    const baseDate = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+    const item: AdminContentItem = kind === "event"
+      ? {
+          contentKey: id, kind, state: "fallback", draftRevision: 0, publishedRevision: 0,
+          draftPayload: { id, title: "Nouvel événement", blurb: "", date: baseDate, time: "18:00", place: "", language: "English", spots: 8, image: "/images/cafe.jpg", host: "Équipe K'Osez" },
+          publishedPayload: null, updatedBy: null, publishedBy: null, publishedAt: null, updatedAt: new Date().toISOString(),
+        }
+      : {
+          contentKey: id, kind, state: "fallback", draftRevision: 0, publishedRevision: 0,
+          draftPayload: { id, kind: "course", title: "Nouveau programme", description: "", language: "English", level: "A2", format: "Groupe", instructor: "Équipe K'Osez", location: "Maison K'Osez", capacity: 8, schedule: "À définir", price: "Sur inscription", image: "/images/atelier.jpg" },
+          publishedPayload: null, updatedBy: null, publishedBy: null, publishedAt: null, updatedAt: new Date().toISOString(),
+        };
+    setItems((current) => [item, ...current]);
+    setSelectedKey(id);
+    toast("Nouveau brouillon créé. Enregistrez-le pour le rendre durable.");
+  }
+
   async function save() {
     if (!selected) return;
     setSaving(true);
@@ -200,7 +222,14 @@ export function AdminContentStudio() {
     <section className="mt-5">
       <div className="grid gap-5 lg:grid-cols-[19rem_minmax(0,1fr)]">
         <Surface className="!p-4">
-          <div className="flex items-start justify-between gap-3"><div><Eyebrow>Éditorial</Eyebrow><h2 className="mt-2 font-display text-2xl">Registre</h2></div><FileEdit className="size-4 text-primary" /></div>
+          <div className="flex items-start justify-between gap-3">
+            <div><Eyebrow>Éditorial</Eyebrow><h2 className="mt-2 font-display text-2xl">Registre</h2></div>
+            <FileEdit className="size-4 text-primary" />
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <Button size="sm" variant="secondary" onClick={() => createItem("event")}>+ Événement</Button>
+            <Button size="sm" variant="secondary" onClick={() => createItem("catalogue")}>+ Programme</Button>
+          </div>
           <div className="mt-5 space-y-2">{items.map((item) => (
             <button key={item.contentKey} type="button" onClick={() => setSelectedKey(item.contentKey)} className={item.contentKey === selected.contentKey ? "w-full rounded-xl border border-primary/30 bg-primary/5 p-3 text-left" : "w-full rounded-xl border border-border bg-surface-2/40 p-3 text-left hover:bg-surface-2/70"}>
               <div className="flex items-center justify-between gap-2"><span className="truncate text-sm font-medium">{String(item.draftPayload.title ?? item.contentKey)}</span><Badge variant="outline">{item.kind}</Badge></div>
