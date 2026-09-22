@@ -96,6 +96,7 @@ function CinematicTop({
 
 function SceneReel({
   mission,
+  personalised,
   mode,
   challenge,
   modeOpen,
@@ -106,7 +107,13 @@ function SceneReel({
   onChallenge,
   onStart,
 }: {
-  mission: ReturnType<typeof personaliseMission>;
+  mission: {
+    sceneImage?: string;
+    level: string;
+    durationMin: number;
+    place: string;
+  };
+  personalised: ReturnType<typeof personaliseMission>;
   mode: MissionMode;
   challenge: MissionChallenge;
   modeOpen: boolean;
@@ -148,10 +155,10 @@ function SceneReel({
             Focus du jour
           </p>
           <h1 className="mt-3 max-w-4xl font-display text-[clamp(3rem,8vw,6.8rem)] font-semibold leading-[0.88] tracking-[-0.065em] text-white">
-            {mission.title}
+            {personalised.title}
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-7 text-white/75 sm:text-lg">
-            {mission.prompt}
+            {personalised.prompt}
           </p>
 
           <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3 text-xs text-white/65">
@@ -617,7 +624,8 @@ export function MissionTheatreExperience() {
       <div className="min-h-[100svh]">
         <CinematicTop step={step} language={todayMission.language} />
         <SceneReel
-          mission={personalised}
+          mission={todayMission}
+          personalised={personalised}
           mode={mode}
           challenge={challenge}
           modeOpen={modeOpen}
@@ -634,7 +642,7 @@ export function MissionTheatreExperience() {
 
   return (
     <div className="min-h-[100svh] bg-bg">
-      <CinematicTop step={step} />
+      <CinematicTop step={step} language={todayMission.language} />
       <Page className="max-w-[1120px] pb-24 lg:pb-12">
         <ProgressRail step={step} completed={already && Boolean(session?.runs.some((item) => item.completedAt))} />
 
