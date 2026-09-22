@@ -49,3 +49,36 @@ export async function reportTandem(
     status: "open" as const,
   };
 }
+
+
+export async function getAdminSafetySummary(userId: string) {
+  const sql = await getSql();
+  const admin = await sql.query(
+    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    [userId],
+  );
+  if (!admin[0]) {
+    throw new BlossomForbiddenError("Admin access is not enabled for this account.");
+  }
+
+  const [open, recent] = await Promise.all([
+    sql.query(
+      "select count(*)::integer as count from blossom_tandem_report where status in ('open','reviewing')",
+    ),
+    sql.query(
+      "select id, reporter_user_id, partner_user_id, reason, status, created_at from blossom_tandem_report order by created_at desc limit 12",
+    ),
+  ]);
+
+  return {
+    openReports: Number(open[0]?.count ?? 0),
+    recentReports: recent.map((row) => ({
+      id: String(row.id),
+      reporterUserId: String(row.reporter_user_id),
+      partnerUserId: String(row.partner_user_id),
+      reason: String(row.reason),
+      status: String(row.status),
+      createdAt: new Date(String(row.created_at)).toISOString(),
+    })),
+  };
+}
