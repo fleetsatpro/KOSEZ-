@@ -152,6 +152,7 @@ export type PronlabAttempt = {
   tip: string;
   createdAt: string;
   seconds: number;
+  metadata?: Record<string, unknown>;
 };
 
 export type PronlabSummary = {
@@ -169,14 +170,15 @@ export function summarisePronlabItem(
   attempts: PronlabAttempt[],
 ): PronlabSummary {
   const mine = attempts.filter((a) => a.itemId === itemId);
-  const scores = mine.map((a) => a.score);
+  const scored = mine.filter((attempt) => attempt.metadata?.assessment !== "capture-only");
+  const scores = scored.map((a) => a.score);
   const lastThree = scores.slice(-3);
   const bestScore = scores.length ? Math.max(...scores) : 0;
   const lastScore = scores.length ? scores[scores.length - 1]! : 0;
   const mastered =
     bestScore >= 90 ||
     (lastThree.length >= 3 && lastThree.every((s) => s >= 75));
-  const struggling = mine.length >= 2 && bestScore < 60;
+  const struggling = scored.length >= 2 && bestScore < 60;
   return {
     itemId,
     attemptCount: mine.length,
