@@ -352,28 +352,32 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           {contextNav.length > 0 && (
-            <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">{contextLabel}</p>
-            <div className="mt-2 grid gap-0.5">
-              {contextNav.map((item) => {
-                const Icon = item.icon;
-                const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    className={cn(
-                      "flex min-h-10 items-center gap-2.5 rounded-lg px-3 text-xs font-medium text-muted transition hover:bg-surface-2 hover:text-fg",
-                      active && "bg-primary/8 text-primary",
-                    )}
-                    aria-current={active ? "page" : undefined}
-                  >
-                    <Icon className="size-3.5" strokeWidth={1.7} />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </div>
-          </nav>
+            <nav className="mt-8" aria-label="Navigation contextuelle">
+              <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">
+                {contextLabel}
+              </p>
+              <div className="mt-2 grid gap-0.5">
+                {contextNav.map((item) => {
+                  const Icon = item.icon;
+                  const active = pathname === item.to || pathname.startsWith(item.to + "/");
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      className={cn(
+                        "flex min-h-10 items-center gap-2.5 rounded-lg px-3 text-xs font-medium text-muted transition hover:bg-surface-2 hover:text-fg",
+                        active && "bg-primary/8 text-primary",
+                      )}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      <Icon className="size-3.5" strokeWidth={1.7} />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </nav>
+          )}
 
           <div className="mb-4 rounded-2xl border border-border bg-bg/70 px-4 py-3 shadow-[var(--shadow-border)]">
             <SyncStatus />
