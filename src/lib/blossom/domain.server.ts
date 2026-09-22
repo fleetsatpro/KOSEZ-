@@ -386,12 +386,37 @@ export async function registerEvent(
   eventId: string,
   status: "joined" | "waitlist" | "cancelled",
 ) {
+  const event = EVENTS.find((item) => item.id === eventId);
+  if (!event) throw new Error("unknown-event");
+
   const sql = await getSql();
+  if (status === "joined") {
+    const existing = await sql.query(
+      "select status from blossom_event_registration where user_id = $1 and event_id = $2",
+      [userId, eventId],
+    );
+    const alreadyJoined = String(existing[0]?.status ?? "") === "joined";
+    if (!alreadyJoined) {
+      const counts = await sql.query(
+        "select count(*)::integer as registered from blossom_event_registration where event_id = $1 and status = 'joined'",
+        [eventId],
+      );
+      if (Number(counts[0]?.registered ?? 0) >= event.spots) {
+        throw new Error("event-full");
+      }
+    }
+  }
+
   const rows = await sql.query(
     "insert into blossom_event_registration (user_id, event_id, status) values ($1, $2, $3) on conflict (user_id, event_id) do update set status = excluded.status, updated_at = current_timestamp returning user_id, event_id, status, created_at, updated_at",
     [userId, eventId, status],
   );
   if (!rows[0]) throw new Error("event-registration-write-failed");
+  await writeAuditEvent(userId, {
+    action: `event.registration.${status}`,
+    resourceType: "event",
+    resourceId: eventId,
+  });
   return rows[0];
 }
 
