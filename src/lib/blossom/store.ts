@@ -691,11 +691,29 @@ export const useBlossom = create<AppState>()(
         );
       },
       reportTandem: (partnerId) => {
+        const previousStatus =
+          get().tandemStatus[partnerId] ?? "suggested";
         const count = (get().tandemReports[partnerId] ?? 0) + 1;
-        set({
-          tandemReports: { ...get().tandemReports, [partnerId]: count },
-          tandemStatus: { ...get().tandemStatus, [partnerId]: "blocked" },
+        const mutation = createMutation({
+          operation: "tandem.report",
+          entityId: partnerId,
+          payload: {
+            reason: "learner_report",
+            previousStatus,
+          },
         });
+        set({
+          tandemReports: {
+            ...get().tandemReports,
+            [partnerId]: count,
+          },
+          tandemStatus: {
+            ...get().tandemStatus,
+            [partnerId]: "blocked",
+          },
+        });
+        void enqueueMutation(mutation);
+        track("tandem_reported", { partnerId });
         return { count, escalated: count >= 2 };
       },
       saveLearningSubmission: (input) => {
