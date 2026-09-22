@@ -10,6 +10,41 @@ export class BlossomForbiddenError extends Error {
   }
 }
 
+export type BlossomAccessContext = {
+  isTeacher: boolean;
+  isGuardian: boolean;
+  isOrgStaff: boolean;
+};
+
+export async function getBlossomAccessContext(userId: string): Promise<BlossomAccessContext> {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `select
+      exists(
+        select 1 from blossom_teacher_link
+        where teacher_user_id = $1 and status = 'active'
+      ) as is_teacher,
+      exists(
+        select 1 from blossom_guardian_link
+        where guardian_user_id = $1 and status = 'active'
+      ) as is_guardian,
+      exists(
+        select 1 from blossom_organization_member
+        where user_id = $1
+          and status = 'active'
+          and role in ('owner','admin','teacher')
+      ) as is_org_staff`,
+    [userId],
+  );
+  const row = rows[0] ?? {};
+  return {
+    isTeacher: Boolean(row.is_teacher),
+    isGuardian: Boolean(row.is_guardian),
+    isOrgStaff: Boolean(row.is_org_staff),
+  };
+}
+
+
 export type PronlabAttemptInput = {
   itemId: string;
   score: number;
