@@ -5,10 +5,31 @@ import {
   appendBlossomActivity,
   readBlossomState,
   saveBlossomMissionSession,
+  type JsonObject,
+  type JsonValue,
   upsertBlossomProfile,
 } from "./backend.server";
 
-const jsonObject = z.record(z.string(), z.unknown());
+const jsonObject = z.string().trim().max(20000).optional();
+
+function parseJsonObject(value: string | undefined): JsonObject {
+  if (!value) return {};
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return parsed as JsonObject;
+  } catch {
+    throw new Error("invalid-json-object");
+  }
+}
+
+function parseJsonValue(value: string): JsonValue {
+  try {
+    return JSON.parse(value) as JsonValue;
+  } catch {
+    throw new Error("invalid-json");
+  }
+}
 
 export const getBlossomBackendState = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -22,10 +43,15 @@ export const saveBlossomProfile = createServerFn({ method: "POST" })
       targetLanguage: z.string().trim().min(2).max(16),
       level: z.string().trim().max(16).nullable().optional(),
       timezone: z.string().trim().max(80).nullable().optional(),
-      preferences: jsonObject.optional(),
+      preferencesJson: jsonObject,
     }),
   )
-  .handler(async ({ context, data }) => upsertBlossomProfile(context.userId, data));
+  .handler(async ({ context, data }) =>
+    upsertBlossomProfile(context.userId, {
+      ...data,
+      preferences: parseJsonObject(data.preferencesJson),
+    }),
+  );
 
 export const recordBlossomActivity = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -33,19 +59,25 @@ export const recordBlossomActivity = createServerFn({ method: "POST" })
     z.object({
       eventType: z.string().trim().min(1).max(100),
       sourceId: z.string().trim().max(200).nullable().optional(),
-      payload: jsonObject.optional(),
+      payloadJson: jsonObject,
       idempotencyKey: z.string().uuid().nullable().optional(),
       occurredAt: z.string().datetime().optional(),
     }),
   )
-  .handler(async ({ context, data }) => appendBlossomActivity(context.userId, data));
+  .handler(async ({ context, data }) => {
+    await appendBlossomActivity(context.userId, {
+      ...data,
+      payload: parseJsonObject(data.payloadJson),
+    });
+    return { ok: true as const };
+  });
 
 export const persistBlossomMissionSession = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(
     z.object({
       missionId: z.string().trim().min(1).max(120),
-      session: z.unknown(),
+      sessionJson: z.string().trim().min(2).max(200000),
       expectedRevision: z.number().int().nonnegative(),
     }),
   )
@@ -53,7 +85,7 @@ export const persistBlossomMissionSession = createServerFn({ method: "POST" })
     saveBlossomMissionSession(
       context.userId,
       data.missionId,
-      data.session,
+      parseJsonValue(data.sessionJson),
       data.expectedRevision,
     ),
   );
