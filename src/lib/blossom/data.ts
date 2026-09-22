@@ -504,14 +504,6 @@ export const NEXT_CLASS = {
   place: "Maison K'Osez, Saint-Pierre",
 };
 
-export const CONNECT_PEOPLE = [
-  { name: "Léa", role: "Enseignante", avatar: "/images/lea.jpg", initials: "L", status: "Présente aujourd'hui" },
-  { name: "Camille", role: "A2 · English", avatar: "/images/camille.jpg", initials: "C", status: "Mission du jour" },
-  { name: "Noah", role: "C1 · English", avatar: null as string | null, initials: "N", status: "Tandem ouvert" },
-  { name: "Inès", role: "A2 · English", avatar: null as string | null, initials: "I", status: "Pron'Lab jeudi" },
-  { name: "Hugo", role: "A2 · English", avatar: null as string | null, initials: "H", status: "Balade côtière" },
-];
-
 export const WEEK_SPEAKING = [
   { day: "L", minutes: 8 },
   { day: "M", minutes: 0 },
@@ -963,65 +955,6 @@ export const INITIAL_PRONLAB_ATTEMPTS: PronlabAttempt[] = [
   { id: "pa5", itemId: "pl-1", score: 86, tip: "Vous y êtes.", createdAt: daysAgo(1, 13), seconds: 3 },
 ];
 
-export const TANDEM_PARTNERS: TandemPartner[] = [
-  {
-    id: "noah",
-    name: "Noah Bennett",
-    city: "Saint-Pierre",
-    speaks: "English",
-    speaksLevel: "C1",
-    wants: "Français",
-    wantsLevel: "A2",
-    interests: ["Cuisine", "Océan"],
-    window: "12:00 – 13:00",
-    goal: "Parler français à table, sans traduire dans sa tête.",
-    initials: "N",
-    avatar: null,
-  },
-  {
-    id: "ines",
-    name: "Inès Patel",
-    city: "Saint-Pierre",
-    speaks: "Français",
-    speaksLevel: "C2",
-    wants: "English",
-    wantsLevel: "A2",
-    interests: ["Musique", "Cuisine"],
-    window: "18:00 – 19:00",
-    goal: "Oser l'anglais en réunion courte.",
-    initials: "I",
-    avatar: null,
-  },
-  {
-    id: "hugo",
-    name: "Hugo Laurent",
-    city: "Le Tampon",
-    speaks: "Français",
-    speaksLevel: "C1",
-    wants: "English",
-    wantsLevel: "B1",
-    interests: ["Musique", "Océan"],
-    window: "12:00 – 13:00",
-    goal: "Raconter un concert sans basculer.",
-    initials: "H",
-    avatar: null,
-  },
-  {
-    id: "maya",
-    name: "Maya Chen",
-    city: "Saint-Denis",
-    speaks: "English",
-    speaksLevel: "B2",
-    wants: "Français",
-    wantsLevel: "A2",
-    interests: ["Voyage"],
-    window: "09:00 – 10:00",
-    goal: "Tenir une conversation de marché.",
-    initials: "M",
-    avatar: null,
-  },
-];
-
 export const TANDEM_PROMPTS = {
   english: [
     "What did you eat this week that was worth recommending?",
@@ -1065,49 +998,6 @@ export const TEACHER_TAGS = [
   "Confiance",
 ] as const;
 
-export const TEACHER_ROSTER = [
-  {
-    id: "camille",
-    name: "Camille Morel",
-    level: "A2",
-    stage: "En croissance",
-    minutes: 44,
-    lastActivity: "Mission du jour",
-    avatar: "/images/camille.jpg",
-    flags: ["Prononciation"] as string[],
-  },
-  {
-    id: "noah",
-    name: "Noah Bennett",
-    level: "B1",
-    stage: "Épanoui",
-    minutes: 62,
-    lastActivity: "Speak · Café",
-    avatar: null as string | null,
-    flags: [] as string[],
-  },
-  {
-    id: "ines",
-    name: "Inès Patel",
-    level: "A2",
-    stage: "En croissance",
-    minutes: 18,
-    lastActivity: "Il y a 6 jours",
-    avatar: null as string | null,
-    flags: ["Missions manquées", "Participation"] as string[],
-  },
-  {
-    id: "hugo",
-    name: "Hugo Laurent",
-    level: "A2",
-    stage: "Graine",
-    minutes: 9,
-    lastActivity: "Pron'Lab jeudi",
-    avatar: null as string | null,
-    flags: ["Volume de parole", "Prononciation"] as string[],
-  },
-];
-
 export const WARMUP_DRAFT = `Six minutes. Autour de la table, sans fiches.
 
 1. Chacun dit ce qu'il a mangé hier — une phrase, en anglais.
@@ -1115,21 +1005,6 @@ export const WARMUP_DRAFT = `Six minutes. Autour de la table, sans fiches.
 3. Deux paires : commander au marché. Trente secondes chacune.
 
 Focus du jour : TH (Camille, Hugo), volume (Hugo). Inès reprend une mission, sans commentaire public.`;
-
-export const HOMEWORK_DRAFTS: Record<string, { title: string; body: string }> = {
-  camille: {
-    title: "Trois TH avant mardi",
-    body: "Camille — d'ici le cours, le set « Les TH qui bloquent », trois items. Écoutez, dites, une fois suffit si c'est posé. On reprendra « the other one » en ouverture.",
-  },
-  ines: {
-    title: "Une mission, pas un rattrapage",
-    body: "Inès — une seule mission cette semaine : décrire votre matin à quelqu'un. Pas de rattrapage. On en parle mardi, deux minutes.",
-  },
-  hugo: {
-    title: "Parler un peu plus fort, pas plus juste",
-    body: "Hugo — une minute enregistrée sur « yesterday ». Le volume d'abord. La voyelle de look ensuite, si ça vient.",
-  },
-};
 
 export const LEARNER_MEMORY = {
   hesitation: "Aucun point de friction confirmé",
@@ -1305,15 +1180,6 @@ export const ORG_MEMBERS = [
   { id: "noah", name: "Noah Bennett", role: "Saison", minutes: 62, stage: "Épanoui", last: "Speak · Café" },
   { id: "maya", name: "Maya Chen", role: "Pâtisserie", minutes: 27, stage: "En croissance", last: "Tandem" },
   { id: "lea-s", name: "Léa S.", role: "Salle", minutes: 33, stage: "En croissance", last: "Cours du soir" },
-];
-
-export const INTELLIGENCE = [
-  { label: "Parcours le plus tenu", value: "English A2 soir", note: "8 semaines · 71 % de présence" },
-  { label: "Concept le plus dur", value: "TH (θ / ð)", note: "Camille, Hugo — set assignable" },
-  { label: "Tandem", value: "3 binômes actifs", note: "Aucun signalement cette semaine" },
-  { label: "Immersion", value: "6 inscrits", note: "19–20 septembre · Saint-Pierre" },
-  { label: "Parole moyenne", value: "32 min / semaine", note: "Hors cours magistral" },
-  { label: "Conversion CPF", value: "2 dossiers ouverts", note: "Attestation de régularité, pas un diplôme" },
 ];
 
 export const LANGUAGE_MODULES = [
