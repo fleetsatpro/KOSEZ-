@@ -65,7 +65,7 @@ export function AdminContentStudio() {
 
   useEffect(() => { if (selected) setDraft({ ...selected.draftPayload }); }, [selected]);
 
-  function createItem(kind: "event" | "catalogue") {
+  function createItem(kind: "event" | "catalogue", subtype: "course" | "immersion" = "course") {
     const token = typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID().slice(0, 8)
       : String(Date.now());
@@ -79,7 +79,9 @@ export function AdminContentStudio() {
         }
       : {
           contentKey: id, kind, state: "fallback", draftRevision: 0, publishedRevision: 0,
-          draftPayload: { id, kind: "course", title: "Nouveau programme", description: "", language: "English", level: "A2", format: "Groupe", instructor: "Équipe K'Osez", location: "Maison K'Osez", capacity: 8, schedule: "À définir", price: "Sur inscription", image: "/images/atelier.jpg" },
+          draftPayload: subtype === "immersion"
+            ? { id, kind: "immersion", title: "Nouvelle immersion", description: "", language: "English", level: "A2+", format: "Immersion", instructor: "Équipe K'Osez", location: "À définir", capacity: 10, schedule: "À définir", price: "Sur inscription", image: "/images/reunion-coast.jpg", early: false, companion: false }
+            : { id, kind: "course", title: "Nouveau programme", description: "", language: "English", level: "A2", format: "Groupe", instructor: "Équipe K'Osez", location: "Maison K'Osez", capacity: 8, schedule: "À définir", price: "Sur inscription", image: "/images/atelier.jpg" },
           publishedPayload: null, updatedBy: null, publishedBy: null, publishedAt: null, updatedAt: new Date().toISOString(),
         };
     setItems((current) => [item, ...current]);
@@ -234,7 +236,8 @@ export function AdminContentStudio() {
           </div>
           <div className="mt-4 grid grid-cols-2 gap-2">
             <Button size="sm" variant="secondary" onClick={() => createItem("event")}>+ Événement</Button>
-            <Button size="sm" variant="secondary" onClick={() => createItem("catalogue")}>+ Programme</Button>
+            <Button size="sm" variant="secondary" onClick={() => createItem("catalogue", "course")}>+ Programme</Button>
+            <Button size="sm" variant="secondary" onClick={() => createItem("catalogue", "immersion")}>+ Immersion</Button>
           </div>
           <div className="mt-5 space-y-2">{items.map((item) => (
             <button key={item.contentKey} type="button" onClick={() => setSelectedKey(item.contentKey)} className={item.contentKey === selected.contentKey ? "w-full rounded-xl border border-primary/30 bg-primary/5 p-3 text-left" : "w-full rounded-xl border border-border bg-surface-2/40 p-3 text-left hover:bg-surface-2/70"}>
