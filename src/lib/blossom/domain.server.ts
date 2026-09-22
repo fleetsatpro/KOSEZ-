@@ -23,6 +23,7 @@ export async function recordPronlabAttempt(
   input: PronlabAttemptInput,
 ) {
   const sql = await getSql();
+  const recordId = input.idempotencyKey ?? randomUUID();
 
   if (input.idempotencyKey) {
     const existing = await sql.query(
@@ -35,7 +36,7 @@ export async function recordPronlabAttempt(
   const rows = await sql.query(
     "insert into blossom_pronlab_attempt (id, user_id, item_id, idempotency_key, score, seconds, tip, metadata) values ($1::uuid, $2, $3, $4::uuid, $5, $6, $7, $8::jsonb) on conflict (user_id, idempotency_key) do update set idempotency_key = excluded.idempotency_key returning id, item_id, score, seconds, tip, metadata, created_at",
     [
-      randomUUID(),
+      recordId,
       userId,
       input.itemId,
       input.idempotencyKey ?? null,

@@ -5,6 +5,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
+import { BlossomSyncBoundary } from "@/components/blossom-sync-bridge";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import appCss from "../styles.css?url";
 
@@ -49,7 +50,9 @@ export const Route = createRootRoute({
       <body>
         <PreviewHostBridge />
         <AuthProvider>
-          <Outlet />
+          <BlossomSyncBoundary>
+            <Outlet />
+          </BlossomSyncBoundary>
         </AuthProvider>
         <Scripts />
       </body>

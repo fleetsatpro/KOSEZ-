@@ -37,10 +37,33 @@ export type BlossomMissionRecord = {
   updatedAt: string;
 };
 
+export type BlossomPronlabAttemptRecord = {
+  id: string;
+  itemId: string;
+  score: number;
+  seconds: number;
+  tip: string | null;
+  metadata: JsonObject;
+  createdAt: string;
+};
+
+export type BlossomVocabularyRecord = {
+  word: string;
+  gloss: string;
+  metadata: JsonObject;
+  firstSavedAt: string;
+  updatedAt: string;
+};
+
 export type BlossomBackendState = {
   profile: BlossomProfileRecord | null;
   activity: BlossomActivityRecord[];
   missionSessions: Record<string, BlossomMissionRecord>;
+  pronlabAttempts: BlossomPronlabAttemptRecord[];
+  vocabulary: BlossomVocabularyRecord[];
+  eventRegistrations: Record<string, "joined" | "waitlist" | "cancelled">;
+  completedChallenges: string[];
+  tandemStatus: Record<string, "suggested" | "pending" | "accepted" | "blocked" | "paused">;
 };
 
 function iso(value: unknown): string {
@@ -88,17 +111,37 @@ function mapActivity(row: Record<string, unknown>): BlossomActivityRecord {
 
 export async function readBlossomState(userId: string): Promise<BlossomBackendState> {
   const sql = await getSql();
-  const [profiles, activity, missions] = await Promise.all([
+  const [profiles, activity, missions, pronlab, vocabulary, registrations, challenges, tandem] = await Promise.all([
     sql.query(
       "select user_id, display_name, target_language, level, timezone, preferences, created_at, updated_at from blossom_profile where user_id = $1",
       [userId],
     ),
     sql.query(
-      "select id, idempotency_key, event_type, source_id, payload, occurred_at from blossom_activity_event where user_id = $1 order by occurred_at desc limit 500",
+      "select id, idempotency_key, event_type, source_id, payload, occurred_at from blossom_activity_event where user_id = $1 order by occurred_at asc",
       [userId],
     ),
     sql.query(
       "select mission_id, session, revision, updated_at from blossom_mission_session where user_id = $1 order by updated_at desc",
+      [userId],
+    ),
+    sql.query(
+      "select id, item_id, score, seconds, tip, metadata, created_at from blossom_pronlab_attempt where user_id = $1 order by created_at asc",
+      [userId],
+    ),
+    sql.query(
+      "select word, gloss, metadata, first_saved_at, updated_at from blossom_vocabulary where user_id = $1 order by updated_at desc",
+      [userId],
+    ),
+    sql.query(
+      "select event_id, status from blossom_event_registration where user_id = $1 and status <> 'cancelled'",
+      [userId],
+    ),
+    sql.query(
+      "select challenge_id from blossom_challenge_completion where user_id = $1 order by completed_at asc",
+      [userId],
+    ),
+    sql.query(
+      "select partner_user_id, status from blossom_tandem_connection where user_id = $1 order by updated_at desc",
       [userId],
     ),
   ]);
@@ -114,6 +157,32 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
           revision: Number(row.revision),
           updatedAt: iso(row.updated_at),
         },
+      ]),
+    ),
+    pronlabAttempts: pronlab.map((row) => ({
+      id: String(row.id),
+      itemId: String(row.item_id),
+      score: Number(row.score),
+      seconds: Number(row.seconds),
+      tip: (row.tip as string | null) ?? null,
+      metadata: jsonObject(row.metadata),
+      createdAt: iso(row.created_at),
+    })),
+    vocabulary: vocabulary.map((row) => ({
+      word: String(row.word),
+      gloss: String(row.gloss),
+      metadata: jsonObject(row.metadata),
+      firstSavedAt: iso(row.first_saved_at),
+      updatedAt: iso(row.updated_at),
+    })),
+    eventRegistrations: Object.fromEntries(
+      registrations.map((row) => [String(row.event_id), String(row.status) as "joined" | "waitlist" | "cancelled"]),
+    ),
+    completedChallenges: challenges.map((row) => String(row.challenge_id)),
+    tandemStatus: Object.fromEntries(
+      tandem.map((row) => [
+        String(row.partner_user_id),
+        String(row.status) as "suggested" | "pending" | "accepted" | "blocked" | "paused",
       ]),
     ),
   };
@@ -156,8 +225,8 @@ export async function appendBlossomActivity(
   },
 ): Promise<BlossomActivityRecord> {
   const sql = await getSql();
-  const id = randomUUID();
   const key = input.idempotencyKey ?? null;
+  const id = key ?? randomUUID();
 
   if (key) {
     const existing = await sql.query(
@@ -192,11 +261,27 @@ export async function saveBlossomMissionSession(
   missionId: string,
   session: JsonValue,
   expectedRevision: number,
+  mutationId?: string,
 ): Promise<SaveMissionResult> {
+
   const sql = await getSql();
+  if (mutationId) {
+    const duplicate = await sql.query(
+      "select revision, updated_at from blossom_mission_session where user_id = $1 and mission_id = $2 and last_mutation_id = $3::uuid",
+      [userId, missionId, mutationId],
+    );
+    if (duplicate[0]) {
+      return {
+        ok: true,
+        revision: Number(duplicate[0].revision),
+        updatedAt: iso(duplicate[0].updated_at),
+      };
+    }
+  }
+
   const rows = await sql.query(
-    "insert into blossom_mission_session (user_id, mission_id, session, revision) values ($1, $2, $3::jsonb, 1) on conflict (user_id, mission_id) do update set session = excluded.session, revision = blossom_mission_session.revision + 1, updated_at = current_timestamp where blossom_mission_session.revision = $4 returning revision, updated_at",
-    [userId, missionId, JSON.stringify(session), expectedRevision],
+    "insert into blossom_mission_session (user_id, mission_id, session, revision, last_mutation_id) values ($1, $2, $3::jsonb, 1, $5::uuid) on conflict (user_id, mission_id) do update set session = excluded.session, revision = blossom_mission_session.revision + 1, updated_at = current_timestamp, last_mutation_id = excluded.last_mutation_id where blossom_mission_session.revision = $4 returning revision, updated_at",
+    [userId, missionId, JSON.stringify(session), expectedRevision, mutationId ?? null],
   );
 
   if (rows[0]) {
