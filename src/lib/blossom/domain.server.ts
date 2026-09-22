@@ -100,6 +100,19 @@ export async function recordPronlabAttempt(
 ) {
   const sql = await getSql();
   const recordId = input.idempotencyKey ?? randomUUID();
+  const metadata = input.metadata ?? {};
+  const assessment = metadata.assessment === "phonetic-provider"
+    ? "phonetic-provider"
+    : "capture-only";
+  const safeScore =
+    assessment === "phonetic-provider"
+      ? Math.max(0, Math.min(100, Math.round(input.score)))
+      : 0;
+  const safeMetadata = {
+    ...metadata,
+    assessment,
+    ...(assessment === "capture-only" ? { provider: "unavailable" } : {}),
+  };
 
   if (input.idempotencyKey) {
     const existing = await sql.query(
@@ -116,10 +129,10 @@ export async function recordPronlabAttempt(
       userId,
       input.itemId,
       input.idempotencyKey ?? null,
-      Math.max(0, Math.round(input.score)),
+      safeScore,
       Math.max(0, Math.round(input.seconds)),
       input.tip ?? null,
-      JSON.stringify(input.metadata ?? {}),
+      JSON.stringify(safeMetadata),
     ],
   );
 
