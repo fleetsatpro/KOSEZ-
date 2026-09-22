@@ -1,195 +1,189 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { HeartHandshake, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  CHILD,
-  LEARNER,
-  LEARNER_MEMORY,
-  NEXT_CLASS,
-  WEEK_SPEAKING,
-} from "@/lib/blossom/data";
+import { Eyebrow, Initials, Page, Surface } from "./primitives";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
-import { useBlossom, useJourney } from "@/lib/blossom/store";
-import { formatLongDate } from "@/lib/utils";
-import { Eyebrow, Page, Surface } from "./primitives";
+import { getGuardianWorkspaceOnServer } from "@/lib/blossom/domain.api";
+import { useBlossom } from "@/lib/blossom/store";
 
-type Who = "camille" | "emile";
+type GuardianRow = Awaited<ReturnType<typeof getGuardianWorkspaceOnServer>>[number];
+
+function relative(value: string | null) {
+  if (!value) return "Aucune activité enregistrée";
+  const days = Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000);
+  if (days <= 0) return "Aujourd’hui";
+  if (days === 1) return "Hier";
+  return `Il y a ${days} jours`;
+}
 
 export function ParentView() {
   const setParentMode = useBlossom((s) => s.setParentMode);
-  const setChildMode = useBlossom((s) => s.setChildMode);
-  const journey = useJourney();
-  const childDone = useBlossom((s) => s.childMissionDone);
-  const childWords = useBlossom((s) => s.childWords);
-  const minutes = WEEK_SPEAKING.reduce((sum, d) => sum + d.minutes, 0);
-  const [who, setWho] = useState<Who>("emile");
   const { access, pending: accessPending } = useBlossomWorkspaceAccess();
+  const [children, setChildren] = useState<GuardianRow[]>([]);
+  const [selectedId, setSelectedId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (accessPending) {
+  useEffect(() => {
+    let disposed = false;
+    if (accessPending) return;
+    if (!access.isGuardian) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    void getGuardianWorkspaceOnServer()
+      .then((rows) => {
+        if (disposed) return;
+        setChildren(rows);
+        setSelectedId((current) => current || rows[0]?.id || "");
+      })
+      .catch(() => {
+        if (!disposed) setError("Impossible de charger les apprenants liés à ce compte.");
+      })
+      .finally(() => {
+        if (!disposed) setLoading(false);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [access.isGuardian, accessPending]);
+
+  const selected = children.find((child) => child.id === selectedId) ?? children[0];
+
+  if (accessPending || loading) {
     return (
-      <Page className="max-w-lg">
+      <Page className="max-w-2xl">
         <Eyebrow>Espace parent</Eyebrow>
-        <p className="mt-3 text-sm text-muted">Vérification des autorisations…</p>
+        <p className="mt-3 text-sm text-muted">Vérification des liens et chargement des données…</p>
       </Page>
     );
   }
 
   if (!access.isGuardian) {
     return (
-      <Page className="max-w-lg">
+      <Page className="max-w-2xl">
         <Eyebrow>Espace parent</Eyebrow>
         <h1 className="mt-2 font-display text-2xl">Accès non disponible</h1>
-        <p className="mt-3 text-sm leading-6 text-muted">Aucun lien parent actif n’est associé à ce compte.</p>
-        <Button
-          variant="secondary"
-          className="mt-6"
-          onClick={() => setParentMode(false)}
-        >
+        <p className="mt-3 text-sm leading-6 text-muted">
+          Ce compte n’a pas de lien parent actif.
+        </p>
+        <Button variant="secondary" className="mt-6" onClick={() => setParentMode(false)}>
           Revenir au voyage
         </Button>
       </Page>
     );
   }
 
-  return (
-    <Page className="max-w-lg">
-      <Eyebrow>Espace parent</Eyebrow>
-      <h1 className="mt-2 font-display text-3xl tracking-tight">
-        La semaine, pas le travail
-      </h1>
-      <p className="mt-2 text-sm leading-relaxed text-muted">
-        Vous voyez où ils en sont. Vous ne parlez pas à leur place.
-      </p>
+  if (error) {
+    return (
+      <Page className="max-w-2xl">
+        <Eyebrow>Espace parent</Eyebrow>
+        <h1 className="mt-2 font-display text-2xl">Données indisponibles</h1>
+        <p className="mt-3 text-sm leading-6 text-muted">{error}</p>
+        <Button
+          className="mt-6"
+          variant="secondary"
+          onClick={() => window.location.reload()}
+        >
+          Réessayer
+        </Button>
+      </Page>
+    );
+  }
 
-      <div className="mt-6 flex gap-2">
-        {(["emile", "camille"] as const).map((id) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setWho(id)}
-            className={`h-11 rounded-md px-4 text-sm ${
-              who === id
-                ? "bg-primary text-primary-foreground"
-                : "bg-surface text-muted shadow-[var(--shadow-border)]"
-            }`}
-          >
-            {id === "emile" ? "Émile" : "Camille"}
-          </button>
-        ))}
+  return (
+    <Page className="max-w-2xl">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <Eyebrow>Espace parent</Eyebrow>
+          <h1 className="mt-2 font-display text-4xl tracking-tight">
+            La semaine, pas le travail.
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Vous voyez les repères d’activité des apprenants qui vous sont réellement liés.
+          </p>
+        </div>
+        <Button variant="secondary" onClick={() => setParentMode(false)}>
+          Revenir
+        </Button>
       </div>
 
-      {who === "emile" ? (
-        <>
-          <Surface className="mt-8">
-            <p className="font-display text-2xl">{CHILD.firstName}</p>
-            <p className="mt-1 text-sm text-muted">
-              {CHILD.age} ans · {CHILD.targetLanguage} {CHILD.level} ·{" "}
-              {CHILD.relation}
-            </p>
-            <ul className="mt-4 space-y-3 text-sm">
-              <li className="flex justify-between gap-4">
-                <span className="text-muted">Activités</span>
-                <span className="tabular-nums">
-                  {CHILD.activitiesDone + (childDone ? 1 : 0)} cette semaine
-                </span>
-              </li>
-              <li className="flex justify-between gap-4">
-                <span className="text-muted">Parole</span>
-                <span className="tabular-nums">{CHILD.speakingMinutes} min</span>
-              </li>
-              <li className="flex justify-between gap-4">
-                <span className="text-muted">Mots écoutés</span>
-                <span className="tabular-nums">
-                  {childWords.length} / {CHILD.words.length}
-                </span>
-              </li>
-              <li className="flex justify-between gap-4">
-                <span className="text-muted">BLOSSOM</span>
-                <span>{CHILD.stageLabel}</span>
-              </li>
-            </ul>
-          </Surface>
-          <Surface className="mt-4">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted">
-              Prochain atelier
-            </p>
-            <p className="mt-3 font-display text-xl">{CHILD.nextWorkshop}</p>
-            <p className="mt-2 text-sm text-muted">
-              Pas de bouton « faire la mission ». L'espace enfant est à lui.
-            </p>
-          </Surface>
-          {childDone && (
-            <Surface className="mt-4">
-              <Eyebrow>Aujourd'hui</Eyebrow>
-              <p className="mt-3 text-sm leading-relaxed">
-                Émile a parlé. Vous voyez le jalon — pas l'enregistrement.
-              </p>
-            </Surface>
-          )}
-          <Button
-            className="mt-6 w-full"
-            variant="secondary"
-            onClick={() => setChildMode(true)}
-          >
-            Ouvrir l'espace enfant
-          </Button>
-        </>
+      {children.length === 0 ? (
+        <Surface className="mt-8">
+          <Users className="size-5 text-primary" />
+          <h2 className="mt-4 font-display text-2xl">Aucun apprenant lié.</h2>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Le compte parent est prêt, mais aucune relation active n’a encore été enregistrée.
+            Rien n’est inventé en attendant.
+          </p>
+        </Surface>
       ) : (
         <>
-          <Surface className="mt-8">
-            <p className="font-display text-2xl">{LEARNER.firstName}</p>
-            <p className="mt-1 text-sm text-muted">
-              {LEARNER.targetLanguage} {LEARNER.level} · parcours adulte
-            </p>
-            <ul className="mt-4 space-y-3 text-sm">
-              <li className="flex justify-between gap-4">
-                <span className="text-muted">Activités</span>
-                <span className="tabular-nums">
-                  {journey.missions.current} missions
-                </span>
-              </li>
-              <li className="flex justify-between gap-4">
-                <span className="text-muted">Parole</span>
-                <span className="tabular-nums">{minutes} min</span>
-              </li>
-              <li className="flex justify-between gap-4">
-                <span className="text-muted">Présence</span>
-                <span>Prochain cours noté</span>
-              </li>
-              <li className="flex justify-between gap-4">
-                <span className="text-muted">BLOSSOM</span>
-                <span>{journey.stage.label}</span>
-              </li>
-            </ul>
-          </Surface>
-          <Surface className="mt-4">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted">
-              Prochain cours
-            </p>
-            <p className="mt-3 font-display text-xl">{NEXT_CLASS.title}</p>
-            <p className="mt-1 text-sm text-muted">
-              {formatLongDate(NEXT_CLASS.date)} · {NEXT_CLASS.time} ·{" "}
-              {NEXT_CLASS.place}
-            </p>
-          </Surface>
-          <Surface className="mt-4">
-            <p className="text-xs uppercase tracking-[0.16em] text-muted">
-              Ce que Léo retient
-            </p>
-            <p className="mt-3 text-sm leading-relaxed text-muted">
-              {LEARNER_MEMORY.hesitation}. Vous voyez la semaine, pas les
-              enregistrements.
-            </p>
-          </Surface>
+          <div className="mt-8 flex flex-wrap gap-2">
+            {children.map((child) => {
+              const active = child.id === selected?.id;
+              return (
+                <button
+                  key={child.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setSelectedId(child.id)}
+                  className={active
+                    ? "flex min-h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm text-primary-foreground"
+                    : "flex min-h-11 items-center gap-2 rounded-full border border-border bg-surface px-4 text-sm text-muted"}
+                >
+                  <Initials letters={child.name.slice(0, 1)} />
+                  {child.name}
+                </button>
+              );
+            })}
+          </div>
+
+          {selected ? (
+            <section className="mt-6">
+              <div className="rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-border)]">
+                <div className="flex items-start gap-4">
+                  <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    <HeartHandshake className="size-5" />
+                  </span>
+                  <div>
+                    <p className="font-display text-2xl">{selected.name}</p>
+                    <p className="mt-1 text-xs text-subtle">
+                      {selected.level ? `Niveau ${selected.level}` : "Niveau non renseigné"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-7 grid gap-3 sm:grid-cols-3">
+                  <Metric label="Activités · 7 jours" value={String(selected.activitiesThisWeek)} />
+                  <Metric label="Parole observée" value={`${selected.speakingMinutes} min`} />
+                  <Metric label="Dernière activité" value={relative(selected.lastActivity)} />
+                </div>
+              </div>
+
+              <Surface className="mt-4">
+                <Eyebrow>Prochaine séance</Eyebrow>
+                <p className="mt-2 font-display text-2xl">Aucune séance confirmée visible.</p>
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  Les demandes d’inscription sont séparées des séances réellement confirmées.
+                  Une date n’apparaîtra ici qu’une fois enregistrée comme donnée de planning.
+                </p>
+              </Surface>
+            </section>
+          ) : null}
         </>
       )}
-
-      <Button
-        variant="secondary"
-        className="mt-8 w-full"
-        onClick={() => setParentMode(false)}
-      >
-        Revenir au voyage
-      </Button>
     </Page>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-surface-2/50 p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-subtle">{label}</p>
+      <p className="mt-2 font-display text-xl tabular-nums">{value}</p>
+    </div>
   );
 }
