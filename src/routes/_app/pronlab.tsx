@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Lock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Lock, Target } from "lucide-react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { setsForLanguage } from "@/lib/blossom/data";
+import { PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
 import { summarisePronlabItem } from "@/lib/blossom/engine";
+import { strugglingFocus } from "@/lib/blossom/organism";
 import { isSetUnlocked, useBlossom } from "@/lib/blossom/store";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/pronlab")({
   component: PronlabHub,
@@ -20,27 +22,101 @@ function PronlabHub() {
     (h) => h.status === "sent" && h.studentId === "camille",
   );
   const sets = setsForLanguage(languageId);
+  const allItems = PRONLAB_SETS.flatMap((s) => s.items);
+  const struggle = strugglingFocus(attempts, allItems);
+
+  const totalMastered = allItems.filter(
+    (item) => summarisePronlabItem(item.id, attempts).mastered,
+  ).length;
+  const totalAttempted = allItems.filter(
+    (item) => summarisePronlabItem(item.id, attempts).attemptCount > 0,
+  ).length;
 
   return (
-    <Page>
+    <Page className="kosez-feature-page max-w-4xl">
       <Button variant="ghost" size="sm" asChild className="-ml-2">
         <Link to="/learn">
           <ArrowLeft className="size-4" />
-          LEARN
+          Atelier
         </Link>
       </Button>
 
-      <Eyebrow className="mt-6">Pron'Lab</Eyebrow>
-      <h1 className="mt-2 font-display text-4xl tracking-tight">
-        Sons, mots, phrases
-      </h1>
-      <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">
-        Le même item, plusieurs fois. L'historique reste. La maîtrise se
-        voit. Léo commente un point, pas une liste.
-      </p>
+      <header className="mt-5 max-w-2xl">
+        <Eyebrow>Pron'Lab</Eyebrow>
+        <h1 className="mt-2 font-display text-4xl tracking-tight sm:text-5xl">
+          Sons, mots, phrases
+        </h1>
+        <p className="mt-3 text-sm leading-7 text-muted sm:text-base">
+          Le même item, plusieurs fois. L'historique reste. La maîtrise se
+          voit. Léo commente un point — pas une liste de fautes.
+        </p>
+      </header>
+
+      {/* At-a-glance mastery */}
+      <div className="mt-8 grid gap-3 sm:grid-cols-3">
+        <Surface className="!p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">
+            Maîtrisés
+          </p>
+          <p className="mt-1 font-display text-3xl tabular-nums text-primary">
+            {totalMastered}
+          </p>
+          <p className="mt-1 text-xs text-muted">feuilles de son ouvertes</p>
+        </Surface>
+        <Surface className="!p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">
+            Touchés
+          </p>
+          <p className="mt-1 font-display text-3xl tabular-nums">
+            {totalAttempted}
+          </p>
+          <p className="mt-1 text-xs text-muted">items déjà essayés</p>
+        </Surface>
+        <Surface className="!p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">
+            Sets
+          </p>
+          <p className="mt-1 font-display text-3xl tabular-nums">{sets.length}</p>
+          <p className="mt-1 text-xs text-muted">pour cette langue</p>
+        </Surface>
+      </div>
+
+      {struggle ? (
+        <Surface className="mt-4 border-primary/20 bg-primary/5">
+          <div className="flex items-start gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+              <Target className="size-4" strokeWidth={1.7} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <Eyebrow>Son qui résiste</Eyebrow>
+              <p className="mt-1 font-display text-xl">
+                {struggle.focus || struggle.phrase}
+              </p>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                {struggle.phrase} — un retour ici vaut mieux qu'un long
+                exercice neuf.
+              </p>
+              <Button asChild size="sm" className="mt-3" variant="secondary">
+                <Link
+                  to="/pronlab/$setId"
+                  params={{
+                    setId:
+                      PRONLAB_SETS.find((s) =>
+                        s.items.some((i) => i.id === struggle.id),
+                      )?.id ?? sets[0]?.id ?? "th",
+                  }}
+                >
+                  Reprendre ce son
+                  <ArrowRight className="size-3.5" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </Surface>
+      ) : null}
 
       {homework.length > 0 && (
-        <Surface className="mt-6">
+        <Surface className="mt-4">
           <Eyebrow>De Léa</Eyebrow>
           {homework.map((h) => (
             <div key={h.id} className="mt-3">
@@ -51,17 +127,23 @@ function PronlabHub() {
         </Surface>
       )}
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
+      <h2 className="mt-10 font-display text-2xl tracking-tight">Sets</h2>
+      <p className="mt-1 text-sm text-muted">
+        Chaîne progressive. Un set s'ouvre après le précédent — ou sur
+        consigne de Léa.
+      </p>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {sets.length === 0 && (
           <Surface className="sm:col-span-2">
             <p className="font-display text-xl">Même moteur, autre langue</p>
             <p className="mt-2 text-sm text-muted">
-              English, Español et LSF ont des sets. Les autres modules
-              du centre s'ouvrent ici, sans changer de plante.
+              English, Español et LSF ont des sets. Les autres modules du centre
+              s'ouvrent ici, sans changer de plante.
             </p>
           </Surface>
         )}
-        {sets.map((set) => {
+        {sets.map((set, index) => {
           const unlocked = isSetUnlocked(set.id, attempts, assigned);
           const summaries = set.items.map((item) =>
             summarisePronlabItem(item.id, attempts),
@@ -69,15 +151,26 @@ function PronlabHub() {
           const mastered = summaries.filter((s) => s.mastered).length;
           const started = summaries.filter((s) => s.attemptCount > 0).length;
           const assignedHere = assigned.includes(set.id);
+          const pct = (mastered / Math.max(1, set.items.length)) * 100;
           return (
             <article
               key={set.id}
-              className="flex flex-col rounded-xl bg-surface p-5 shadow-[var(--shadow-border)]"
+              className={cn(
+                "flex flex-col rounded-2xl border border-border/60 bg-surface p-5 shadow-[var(--shadow-border)] sm:p-6",
+                !unlocked && "opacity-80",
+              )}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <Eyebrow>{set.kind}</Eyebrow>
-                  <h2 className="mt-2 font-display text-2xl">{set.title}</h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Eyebrow>{set.kind}</Eyebrow>
+                    <span className="text-[10px] tabular-nums text-subtle">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                  </div>
+                  <h2 className="mt-2 font-display text-2xl tracking-tight">
+                    {set.title}
+                  </h2>
                 </div>
                 {assignedHere ? (
                   <Badge variant="clay">Léa</Badge>
@@ -86,27 +179,26 @@ function PronlabHub() {
                     {mastered}/{set.items.length}
                   </Badge>
                 ) : (
-                  <Lock className="size-4 text-subtle" />
+                  <Lock className="size-4 text-subtle" aria-label="Verrouillé" />
                 )}
               </div>
               <p className="mt-2 flex-1 text-sm leading-relaxed text-muted">
                 {set.blurb}
               </p>
-              <Progress
-                className="mt-4"
-                value={(mastered / set.items.length) * 100}
-              />
+              <Progress className="mt-5 h-1.5" value={pct} />
               <p className="mt-2 text-xs tabular-nums text-subtle">
-                {started} commencés · {mastered} maîtrisés
+                {started} commencés · {mastered} maîtrisés · {set.items.length}{" "}
+                items
               </p>
               {unlocked ? (
                 <Button asChild className="mt-5">
                   <Link to="/pronlab/$setId" params={{ setId: set.id }}>
-                    Entrer
+                    Entrer dans le set
+                    <ArrowRight className="size-4" />
                   </Link>
                 </Button>
               ) : (
-                <p className="mt-5 text-xs text-subtle">
+                <p className="mt-5 text-xs leading-5 text-subtle">
                   S'ouvre après un passage dans le set précédent — ou une
                   consigne de Léa.
                 </p>
