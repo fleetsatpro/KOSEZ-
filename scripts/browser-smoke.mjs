@@ -89,11 +89,21 @@ async function gotoWithRetry(page, targetUrl, options, attempts = 3) {
 const SMOKE_STATE_KEY = "kosez-blossom-v2";
 const SMOKE_ROUTES = [
   "/",
+  "/plant",
+  "/mission",
+  "/osez",
+  "/osez/pulse",
   "/explore",
+  "/immersion",
   "/connect",
   "/tandem",
-  "/immersion",
   "/learn",
+  "/learn/curriculum",
+  "/learn/review",
+  "/learn/progress",
+  "/learn/history",
+  "/learn/labs",
+  "/library",
   "/pronlab",
   "/moi",
 ];
@@ -212,7 +222,7 @@ try {
     });
     const requiredLearnerText =
       expectedAuth === "disabled"
-        ? ["BLOSSOM", "Reprendre exactement", "EXPLORE", "CONNECT", "LEARN", "MOI"]
+        ? ["BLOSSOM", "Geste du jour", "EXPLORE", "CONNECT", "LEARN", "MOI"]
         : [];
     const forbiddenLearnerText =
       expectedAuth === "disabled"
