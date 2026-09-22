@@ -74,9 +74,12 @@ const PILLARS = [
 export function LearnDashboard() {
   const enrolledIds = useBlossom((s) => s.enrolledIds);
   const bookingStatuses = useBlossom((s) => s.bookingStatuses);
+  const syncOwnerUserId = useBlossom((s) => s.syncOwnerUserId);
   const log = useBlossom((s) => s.activityLog);
   const homework = useBlossom((s) => s.homework).filter(
-    (item) => item.studentId === "camille" && (item.status === "sent" || item.status === "done"),
+    (item) =>
+      item.studentId === syncOwnerUserId &&
+      (item.status === "sent" || item.status === "done"),
   );
   const completeHomework = useBlossom((s) => s.completeHomework);
   const vocab = useBlossom((s) => s.vocabulary);
@@ -614,7 +617,9 @@ export function LearnDashboard() {
           <Link to="/learn/progress" className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
             <ChartNoAxesCombined className="size-4 text-primary" />
             <p className="mt-5 font-display text-xl tracking-tight">Compétences</p>
-            <p className="mt-1 text-xs text-muted">9 domaines documentés</p>
+            <p className="mt-1 text-xs text-muted">
+              {skillProfile.filter((item) => item.evidenceCount > 0).length}/{skillProfile.length} avec preuve
+            </p>
           </Link>
           <Link to="/learn/history" className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
             <History className="size-4 text-primary" />
