@@ -29,6 +29,7 @@ import {
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { OrganismStatus } from "@/components/app/organism-status";
 import { CourageRibbon } from "@/components/app/courage-ribbon";
+import { SceneReel } from "@/components/app/scene-reel";
 import {
   courageDaysFromLog,
   strugglingFocus,
@@ -59,6 +60,7 @@ export function HomeDashboard() {
   const maxSpeaking = Math.max(...WEEK_SPEAKING.map((day) => day.minutes), 1);
   const stageProgress = Math.round(journey.progress * 100);
   const minerals = useBlossom((s) => s.mineralSnapshot);
+  const growthEvents = useBlossom((s) => s.growthEvents);
   const struggle = strugglingFocus(
     attempts,
     PRONLAB_SETS.flatMap((s) => s.items),
@@ -306,6 +308,8 @@ export function HomeDashboard() {
           ) : null}
         </div>
       </section>
+
+      <SceneReel events={growthEvents} className="mt-5" />
 
       <section className="kosez-quick-actions mt-5 border-t border-border pt-5" aria-label="Accès rapides">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
