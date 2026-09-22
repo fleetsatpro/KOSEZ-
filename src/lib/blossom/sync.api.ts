@@ -18,6 +18,8 @@ const mutationSchema = z.object({
     "challenge.complete",
     "tandem.status",
     "learning.submission",
+    "booking.request",
+    "waitlist.request",
   ]),
   entityId: z.string().trim().min(1).max(200),
   expectedRevision: z.number().int().nonnegative().optional(),
