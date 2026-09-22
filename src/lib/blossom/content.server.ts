@@ -177,6 +177,63 @@ async function ensureBootstrapContent(sql: Awaited<ReturnType<typeof getSql>>) {
   }
 }
 
+async function recordContentRevision(
+  userId: string | null,
+  contentKey: string,
+  kind: ContentKind,
+  revision: number,
+  channel: "draft" | "published" | "archived",
+  payload: unknown,
+) {
+  const sql = await getSql();
+  await sql.query(
+    "insert into blossom_content_revision (id, content_key, kind, revision, channel, payload, actor_user_id) values ($1::uuid, $2, $3, $4, $5, $6::jsonb, $7) on conflict (content_key, channel, revision) do nothing",
+    [
+      randomUUID(),
+      contentKey,
+      kind,
+      revision,
+      channel,
+      JSON.stringify(payload),
+      userId,
+    ],
+  );
+}
+
+export type ContentRevision = {
+  revisionId: string;
+  contentKey: string;
+  kind: ContentKind;
+  revision: number;
+  channel: "draft" | "published" | "archived";
+  payload: ContentPayload;
+  actorUserId: string | null;
+  createdAt: string;
+};
+
+export async function getContentRevisionHistory(
+  userId: string,
+  contentKeyInput: string,
+): Promise<ContentRevision[]> {
+  await assertAdmin(userId);
+  const contentKey = contentKeySchema.parse(contentKeyInput);
+  const sql = await getSql();
+  const rows = await sql.query(
+    "select id, content_key, kind, revision, channel, payload, actor_user_id, created_at from blossom_content_revision where content_key = $1 order by revision desc, created_at desc limit 80",
+    [contentKey],
+  );
+  return rows.map((row) => ({
+    revisionId: String(row.id),
+    contentKey: String(row.content_key),
+    kind: String(row.kind) as ContentKind,
+    revision: Number(row.revision),
+    channel: String(row.channel) as ContentRevision["channel"],
+    payload: row.payload as ContentPayload,
+    actorUserId: row.actor_user_id ? String(row.actor_user_id) : null,
+    createdAt: new Date(String(row.created_at)).toISOString(),
+  }));
+}
+
 export async function getPublishedContent(): Promise<PublishedContent> {
   const sql = await getSql();
   const rows = await sql.query(
@@ -336,6 +393,15 @@ export async function saveContentDraft(
     [randomUUID(), userId, contentKey, JSON.stringify({ kind: input.kind, revision: row.draft_revision })],
   );
 
+  await recordContentRevision(
+    userId,
+    contentKey,
+    input.kind,
+    Number(row.draft_revision),
+    "draft",
+    payload,
+  );
+
   return {
     contentKey,
     kind: input.kind,
@@ -368,6 +434,21 @@ export async function archiveContent(
       JSON.stringify({ revision: Number(rows[0].published_revision) }),
     ],
   );
+
+  const archivedPayload = await sql.query(
+    "select kind, published_payload from blossom_content_item where content_key = $1",
+    [contentKey],
+  );
+  if (archivedPayload[0]?.published_payload) {
+    await recordContentRevision(
+      userId,
+      contentKey,
+      String(archivedPayload[0].kind) as ContentKind,
+      Number(rows[0].published_revision),
+      "archived",
+      archivedPayload[0].published_payload,
+    );
+  }
 
   return {
     contentKey,
@@ -426,6 +507,15 @@ export async function publishContent(
         revision: Number(updated[0].published_revision),
       }),
     ],
+  );
+
+  await recordContentRevision(
+    userId,
+    contentKey,
+    kind,
+    Number(updated[0].published_revision),
+    "published",
+    payload,
   );
 
   return {
