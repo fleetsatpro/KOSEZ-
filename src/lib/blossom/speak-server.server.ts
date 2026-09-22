@@ -1,5 +1,5 @@
-import type { GenerateInput, LivingRoom } from "./speak-engine";
-import { generateLivingRoom, roomBriefForLlm } from "./speak-engine";
+import type { GenerateInput, LivingRoom } from "./speak-engine.ts";
+import { generateLivingRoom, roomBriefForLlm } from "./speak-engine.ts";
 
 type ServerTopicRequest = {
   topic: string;
