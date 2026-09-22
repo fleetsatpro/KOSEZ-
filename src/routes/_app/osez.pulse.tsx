@@ -87,7 +87,7 @@ function PulsePage() {
               <span className="font-display text-lg tabular-nums text-primary/70">
                 {i + 1}
               </span>
-              <span dangerouslySetInnerHTML={{ __html: line }} />
+              <span>{line}</span>
             </li>
           ))}
         </ul>
