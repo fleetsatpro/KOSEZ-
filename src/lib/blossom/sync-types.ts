@@ -17,6 +17,7 @@ export type SyncOperation =
   | "event.register"
   | "challenge.complete"
   | "tandem.status"
+  | "tandem.report"
   | "learning.submission"
   | "booking.request"
   | "waitlist.request"
