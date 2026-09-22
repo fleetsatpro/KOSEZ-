@@ -20,6 +20,7 @@ import {
   saveHomework,
   completeHomeworkForLearner,
 } from "./domain.server";
+import { reportTandem } from "./safety.server";
 import type { SyncMutation, SyncResult } from "./sync-types";
 
 const SYNC_TIMEOUT_MS = 120_000;
@@ -93,6 +94,7 @@ const operationSchema = z.enum([
   "event.register",
   "challenge.complete",
   "tandem.status",
+  "tandem.report",
   "learning.submission",
   "booking.request",
   "waitlist.request",
@@ -145,6 +147,11 @@ const eventPayloadSchema = z.object({
 const tandemPayloadSchema = z.object({
   status: z.enum(["suggested", "pending", "accepted", "blocked", "paused"]),
   metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+const tandemReportPayloadSchema = z.object({
+  reason: z.string().trim().max(500).optional(),
+  previousStatus: z.enum(["suggested", "pending", "accepted", "blocked", "paused"]).optional(),
 });
 
 
@@ -311,6 +318,16 @@ async function applyMutation(
         status: payload.status,
         metadata: payload.metadata ?? {},
       });
+      return { mutationId: mutation.mutationId, status: "applied" };
+    }
+    case "tandem.report": {
+      const payload = tandemReportPayloadSchema.parse(mutation.payload);
+      await reportTandem(
+        userId,
+        mutation.entityId,
+        mutation.mutationId,
+        payload.reason ?? "unspecified",
+      );
       return { mutationId: mutation.mutationId, status: "applied" };
     }
     case "learning.submission": {
