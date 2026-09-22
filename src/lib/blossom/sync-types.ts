@@ -123,6 +123,7 @@ export type BackendTeacherNote = {
 };
 
 export type BackendState = {
+  plan: "centre" | "digital" | "premium";
   profile: {
     userId: string;
     displayName: string | null;
