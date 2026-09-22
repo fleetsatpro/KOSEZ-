@@ -43,6 +43,9 @@ export function HomeDashboard() {
   const ribbon = courageRibbon(courageDaysFromLog(log));
   const spoken = ribbon.filter(Boolean).length;
   const plantSrc = PLANT_IMAGE[journey.stage.id];
+  const initials = learner.firstName
+    ? learner.firstName.slice(0, 1).toUpperCase()
+    : "K";
   const progress = Math.max(4, Math.round(journey.progress * 100));
 
   return (
@@ -76,13 +79,19 @@ export function HomeDashboard() {
           <Link
             to="/moi"
             aria-label="Ouvrir MOI"
-            className="shrink-0 rounded-full p-0.5 ring-1 ring-white/20 transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:ring-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+            className="shrink-0 overflow-hidden rounded-full p-0.5 ring-1 ring-white/20 transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:ring-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
           >
-            <img
-              src={learner.avatar}
-              alt=""
-              className="size-10 rounded-full object-cover sm:size-11"
-            />
+            {learner.avatar ? (
+              <img
+                src={learner.avatar}
+                alt=""
+                className="size-10 rounded-full object-cover sm:size-11"
+              />
+            ) : (
+              <span className="flex size-10 items-center justify-center rounded-full bg-primary/20 font-display text-sm text-white sm:size-11">
+                {initials}
+              </span>
+            )}
           </Link>
         </header>
 
