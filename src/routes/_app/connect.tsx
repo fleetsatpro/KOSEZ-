@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, MapPin, UserRound, Users } from "lucide-react";
+import { ArrowRight, CalendarDays, MapPin, UserRound, Users } from "lucide-react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { EVENTS, planAllows } from "@/lib/blossom/data";
@@ -19,6 +19,7 @@ function ConnectPage() {
   const counts = useBlossom((s) => s.eventRegistrationCounts);
   const plan = useBlossom((s) => s.plan);
   const tandemOpen = planAllows(plan, "tandem");
+  const navigate = useNavigate();
   const [peers, setPeers] = useState<ConnectPeer[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -49,6 +50,18 @@ function ConnectPage() {
     [],
   );
 
+  const sharedEncounterCount = peers.reduce((total, peer) => total + peer.sharedEvents, 0);
+  const nextEvent = upcoming.find((event) => joined.includes(event.id)) ?? upcoming[0] ?? null;
+
+  function prepareFor(eventTitle: string) {
+    try {
+      sessionStorage.setItem("kosez-speak-topic", `Rencontre · ${eventTitle}`.slice(0, 120));
+    } catch {
+      /* session storage can be unavailable in privacy modes */
+    }
+    navigate({ to: "/osez/$id", params: { id: "topic" } });
+  }
+
   return (
     <Page className="kosez-feature-page max-w-4xl">
       <header className="max-w-2xl">
@@ -62,6 +75,43 @@ function ConnectPage() {
           est disponible, le tandem peut prendre le relais.
         </p>
       </header>
+
+      <section className="mt-8 grid gap-3 sm:grid-cols-3" aria-label="Résumé de connexion">
+        <Surface className="!p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">Présences</p>
+          <p className="mt-2 font-display text-2xl tabular-nums">{peers.length}</p>
+          <p className="mt-1 text-xs leading-5 text-muted">personne{peers.length === 1 ? "" : "s"} réellement reliée{peers.length === 1 ? "" : "s"} à vos rendez-vous</p>
+        </Surface>
+        <Surface className="!p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">Rencontres partagées</p>
+          <p className="mt-2 font-display text-2xl tabular-nums">{sharedEncounterCount}</p>
+          <p className="mt-1 text-xs leading-5 text-muted">points de contact observés dans le cercle</p>
+        </Surface>
+        <Surface className="!p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">Prochain mouvement</p>
+          <p className="mt-2 font-display text-lg leading-tight">{nextEvent?.title ?? "Aucun rendez-vous"}</p>
+          <p className="mt-1 text-xs leading-5 text-muted">{nextEvent ? "Préparez une phrase avant de partir." : "Explorez les rencontres pour créer le prochain point de contact."}</p>
+        </Surface>
+      </section>
+
+      <Surface className="mt-4 !p-5 sm:!p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <Eyebrow>Avant le réel</Eyebrow>
+            <p className="mt-2 font-display text-2xl tracking-tight">Une rencontre commence avant le premier mot.</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Choisissez une situation de votre agenda, préparez une intention simple dans OSEZ, puis laissez la rencontre produire sa propre trace. K’Osez ne fabrique pas de présence : ce cercle vient de rendez-vous effectivement partagés.</p>
+          </div>
+          {nextEvent ? (
+            <Button variant="secondary" className="shrink-0" onClick={() => prepareFor(nextEvent.title)}>
+              Préparer « {nextEvent.title} » <ArrowRight className="size-4" />
+            </Button>
+          ) : (
+            <Button asChild variant="secondary" className="shrink-0">
+              <Link to="/explore">Trouver une rencontre <ArrowRight className="size-4" /></Link>
+            </Button>
+          )}
+        </div>
+      </Surface>
 
       {tandemOpen ? (
         <Link
@@ -194,11 +244,16 @@ function ConnectPage() {
                     {event.place}
                   </p>
                 </div>
-                <span className="text-xs text-subtle">
-                  {joined.includes(event.id)
-                    ? "Vous y serez"
-                    : `${registered}/${event.spots} inscrits`}
-                </span>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="text-xs text-subtle">
+                    {joined.includes(event.id)
+                      ? "Vous y serez"
+                      : `${registered}/${event.spots} inscrits`}
+                  </span>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => prepareFor(event.title)}>
+                    Préparer
+                  </Button>
+                </div>
               </li>
             );
           })}
