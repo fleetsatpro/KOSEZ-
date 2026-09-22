@@ -118,9 +118,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
-  if (childMode && !accessPending && !access.isChild) {
-    setChildMode(false);
-  }
   if (parentMode) {
     return (
       <div className="paper-grain min-h-dvh bg-bg text-fg">
