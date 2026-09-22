@@ -70,6 +70,7 @@ const PILLARS = [
 
 export function LearnDashboard() {
   const enrolledIds = useBlossom((s) => s.enrolledIds);
+  const log = useBlossom((s) => s.activityLog);
   const homework = useBlossom((s) => s.homework).filter(
     (item) => item.studentId === "camille" && (item.status === "sent" || item.status === "done"),
   );
@@ -447,10 +448,10 @@ export function LearnDashboard() {
           <div className="relative">
             <Eyebrow className="text-primary-foreground/55">PROCHAINE ACTION · mémoire</Eyebrow>
             <h2 className="mt-3 max-w-2xl font-display text-3xl tracking-tight sm:text-4xl">
-{nextAction.title}
+              {nextAction.title}
             </h2>
             <p className="mt-3 max-w-xl text-sm leading-6 text-primary-foreground/65">
-{nextAction.body}
+              {nextAction.body}
             </p>
             <span className="mt-6 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
               Réviser maintenant <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -461,11 +462,7 @@ export function LearnDashboard() {
         <Surface>
           <Eyebrow>Profil vivant</Eyebrow>
           <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-4">
-            {buildSkillProfile(
-              useBlossom.getState().activityLog,
-              useBlossom.getState().pronlabAttempts,
-              useBlossom.getState().vocabulary,
-            .slice(0, 6).map((entry) => (
+            {skillProfile.slice(0, 6).map((entry) => (
               <div key={entry.domain.id}>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-muted">{entry.domain.shortLabel}</span>
