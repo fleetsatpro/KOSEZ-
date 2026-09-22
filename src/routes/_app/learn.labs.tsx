@@ -1,19 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Check, Headphones, PenLine, RotateCcw, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Headphones, PenLine, RotateCcw, Sparkles, Target, GraduationCap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, speakSyntheticEnglish } from "@/lib/blossom/lab-content";
+import { DIAGNOSTIC_QUESTIONS, diagnosticLevel, diagnosticSummary } from "@/lib/blossom/learning-labs";
 import { useBlossom } from "@/lib/blossom/store";
 
 export const Route = createFileRoute("/_app/learn/labs")({ component: LearningLabs });
 
-type Lab = "grammar" | "listening" | "writing";
+type Lab = "grammar" | "listening" | "writing" | "diagnostic";
 const LABS: Array<{ id: Lab; label: string; detail: string }> = [
   { id: "grammar", label: "Grammaire", detail: "Construire la phrase qui sert." },
   { id: "listening", label: "Écoute", detail: "Attraper l'information utile." },
   { id: "writing", label: "Écrit", detail: "Laisser une trace claire." },
+  { id: "diagnostic", label: "Repère", detail: "Choisir le bon point de départ." },
 ];
 
 function LearningLabs() {
@@ -28,7 +30,7 @@ function LearningLabs() {
     <div className="mt-6 grid gap-2 sm:grid-cols-3">{LABS.map((item) => <button key={item.id} type="button" onClick={() => setLab(item.id)} className={`rounded-2xl border p-4 text-left transition ${lab === item.id ? "border-primary/30 bg-primary/8 text-fg" : "border-border bg-surface text-muted hover:bg-surface-2/60 hover:text-fg"}`}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">{item.label}</p><p className="mt-2 font-display text-xl tracking-tight">{item.detail}</p>
     </button>)}</div>
-    {lab === "grammar" ? <GrammarLab /> : null}{lab === "listening" ? <ListeningLab /> : null}{lab === "writing" ? <WritingLab /> : null}
+    {lab === "grammar" ? <GrammarLab /> : null}{lab === "listening" ? <ListeningLab /> : null}{lab === "writing" ? <WritingLab /> : null}{lab === "diagnostic" ? <DiagnosticLab /> : null}
   </Page>;
 }
 
@@ -86,6 +88,124 @@ function WritingLab() {
     <div className="mt-4 space-y-2">{prompt.checks.map((check) => { const checked = checks.includes(check.id); return <button key={check.id} type="button" disabled={submitted} onClick={() => setChecks((value) => checked ? value.filter((id) => id !== check.id) : [...value, check.id])} className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition ${checked ? "border-primary/25 bg-primary/8" : "border-border bg-surface-2/30 hover:bg-surface-2"}`}><span className={`flex size-5 items-center justify-center rounded-md border ${checked ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{checked ? <Check className="size-3.5" /> : null}</span>{check.label}</button>; })}</div>
     {submitted ? <div className="mt-6 rounded-2xl border border-primary/15 bg-primary/5 p-5"><Eyebrow>Modèle · à observer, pas à copier</Eyebrow><p className="mt-3 font-display text-2xl leading-snug">{prompt.model}</p><p className="mt-2 text-sm leading-6 text-muted">K&apos;Osez ne prétend pas corriger automatiquement votre texte ici : vous avez créé une vraie trace de production.</p><Button variant="secondary" className="mt-5" onClick={next}>Un autre sujet <span aria-hidden>→</span></Button></div> : <Button className="mt-6" disabled={!draft.trim()} onClick={submit}>Enregistrer ma trace <Sparkles className="size-4" /></Button>}
   </Surface>;
+}
+
+
+function DiagnosticLab() {
+  const updateLearner = useBlossom((s) => s.updateLearner);
+  const completeActivity = useBlossom((s) => s.completeActivity);
+  const learner = useBlossom((s) => s.learner);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [saved, setSaved] = useState(false);
+
+  const score = useMemo(
+    () =>
+      DIAGNOSTIC_QUESTIONS.reduce((total, question) => {
+        const selected = answers[question.id];
+        const option = question.options.find((item) => item.label === selected);
+        return total + (option?.points ?? 0);
+      }, 0),
+    [answers],
+  );
+
+  const ready = Object.keys(answers).length === DIAGNOSTIC_QUESTIONS.length;
+  const level = diagnosticLevel(score);
+
+  if (saved) {
+    return (
+      <Surface className="mt-6 border border-primary/20 bg-primary/5 p-6 sm:p-8">
+        <GraduationCap className="size-6 text-primary" />
+        <Eyebrow className="mt-5">REPÈRE ENREGISTRÉ</Eyebrow>
+        <h2 className="mt-2 font-display text-3xl tracking-tight">{level} · {score}/10</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-muted">{diagnosticSummary(score)}</p>
+        <div className="mt-6 flex flex-wrap gap-2">
+          <Button asChild><Link to="/learn/curriculum">Voir mon parcours <ArrowRight className="size-4" /></Link></Button>
+          <Button variant="secondary" onClick={() => setSaved(false)}>Refaire le repère</Button>
+        </div>
+      </Surface>
+    );
+  }
+
+  return (
+    <Surface className="mt-6 p-5 sm:p-7">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-2xl">
+          <Eyebrow>REPÈRE · INDICATIF</Eyebrow>
+          <h2 className="mt-2 font-display text-3xl tracking-tight">Où commencer sans perdre de temps ?</h2>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            Cinq situations courtes. Le résultat suggère un point de départ ; il ne remplace ni un test complet ni le regard d'un enseignant.
+          </p>
+        </div>
+        <Badge variant="outline">Actuel · {learner.level}</Badge>
+      </div>
+
+      <div className="mt-7 space-y-3">
+        {DIAGNOSTIC_QUESTIONS.map((question, index) => {
+          const selected = answers[question.id];
+          return (
+            <div key={question.id} className="rounded-2xl border border-border bg-surface-2/35 p-4 sm:p-5">
+              <div className="flex gap-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-semibold text-primary">
+                  {index + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm leading-6">{question.prompt}</p>
+                  <div className="mt-4 grid gap-2">
+                    {question.options.map((option) => (
+                      <button
+                        key={option.label}
+                        type="button"
+                        onClick={() => setAnswers((current) => ({ ...current, [question.id]: option.label }))}
+                        className={cn(
+                          "rounded-xl border px-4 py-3 text-left text-sm transition",
+                          selected === option.label
+                            ? "border-primary/25 bg-primary/8"
+                            : "border-border bg-surface hover:border-primary/15",
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-primary/15 bg-primary/5 p-5">
+        <div className="flex items-start gap-3">
+          <Target className="mt-0.5 size-4 text-primary" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-subtle">
+              {ready ? `Repère proposé · ${level}` : "Repère en cours"}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              {ready ? diagnosticSummary(score) : `${Object.keys(answers).length}/${DIAGNOSTIC_QUESTIONS.length} situations complétées.`}
+            </p>
+          </div>
+          <span className="font-display text-2xl tabular-nums text-primary">{score}/10</span>
+        </div>
+      </div>
+
+      <Button
+        className="mt-5 w-full sm:w-auto"
+        disabled={!ready}
+        onClick={() => {
+          updateLearner({ level });
+          completeActivity(
+            "DIAGNOSTIC_COMPLETED",
+            `diagnostic:${new Date().toISOString()}`,
+            `Repère indicatif · ${score}/10 · ${level}`,
+          );
+          setSaved(true);
+        }}
+      >
+        Adopter ce repère <Check className="size-4" />
+      </Button>
+    </Surface>
+  );
 }
 
 function LabComplete({ title, detail }: { title: string; detail: string }) {
