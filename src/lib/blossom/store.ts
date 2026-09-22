@@ -137,7 +137,6 @@ type AppState = {
   immersionPhase: "pre" | "during" | "post";
   immersionDone: string[];
   plan: PlanId;
-  proofClaimed: boolean;
   childMissionDone: boolean;
   childWords: string[];
   waitlistIds: string[];
@@ -155,7 +154,6 @@ type AppState = {
   setOrgMode: (value: boolean) => void;
   setAdminMode: (value: boolean) => void;
   setChildMode: (value: boolean) => void;
-  claimProof: () => void;
   updateLearner: (patch: Partial<LearnerProfile>) => void;
   startMissionRun: (missionId: string, mode: MissionMode, challenge?: MissionChallenge) => string | null;
   recordMissionAttempt: (
@@ -303,7 +301,6 @@ export const useBlossom = create<AppState>()(
       immersionPhase: "pre",
       immersionDone: [],
       plan: "centre",
-      proofClaimed: false,
       childMissionDone: false,
       childWords: [],
       waitlistIds: [],
@@ -332,7 +329,6 @@ export const useBlossom = create<AppState>()(
         set({ adminMode: value, parentMode: false, teacherMode: false, orgMode: false, childMode: false }),
       setChildMode: (value) =>
         set({ childMode: value, parentMode: false, teacherMode: false, orgMode: false }),
-      claimProof: () => set({ proofClaimed: true }),
       updateLearner: (patch) => {
         const current = get();
         const learner = { ...current.learner, ...patch };
@@ -961,7 +957,6 @@ export const useBlossom = create<AppState>()(
           immersionDone: [],
           orgMode: false,
           plan: "centre",
-          proofClaimed: false,
           childMissionDone: false,
           childWords: [],
           waitlistIds: [],
