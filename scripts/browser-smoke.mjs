@@ -94,6 +94,13 @@ const SMOKE_ROUTES = [
   "/tandem",
   "/immersion",
   "/learn",
+  "/learn/curriculum",
+  "/learn/curriculum/a2-real-life-basics",
+  "/learn/curriculum/b1-description-and-comparison",
+  "/learn/progress",
+  "/learn/history",
+  "/learn/labs",
+  "/learn/review",
   "/pronlab",
   "/moi",
 ];
@@ -183,13 +190,41 @@ try {
             { waitUntil: "domcontentloaded", timeout: timeoutMs },
           );
       const routeStatus = response?.status() ?? 0;
+      const routeBodyText = await page
+        .locator("body")
+        .innerText()
+        .catch(() => "");
+      const routeExpectedText =
+        route === "/learn/curriculum"
+          ? "Parcours"
+          : route === "/learn/curriculum/a2-real-life-basics"
+            ? "Les gestes qui ouvrent"
+            : route === "/learn/curriculum/b1-description-and-comparison"
+              ? "Décrire et comparer"
+              : route === "/learn/progress"
+                ? "Compétences"
+                : route === "/learn/history"
+                  ? "Chronologie"
+                  : route === "/learn/labs"
+                    ? "Construire, entendre"
+                    : route === "/learn/review"
+                      ? "Révision adaptative"
+                      : null;
       routeChecks.push({
         route,
         status: routeStatus,
         url: new URL(route, url).href,
+        bodyTextLen: normalizeBodyText(routeBodyText).length,
+        expectedText: routeExpectedText,
+        expectedTextPresent: routeExpectedText ? routeBodyText.includes(routeExpectedText) : true,
       });
       if (routeStatus === 0 || routeStatus >= 400) {
         errors.pageErrors.push(`route ${route} returned HTTP ${routeStatus}`);
+      }
+      if (routeExpectedText && !routeBodyText.includes(routeExpectedText)) {
+        errors.pageErrors.push(
+          `route ${route} missing expected text: ${routeExpectedText}`,
+        );
       }
       await page.waitForTimeout(250);
     }
