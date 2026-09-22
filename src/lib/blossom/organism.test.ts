@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { ActivityEvent } from "./engine";
+import type { ActivityEvent } from "./engine.ts";
 import {
   computeMinerals,
   courageDaysFromLog,
@@ -9,7 +9,7 @@ import {
   organismStatusLine,
   pushGrowthEvent,
   weekKey,
-} from "./organism";
+} from "./organism.ts";
 
 describe("organism minerals", () => {
   it("returns zeros for empty log", () => {
