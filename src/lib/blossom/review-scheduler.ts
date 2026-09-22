@@ -1,4 +1,4 @@
-import { PRONLAB_SETS } from "./data";
+import { PRONLAB_SETS, TODAY_MISSION } from "./data";
 import { summarisePronlabItem, type PronlabAttempt } from "./engine";
 import type { LearningSubmission } from "./store";
 import type { ReviewItem } from "./learning-os";
@@ -110,7 +110,7 @@ export function buildReviewPlan(
     const anchor = latest?.createdAt ?? word.updatedAt ?? word.firstSavedAt ?? now;
     const dueAt = latest
       ? addDays(latest.createdAt, intervalForSubmission(latest, submissions))
-      : addDays(anchor, 1);
+      : anchor;
     items.push({
       id: `review-word-${word.word}`,
       kind: "vocabulary",
@@ -122,6 +122,31 @@ export function buildReviewPlan(
       link: "library",
       dueAt,
       intervalDays: Math.max(1, daysBetween(anchor, dueAt)),
+      sourceKey,
+      state: dueAt <= now ? "due" : "upcoming",
+      lastReviewedAt: latest?.createdAt,
+    });
+  }
+
+
+  for (const kit of TODAY_MISSION.scene?.languageKit ?? []) {
+    const sourceKey = `mission:${kit.phrase}`;
+    const latest = latestReview(submissions, sourceKey);
+    const interval = latest ? intervalForSubmission(latest, submissions) : 0;
+    const dueAt = latest ? addDays(latest.createdAt, interval) : now;
+    items.push({
+      id: `review-kit-${kit.phrase}`,
+      kind: "mission",
+      title: kit.phrase,
+      prompt: kit.meaning,
+      answer: kit.meaning,
+      reason: latest
+        ? "Cette formule revient selon votre historique de rappel."
+        : "Phrase utile liée à la mission du moment.",
+      priority: latest ? "normale" : "nouvelle",
+      link: "mission",
+      dueAt,
+      intervalDays: interval,
       sourceKey,
       state: dueAt <= now ? "due" : "upcoming",
       lastReviewedAt: latest?.createdAt,
