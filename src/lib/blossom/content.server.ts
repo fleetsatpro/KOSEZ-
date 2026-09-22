@@ -259,8 +259,9 @@ export async function getPublishedContent(): Promise<PublishedContent> {
         catalogueMap.set(mapped.payload.id, mapped.payload as CatalogueItem);
       }
     } catch {
-      // A malformed published row must never take down discovery. The authored
-      // runtime fallback remains the safer source until an admin repairs it.
+      // Never silently serve stale authored copy over a broken published row.
+      // Fail closed for this key until an admin repairs the publication.
+      hiddenKeys.add(String(row.content_key));
     }
   }
 
