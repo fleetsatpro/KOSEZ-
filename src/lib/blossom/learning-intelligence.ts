@@ -344,6 +344,89 @@ export function buildLearningIntelligence(
   };
 }
 
+export type WeeklyLearningBrief = {
+  activeDays: number;
+  evidenceCount: number;
+  directEvidenceCount: number;
+  reviewsAttempted: number;
+  reviewAccuracy: number | null;
+  strongestDomain: { id: LearningDomainId; label: string; evidenceCount: number } | null;
+  topFocus: { id: LearningDomainId; label: string; recencyDays: number | null } | null;
+  headline: string;
+  highlights: string[];
+};
+
+export function buildWeeklyLearningBrief(
+  log: ActivityEvent[],
+  attempts: PronlabAttempt[],
+  vocabulary: Array<{ word: string; gloss: string; firstSavedAt?: string; updatedAt?: string }>,
+  submissions: LearningSubmission[],
+  now = new Date().toISOString(),
+): WeeklyLearningBrief {
+  const evidence = collectLearningEvidence(log, attempts, submissions, vocabulary);
+  const recent = evidence.filter((item) => item.freshnessKnown && daysAgo(now, item.createdAt) <= 7);
+  const activeDates = new Set(recent.map((item) => item.createdAt.slice(0, 10)));
+  const recentReviews = submissions.filter(
+    (submission) =>
+      submission.kind === "review" &&
+      daysAgo(now, submission.createdAt) <= 7,
+  );
+  const correctReviews = recentReviews.filter(
+    (submission) =>
+      submission.result.correct === true ||
+      submission.checks.includes("correct"),
+  ).length;
+  const recentDomains = LEARNING_DOMAINS.map((domain) => ({
+    id: domain.id,
+    label: domain.label,
+    evidenceCount: recent.filter((item) => item.domainId === domain.id).length,
+  })).sort((a, b) => b.evidenceCount - a.evidenceCount);
+  const strongest = recentDomains[0]?.evidenceCount
+    ? recentDomains[0]
+    : null;
+  const topFocus = [...buildLearningIntelligence(
+    log,
+    attempts,
+    vocabulary,
+    submissions,
+    { due: [], upcoming: [] },
+    now,
+  ).domains]
+    .filter((domain) => domain.recencyDays !== null)
+    .sort((a, b) => (a.coverage - b.coverage) || ((b.recencyDays ?? 0) - (a.recencyDays ?? 0)))[0] ?? null;
+
+  const directEvidenceCount = recent.filter((item) => item.direct).length;
+  const headline = activeDates.size === 0
+    ? "Cette semaine n'a pas encore créé de nouvelle trace."
+    : `${activeDates.size} jour${activeDates.size > 1 ? "s" : ""} actif${activeDates.size > 1 ? "s" : ""} · ${recent.length} preuves observées.`;
+
+  const highlights = [
+    recent.length
+      ? `${directEvidenceCount} preuve(s) directe(s) dans la fenêtre de 7 jours.`
+      : "Aucune nouvelle preuve datée dans les 7 derniers jours.",
+    recentReviews.length
+      ? `${correctReviews}/${recentReviews.length} rappels correctement récupérés.`
+      : "Pas encore de rappel enregistré cette semaine.",
+    strongest
+      ? `Branche la plus documentée cette semaine · ${strongest.label}.`
+      : "La prochaine activité peut créer un premier signal.",
+  ];
+
+  return {
+    activeDays: activeDates.size,
+    evidenceCount: recent.length,
+    directEvidenceCount,
+    reviewsAttempted: recentReviews.length,
+    reviewAccuracy: recentReviews.length ? Math.round((correctReviews / recentReviews.length) * 100) : null,
+    strongestDomain: strongest,
+    topFocus: topFocus
+      ? { id: topFocus.domainId, label: domainLabel(topFocus.domainId), recencyDays: topFocus.recencyDays }
+      : null,
+    headline,
+    highlights,
+  };
+}
+
 export function domainLabel(domainId: LearningDomainId): string {
   return LEARNING_DOMAINS.find((domain) => domain.id === domainId)?.label ?? domainId;
 }
