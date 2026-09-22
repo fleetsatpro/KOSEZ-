@@ -33,6 +33,7 @@ import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { LeoLetterCard } from "@/components/app/leo-letter-card";
 import { formatShortDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 
 export const Route = createFileRoute("/_app/moi")({
   component: MoiPage,
@@ -51,6 +52,7 @@ function MoiPage() {
   const setTeacherMode = useBlossom((s) => s.setTeacherMode);
   const setOrgMode = useBlossom((s) => s.setOrgMode);
   const setChildMode = useBlossom((s) => s.setChildMode);
+  const { access, pending: accessPending } = useBlossomWorkspaceAccess();
   const resetJourney = useBlossom((s) => s.resetJourney);
   const leoLetters = useBlossom((s) => s.leoLetters);
   const markLeoLetterRead = useBlossom((s) => s.markLeoLetterRead);
@@ -487,51 +489,58 @@ function MoiPage() {
         className="mt-8"
       />
 
-      {/* Secondary doors */}
-      <div className="mt-8 space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">
-          Espaces
-        </p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Button
-            variant="secondary"
-            className="justify-start"
-            onClick={() => setTeacherMode(true)}
-          >
-            Studio enseignant
-          </Button>
-          <Button
-            variant="secondary"
-            className="justify-start"
-            onClick={() => setOrgMode(true)}
-          >
-            Espace entreprise
-          </Button>
-          <Button
-            variant="secondary"
-            className="justify-start"
-            onClick={() => setParentMode(true)}
-          >
-            Espace parent
-          </Button>
-          <Button
-            variant="secondary"
-            className="justify-start"
-            onClick={() => setChildMode(true)}
-          >
-            Parcours enfant
-          </Button>
+      {/* Verified workspace doors */}
+      {!accessPending && (access.isTeacher || access.isOrgStaff || access.isGuardian) ? (
+        <div className="mt-8 space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">
+            Espaces autorisés
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {access.isTeacher ? (
+              <Button
+                variant="secondary"
+                className="justify-start"
+                onClick={() => setTeacherMode(true)}
+              >
+                Studio enseignant
+              </Button>
+            ) : null}
+            {access.isOrgStaff ? (
+              <Button
+                variant="secondary"
+                className="justify-start"
+                onClick={() => setOrgMode(true)}
+              >
+                Espace entreprise
+              </Button>
+            ) : null}
+            {access.isGuardian ? (
+              <Button
+                variant="secondary"
+                className="justify-start"
+                onClick={() => setParentMode(true)}
+              >
+                Espace parent
+              </Button>
+            ) : null}
+          </div>
         </div>
+      ) : null}
+
+      <div className="mt-8">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">
+          Données locales
+        </p>
         <Button
           variant="ghost"
           className="mt-2 w-full text-muted"
           onClick={() => {
-            if (window.confirm("Revenir à l'état initial du voyage ?")) {
+            if (window.confirm("Revenir à l'état initial du voyage sur cet appareil ?")) {
               resetJourney();
             }
           }}
         >
-          Réinitialiser le voyage
+          Réinitialiser ce voyage
         </Button>
       </div>
 
