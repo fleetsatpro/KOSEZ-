@@ -32,6 +32,7 @@ import { Route as AppLearnCurriculumUnitIdRouteImport } from './routes/_app/lear
 import { Route as AppLearnReviewRouteImport } from './routes/_app/learn.review'
 import { Route as AppLearnProgressRouteImport } from './routes/_app/learn.progress'
 import { Route as AppLearnHistoryRouteImport } from './routes/_app/learn.history'
+import { Route as AppLearnLabsRouteImport } from './routes/_app/learn.labs'
 import { Route as LoginRouteImport } from './routes/login'
 
 const AppRoute = AppRouteImport.update({
@@ -148,6 +149,11 @@ const AppLearnHistoryRoute = AppLearnHistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => AppLearnRoute,
 } as any)
+const AppLearnLabsRoute = AppLearnLabsRouteImport.update({
+  id: '/labs',
+  path: '/labs',
+  getParentRoute: () => AppLearnRoute,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/learn/review': typeof AppLearnReviewRoute
   '/learn/progress': typeof AppLearnProgressRoute
   '/learn/history': typeof AppLearnHistoryRoute
+  '/learn/labs': typeof AppLearnLabsRoute
   '/library': typeof AppLibraryRouteWithChildren
   '/mission': typeof AppMissionRoute
   '/moi': typeof AppMoiRoute
@@ -189,6 +196,7 @@ export interface FileRoutesByTo {
   '/learn/review': typeof AppLearnReviewRoute
   '/learn/progress': typeof AppLearnProgressRoute
   '/learn/history': typeof AppLearnHistoryRoute
+  '/learn/labs': typeof AppLearnLabsRoute
   '/library': typeof AppLibraryRouteWithChildren
   '/mission': typeof AppMissionRoute
   '/moi': typeof AppMoiRoute
@@ -216,6 +224,7 @@ export interface FileRoutesById {
   '/_app/learn/review': typeof AppLearnReviewRoute
   '/_app/learn/progress': typeof AppLearnProgressRoute
   '/_app/learn/history': typeof AppLearnHistoryRoute
+  '/_app/learn/labs': typeof AppLearnLabsRoute
   '/_app/library': typeof AppLibraryRouteWithChildren
   '/_app/mission': typeof AppMissionRoute
   '/_app/moi': typeof AppMoiRoute
@@ -261,6 +270,7 @@ export interface FileRouteTypes {
     | '/learn/review'
     | '/learn/progress'
     | '/learn/history'
+    | '/learn/labs'
     | '/login'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -286,6 +296,7 @@ export interface FileRouteTypes {
     | '/learn/review'
     | '/learn/progress'
     | '/learn/history'
+    | '/learn/labs'
     | '/login'
   id:
     | '__root__'
@@ -299,6 +310,7 @@ export interface FileRouteTypes {
     | '/_app/learn/review'
     | '/_app/learn/progress'
     | '/_app/learn/history'
+    | '/_app/learn/labs'
     | '/_app/library'
     | '/_app/mission'
     | '/_app/moi'
@@ -396,6 +408,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/learn/history'
       preLoaderRoute: typeof AppLearnHistoryRouteImport
+      parentRoute: typeof AppLearnRoute
+    }
+    '/_app/learn/labs': {
+      id: '/_app/learn/labs'
+      path: '/labs'
+      fullPath: '/learn/labs'
+      preLoaderRoute: typeof AppLearnLabsRouteImport
       parentRoute: typeof AppLearnRoute
     }
     '/_app/library': {
@@ -499,6 +518,7 @@ interface AppLearnRouteChildren {
   AppLearnProgressRoute: typeof AppLearnProgressRoute
   AppLearnHistoryRoute: typeof AppLearnHistoryRoute
 }
+  AppLearnLabsRoute: typeof AppLearnLabsRoute
 
 const AppLearnRouteChildren: AppLearnRouteChildren = {
   AppLearnCurriculumRoute: AppLearnCurriculumRoute,
@@ -507,6 +527,7 @@ const AppLearnRouteChildren: AppLearnRouteChildren = {
   AppLearnProgressRoute: AppLearnProgressRoute,
   AppLearnHistoryRoute: AppLearnHistoryRoute,
 }
+  AppLearnLabsRoute: AppLearnLabsRoute,
 
 const AppLearnRouteWithChildren = AppLearnRoute._addFileChildren(
   AppLearnRouteChildren,

@@ -55,7 +55,7 @@ export const CAN_DO_OBJECTIVES: CanDoObjective[] = [
   { id: "a2-mediate-simple", level: "A2", domain: "mediation", title: "Transmettre une information simple", evidence: "Expliquer à quelqu'un l'essentiel d'un message ou d'une consigne." },
 ];
 
-export type LessonKind = "mission" | "speak" | "pronlab" | "library" | "review";
+export type LessonKind = "mission" | "speak" | "pronlab" | "library" | "review" | "grammar" | "listening" | "writing";
 
 export type CurriculumLesson = {
   id: string;
@@ -104,6 +104,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u2-l1", title: "What do you recommend?", kind: "speak", minutes: 6, objectiveIds: ["a2-interact-ask"], description: "Ouvrir puis garder deux tours de conversation." },
       { id: "u2-l2", title: "I'll have…", kind: "pronlab", minutes: 5, objectiveIds: ["a2-vocab-reuse"], description: "Transformer une structure apprise en réflexe utilisable." },
       { id: "u2-l3", title: "At the covered market", kind: "library", minutes: 4, objectiveIds: ["a2-vocab-reuse", "a2-read-short"], description: "Lire, écouter et récupérer les mots qui reviennent." },
+      { id: "u2-l4", title: "Questions qui servent", kind: "grammar", minutes: 5, objectiveIds: ["a2-grammar-question"], description: "Construire une question courte qui déclenche une information utile." },
     ],
   },
   {
@@ -118,6 +119,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u3-l1", title: "Une réunion de deux minutes", kind: "speak", minutes: 7, objectiveIds: ["a2-speak-routine"], description: "Entrer dans une conversation professionnelle sans script long." },
       { id: "u3-l2", title: "Attraper le détail", kind: "review", minutes: 4, objectiveIds: ["a2-listen-key"], description: "Revoir heures, lieux, nombres et options dans des phrases courtes." },
       { id: "u3-l3", title: "Is it far from here?", kind: "mission", minutes: 4, objectiveIds: ["a2-grammar-question"], description: "Produire une question simple qui demande une information exploitable." },
+      { id: "u3-l4", title: "Attraper le détail", kind: "listening", minutes: 5, objectiveIds: ["a2-listen-key"], description: "Écouter une information concrète puis la restituer sans perdre le détail." },
     ],
   },
   {
@@ -132,6 +134,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u4-l1", title: "Yesterday en 60 secondes", kind: "speak", minutes: 6, objectiveIds: ["a2-speak-routine"], description: "Trois faits reliés, sans traduire phrase par phrase." },
       { id: "u4-l2", title: "Les mots qui reviennent", kind: "review", minutes: 5, objectiveIds: ["a2-vocab-reuse"], description: "Rappeler puis réutiliser des mots déjà rencontrés." },
       { id: "u4-l3", title: "Un message après le cours", kind: "library", minutes: 5, objectiveIds: ["a2-write-message"], description: "Observer comment une information pratique se formule à l'écrit." },
+      { id: "u4-l4", title: "Écrire pour agir", kind: "writing", minutes: 7, objectiveIds: ["a2-write-message"], description: "Écrire un message bref, clair et adapté à une situation réelle." },
     ],
   },
   {
@@ -184,6 +187,9 @@ export function buildSkillProfile(
   const speak = count("SPEAK_COMPLETED");
   const tandem = count("TANDEM_COMPLETED");
   const reviews = count("REVIEW_COMPLETED");
+  const grammar = count("GRAMMAR_COMPLETED");
+  const listening = count("LISTENING_COMPLETED");
+  const writing = count("WRITING_COMPLETED");
   const masteredPron = PRONLAB_SETS.flatMap((set) => set.items)
     .filter((item) => summarisePronlabItem(item.id, attempts).mastered)
     .length;
@@ -191,12 +197,12 @@ export function buildSkillProfile(
   const raw: Record<LearningDomainId, { coverage: number; evidence: number; signal: string }> = {
     speaking: { coverage: missions * 10 + speak * 9 + tandem * 8, evidence: missions + speak + tandem, signal: missions ? "Les missions apportent une preuve située." : "Une première prise de parole donnera un signal utile." },
     interaction: { coverage: missions * 12 + tandem * 10 + speak * 7, evidence: missions + tandem + speak, signal: missions ? "Les gestes réels montrent déjà comment vous entrez dans l'échange." : "Le système attend encore une situation d'interaction." },
-    listening: { coverage: speak * 4 + tandem * 5 + reviews * 5, evidence: speak + tandem + reviews, signal: speak || tandem ? "La compréhension est encore indirecte : un vrai lab d'écoute renforcera la preuve." : "Pas assez de données d'écoute pour conclure." },
+    listening: { coverage: speak * 4 + tandem * 5 + reviews * 5 + listening * 18, evidence: speak + tandem + reviews + listening, signal: listening ? "Le lab d'écoute commence à documenter la compréhension de détails concrets." : "Pas assez de données d'écoute pour conclure." },
     reading: { coverage: vocabulary.length * 3, evidence: vocabulary.length, signal: vocabulary.length ? "Le vocabulaire sauvé indique une première exposition écrite." : "La bibliothèque peut commencer cette branche." },
-    writing: { coverage: 0, evidence: 0, signal: "Aucune production écrite enregistrée pour l'instant." },
+    writing: { coverage: writing * 22, evidence: writing, signal: writing ? "Une production écrite est maintenant enregistrée comme trace de travail." : "Aucune production écrite enregistrée pour l'instant." },
     pronunciation: { coverage: masteredPron * 16 + attempts.length * 2, evidence: attempts.length, signal: attempts.length ? "Pron'Lab apporte une trace directe des sons travaillés." : "Un passage Pron'Lab donnera une première mesure." },
     vocabulary: { coverage: vocabulary.length * 8 + reviews * 6, evidence: vocabulary.length + reviews, signal: vocabulary.length ? "Les mots sauvés peuvent maintenant entrer dans le rappel espacé." : "Le vocabulaire n'est pas encore enregistré comme mémoire active." },
-    grammar: { coverage: missions * 2 + speak * 2 + reviews * 3, evidence: missions + speak + reviews, signal: "La grammaire est encore évaluée indirectement ; les prochains exercices doivent isoler les structures." },
+    grammar: { coverage: missions * 2 + speak * 2 + reviews * 3 + grammar * 18, evidence: missions + speak + reviews + grammar, signal: grammar ? "Le lab de grammaire apporte désormais une trace directe sur les structures ciblées." : "La grammaire est encore évaluée indirectement ; les prochains exercices doivent isoler les structures." },
     mediation: { coverage: tandem * 3, evidence: tandem, signal: "La médiation sera mieux documentée par des tâches de transmission dédiées." },
   };
 
@@ -336,6 +342,9 @@ export function lessonDone(
     pronlab: "PRONLAB_COMPLETED",
     library: null,
     review: "REVIEW_COMPLETED",
+    grammar: "GRAMMAR_COMPLETED",
+    listening: "LISTENING_COMPLETED",
+    writing: "WRITING_COMPLETED",
   };
   const activityType = sourceByKind[lesson.kind];
   if (!activityType) return false;

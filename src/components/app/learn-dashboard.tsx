@@ -8,6 +8,7 @@ import {
   Lock,
   ChartNoAxesCombined,
   GraduationCap,
+  FlaskConical,
   History,
   Mic2,
   RotateCcw,
@@ -514,6 +515,11 @@ export function LearnDashboard() {
             <History className="size-4 text-primary" />
             <p className="mt-5 font-display text-xl tracking-tight">Historique</p>
             <p className="mt-1 text-xs text-muted">Actions + preuves</p>
+          </Link>
+          <Link to="/learn/labs" className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
+            <FlaskConical className="size-4 text-primary" />
+            <p className="mt-5 font-display text-xl tracking-tight">Labs</p>
+            <p className="mt-1 text-xs text-muted">Grammaire · écoute · écrit</p>
           </Link>
         </div>
       </section>

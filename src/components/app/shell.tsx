@@ -4,6 +4,7 @@ import {
   BookOpen,
   ChartNoAxesCombined,
   Compass,
+  FlaskConical,
   History,
   Mic,
   RotateCcw,
@@ -55,6 +56,7 @@ const SECONDARY_NAV = [
   { to: "/learn/review", label: "Réviser", icon: RotateCcw },
   { to: "/learn/progress", label: "Compétences", icon: ChartNoAxesCombined },
   { to: "/learn/history", label: "Historique", icon: History },
+  { to: "/learn/labs", label: "Labs", icon: FlaskConical },
   { to: "/connect", label: "Connecter", icon: User },
   { to: "/explore", label: "Explorer", icon: Compass },
 ] as const;

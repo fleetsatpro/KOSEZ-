@@ -29,3 +29,11 @@ test("curriculum has a connected A2 spine", () => {
   assert.ok(curriculumUnitProgress(CURRICULUM_UNITS[0]!, [], [], []) >= 0);
   assert.ok(LEARNER.goal.includes("Parler"));
 });
+
+
+test("curriculum includes direct practice labs", () => {
+  const kinds = new Set(CURRICULUM_UNITS.flatMap((unit) => unit.lessons.map((lesson) => lesson.kind)));
+  assert.ok(kinds.has("grammar"));
+  assert.ok(kinds.has("listening"));
+  assert.ok(kinds.has("writing"));
+});
