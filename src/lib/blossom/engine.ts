@@ -248,27 +248,36 @@ export type LearnerMemory = {
   leoNote: string;
 };
 
-const TH_ITEMS = ["th-1", "th-2", "th-3", "th-4"];
-
 export function resolveMemory(
   attempts: PronlabAttempt[],
   base: LearnerMemory,
 ): LearnerMemory {
-  const mastered = TH_ITEMS.filter(
-    (id) => summarisePronlabItem(id, attempts).mastered,
-  ).length;
-  if (mastered >= 3) {
-    return {
-      hesitation: "I'll have — en cours d'ancrage",
-      avoided: "I want (en recul)",
-      confidence: "Commander, TH en voie de maîtrise",
-      leoNote:
-        "Les TH tiennent mieux. Au café, « I'll have » peut devenir le réflexe. On confirme, on n'insiste plus.",
-    };
-  }
-  return base;
-}
+  const scored = attempts.filter(
+    (attempt) => attempt.metadata?.assessment === "phonetic-provider",
+  );
+  if (!scored.length) return base;
 
+  const bestByItem = new Map<string, number>();
+  for (const attempt of scored) {
+    bestByItem.set(
+      attempt.itemId,
+      Math.max(bestByItem.get(attempt.itemId) ?? 0, attempt.score),
+    );
+  }
+
+  const weakest = [...bestByItem.entries()].sort((a, b) => a[1] - b[1])[0];
+  const strongest = [...bestByItem.entries()].sort((a, b) => b[1] - a[1])[0];
+  if (!weakest || !strongest) return base;
+
+  return {
+    hesitation: `Le point « ${weakest[0]} »`,
+    avoided: weakest[1] < 60 ? "à reprendre à voix haute" : "encore en consolidation",
+    confidence: `Le point « ${strongest[0]} »` ,
+    leoNote: weakest[1] < 75
+      ? `Votre dernière observation sur « ${weakest[0]} » montre encore un point à consolider. Léo propose une reprise courte.`
+      : `Les observations récentes sont plutôt solides ; continuez par une situation réelle.`,
+  };
+}
 export function personaliseMission(
   base: { title: string; prompt: string; context: string },
   memory: LearnerMemory,
@@ -287,12 +296,9 @@ export function personaliseMission(
 }
 export function cafeMemoryHint(
   turnHint: string,
-  speaker: "ai" | "you",
-  enabled: boolean,
+  _speaker: "ai" | "you",
+  _enabled: boolean,
 ): string {
-  if (!enabled || speaker !== "you") return turnHint;
-  if (turnHint.toLowerCase().includes("commande")) {
-    return "Commandez avec « I'll have », pas « I want ».";
-  }
   return turnHint;
+}  return turnHint;
 }
