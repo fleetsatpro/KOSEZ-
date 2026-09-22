@@ -101,7 +101,12 @@ type AppState = {
   learningSubmissions: LearningSubmission[];
   warmup: string | null;
   exportConsent: boolean;
-  vocabulary: { word: string; gloss: string }[];
+  vocabulary: {
+    word: string;
+    gloss: string;
+    firstSavedAt?: string;
+    updatedAt?: string;
+  }[];
   immersionPhase: "pre" | "during" | "post";
   immersionDone: string[];
   plan: PlanId;
@@ -742,8 +747,12 @@ export const useBlossom = create<AppState>()(
       saveWord: (word, gloss) => {
         const key = word.toLowerCase();
         if (get().vocabulary.some((v) => v.word === key)) return;
+        const now = new Date().toISOString();
         set({
-          vocabulary: [...get().vocabulary, { word: key, gloss }],
+          vocabulary: [
+            ...get().vocabulary,
+            { word: key, gloss, firstSavedAt: now, updatedAt: now },
+          ],
         });
         queueSyncMutation({
           operation: "vocabulary.upsert",
