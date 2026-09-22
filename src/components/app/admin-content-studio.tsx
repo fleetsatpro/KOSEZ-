@@ -283,7 +283,7 @@ export function AdminContentStudio() {
                 <span className="text-sm">Companion K’Osez</span>
               </label>
             </div>
-          ) : null>
+          ) : null}
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <Status icon={FileEdit} label="Brouillon" value={"v" + selected.draftRevision} />
