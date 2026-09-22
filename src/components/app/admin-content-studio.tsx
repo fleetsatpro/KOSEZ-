@@ -14,16 +14,16 @@ import type { AdminContentItem } from "@/lib/blossom/content.server";
 type Scalar = string | number | boolean | null;
 
 const EVENT_FIELDS = [
-  ["title", "Titre"], ["blurb", "Résumé"], ["date", "Date (YYYY-MM-DD)"],
-  ["time", "Heure (HH:MM)"], ["place", "Lieu"], ["language", "Langue / niveau"],
-  ["spots", "Capacité"], ["image", "Image"], ["host", "Hôte"],
+  ["title", "Titre", false], ["blurb", "Résumé", true], ["date", "Date (YYYY-MM-DD)", false],
+  ["time", "Heure (HH:MM)", false], ["place", "Lieu", false], ["language", "Langue / niveau", false],
+  ["spots", "Capacité", false], ["image", "Image", false], ["host", "Hôte", false],
 ] as const;
 
 const CATALOGUE_FIELDS = [
-  ["title", "Titre"], ["description", "Description"], ["language", "Langue"],
-  ["level", "Niveau"], ["format", "Format"], ["instructor", "Intervenant"],
-  ["location", "Lieu"], ["capacity", "Capacité"], ["schedule", "Planning"],
-  ["price", "Prix / modalité"], ["image", "Image"],
+  ["title", "Titre", false], ["description", "Description", true], ["language", "Langue", false],
+  ["level", "Niveau", false], ["format", "Format", false], ["instructor", "Intervenant", false],
+  ["location", "Lieu", false], ["capacity", "Capacité", false], ["schedule", "Planning", false],
+  ["price", "Prix / modalité", false], ["image", "Image", false],
 ] as const;
 
 function Field({ label, value, multiline, numeric, onChange }: {
