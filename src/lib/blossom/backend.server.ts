@@ -78,6 +78,7 @@ export type BlossomBackendState = {
   eventRegistrationCounts: Record<string, number>;
   completedChallenges: string[];
   bookingCatalogueIds: string[];
+  bookingStatuses: Record<string, "requested" | "confirmed">;
   waitlistIds: string[];
   tandemStatus: Record<string, "suggested" | "pending" | "accepted" | "blocked" | "paused">;
 };
@@ -168,7 +169,7 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
       [userId],
     ),
     sql.query(
-      "select catalogue_item_id from blossom_booking_request where user_id = $1 and status <> 'cancelled' order by updated_at desc",
+      "select catalogue_item_id, status from blossom_booking_request where user_id = $1 and status <> 'cancelled' order by updated_at desc",
       [userId],
     ),
     sql.query(
@@ -224,6 +225,12 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
     ),
     completedChallenges: challenges.map((row) => String(row.challenge_id)),
     bookingCatalogueIds: bookings.map((row) => String(row.catalogue_item_id)),
+    bookingStatuses: Object.fromEntries(
+      bookings.map((row) => [
+        String(row.catalogue_item_id),
+        String(row.status) as "requested" | "confirmed",
+      ]),
+    ),
     waitlistIds: waitlists.map((row) => String(row.item_id)),
     tandemStatus: Object.fromEntries(
       tandem.map((row) => [
