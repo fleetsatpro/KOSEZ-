@@ -16,6 +16,7 @@ export type BlossomAccessContext = {
   isGuardian: boolean;
   isOrgStaff: boolean;
   isChild: boolean;
+  isAdmin: boolean;
 };
 
 export async function getBlossomAccessContext(userId: string): Promise<BlossomAccessContext> {
@@ -39,7 +40,11 @@ export async function getBlossomAccessContext(userId: string): Promise<BlossomAc
       exists(
         select 1 from blossom_guardian_link
         where learner_user_id = $1 and status = 'active'
-      ) as is_child`,
+      ) as is_child,
+      exists(
+        select 1 from blossom_platform_admin
+        where user_id = $1 and status = 'active'
+      ) as is_admin`,
     [userId],
   );
   const row = rows[0] ?? {};
@@ -48,6 +53,7 @@ export async function getBlossomAccessContext(userId: string): Promise<BlossomAc
     isGuardian: Boolean(row.is_guardian),
     isOrgStaff: Boolean(row.is_org_staff),
     isChild: Boolean(row.is_child),
+    isAdmin: Boolean(row.is_admin),
   };
 }
 
@@ -182,6 +188,81 @@ function assertFeaturePlan(
       "L'accès anticipé n'est pas inclus dans cette formule.",
     );
   }
+}
+
+export type AdminWorkspace = {
+  learners: number;
+  teachers: number;
+  guardians: number;
+  activeOrganizations: number;
+  joinedEventRegistrations: number;
+  bookingRequests: {
+    requested: number;
+    confirmed: number;
+    cancelled: number;
+    paid: number;
+    unpaid: number;
+  };
+  recentAudit: Array<{
+    id: string;
+    action: string;
+    actorUserId: string;
+    subjectUserId: string | null;
+    resourceType: string;
+    resourceId: string | null;
+    occurredAt: string;
+  }>;
+};
+
+export async function getAdminWorkspace(userId: string): Promise<AdminWorkspace> {
+  const sql = await getSql();
+  const admin = await sql.query(
+    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    [userId],
+  );
+  if (!admin[0]) {
+    throw new BlossomForbiddenError("Admin access is not enabled for this account.");
+  }
+
+  const [learners, teachers, guardians, organizations, registrations, bookings, audits] =
+    await Promise.all([
+      sql.query("select count(*)::integer as count from blossom_profile where user_id is not null"),
+      sql.query("select count(distinct teacher_user_id)::integer as count from blossom_teacher_link where status = 'active'"),
+      sql.query("select count(distinct guardian_user_id)::integer as count from blossom_guardian_link where status = 'active'"),
+      sql.query("select count(*)::integer as count from blossom_organization"),
+      sql.query("select count(*)::integer as count from blossom_event_registration where status = 'joined'"),
+      sql.query(
+        "select count(*) filter (where status = 'requested')::integer as requested, count(*) filter (where status = 'confirmed')::integer as confirmed, count(*) filter (where status = 'cancelled')::integer as cancelled, count(*) filter (where payment_status = 'paid')::integer as paid, count(*) filter (where payment_status = 'unpaid')::integer as unpaid from blossom_booking_request",
+      ),
+      sql.query(
+        "select id, actor_user_id, action, subject_user_id, resource_type, resource_id, occurred_at from blossom_audit_event order by occurred_at desc limit 24",
+      ),
+    ]);
+
+  const booking = bookings[0] ?? {};
+  return {
+    learners: Number(learners[0]?.count ?? 0),
+    teachers: Number(teachers[0]?.count ?? 0),
+    guardians: Number(guardians[0]?.count ?? 0),
+    activeOrganizations: Number(organizations[0]?.count ?? 0),
+    joinedEventRegistrations: Number(registrations[0]?.count ?? 0),
+    bookingRequests: {
+      requested: Number(booking.requested ?? 0),
+      confirmed: Number(booking.confirmed ?? 0),
+      cancelled: Number(booking.cancelled ?? 0),
+      paid: Number(booking.paid ?? 0),
+      unpaid: Number(booking.unpaid ?? 0),
+    },
+    recentAudit: audits.map((row) => ({
+      id: String(row.id),
+      action: String(row.action),
+      actorUserId: String(row.actor_user_id),
+      subjectUserId: row.subject_user_id ? String(row.subject_user_id) : null,
+      resourceType: String(row.resource_type),
+      resourceId: row.resource_id ? String(row.resource_id) : null,
+      occurredAt: iso(row.occurred_at),
+    })),
+  };
 }
 
 export type ConnectPeer = {
