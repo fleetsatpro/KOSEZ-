@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { INITIAL_LOG, INITIAL_PRONLAB_ATTEMPTS, LEARNER, planAllows, setsForLanguage } from "./data.ts";
+import { INITIAL_LOG, INITIAL_PRONLAB_ATTEMPTS, LEARNER, planAllows, setsForLanguage } from "./data.fixtures.ts";
+import { planAllows, setsForLanguage } from "./data.ts";
 import {
   cafeMemoryHint,
   countByType,
