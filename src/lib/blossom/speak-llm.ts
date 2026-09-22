@@ -1,6 +1,5 @@
-import type { LivingRoom, GenerateInput } from "./speak-engine";
-import { generateLivingRoom } from "./speak-engine";
-import { generateSpeakRoom } from "./speak.api";
+import type { LivingRoom, GenerateInput } from "./speak-engine.ts";
+import { generateLivingRoom } from "./speak-engine.ts";
 
 export type TopicRequest = {
   topic: string;
@@ -94,6 +93,7 @@ export async function buildSpeakRoom(
   }
 
   try {
+    const { generateSpeakRoom } = await import("./speak.api.ts");
     return await generateSpeakRoom({
       topic,
       level: opts.level,
