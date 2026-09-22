@@ -1,0 +1,159 @@
+import type { ActivityType } from "./engine";
+
+export type LabKind = "speaking" | "listening" | "grammar" | "writing";
+export type DiagnosticLevel = "A1" | "A2" | "A2+" | "B1";
+
+export type LearningLab = {
+  id: string;
+  kind: LabKind;
+  eyebrow: string;
+  title: string;
+  objective: string;
+  minutes: number;
+  prompt: string;
+  model?: string;
+  choices?: Array<{ id: string; label: string; correct?: boolean }>;
+  tokens?: string[];
+  acceptedTokens?: string[];
+  activityType: ActivityType;
+};
+
+export const LEARNING_LABS: LearningLab[] = [
+  {
+    id: "speak-repair",
+    kind: "speaking",
+    eyebrow: "PARLER · RÉPARER",
+    title: "Keep the conversation moving",
+    objective: "Demander de répéter sans abandonner la langue cible.",
+    minutes: 3,
+    prompt: "Imaginez que vous n'avez pas compris votre interlocuteur. Répondez naturellement, sans traduire.",
+    model: "Sorry, could you say that again?",
+    activityType: "SPEAK_COMPLETED",
+  },
+  {
+    id: "listen-key-detail",
+    kind: "listening",
+    eyebrow: "ÉCOUTER · DÉTAIL",
+    title: "Catch the useful detail",
+    objective: "Repérer une information précise dans un échange court.",
+    minutes: 3,
+    prompt: "Écoutez : « The meeting starts at half past two in room five. » Quelle information devez-vous retenir pour agir ?",
+    choices: [
+      { id: "a", label: "Le lieu uniquement." },
+      { id: "b", label: "14 h 30, salle 5.", correct: true },
+      { id: "c", label: "Une réunion demain matin." },
+    ],
+    activityType: "LISTENING_COMPLETED",
+  },
+  {
+    id: "grammar-question",
+    kind: "grammar",
+    eyebrow: "CONSTRUIRE · QUESTION",
+    title: "Build the question you actually need",
+    objective: "Former une question simple et exploitable.",
+    minutes: 3,
+    prompt: "Remettez les éléments dans l'ordre pour demander où se trouve le séminaire.",
+    tokens: ["the", "seminar", "room", "where", "is", "?"],
+    acceptedTokens: ["where", "is", "the", "seminar", "room", "?"],
+    activityType: "GRAMMAR_COMPLETED",
+  },
+  {
+    id: "write-practical",
+    kind: "writing",
+    eyebrow: "ÉCRIRE · TRANSMETTRE",
+    title: "Send a message that does its job",
+    objective: "Écrire un message pratique, clair et adapté.",
+    minutes: 4,
+    prompt: "Écrivez en anglais un message de deux phrases pour prévenir un collègue que vous arriverez dix minutes en retard.",
+    model: "Hi, I'm running ten minutes late. See you soon.",
+    activityType: "WRITING_COMPLETED",
+  },
+];
+
+export type DiagnosticQuestion = {
+  id: string;
+  domain: "interaction" | "speaking" | "listening" | "writing" | "grammar";
+  prompt: string;
+  options: Array<{ label: string; points: number }>;
+};
+
+export const DIAGNOSTIC_QUESTIONS: DiagnosticQuestion[] = [
+  {
+    id: "diag-interaction",
+    domain: "interaction",
+    prompt: "Someone asks: “What do you recommend?” Which answer keeps the exchange moving?",
+    options: [
+      { label: "I don't know.", points: 0 },
+      { label: "I recommend the chicken. What about you?", points: 2 },
+      { label: "Translate please.", points: 0 },
+    ],
+  },
+  {
+    id: "diag-speaking",
+    domain: "speaking",
+    prompt: "You need to explain your morning in one minute. What is the useful move?",
+    options: [
+      { label: "Three short connected sentences.", points: 2 },
+      { label: "Wait until every sentence is perfect.", points: 0 },
+      { label: "Translate each sentence before saying it.", points: 0 },
+    ],
+  },
+  {
+    id: "diag-listening",
+    domain: "listening",
+    prompt: "You hear: “Boarding starts at 19:40 at gate 12.” What matters?",
+    options: [
+      { label: "Only “boarding”.", points: 0 },
+      { label: "19:40 and gate 12.", points: 2 },
+      { label: "The person speaking is tired.", points: 0 },
+    ],
+  },
+  {
+    id: "diag-writing",
+    domain: "writing",
+    prompt: "You need to tell a colleague you will be late. Which message is usable?",
+    options: [
+      { label: "Late.", points: 0 },
+      { label: "Hi, I'm running ten minutes late. See you soon.", points: 2 },
+      { label: "I will come after ten minute because traffic.", points: 1 },
+    ],
+  },
+  {
+    id: "diag-grammar",
+    domain: "grammar",
+    prompt: "Which question is correctly formed?",
+    options: [
+      { label: "Where is the seminar room?", points: 2 },
+      { label: "Where the seminar room is?", points: 1 },
+      { label: "Where seminar room?", points: 0 },
+    ],
+  },
+];
+
+export function diagnosticLevel(score: number): DiagnosticLevel {
+  if (score <= 3) return "A1";
+  if (score <= 6) return "A2";
+  if (score <= 8) return "A2+";
+  return "B1";
+}
+
+export function diagnosticSummary(score: number): string {
+  switch (diagnosticLevel(score)) {
+    case "A1":
+      return "Reprendre les automatismes essentiels avant d'augmenter la complexité.";
+    case "A2":
+      return "Une base fonctionnelle est visible ; le travail doit surtout créer de l'aisance en situation.";
+    case "A2+":
+      return "Les réflexes A2 sont bien présents ; les prochaines preuves peuvent commencer à tirer vers B1.";
+    case "B1":
+      return "Plusieurs compétences semblent prêtes pour des tâches plus ouvertes. Ce repère reste indicatif.";
+  }
+}
+
+export function sentenceFromTokens(tokens: string[]): string {
+  return tokens.join(" ").replace(" ?", "?");
+}
+
+export function isSentenceCorrect(tokens: string[], acceptedTokens: string[]): boolean {
+  return tokens.map((t) => t.toLowerCase()).join("|") === acceptedTokens.map((t) => t.toLowerCase()).join("|");
+}
