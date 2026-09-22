@@ -72,6 +72,7 @@ jobs:
           path: .smoke
           if-no-files-found: ignore
           retention-days: 7
+          include-hidden-files: true
 
       - name: Lint
         run: npm run lint
