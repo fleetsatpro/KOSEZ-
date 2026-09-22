@@ -252,43 +252,39 @@ function PronlabSetPage() {
         )}
       </Surface>
 
-      {summary.attemptCount >= 2 && (
+      {summary.scores.length >= 2 && (
         <Surface className="mt-4">
           <Eyebrow>Avant / après</Eyebrow>
           <p className="mt-3 text-sm tabular-nums">
             Premier {summary.scores[0]} → dernier {summary.lastScore}
           </p>
-          <label className="mt-4 flex items-center gap-3 text-sm">
-            <input
-              type="checkbox"
-              checked={consent}
-              onChange={(e) => setConsent(e.target.checked)}
-              className="size-4 accent-primary"
-            />
-            J'autorise un clip de 20 s, uniquement mon audio.
-          </label>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            Ce résumé compare uniquement des analyses phonétiques réellement disponibles.
+          </p>
           <Button
             variant="secondary"
             className="mt-4 w-full"
-            disabled={!consent}
             onClick={() => {
               const first = summary.scores[0] ?? 0;
               const last = summary.lastScore;
-              const html = `<!doctype html><meta charset="utf-8"><title>K'Osez BLOSSOM — avant / après</title><body style="font-family:Georgia,serif;background:#F3EEE4;color:#1C2B26;padding:48px;max-width:40rem"><p style="letter-spacing:.2em;font-size:11px;text-transform:uppercase">Pron'Lab</p><h1>${item.phrase}</h1><p>Premier passage ${first} · dernier ${last}</p><p style="color:#5E6E68">Clip 20 s — audio personnel, non publié. ${new Date().toLocaleDateString("fr-FR")} · Saint-Pierre</p></body>`;
+              const html = `<!doctype html><meta charset="utf-8"><title>K'Osez BLOSSOM — avant / après</title><body style="font-family:Georgia,serif;background:#F3EEE4;color:#1C2B26;padding:48px;max-width:40rem"><p style="letter-spacing:.2em;font-size:11px;text-transform:uppercase">Pron'Lab</p><h1>${item.phrase}</h1><p>Premier passage ${first} · dernier ${last}</p><p style="color:#5E6E68">Résumé de progression. Audio non inclus. ${new Date().toLocaleDateString("fr-FR")} · Saint-Pierre</p></body>`;
               const blob = new Blob([html], { type: "text/html;charset=utf-8" });
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = url;
               a.download = `kosez-pronlab-${item.id}-resume.html`;
+              document.body.appendChild(a);
               a.click();
+              a.remove();
               URL.revokeObjectURL(url);
               toast("Résumé Pron’Lab téléchargé.");
             }}
           >
-            Télécharger le clip
+            Télécharger le résumé
           </Button>
         </Surface>
       )}
+
     </Page>
   );
 }
