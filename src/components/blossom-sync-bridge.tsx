@@ -32,7 +32,7 @@ function timestamp(value: string | undefined): number {
 }
 
 function localActivityKey(event: Pick<ActivityEvent, "id" | "sourceId">): string {
-  return event.sourceId ? \`source:\${event.sourceId}\` : \`id:\${event.id}\`;
+  return event.sourceId ? `source:${event.sourceId}` : `id:${event.id}`;
 }
 
 function mergeBackendState(remote: BackendState): void {
