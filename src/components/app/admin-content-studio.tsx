@@ -145,6 +145,12 @@ export function AdminContentStudio() {
         schedule: String(draft.schedule ?? ""),
         price: String(draft.price ?? ""),
         image: String(draft.image ?? ""),
+        ...(draft.kind === "immersion"
+          ? {
+              early: draft.early === true,
+              companion: draft.companion === true,
+            }
+          : {}),
       };
       const result = await saveAdminContentDraftOnServer({
         data: {
@@ -251,6 +257,30 @@ export function AdminContentStudio() {
           </div>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">{fields.map(([key, label, multiline]) => <Field key={key} label={label} value={draft[key] ?? null} multiline={multiline} numeric={key === "spots" || key === "capacity"} onChange={(value) => updateField(key, value)} />)}</div>
+          {selected.kind === "catalogue" && draft.kind === "immersion" ? (
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <label className="flex min-h-12 items-center gap-3 rounded-xl border border-border bg-surface-2/40 px-3">
+                <input
+                  type="checkbox"
+                  checked={draft.early === true}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, early: event.target.checked }))
+                  }
+                />
+                <span className="text-sm">Accès anticipé</span>
+              </label>
+              <label className="flex min-h-12 items-center gap-3 rounded-xl border border-border bg-surface-2/40 px-3">
+                <input
+                  type="checkbox"
+                  checked={draft.companion === true}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, companion: event.target.checked }))
+                  }
+                />
+                <span className="text-sm">Companion K’Osez</span>
+              </label>
+            </div>
+          ) : null>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <Status icon={FileEdit} label="Brouillon" value={"v" + selected.draftRevision} />
