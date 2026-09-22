@@ -180,6 +180,7 @@ type AppState = {
     type: ActivityType,
     sourceId: string,
     note?: string,
+    metadata?: Record<string, string | number | boolean>,
   ) => { ok: boolean; reason?: string };
   joinEvent: (id: string) => void;
   leaveEvent: (id: string) => void;
@@ -507,7 +508,7 @@ export const useBlossom = create<AppState>()(
         });
         return { ...result, evaluation };
       },
-      completeActivity: (type, sourceId, note) => {
+      completeActivity: (type, sourceId, note, metadata) => {
         const log = get().activityLog;
         if (hasSource(log, sourceId)) {
           return { ok: false, reason: "already" };
@@ -520,6 +521,7 @@ export const useBlossom = create<AppState>()(
             eventType: type,
             sourceId,
             note: note ?? null,
+            metadata: metadata ?? {},
             occurredAt: new Date().toISOString(),
           },
         });
