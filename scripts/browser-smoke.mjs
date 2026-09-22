@@ -230,15 +230,27 @@ try {
   }
 
   const brandWarnings = computeBrandWarnings({ hasCanvas: viewports.desktop.hasCanvas });
-  // Only a dev server answers /__app-env, so smoking the built output reads as
-  // indeterminate — report a divergence, never the absence of an observation.
-  const authWarnings = authInvariantWarnings(
-    compareAuthInvariant({
-      devAuthEnabled: await probeDevAuthEnabled(url),
-      buildAuthEnabled: buildAuthEnabled(),
-    }),
-  );
-  const verdict = { url, viewports, brandWarnings, authWarnings, verdictFile: outJson };
+  // The CI learner smoke intentionally runs on an auth-disabled isolated server
+  // so it can inspect the actual learner UI. Auth correctness is checked
+  // separately against the production-mode auth-on server.
+  const expectedAuth = process.env.BROWSER_SMOKE_EXPECT_AUTH;
+  const authWarnings =
+    expectedAuth === "disabled"
+      ? []
+      : authInvariantWarnings(
+          compareAuthInvariant({
+            devAuthEnabled: await probeDevAuthEnabled(url),
+            buildAuthEnabled: buildAuthEnabled(),
+          }),
+        );
+  const verdict = {
+    url,
+    authMode: expectedAuth ?? "observed",
+    viewports,
+    brandWarnings,
+    authWarnings,
+    verdictFile: outJson,
+  };
   if (baselineRequested) {
     const { divergesFromBaseline, reasons } = compareAgainstBaseline(verdict);
     verdict.divergesFromBaseline = divergesFromBaseline;
