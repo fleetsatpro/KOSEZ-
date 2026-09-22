@@ -67,7 +67,6 @@ function downloadCalendar(event: EventItem) {
     `SUMMARY:${escapeIcs(event.title)}`,
     `LOCATION:${escapeIcs(event.place)}`,
     `DESCRIPTION:${escapeIcs(event.blurb)}`,
-    `URL:${escapeIcs("https://kosez.example/explore")}`,
     "END:VEVENT",
     "END:VCALENDAR",
   ].join("\r\n");
