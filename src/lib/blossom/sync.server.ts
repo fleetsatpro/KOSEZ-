@@ -305,6 +305,8 @@ async function applyMutation(
       return { mutationId: mutation.mutationId, status: "applied" };
     }
   }
+
+  throw new Error("sync-unsupported-operation");
 }
 
 export async function syncBlossomBatch(
