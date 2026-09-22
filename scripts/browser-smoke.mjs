@@ -209,6 +209,18 @@ try {
       const el = document.documentElement;
       return el.scrollWidth > el.clientWidth + 1;
     });
+    const requiredLearnerText =
+      expectedAuth === "disabled"
+        ? ["BLOSSOM", "EXPLORE", "CONNECT", "LEARN", "MOI"]
+        : [];
+    const missingLearnerText = requiredLearnerText.filter(
+      (text) => !bodyText.includes(text),
+    );
+    if (missingLearnerText.length) {
+      errors.pageErrors.push(
+        `learner shell missing expected text: ${missingLearnerText.join(", ")}`,
+      );
+    }
     await page.screenshot({ path: vp.screenshot, fullPage: false });
     await page.close();
 
