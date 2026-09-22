@@ -408,7 +408,6 @@ function ExplorePage() {
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           {MARKETPLACE.map((item) => {
-            const full = item.taken >= item.spots;
             const waiting = waitlist.includes(item.id);
             const locked = item.early && !earlyOk;
 
@@ -433,7 +432,7 @@ function ExplorePage() {
                       </h3>
                     </div>
                     <Badge variant="outline">
-                      {item.taken}/{item.spots}
+                      Capacité · {item.spots}
                     </Badge>
                   </div>
 
@@ -452,7 +451,7 @@ function ExplorePage() {
                     <div className="mt-5 rounded-xl border border-border bg-surface-2/40 p-3 text-xs leading-5 text-subtle">
                       Accès anticipé réservé au Centre ou à Premium.
                     </div>
-                  ) : full || waiting ? (
+                  ) : (
                     <Button
                       className="mt-5 min-h-11 w-full"
                       variant="secondary"
@@ -462,24 +461,13 @@ function ExplorePage() {
                         toast(
                           waiting
                             ? "Vous êtes déjà sur la liste."
-                            : "Demande ajoutée à la liste d’attente.",
+                            : "Demande ajoutée. Le centre confirmera la disponibilité.",
                         );
                       }}
                     >
-                      {waiting ? "Sur la liste d'attente" : "Rejoindre la liste d'attente"}
+                      {waiting ? "Demande déjà envoyée" : "Demander une place"}
                     </Button>
-                  ) : (
-                    <Button
-                      className="mt-5 min-h-11 w-full"
-                      variant="secondary"
-                      onClick={() => {
-                        joinWaitlist(item.id);
-                        toast("Demande ajoutée. Le centre confirme ensuite.");
-                      }}
-                    >
-                      Demander une place
-                    </Button>
-                  )}
+                  )
                 </div>
               </article>
             );
