@@ -94,8 +94,31 @@ function codeFallbackContent(): PublishedContent {
   };
 }
 
+async function ensureBootstrapContent(sql: Awaited<ReturnType<typeof getSql>>) {
+  const authored = [
+    ...EVENTS.map((event) => ({ kind: "event" as const, item: event })),
+    ...CATALOGUE.map((item) => ({ kind: "catalogue" as const, item })),
+  ];
+
+  const existingRows = await sql.query(
+    "select content_key from blossom_content_item where content_key = any($1::text[])",
+    [authored.map(({ item }) => item.id)],
+  );
+  const existing = new Set(existingRows.map((row) => String(row.content_key)));
+
+  for (const { kind, item } of authored) {
+    if (existing.has(item.id)) continue;
+    validatePayload(kind, item);
+    await sql.query(
+      "insert into blossom_content_item (content_key, kind, draft_payload, published_payload, draft_revision, published_revision, state, updated_by, published_by, published_at) values ($1, $2, $3::jsonb, $3::jsonb, 1, 1, 'published', 'system-bootstrap', 'system-bootstrap', current_timestamp) on conflict (content_key) do nothing",
+      [item.id, kind, JSON.stringify(item)],
+    );
+  }
+}
+
 export async function getPublishedContent(): Promise<PublishedContent> {
   const sql = await getSql();
+  await ensureBootstrapContent(sql);
   const rows = await sql.query(
     "select content_key, kind, published_payload, state from blossom_content_item where (state = 'published' and published_payload is not null) or state = 'archived' order by updated_at desc",
   );
@@ -137,6 +160,7 @@ export async function getPublishedContent(): Promise<PublishedContent> {
 export async function getAdminContentItems(userId: string): Promise<AdminContentItem[]> {
   await assertAdmin(userId);
   const sql = await getSql();
+  await ensureBootstrapContent(sql);
   const rows = await sql.query(
     "select content_key, kind, draft_payload, published_payload, draft_revision, published_revision, state, updated_by, published_by, published_at, updated_at from blossom_content_item order by kind, content_key",
   );
