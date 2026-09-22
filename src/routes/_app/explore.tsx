@@ -317,7 +317,7 @@ function ExplorePage() {
                         disabled={remaining <= 0}
                         onClick={() => {
                           joinEvent(event.id);
-                          toast("Inscription enregistrée dans votre espace.");
+                          toast("Inscription demandée. La synchronisation est traitée automatiquement.");
                         }}
                       >
                         Rejoindre
