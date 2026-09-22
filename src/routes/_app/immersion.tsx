@@ -148,7 +148,8 @@ function ImmersionPage() {
               <Eyebrow>Le groupe</Eyebrow>
             </div>
             <p className="mt-3 text-sm leading-7">
-              {IMMERSION.participants.join(" · ")}
+              Le cercle est privé. Les noms et participants confirmés ne sont
+              affichés qu’à partir des inscriptions réellement enregistrées.
             </p>
             <p className="mt-3 text-xs leading-5 text-subtle">
               Pas un feed social — un cercle fermé pour le weekend.
