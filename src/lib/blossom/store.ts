@@ -790,6 +790,12 @@ export const useBlossom = create<AppState>()(
               title,
               body,
               status: "draft",
+              rollback: {
+                title: existing.title,
+                body: existing.body,
+                status: existing.status,
+                updatedAt: existing.updatedAt,
+              },
             },
           });
           const updated = new Date().toISOString();
