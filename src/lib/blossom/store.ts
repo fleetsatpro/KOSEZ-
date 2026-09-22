@@ -321,9 +321,9 @@ export const useBlossom = create<AppState>()(
       backendMissionRevisions: {},
       syncOwnerUserId: null,
       growthEvents: [],
-      mineralSnapshot: computeMinerals(INITIAL_LOG),
+      mineralSnapshot: computeMinerals([]),
       phonemeLeaves: buildPhonemeLeaves(
-        INITIAL_PRONLAB_ATTEMPTS,
+        [],
         PRONLAB_SETS.flatMap((s) => s.items),
       ),
       leoLetters: [],
