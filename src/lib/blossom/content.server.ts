@@ -198,6 +198,7 @@ export async function saveContentDraft(
     contentKey: string;
     kind: ContentKind;
     payload: unknown;
+    expectedDraftRevision: number;
   },
 ) {
   await assertAdmin(userId);
@@ -207,21 +208,28 @@ export async function saveContentDraft(
 
   const sql = await getSql();
   const existing = await sql.query(
-    "select kind, state, published_payload, published_revision from blossom_content_item where content_key = $1",
+    "select kind, state, published_payload, published_revision, draft_revision from blossom_content_item where content_key = $1",
     [contentKey],
   );
 
   if (existing[0] && String(existing[0].kind) !== input.kind) {
     throw new Error("content-kind-mismatch");
   }
+  if (
+    existing[0] &&
+    Number(existing[0].draft_revision ?? 0) !== input.expectedDraftRevision
+  ) {
+    throw new Error("content-revision-conflict");
+  }
 
   const rows = await sql.query(
-    "insert into blossom_content_item (content_key, kind, draft_payload, published_payload, draft_revision, published_revision, state, updated_by) values ($1, $2, $3::jsonb, null, 1, 0, 'draft', $4) on conflict (content_key) do update set draft_payload = excluded.draft_payload, draft_revision = blossom_content_item.draft_revision + 1, updated_by = excluded.updated_by, updated_at = current_timestamp returning content_key, kind, draft_revision, published_revision, state",
+    "insert into blossom_content_item (content_key, kind, draft_payload, published_payload, draft_revision, published_revision, state, updated_by) values ($1, $2, $3::jsonb, null, 1, 0, 'draft', $4) on conflict (content_key) do update set draft_payload = excluded.draft_payload, draft_revision = blossom_content_item.draft_revision + 1, updated_by = excluded.updated_by, updated_at = current_timestamp where blossom_content_item.draft_revision = $5 returning content_key, kind, draft_revision, published_revision, state",
     [
       contentKey,
       input.kind,
       JSON.stringify(payload),
       userId,
+      input.expectedDraftRevision,
     ],
   );
 
@@ -242,7 +250,11 @@ export async function saveContentDraft(
   };
 }
 
-export async function publishContent(userId: string, contentKeyInput: string) {
+export async function publishContent(
+  userId: string,
+  contentKeyInput: string,
+  expectedDraftRevision: number,
+) {
   await assertAdmin(userId);
   const contentKey = contentKeySchema.parse(contentKeyInput);
   const sql = await getSql();
@@ -253,11 +265,15 @@ export async function publishContent(userId: string, contentKeyInput: string) {
   if (!rows[0]) throw new Error("content-not-managed-yet");
 
   const kind = String(rows[0].kind) as ContentKind;
+  const draftRevision = Number(rows[0].draft_revision);
+  if (draftRevision !== expectedDraftRevision) {
+    throw new Error("content-revision-conflict");
+  }
   const payload = validatePayload(kind, rows[0].draft_payload);
 
   const updated = await sql.query(
-    "update blossom_content_item set published_payload = $2::jsonb, published_revision = draft_revision, state = 'published', published_by = $3, published_at = current_timestamp, updated_by = $3, updated_at = current_timestamp where content_key = $1 returning content_key, kind, published_revision",
-    [contentKey, JSON.stringify(payload), userId],
+    "update blossom_content_item set published_payload = $2::jsonb, published_revision = draft_revision, state = 'published', published_by = $3, published_at = current_timestamp, updated_by = $3, updated_at = current_timestamp where content_key = $1 and draft_revision = $4 returning content_key, kind, published_revision",
+    [contentKey, JSON.stringify(payload), userId, expectedDraftRevision],
   );
   if (!updated[0]) throw new Error("content-publish-failed");
 
