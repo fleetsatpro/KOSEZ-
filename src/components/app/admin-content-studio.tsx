@@ -118,13 +118,14 @@ export function AdminContentStudio() {
       const restoredHistory = await getAdminContentHistoryOnServer({
         data: { contentKey: selected.contentKey },
       });
-      setDraft({ ...(selected.draftPayload as Record<string, Scalar>), ...restoredHistory[0]?.payload });
+      const restoredPayload = result.payload as Record<string, Scalar>;
+      setDraft(restoredPayload);
       setItems((current) =>
         current.map((item) =>
           item.contentKey === selected.contentKey
             ? {
                 ...item,
-                draftPayload: restoredHistory[0]?.payload ?? item.draftPayload,
+                draftPayload: restoredPayload,
                 draftRevision: result.draftRevision,
                 state: result.state,
               }
