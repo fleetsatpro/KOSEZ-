@@ -277,6 +277,7 @@ async function applyMutation(
       await upsertBlossomProfile(userId, {
         ...payload,
         preferences: objectValue(payload.preferences),
+        mutationCreatedAt: mutation.createdAt,
       });
       return { mutationId: mutation.mutationId, status: "applied" };
     }
