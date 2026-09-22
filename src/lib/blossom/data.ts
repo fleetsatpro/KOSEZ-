@@ -354,7 +354,6 @@ export type EventItem = {
   place: string;
   language: string;
   spots: number;
-  taken: number;
   image: string;
   host: string;
 };
@@ -369,7 +368,6 @@ export const EVENTS: EventItem[] = [
     place: "Le Comptoir, Saint-Pierre",
     language: "English · A2–B1",
     spots: 8,
-    taken: 5,
     image: "/images/cafe.jpg",
     host: "Léa",
   },
@@ -382,7 +380,6 @@ export const EVENTS: EventItem[] = [
     place: "Maison K'Osez, Saint-Pierre",
     language: "English · A2",
     spots: 6,
-    taken: 4,
     image: "/images/atelier.jpg",
     host: "Léa",
   },
@@ -395,7 +392,6 @@ export const EVENTS: EventItem[] = [
     place: "Marché couvert, Saint-Pierre",
     language: "English · A1–A2",
     spots: 12,
-    taken: 7,
     image: "/images/marche.jpg",
     host: "Camille R.",
   },
@@ -408,7 +404,6 @@ export const EVENTS: EventItem[] = [
     place: "Front de mer, Saint-Pierre",
     language: "English · A2+",
     spots: 10,
-    taken: 3,
     image: "/images/reunion-coast.jpg",
     host: "Léa",
   },
@@ -472,7 +467,7 @@ export const CATALOGUE: CatalogueItem[] = [
     instructor: "Équipe K'Osez",
     location: "Saint-Pierre et environs",
     capacity: 10,
-    schedule: "19–20 septembre",
+    schedule: rangeLabelFromToday(10, 11),
     price: "Sur inscription",
     image: "/images/reunion-coast.jpg",
   },
@@ -503,16 +498,6 @@ export const NEXT_CLASS = {
   instructorAvatar: "/images/lea.jpg",
   place: "Maison K'Osez, Saint-Pierre",
 };
-
-export const WEEK_SPEAKING = [
-  { day: "L", minutes: 8 },
-  { day: "M", minutes: 0 },
-  { day: "M", minutes: 12 },
-  { day: "J", minutes: 6 },
-  { day: "V", minutes: 0 },
-  { day: "S", minutes: 14 },
-  { day: "D", minutes: 4 },
-];
 
 export const MISSION_FEEDBACK = {
   strength: "Vous avez posé la question jusqu'au bout, sans revenir au français.",
@@ -1243,11 +1228,6 @@ export function planAllows(plan: PlanId, feature: PlanFeature): boolean {
   if (plan === "centre" || plan === "premium") return true;
   return false;
 }
-
-export const CPF_NARRATIVE = {
-  title: "Attestation de cycle A2 — English",
-  body: "Camille Morel a tenu un cycle de parole à Saint-Pierre : missions en situation, Speak Rooms, Pron'Lab. Ce n'est pas un diplôme. C'est une preuve de régularité, signée par le centre, pour un dossier CPF ou un employeur.",
-};
 
 export function attendanceProof(input: {
   missions: number;
