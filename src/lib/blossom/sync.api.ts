@@ -20,6 +20,7 @@ const mutationSchema = z.object({
     "learning.submission",
     "booking.request",
     "waitlist.request",
+    "analytics.record",
   ]),
   entityId: z.string().trim().min(1).max(200),
   expectedRevision: z.number().int().nonnegative().optional(),
