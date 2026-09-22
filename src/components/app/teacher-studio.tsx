@@ -1,39 +1,26 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Mic, MicOff, Users } from "lucide-react";
 import { toast } from "sonner";
-import { Mic, MicOff } from "lucide-react";
 import { Eyebrow, Initials, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  HOMEWORK_DRAFTS,
-  INTELLIGENCE,
-  PRONLAB_SETS,
-  TEACHER_ROSTER,
-  TEACHER_TAGS,
-  WARMUP_DRAFT,
-  findPronlabItem,
-} from "@/lib/blossom/data";
-import { pronlabFlags } from "@/lib/blossom/engine";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
+import { getTeacherWorkspaceOnServer } from "@/lib/blossom/domain.api";
+import { TEACHER_TAGS } from "@/lib/blossom/data";
 import { useBlossom } from "@/lib/blossom/store";
 
 type Tab = "prep" | "roster" | "lecture";
+type TeacherRow = Awaited<ReturnType<typeof getTeacherWorkspaceOnServer>>[number];
 
 type RecognitionResult = {
   length: number;
-  [index: number]: {
-    [index: number]: { transcript: string } | undefined;
-  } | undefined;
+  [index: number]:
+    | { [index: number]: { transcript: string } | undefined }
+    | undefined;
 };
 
-type RecognitionEvent = {
-  results: RecognitionResult;
-};
-
-type RecognitionErrorEvent = {
-  error?: string;
-};
-
+type RecognitionEvent = { results: RecognitionResult };
+type RecognitionErrorEvent = { error?: string };
 type RecognitionLike = {
   lang: string;
   continuous: boolean;
@@ -44,35 +31,82 @@ type RecognitionLike = {
   start: () => void;
   stop: () => void;
 };
-
 type RecognitionConstructor = new () => RecognitionLike;
-
 type SpeechRecognitionWindow = Window & {
   SpeechRecognition?: RecognitionConstructor;
   webkitSpeechRecognition?: RecognitionConstructor;
 };
 
+function formatLastActivity(value: string | null) {
+  if (!value) return "Aucune activité enregistrée";
+  const days = Math.floor(
+    (Date.now() - new Date(value).getTime()) / 86_400_000,
+  );
+  if (days <= 0) return "Aujourd'hui";
+  if (days === 1) return "Hier";
+  return `Il y a ${days} jours`;
+}
+
+function deriveFlags(student: TeacherRow) {
+  const flags: string[] = [];
+  if (student.pronlabAttempts >= 2 && student.pronlabBest < 60) {
+    flags.push("Prononciation");
+  }
+  if (student.activitiesThisWeek === 0) flags.push("Missions manquées");
+  return flags;
+}
+
+function warmupFor(roster: TeacherRow[]) {
+  const flagged = roster.flatMap((student) =>
+    deriveFlags(student).map((flag) => `${student.name} · ${flag}`),
+  );
+  const focus = flagged.length
+    ? flagged.slice(0, 4).join(", ")
+    : "aucun signal prioritaire";
+  return [
+    "Six minutes · préparation proposée par K’Osez.",
+    "",
+    "1. Une question d’ouverture, chacun à son niveau.",
+    "2. Une relance courte : “What about you?”",
+    "3. Une micro-situation du quotidien, deux prises de parole.",
+    "",
+    `Focus détecté : ${focus}.`,
+    "À garder, modifier ou jeter avant le cours.",
+  ].join("\n");
+}
+
+function homeworkFor(student: TeacherRow) {
+  const pronunciation = student.pronlabAttempts >= 2 && student.pronlabBest < 60;
+  return {
+    title: pronunciation ? "Reprendre un point de prononciation" : "Une mission cette semaine",
+    body: pronunciation
+      ? `${student.name} — choisissez un item Pron’Lab déjà travaillé et refaites-le une fois, posé. L’objectif est d’obtenir une nouvelle observation, pas de chasser une note.`
+      : `${student.name} — une petite prise de parole cette semaine : décrivez une situation réelle pendant une minute. Nous la reprendrons en cours.`,
+  };
+}
 
 export function TeacherStudio() {
   const setTeacherMode = useBlossom((s) => s.setTeacherMode);
-  const attempts = useBlossom((s) => s.pronlabAttempts);
   const notes = useBlossom((s) => s.teacherNotes);
   const addNote = useBlossom((s) => s.addTeacherNote);
-  const warmup = useBlossom((s) => s.warmup);
-  const saveWarmup = useBlossom((s) => s.saveWarmup);
   const homework = useBlossom((s) => s.homework);
   const saveDraft = useBlossom((s) => s.saveHomeworkDraft);
   const sendHomework = useBlossom((s) => s.sendHomework);
   const assignSet = useBlossom((s) => s.assignSet);
   const assigned = useBlossom((s) => s.assignedSetIds);
   const { access, pending: accessPending } = useBlossomWorkspaceAccess();
+
+  const [roster, setRoster] = useState<TeacherRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("prep");
-  const [noteStudent, setNoteStudent] = useState("camille");
+  const [noteStudent, setNoteStudent] = useState("");
   const [noteText, setNoteText] = useState("");
   const [noteTags, setNoteTags] = useState<string[]>([]);
-  const [hwStudent, setHwStudent] = useState("camille");
-  const [hwTitle, setHwTitle] = useState(HOMEWORK_DRAFTS.camille!.title);
-  const [hwBody, setHwBody] = useState(HOMEWORK_DRAFTS.camille!.body);
+  const [hwStudent, setHwStudent] = useState("");
+  const [hwTitle, setHwTitle] = useState("");
+  const [hwBody, setHwBody] = useState("");
+
   const [voiceRecording, setVoiceRecording] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
@@ -80,23 +114,62 @@ export function TeacherStudio() {
   const voiceBaseTextRef = useRef("");
 
   useEffect(() => {
-    const speechWindow = window as SpeechRecognitionWindow;
-    setVoiceSupported(Boolean(speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition));
+    let disposed = false;
+    if (accessPending) return;
+    if (!access.isTeacher) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setWorkspaceError(null);
+    void getTeacherWorkspaceOnServer()
+      .then((rows) => {
+        if (disposed) return;
+        setRoster(rows);
+        setNoteStudent((current) => current || rows[0]?.id || "");
+        setHwStudent((current) => current || rows[0]?.id || "");
+        if (rows[0]) {
+          const draft = homeworkFor(rows[0]);
+          setHwTitle(draft.title);
+          setHwBody(draft.body);
+        }
+      })
+      .catch(() => {
+        if (!disposed) setWorkspaceError("Impossible de charger votre classe. Réessayez.");
+      })
+      .finally(() => {
+        if (!disposed) setLoading(false);
+      });
     return () => {
-      recognitionRef.current?.stop();
-      recognitionRef.current = null;
+      disposed = true;
     };
+  }, [access.isTeacher, accessPending]);
+
+  useEffect(() => {
+    const speechWindow = window as SpeechRecognitionWindow;
+    setVoiceSupported(
+      Boolean(
+        speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition,
+      ),
+    );
+    return () => recognitionRef.current?.stop();
   }, []);
+
+  const attention = useMemo(
+    () => roster.filter((student) => deriveFlags(student).length > 0),
+    [roster],
+  );
+  const warmup = useMemo(() => warmupFor(roster), [roster]);
 
   function startVoiceNote() {
     const speechWindow = window as SpeechRecognitionWindow;
-    const Constructor = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
+    const Constructor =
+      speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
     if (!Constructor) {
       setVoiceSupported(false);
-      setVoiceError("La dictée vocale n'est pas disponible dans ce navigateur.");
+      setVoiceError("La dictée vocale n’est pas disponible dans ce navigateur.");
       return;
     }
-
     const recognition = new Constructor();
     recognition.lang = "fr-FR";
     recognition.continuous = false;
@@ -105,8 +178,7 @@ export function TeacherStudio() {
     recognition.onresult = (event) => {
       let transcript = "";
       for (let index = 0; index < event.results.length; index += 1) {
-        const result = event.results[index];
-        const spoken = result?.[0]?.transcript?.trim();
+        const spoken = event.results[index]?.[0]?.transcript?.trim();
         if (spoken) transcript = `${transcript} ${spoken}`.trim();
       }
       if (transcript) {
@@ -116,13 +188,12 @@ export function TeacherStudio() {
     recognition.onerror = () => {
       setVoiceRecording(false);
       recognitionRef.current = null;
-      setVoiceError("La dictée n'a pas pu démarrer. Vous pouvez saisir la note au clavier.");
+      setVoiceError("La dictée n’a pas pu démarrer.");
     };
     recognition.onend = () => {
       setVoiceRecording(false);
       recognitionRef.current = null;
     };
-
     try {
       recognitionRef.current = recognition;
       recognition.start();
@@ -131,39 +202,25 @@ export function TeacherStudio() {
     } catch {
       recognitionRef.current = null;
       setVoiceRecording(false);
-      setVoiceError("La dictée n'a pas pu démarrer.");
+      setVoiceError("La dictée n’a pas pu démarrer.");
     }
   }
 
-  function stopVoiceNote() {
-    recognitionRef.current?.stop();
+  function setHomeworkStudent(id: string) {
+    setHwStudent(id);
+    const student = roster.find((row) => row.id === id);
+    if (!student) return;
+    const draft = homeworkFor(student);
+    setHwTitle(draft.title);
+    setHwBody(draft.body);
   }
 
-  const camilleFlags = pronlabFlags(
-    attempts,
-    PRONLAB_SETS.flatMap((s) => s.items.map((i) => i.id)),
-  );
-
-  const roster = TEACHER_ROSTER.map((s) =>
-    s.id === "camille"
-      ? {
-          ...s,
-          flags: [
-            ...s.flags,
-            ...camilleFlags.map((f) => {
-              const item = findPronlabItem(f.itemId);
-              return item ? `Pron'Lab · ${item.phrase}` : "Pron'Lab";
-            }),
-          ].filter((v, i, a) => a.indexOf(v) === i),
-        }
-      : s,
-  ).sort((a, b) => b.flags.length - a.flags.length);
-
-  if (accessPending) {
+  if (accessPending || loading) {
     return (
       <Page>
         <Eyebrow>Studio enseignant</Eyebrow>
-        <p className="mt-3 text-sm text-muted">Vérification des autorisations…</p>
+        <h1 className="mt-2 font-display text-3xl tracking-tight">Votre classe</h1>
+        <p className="mt-3 text-sm text-muted">Chargement des données autorisées…</p>
       </Page>
     );
   }
@@ -173,13 +230,35 @@ export function TeacherStudio() {
       <Page>
         <Eyebrow>Studio enseignant</Eyebrow>
         <h1 className="mt-2 font-display text-2xl">Accès non disponible</h1>
-        <p className="mt-3 text-sm leading-6 text-muted">Vous n’avez pas de relation enseignant active sur ce compte.</p>
-        <Button
-          variant="secondary"
-          className="mt-6"
-          onClick={() => setTeacherMode(false)}
-        >
+        <p className="mt-3 text-sm leading-6 text-muted">
+          Ce compte n’a pas de relation enseignant active.
+        </p>
+        <Button variant="secondary" className="mt-6" onClick={() => setTeacherMode(false)}>
           Revenir au voyage
+        </Button>
+      </Page>
+    );
+  }
+
+  if (workspaceError) {
+    return (
+      <Page>
+        <Eyebrow>Studio enseignant</Eyebrow>
+        <h1 className="mt-2 font-display text-2xl">Votre classe est indisponible</h1>
+        <p className="mt-3 text-sm leading-6 text-muted">{workspaceError}</p>
+        <Button
+          className="mt-6"
+          variant="secondary"
+          onClick={() => {
+            setWorkspaceError(null);
+            setLoading(true);
+            void getTeacherWorkspaceOnServer()
+              .then(setRoster)
+              .catch(() => setWorkspaceError("Le chargement a échoué."))
+              .finally(() => setLoading(false));
+          }}
+        >
+          Réessayer
         </Button>
       </Page>
     );
@@ -191,308 +270,302 @@ export function TeacherStudio() {
         <div>
           <Eyebrow>Studio enseignant</Eyebrow>
           <h1 className="mt-2 font-display text-3xl tracking-tight">
-            Conversation A2
+            Votre classe, maintenant.
           </h1>
-          <p className="mt-1 text-sm text-muted">Mardi 18:00 · Léa Moreau</p>
+          <p className="mt-1 text-sm text-muted">
+            {roster.length} apprenant{roster.length > 1 ? "s" : ""} · signaux calculés à partir de leur activité réelle.
+          </p>
         </div>
         <Button variant="secondary" onClick={() => setTeacherMode(false)}>
           Revenir au voyage
         </Button>
       </div>
 
-      <div className="mt-6 flex gap-2">
-        {(["prep", "roster", "lecture"] as const).map((id) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setTab(id)}
-            className={`h-11 rounded-md px-4 text-sm ${
-              tab === id
-                ? "bg-primary text-primary-foreground"
-                : "bg-surface text-muted shadow-[var(--shadow-border)]"
-            }`}
-          >
-            {id === "prep" ? "Avant le cours" : id === "roster" ? "Promo" : "Lecture"}
-          </button>
-        ))}
-      </div>
-
-      {tab === "prep" && (
-        <div className="mt-8 grid gap-4 lg:grid-cols-2">
-          <Surface>
-            <Eyebrow>Qui a besoin d'attention</Eyebrow>
-            <ul className="mt-4 space-y-4">
-              {roster.map((student) => (
-                <li key={student.id} className="flex items-start gap-3">
-                  {student.avatar ? (
-                    <img
-                      src={student.avatar}
-                      alt=""
-                      className="size-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <Initials letters={student.name.slice(0, 1)} />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium">{student.name}</p>
-                    <p className="text-xs text-subtle">
-                      {student.level} · {student.lastActivity}
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {student.flags.length === 0 ? (
-                        <span className="text-xs text-muted">Rien à signaler</span>
-                      ) : (
-                        student.flags.map((flag) => (
-                          <Badge key={flag} variant="clay">
-                            {flag}
-                          </Badge>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <Button
-              className="mt-5 w-full"
-              variant="secondary"
-              onClick={() => {
-                assignSet("set-th");
-                toast("Set « Les TH qui bloquent » assigné à Camille.");
-              }}
-              disabled={assigned.includes("set-th")}
-            >
-              {assigned.includes("set-th")
-                ? "Remédiation TH déjà assignée"
-                : "Assigner la remédiation TH (5–8 items)"}
-            </Button>
-          </Surface>
-
-          <Surface>
-            <Eyebrow>Échauffement 6 min</Eyebrow>
-            {warmup ? (
-              <p className="mt-4 whitespace-pre-line text-sm leading-relaxed">
-                {warmup}
-              </p>
-            ) : (
-              <p className="mt-4 text-sm text-muted">
-                Un passage parlant, calé sur les drapeaux du jour. Vous
-                restez l'autorité : générer, relire, ou jeter.
-              </p>
-            )}
-            <Button
-              className="mt-5 w-full"
-              onClick={() => {
-                saveWarmup(WARMUP_DRAFT);
-                toast("Échauffement proposé. À vous de le garder.");
-              }}
-            >
-              Proposer l'échauffement
-            </Button>
-          </Surface>
-
-          <Surface>
-            <Eyebrow>Note rapide</Eyebrow>
-            <p className="mt-2 text-sm text-muted">Moins de trente secondes.</p>
-            <select
-              className="mt-4 h-11 w-full rounded-md border border-border bg-bg px-3 text-sm"
-              value={noteStudent}
-              onChange={(e) => setNoteStudent(e.target.value)}
-            >
-              {TEACHER_ROSTER.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {TEACHER_TAGS.map((tag) => {
-                const on = noteTags.includes(tag);
-                return (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() =>
-                      setNoteTags((t) =>
-                        on ? t.filter((x) => x !== tag) : [...t, tag],
-                      )
-                    }
-                    className={`rounded-full px-3 py-1 text-xs ${
-                      on
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-surface-2 text-muted"
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                );
-              })}
-            </div>
-            <textarea
-              className="mt-3 min-h-24 w-full rounded-md border border-border bg-bg p-3 text-sm"
-              placeholder="Une phrase. Ou rien — les tags suffisent."
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-            />
-            <Button
-              className="mt-3 w-full"
-              variant="secondary"
-              onClick={() => {
-                addNote(noteStudent, noteTags, noteText);
-                setNoteText("");
-                setNoteTags([]);
-                toast("Note gardée. Rien n'est parti vers l'apprenant.");
-              }}
-            >
-              Enregistrer
-            </Button>
-            <Button
-              className="mt-2 w-full"
-              variant="ghost"
-              disabled={!voiceSupported}
-              onClick={() => (voiceRecording ? stopVoiceNote() : startVoiceNote())}
-            >
-              {voiceRecording ? <MicOff className="size-4" /> : <Mic className="size-4" />}
-              {voiceRecording ? "Arrêter la dictée" : "Dicter la note"}
-            </Button>
-            <p className="mt-2 text-[11px] leading-5 text-subtle">
-              {voiceError ??
-                (voiceSupported
-                  ? "La transcription apparaît dans le champ ci-dessus. Vous relisez puis vous enregistrez."
-                  : "Dictée vocale indisponible ici : utilisez la saisie texte.")}
-            </p>
-            {notes.length > 0 && (
-              <ul className="mt-4 space-y-2 text-sm">
-                {notes.slice(-3).map((n) => (
-                  <li key={n.id} className="text-muted">
-                    {TEACHER_ROSTER.find((s) => s.id === n.studentId)?.name} ·{" "}
-                    {n.tags.join(", ") || "sans tag"}
-                    {n.text ? ` — ${n.text}` : ""}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Surface>
-
-          <Surface>
-            <Eyebrow>Devoir — vous relisez avant l'envoi</Eyebrow>
-            <select
-              className="mt-4 h-11 w-full rounded-md border border-border bg-bg px-3 text-sm"
-              value={hwStudent}
-              onChange={(e) => {
-                setHwStudent(e.target.value);
-                const draft = HOMEWORK_DRAFTS[e.target.value];
-                if (draft) {
-                  setHwTitle(draft.title);
-                  setHwBody(draft.body);
-                }
-              }}
-            >
-              {Object.keys(HOMEWORK_DRAFTS).map((id) => (
-                <option key={id} value={id}>
-                  {TEACHER_ROSTER.find((s) => s.id === id)?.name}
-                </option>
-              ))}
-            </select>
-            <input
-              className="mt-3 h-11 w-full rounded-md border border-border bg-bg px-3 text-sm"
-              value={hwTitle}
-              onChange={(e) => setHwTitle(e.target.value)}
-            />
-            <textarea
-              className="mt-3 min-h-32 w-full rounded-md border border-border bg-bg p-3 text-sm"
-              value={hwBody}
-              onChange={(e) => setHwBody(e.target.value)}
-            />
-            <div className="mt-3 flex gap-2">
-              <Button
-                variant="secondary"
-                className="flex-1"
-                onClick={() => {
-                  saveDraft(hwStudent, hwTitle, hwBody);
-                  toast("Brouillon gardé.");
-                }}
-              >
-                Garder
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={() => {
-                  saveDraft(hwStudent, hwTitle, hwBody);
-                  const draft = useBlossom
-                    .getState()
-                    .homework.find(
-                      (h) => h.studentId === hwStudent && h.status === "draft",
-                    );
-                  if (draft) sendHomework(draft.id);
-                  toast("Envoyé. Visible dans LEARN.");
-                }}
-              >
-                Envoyer
-              </Button>
-            </div>
-            {homework.filter((h) => h.status === "sent").length > 0 && (
-              <p className="mt-3 text-xs text-subtle">
-                {homework.filter((h) => h.status === "sent").length} envoyé
-                {homework.filter((h) => h.status === "sent").length > 1 ? "s" : ""}
-              </p>
-            )}
-          </Surface>
-        </div>
-      )}
-
-      {tab === "roster" && (
-        <div className="mt-8 overflow-x-auto">
-          <table className="w-full min-w-[36rem] text-left text-sm">
-            <thead>
-              <tr className="text-xs uppercase tracking-[0.16em] text-muted">
-                <th className="py-3 font-medium">Apprenant</th>
-                <th className="py-3 font-medium">Stade</th>
-                <th className="py-3 font-medium">Parole</th>
-                <th className="py-3 font-medium">Dernière activité</th>
-                <th className="py-3 font-medium">Signaux</th>
-              </tr>
-            </thead>
-            <tbody>
-              {roster.map((s) => (
-                <tr key={s.id} className="border-t border-border">
-                  <td className="py-3">
-                    {s.name}
-                    <span className="block text-xs text-subtle">{s.level}</span>
-                  </td>
-                  <td className="py-3">{s.stage}</td>
-                  <td className="py-3 tabular-nums">{s.minutes} min</td>
-                  <td className="py-3 text-muted">{s.lastActivity}</td>
-                  <td className="py-3">
-                    {s.flags.length === 0 ? "—" : s.flags[0]}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {tab === "lecture" && (
-        <div className="mt-8">
-          <p className="max-w-lg text-sm leading-relaxed text-muted">
-            K'Osez Intelligence. Ce qui tient, ce qui bloque, ce qui
-            convertit. Pas de classement d'ego.
+      {roster.length === 0 ? (
+        <Surface className="mt-8">
+          <Users className="size-5 text-primary" />
+          <h2 className="mt-4 font-display text-2xl">Classe vide pour le moment.</h2>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+            Aucun apprenant actif n’est encore relié à votre compte enseignant.
+            Les comptes et relations se configurent côté administration ; aucune donnée de démonstration n’est affichée ici.
           </p>
-          <ul className="mt-6 grid gap-4 sm:grid-cols-2">
-            {INTELLIGENCE.map((row) => (
-              <li key={row.label}>
-                <Surface>
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted">
-                    {row.label}
-                  </p>
-                  <p className="mt-2 font-display text-2xl">{row.value}</p>
-                  <p className="mt-1 text-sm text-muted">{row.note}</p>
-                </Surface>
-              </li>
+        </Surface>
+      ) : (
+        <>
+          <div className="mt-6 flex gap-2 overflow-x-auto pb-1">
+            {(["prep", "roster", "lecture"] as const).map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTab(id)}
+                className={id === tab ? "h-11 shrink-0 rounded-md bg-primary px-4 text-sm text-primary-foreground" : "h-11 shrink-0 rounded-md bg-surface px-4 text-sm text-muted shadow-[var(--shadow-border)]"}
+              >
+                {id === "prep" ? "Avant le cours" : id === "roster" ? "Classe" : "Lecture"}
+              </button>
             ))}
-          </ul>
-        </div>
+          </div>
+
+          {tab === "prep" ? (
+            <div className="mt-8 grid gap-4 lg:grid-cols-2">
+              <Surface>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <Eyebrow>Attention</Eyebrow>
+                    <p className="mt-1 text-sm text-muted">
+                      {attention.length
+                        ? `${attention.length} apprenant${attention.length > 1 ? "s" : ""} avec un signal.`
+                        : "Aucun signal prioritaire détecté."}
+                    </p>
+                  </div>
+                  <Badge variant="outline">{roster.length} total</Badge>
+                </div>
+
+                <ul className="mt-5 space-y-4">
+                  {(attention.length ? attention : roster).slice(0, 8).map((student) => {
+                    const flags = deriveFlags(student);
+                    return (
+                      <li key={student.id} className="flex items-start gap-3">
+                        <Initials letters={student.name.slice(0, 1)} />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium">{student.name}</p>
+                          <p className="text-xs text-subtle">
+                            {student.level ?? "Niveau non renseigné"} · {formatLastActivity(student.lastActivity)}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {(flags.length ? flags : ["Régulier"]).map((flag) => (
+                              <Badge key={flag} variant={flags.length ? "clay" : "outline"}>
+                                {flag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                <Button
+                  className="mt-5 w-full"
+                  variant="secondary"
+                  onClick={() => {
+                    assignSet("set-th");
+                    toast("Remédiation Pron’Lab assignée au compte sélectionné dans LEARN.");
+                  }}
+                  disabled={assigned.includes("set-th") || !noteStudent}
+                >
+                  {assigned.includes("set-th")
+                    ? "Remédiation déjà assignée sur cet appareil"
+                    : "Assigner une remédiation Pron’Lab"}
+                </Button>
+              </Surface>
+
+              <Surface>
+                <Eyebrow>Échauffement · 6 min</Eyebrow>
+                <p className="mt-4 whitespace-pre-line text-sm leading-7">{warmup}</p>
+                <p className="mt-4 text-xs leading-5 text-subtle">
+                  Proposition dérivée de la classe chargée. Rien n’est envoyé automatiquement.
+                </p>
+              </Surface>
+
+              <Surface>
+                <Eyebrow>Note rapide</Eyebrow>
+                <p className="mt-2 text-sm text-muted">Tags + dictée, puis relecture avant sauvegarde.</p>
+                <select
+                  className="mt-4 h-11 w-full rounded-md border border-border bg-bg px-3 text-sm"
+                  value={noteStudent}
+                  onChange={(event) => setNoteStudent(event.target.value)}
+                >
+                  {roster.map((student) => (
+                    <option key={student.id} value={student.id}>{student.name}</option>
+                  ))}
+                </select>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {TEACHER_TAGS.map((tag) => {
+                    const on = noteTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() =>
+                          setNoteTags((current) =>
+                            on ? current.filter((item) => item !== tag) : [...current, tag],
+                          )
+                        }
+                        className={on ? "rounded-full bg-primary px-3 py-2 text-xs text-primary-foreground" : "rounded-full bg-surface-2 px-3 py-2 text-xs text-muted"}
+                      >
+                        {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <textarea
+                  className="mt-3 min-h-28 w-full rounded-md border border-border bg-bg p-3 text-sm"
+                  placeholder="Une observation concrète."
+                  value={noteText}
+                  onChange={(event) => setNoteText(event.target.value)}
+                />
+
+                <Button
+                  className="mt-3 w-full"
+                  variant="secondary"
+                  disabled={!noteStudent || (!noteText.trim() && noteTags.length === 0)}
+                  onClick={() => {
+                    addNote(noteStudent, noteTags, noteText.trim());
+                    setNoteText("");
+                    setNoteTags([]);
+                    toast("Note sauvegardée côté enseignant.");
+                  }}
+                >
+                  Enregistrer la note
+                </Button>
+
+                <Button
+                  className="mt-2 w-full"
+                  variant="ghost"
+                  disabled={!voiceSupported}
+                  onClick={() => {
+                    if (voiceRecording) {
+                      recognitionRef.current?.stop();
+                    } else {
+                      startVoiceNote();
+                    }
+                  }}
+                >
+                  {voiceRecording ? <MicOff className="size-4" /> : <Mic className="size-4" />}
+                  {voiceRecording ? "Arrêter la dictée" : "Dicter la note"}
+                </Button>
+                <p className="mt-2 text-[11px] leading-5 text-subtle">
+                  {voiceError ??
+                    (voiceSupported
+                      ? "La dictée apparaît dans le champ ci-dessus."
+                      : "Dictée vocale indisponible ici : utilisez le texte.")}
+                </p>
+
+                {notes.length ? (
+                  <ul className="mt-5 space-y-2 text-sm">
+                    {notes.slice(-4).reverse().map((note) => (
+                      <li key={note.id} className="border-t border-border pt-3 text-muted">
+                        {note.studentId} · {note.tags.join(", ") || "sans tag"}{note.text ? ` — ${note.text}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </Surface>
+
+              <Surface>
+                <Eyebrow>Devoir · brouillon contrôlé</Eyebrow>
+                <select
+                  className="mt-4 h-11 w-full rounded-md border border-border bg-bg px-3 text-sm"
+                  value={hwStudent}
+                  onChange={(event) => setHomeworkStudent(event.target.value)}
+                >
+                  {roster.map((student) => (
+                    <option key={student.id} value={student.id}>{student.name}</option>
+                  ))}
+                </select>
+                <input
+                  className="mt-3 h-11 w-full rounded-md border border-border bg-bg px-3 text-sm"
+                  value={hwTitle}
+                  onChange={(event) => setHwTitle(event.target.value)}
+                  maxLength={200}
+                />
+                <textarea
+                  className="mt-3 min-h-32 w-full rounded-md border border-border bg-bg p-3 text-sm"
+                  value={hwBody}
+                  onChange={(event) => setHwBody(event.target.value)}
+                  maxLength={5000}
+                />
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => {
+                      saveDraft(hwStudent, hwTitle.trim(), hwBody.trim());
+                      toast("Brouillon gardé.");
+                    }}
+                  >
+                    Garder
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    disabled={!hwStudent || !hwTitle.trim() || !hwBody.trim()}
+                    onClick={() => {
+                      saveDraft(hwStudent, hwTitle.trim(), hwBody.trim());
+                      const draft = useBlossom.getState().homework.find(
+                        (item) => item.studentId === hwStudent && item.status === "draft",
+                      );
+                      if (draft) sendHomework(draft.id);
+                      toast("Devoir envoyé dans le circuit prévu.");
+                    }}
+                  >
+                    Envoyer
+                  </Button>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-subtle">
+                  L’enseignant conserve la décision finale. Aucune génération ou envoi automatique ne contourne cette étape.
+                </p>
+                {homework.filter((item) => item.status === "sent").length ? (
+                  <p className="mt-3 text-xs text-subtle">
+                    {homework.filter((item) => item.status === "sent").length} devoir
+                    {homework.filter((item) => item.status === "sent").length > 1 ? "s" : ""} envoyé(s).
+                  </p>
+                ) : null}
+              </Surface>
+            </div>
+          ) : null}
+
+          {tab === "roster" ? (
+            <div className="mt-8 overflow-x-auto">
+              <table className="w-full min-w-[42rem] text-left text-sm">
+                <thead>
+                  <tr className="text-xs uppercase tracking-[0.16em] text-muted">
+                    <th className="py-3 font-medium">Apprenant</th>
+                    <th className="py-3 font-medium">Activité</th>
+                    <th className="py-3 font-medium">Parole</th>
+                    <th className="py-3 font-medium">Pron’Lab</th>
+                    <th className="py-3 font-medium">Dernière activité</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {roster.map((student) => (
+                    <tr key={student.id} className="border-t border-border">
+                      <td className="py-3">
+                        {student.name}
+                        <span className="block text-xs text-subtle">{student.level ?? "—"}</span>
+                      </td>
+                      <td className="py-3 tabular-nums">{student.activitiesThisWeek}</td>
+                      <td className="py-3 tabular-nums">{student.speakingMinutes} min</td>
+                      <td className="py-3 tabular-nums">{student.pronlabAttempts}</td>
+                      <td className="py-3 text-muted">{formatLastActivity(student.lastActivity)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+
+          {tab === "lecture" ? (
+            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+              <Surface>
+                <Eyebrow>Apprenants actifs</Eyebrow>
+                <p className="mt-2 font-display text-4xl tabular-nums">{roster.length}</p>
+              </Surface>
+              <Surface>
+                <Eyebrow>Avec signal</Eyebrow>
+                <p className="mt-2 font-display text-4xl tabular-nums">{attention.length}</p>
+              </Surface>
+              <Surface>
+                <Eyebrow>Parole observée</Eyebrow>
+                <p className="mt-2 font-display text-4xl tabular-nums">
+                  {roster.reduce((sum, student) => sum + student.speakingMinutes, 0)}
+                  <span className="ml-1 text-base text-muted">min</span>
+                </p>
+              </Surface>
+            </div>
+          ) : null}
+        </>
       )}
     </Page>
   );
