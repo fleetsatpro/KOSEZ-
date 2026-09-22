@@ -3,8 +3,6 @@ import { z } from "zod";
 import {
   appendBlossomActivity,
   saveBlossomMissionSession,
-} from "./backend.server";
-import {
   upsertBlossomProfile,
 } from "./backend.server";
 import {
@@ -15,10 +13,6 @@ import {
   setTandemStatus,
 } from "./domain.server";
 import type { SyncMutation, SyncResult } from "./sync-types";
-
-export type SyncServerMutation = SyncMutation & {
-  payload: SyncMutation["payload"];
-};
 
 const SYNC_TIMEOUT_MS = 120_000;
 
@@ -56,19 +50,6 @@ async function claimMutation(
     [mutation.mutationId, userId],
   );
   return claimed[0] ? "claimed" : "busy";
-}
-
-function stringValue(value: unknown, fallback = ""): string {
-  return typeof value === "string" ? value : fallback;
-}
-
-function intValue(value: unknown, fallback = 0): number {
-  return typeof value === "number" && Number.isFinite(value) ? Math.round(value) : fallback;
-}
-
-function objectValue(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return value as Record<string, unknown>;
 }
 
 const operationSchema = z.enum([
