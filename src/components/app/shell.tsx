@@ -17,6 +17,7 @@ import { ParentView } from "@/components/app/parent-view";
 import { TeacherStudio } from "@/components/app/teacher-studio";
 import { OrgStudio } from "@/components/app/org-studio";
 import { ChildHome } from "@/components/app/child-home";
+import { AdminStudio } from "@/components/app/admin-studio";
 import { Wordmark } from "@/components/app/primitives";
 import { UserButton } from "@/lib/auth/gates";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
@@ -91,6 +92,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const parentMode = useBlossom((s) => s.parentMode);
   const teacherMode = useBlossom((s) => s.teacherMode);
   const orgMode = useBlossom((s) => s.orgMode);
+  const adminMode = useBlossom((s) => s.adminMode);
   const childMode = useBlossom((s) => s.childMode);
   const setChildMode = useBlossom((s) => s.setChildMode);
   const { access, pending: accessPending } = useBlossomWorkspaceAccess();
@@ -109,11 +111,25 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [access.isChild, accessPending, childMode, setChildMode]);
 
+  useEffect(() => {
+    if (!accessPending && adminMode && !access.isAdmin) {
+      useBlossom.getState().setAdminMode(false);
+    }
+  }, [access.isAdmin, accessPending, adminMode]);
+
   if (!mounted || !hasEntered) return <Welcome />;
   if (!accessPending && access.isChild) {
     return (
       <div className="child-skin paper-grain min-h-dvh bg-bg text-fg">
         <ChildHome />
+      </div>
+    );
+  }
+
+  if (!accessPending && adminMode && access.isAdmin) {
+    return (
+      <div className="modern-ui paper-grain min-h-dvh bg-bg text-fg">
+        <AdminStudio />
       </div>
     );
   }
