@@ -4,6 +4,8 @@ import {
   appendBlossomActivity,
   saveBlossomMissionSession,
   upsertBlossomProfile,
+  type JsonObject,
+  type JsonValue,
 } from "./backend.server";
 import {
   completeChallenge,
@@ -15,6 +17,30 @@ import {
 import type { SyncMutation, SyncResult } from "./sync-types";
 
 const SYNC_TIMEOUT_MS = 120_000;
+
+function objectValue(value: unknown): JsonObject {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as JsonObject;
+}
+
+function jsonValue(value: unknown): JsonValue {
+  try {
+    const encoded = JSON.stringify(value);
+    return encoded === undefined ? null : (JSON.parse(encoded) as JsonValue);
+  } catch {
+    return null;
+  }
+}
+
+function stringValue(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value : fallback;
+}
+
+function intValue(value: unknown, fallback = 0): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.round(value)
+    : fallback;
+}
 
 async function claimMutation(
   userId: string,
@@ -139,7 +165,7 @@ async function applyMutation(
       await appendBlossomActivity(userId, {
         eventType: payload.eventType,
         sourceId: payload.sourceId ?? null,
-        payload: payload.payload ?? {},
+        payload: objectValue(payload.payload),
         idempotencyKey: mutation.mutationId,
         occurredAt: payload.occurredAt,
       });
@@ -152,7 +178,7 @@ async function applyMutation(
       const result = await saveBlossomMissionSession(
         userId,
         mutation.entityId,
-        session,
+        jsonValue(session),
         expectedRevision,
         mutation.mutationId,
       );
@@ -225,7 +251,10 @@ async function applyMutation(
     }
     case "profile.upsert": {
       const payload = profilePayloadSchema.parse(mutation.payload);
-      await upsertBlossomProfile(userId, payload);
+      await upsertBlossomProfile(userId, {
+        ...payload,
+        preferences: objectValue(payload.preferences),
+      });
       return { mutationId: mutation.mutationId, status: "applied" };
     }
   }
@@ -303,7 +332,11 @@ export async function syncBlossomBatch(
               currentRevision: result.currentRevision,
               currentSessionJson: result.currentSessionJson,
             }
-          : { revision: result.revision ?? null },
+          : result.status === "applied"
+            ? { revision: result.revision ?? null }
+            : result.status === "duplicate"
+              ? { revision: result.revision ?? null }
+              : { errorCode: result.status === "rejected" ? result.errorCode : "busy" },
         undefined,
       );
       results.push(result);
