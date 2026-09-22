@@ -76,6 +76,8 @@ export type BlossomBackendState = {
   learningSubmissions: BlossomSubmissionRecord[];
   eventRegistrations: Record<string, "joined" | "waitlist" | "cancelled">;
   completedChallenges: string[];
+  bookingCatalogueIds: string[];
+  waitlistIds: string[];
   tandemStatus: Record<string, "suggested" | "pending" | "accepted" | "blocked" | "paused">;
 };
 
@@ -124,7 +126,7 @@ function mapActivity(row: Record<string, unknown>): BlossomActivityRecord {
 
 export async function readBlossomState(userId: string): Promise<BlossomBackendState> {
   const sql = await getSql();
-  const [profiles, activity, missions, pronlab, vocabulary, submissions, registrations, challenges, tandem] = await Promise.all([
+  const [profiles, activity, missions, pronlab, vocabulary, submissions, registrations, challenges, tandem, bookings, waitlists] = await Promise.all([
     sql.query(
       "select user_id, display_name, target_language, level, timezone, preferences, created_at, updated_at from blossom_profile where user_id = $1",
       [userId],
@@ -159,6 +161,14 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
     ),
     sql.query(
       "select partner_user_id, status from blossom_tandem_connection where user_id = $1 order by updated_at desc",
+      [userId],
+    ),
+    sql.query(
+      "select catalogue_item_id from blossom_booking_request where user_id = $1 and status <> 'cancelled' order by updated_at desc",
+      [userId],
+    ),
+    sql.query(
+      "select item_id from blossom_waitlist_request where user_id = $1 and status <> 'cancelled' order by updated_at desc",
       [userId],
     ),
   ]);
@@ -206,6 +216,8 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
       registrations.map((row) => [String(row.event_id), String(row.status) as "joined" | "waitlist" | "cancelled"]),
     ),
     completedChallenges: challenges.map((row) => String(row.challenge_id)),
+    bookingCatalogueIds: bookings.map((row) => String(row.catalogue_item_id)),
+    waitlistIds: waitlists.map((row) => String(row.item_id)),
     tandemStatus: Object.fromEntries(
       tandem.map((row) => [
         String(row.partner_user_id),
