@@ -103,8 +103,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (!accessPending && childMode && !access.isChild) {
+      setChildMode(false);
+    }
+  }, [access.isChild, accessPending, childMode, setChildMode]);
+
   if (!mounted || !hasEntered) return <Welcome />;
-  if (!accessPending && (access.isChild || childMode && access.isChild)) {
+  if (!accessPending && access.isChild) {
     return (
       <div className="child-skin paper-grain min-h-dvh bg-bg text-fg">
         <ChildHome />
