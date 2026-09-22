@@ -199,6 +199,18 @@ function mergeBackendState(remote: BackendState): void {
     missionSessions,
     backendMissionRevisions: revisions,
     joinedEventIds: [...joinedEventIds],
+    eventRegistrationCounts: {
+      ...remote.eventRegistrationCounts,
+      ...Object.fromEntries(
+        [...joinedEventIds].map((eventId) => [
+          eventId,
+          Math.max(
+            Number(remote.eventRegistrationCounts?.[eventId] ?? 0),
+            current.eventRegistrationCounts[eventId] ?? 0,
+          ),
+        ]),
+      ),
+    },
     immersionDone: [...immersionDone],
     tandemStatus,
     learningSubmissions: [...submissionById.values()].sort((a, b) => timestamp(a.createdAt) - timestamp(b.createdAt)),
