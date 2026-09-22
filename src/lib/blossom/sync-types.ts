@@ -115,5 +115,4 @@ export type BackendState = {
   eventRegistrations: Record<string, "joined" | "waitlist" | "cancelled">;
   completedChallenges: string[];
   tandemStatus: Record<string, "suggested" | "pending" | "accepted" | "blocked" | "paused">;
-  learningSubmissions: BackendSubmission[];
 };
