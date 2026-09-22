@@ -404,7 +404,7 @@ export function TeacherStudio() {
                     addNote(noteStudent, noteTags, noteText.trim());
                     setNoteText("");
                     setNoteTags([]);
-                    toast("Note sauvegardée côté enseignant.");
+                    toast("Note enregistrée. La synchronisation est traitée automatiquement.");
                   }}
                 >
                   Enregistrer la note
@@ -472,7 +472,7 @@ export function TeacherStudio() {
                     className="flex-1"
                     onClick={() => {
                       saveDraft(hwStudent, hwTitle.trim(), hwBody.trim());
-                      toast("Brouillon gardé.");
+                      toast("Brouillon enregistré localement et mis en file de synchronisation.");
                     }}
                   >
                     Garder
@@ -486,7 +486,7 @@ export function TeacherStudio() {
                         (item) => item.studentId === hwStudent && item.status === "draft",
                       );
                       if (draft) sendHomework(draft.id);
-                      toast("Devoir envoyé dans le circuit prévu.");
+                      toast("Devoir marqué comme envoyé. La synchronisation est traitée automatiquement.");
                     }}
                   >
                     Envoyer
