@@ -17,7 +17,9 @@ export type SyncOperation =
   | "event.register"
   | "challenge.complete"
   | "tandem.status"
-  | "learning.submission";
+  | "learning.submission"
+  | "booking.request"
+  | "waitlist.request";
 
 export type SyncMutation = {
   mutationId: string;
@@ -115,4 +117,6 @@ export type BackendState = {
   eventRegistrations: Record<string, "joined" | "waitlist" | "cancelled">;
   completedChallenges: string[];
   tandemStatus: Record<string, "suggested" | "pending" | "accepted" | "blocked" | "paused">;
+  bookingCatalogueIds: string[];
+  waitlistIds: string[];
 };
