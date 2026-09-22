@@ -318,6 +318,7 @@ export function AdminStudio() {
       <p className="mt-5 text-xs leading-5 text-subtle">
         Les actions d’administration ci-dessus sont limitées aux workflows
         réellement implémentés et audités côté serveur.
+      </p>
     </Page>
   );
 }
