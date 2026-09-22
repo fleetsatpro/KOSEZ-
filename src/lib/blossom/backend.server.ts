@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
+import { normalizeMutationTime } from "./sync-causality";
 
 export type JsonValue =
   | null
@@ -222,11 +223,14 @@ export async function upsertBlossomProfile(
     level?: string | null;
     timezone?: string | null;
     preferences?: JsonObject;
+    mutationCreatedAt?: string;
   },
 ): Promise<BlossomProfileRecord> {
   const sql = await getSql();
+  const causalTime = normalizeMutationTime(input.mutationCreatedAt);
+
   const rows = await sql.query(
-    "insert into blossom_profile (user_id, display_name, target_language, level, timezone, preferences) values ($1, $2, $3, $4, $5, $6::jsonb) on conflict (user_id) do update set display_name = excluded.display_name, target_language = excluded.target_language, level = excluded.level, timezone = excluded.timezone, preferences = excluded.preferences, updated_at = current_timestamp returning user_id, display_name, target_language, level, timezone, preferences, created_at, updated_at",
+    "insert into blossom_profile (user_id, display_name, target_language, level, timezone, preferences, updated_at) values ($1, $2, $3, $4, $5, $6::jsonb, coalesce($7::timestamptz, current_timestamp)) on conflict (user_id) do update set display_name = excluded.display_name, target_language = excluded.target_language, level = excluded.level, timezone = excluded.timezone, preferences = excluded.preferences, updated_at = excluded.updated_at where blossom_profile.updated_at <= excluded.updated_at returning user_id, display_name, target_language, level, timezone, preferences, created_at, updated_at",
     [
       userId,
       input.displayName ?? null,
@@ -234,10 +238,18 @@ export async function upsertBlossomProfile(
       input.level ?? null,
       input.timezone ?? null,
       JSON.stringify(input.preferences ?? {}),
+      causalTime,
     ],
   );
-  if (!rows[0]) throw new Error("profile-write-failed");
-  return mapProfile(rows[0]);
+
+  if (rows[0]) return mapProfile(rows[0]);
+
+  const current = await sql.query(
+    "select user_id, display_name, target_language, level, timezone, preferences, created_at, updated_at from blossom_profile where user_id = $1",
+    [userId],
+  );
+  if (current[0]) return mapProfile(current[0]);
+  throw new Error("profile-write-failed");
 }
 
 export async function appendBlossomActivity(
