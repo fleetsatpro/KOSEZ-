@@ -122,7 +122,9 @@ function TandemSession() {
   const progress = ((HALF_SECONDS - left) / HALF_SECONDS) * 100;
 
   function finish() {
-    complete("TANDEM_COMPLETED", `tandem-${partner.id}`);
+    const activePartner = partner;
+    if (!activePartner) return;
+    complete("TANDEM_COMPLETED", `tandem-${activePartner.id}`);
     toast("Session terminée. Votre participation est enregistrée.");
     navigate({ to: "/tandem" });
   }
