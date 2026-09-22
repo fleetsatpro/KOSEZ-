@@ -56,10 +56,13 @@ function latestReview(submissions: LearningSubmission[], sourceKey: string): Lea
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
 }
 
-function intervalForSubmission(submission: LearningSubmission): number {
+function intervalForSubmission(
+  submission: LearningSubmission,
+  submissions: LearningSubmission[],
+): number {
   if (!isCorrectSubmission(submission)) return 1;
-  const streak = reviewStreak([submission], submission.taskId);
-  return REVIEW_INTERVALS[Math.min(streak, REVIEW_INTERVALS.length - 1)]!;
+  const streak = reviewStreak(submissions, submission.taskId);
+  return REVIEW_INTERVALS[Math.min(Math.max(streak - 1, 0), REVIEW_INTERVALS.length - 1)]!;
 }
 
 export function buildReviewPlan(
@@ -77,7 +80,7 @@ export function buildReviewPlan(
     const sourceKey = `pron:${item.id}`;
     const latest = latestReview(submissions, sourceKey);
     const baseDue = latest
-      ? addDays(latest.createdAt, latest.isCorrect === undefined ? intervalForSubmission(latest) : intervalForSubmission(latest))
+      ? addDays(latest.createdAt, intervalForSubmission(latest, submissions))
       : addDays(
           attempts.filter((attempt) => attempt.itemId === item.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]?.createdAt ?? now,
           summary.struggling ? 1 : summary.mastered ? 7 : 3,
@@ -106,7 +109,7 @@ export function buildReviewPlan(
     const latest = latestReview(submissions, sourceKey);
     const anchor = latest?.createdAt ?? word.updatedAt ?? word.firstSavedAt ?? now;
     const dueAt = latest
-      ? addDays(latest.createdAt, isCorrectSubmission(latest) ? REVIEW_INTERVALS[Math.min(reviewStreak(submissions, sourceKey), REVIEW_INTERVALS.length - 1)]! : 1)
+      ? addDays(latest.createdAt, intervalForSubmission(latest, submissions))
       : addDays(anchor, 1);
     items.push({
       id: `review-word-${word.word}`,
