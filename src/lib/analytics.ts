@@ -1,3 +1,5 @@
+import { createMutation, enqueueMutation } from "@/lib/blossom/sync-client";
+
 type AnalyticsEvent = {
   name: string;
   at: string;
@@ -10,7 +12,24 @@ export function track(
   name: string,
   props?: Record<string, string | number | boolean>,
 ) {
-  buffer.push({ name, at: new Date().toISOString(), props });
+  const at = new Date().toISOString();
+  const event = { name, at, props };
+  buffer.push(event);
+
+  try {
+    const mutation = createMutation({
+      operation: "analytics.record",
+      entityId: name,
+      payload: {
+        name,
+        occurredAt: at,
+        props: props ?? {},
+      },
+    });
+    void enqueueMutation(mutation);
+  } catch {
+    // Telemetry must never block or break the learning experience.
+  }
 }
 
 export function getAnalyticsBuffer() {
