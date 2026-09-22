@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   ArrowRight,
@@ -48,9 +48,6 @@ import {
 } from "./mission-theatre-flow";
 import { CHALLENGES, DEFAULT_REFLECTION, MODES } from "./mission-theatre-shared";
 
-export const Route = createFileRoute("/_app/mission")({
-  component: MissionTheatreExperience,
-});
 
 type GrowthSnapshot = {
   before: ReturnType<typeof journeySnapshot>;
@@ -224,61 +221,6 @@ function SceneReel({
         </div>
       </div>
     </section>
-  );
-}
-
-function MissionSettings({
-  challenge,
-  recommended,
-  onChange,
-}: {
-  challenge: MissionChallenge;
-  recommended: MissionChallenge;
-  onChange: (next: MissionChallenge) => void;
-}) {
-  return (
-    <details className="rounded-2xl border border-border bg-surface shadow-[var(--shadow-border)]">
-      <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 px-4 [&::-webkit-details-marker]:hidden">
-        <Sparkles className="size-4 text-primary" />
-        <span className="flex-1">
-          <span className="block text-sm font-semibold">Régler la pression</span>
-          <span className="mt-0.5 block text-xs text-muted">
-            {CHALLENGES[challenge].title} · {CHALLENGES[challenge].kicker}
-          </span>
-        </span>
-        <ChevronDown className="size-4 text-subtle transition-transform group-open:rotate-180" />
-      </summary>
-      <div className="border-t border-border p-4">
-        <div className="grid gap-2 sm:grid-cols-2">
-          {(["core", "stretch"] as const).map((item) => {
-            const selected = challenge === item;
-            return (
-              <button
-                type="button"
-                key={item}
-                aria-pressed={selected}
-                onClick={() => onChange(item)}
-                className={[
-                  "min-h-20 rounded-xl border p-4 text-left transition-[background-color,border-color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
-                  selected
-                    ? "border-primary bg-primary/[0.06]"
-                    : "border-border bg-surface-2/25 hover:-translate-y-0.5 hover:bg-surface-2/45",
-                ].join(" ")}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-subtle">{CHALLENGES[item].kicker}</p>
-                    <p className="mt-1 font-display text-xl">{CHALLENGES[item].title}</p>
-                  </div>
-                  {recommended === item ? <Badge variant="outline">suite logique</Badge> : null}
-                </div>
-                <p className="mt-2 text-xs leading-5 text-muted">{CHALLENGES[item].body}</p>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </details>
   );
 }
 
@@ -656,12 +598,6 @@ export function MissionTheatreExperience() {
                 );
               }}
               onContinue={() => setStep("execute")}
-            />
-
-            <MissionSettings
-              challenge={challenge}
-              recommended={recommendedChallenge}
-              onChange={setChallenge}
             />
           </div>
         ) : null}
