@@ -293,3 +293,10 @@ test("reflection preserves lifeline support as explicit evidence", () => {
 
   assert.equal(activeMissionRun(session)?.reflection?.supportUsed, true);
 });
+
+
+test("daily mission changes with the learner's level", () => {
+  assert.equal(missionForLevel("A2").id, "mission-today");
+  assert.equal(missionForLevel("B1").id, "mission-today-b1");
+  assert.equal(missionForLevel("B1").level, "B1");
+});

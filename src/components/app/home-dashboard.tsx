@@ -3,7 +3,7 @@ import { ArrowRight, Check, Leaf } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   LEARNER_MEMORY,
-  TODAY_MISSION,
+  missionForLevel,
   planAllows,
   PLANT_IMAGE,
 } from "@/lib/blossom/data";
@@ -34,10 +34,11 @@ export function HomeDashboard() {
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const journey = useJourney();
 
-  const missionDone = hasSource(log, TODAY_MISSION.id);
+  const todayMission = missionForLevel(learner.level);
+  const missionDone = hasSource(log, todayMission.id);
   const memoryOn = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
-  const mission = personaliseMission(TODAY_MISSION, memory, memoryOn);
+  const mission = personaliseMission(todayMission, memory, memoryOn);
   const upcoming = nextStage(journey.stage.id);
   const leoLine = organismStatusLine(minerals);
   const ribbon = courageRibbon(courageDaysFromLog(log));
@@ -138,7 +139,7 @@ export function HomeDashboard() {
               <Leaf className="size-3 text-primary" />
               <span>Geste du jour</span>
               <span className="rounded-full bg-white/10 px-2 py-0.5 text-white/70">
-                {TODAY_MISSION.durationMin} min
+                {todayMission.durationMin} min
               </span>
             </div>
             <h2 className="mt-3 font-display text-2xl tracking-tight text-white sm:text-3xl">

@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   LEARNER_MEMORY,
-  TODAY_MISSION,
+  missionForLevel,
   planAllows,
 } from "@/lib/blossom/data";
 import {
@@ -115,7 +115,7 @@ function SceneReel({
   onChallenge: (next: MissionChallenge) => void;
   onStart: () => void;
 }) {
-  const scene = TODAY_MISSION;
+  const scene = mission;
   return (
     <section className="relative min-h-[calc(100svh-73px)] overflow-hidden">
       <img
@@ -443,6 +443,7 @@ export function MissionTheatreExperience() {
   const log = useBlossom((state) => state.activityLog);
   const attempts = useBlossom((state) => state.pronlabAttempts);
   const plan = useBlossom((state) => state.plan);
+  const learner = useBlossom((state) => state.learner);
   const sessions = useBlossom((state) => state.missionSessions);
   const startMissionRun = useBlossom((state) => state.startMissionRun);
   const recordMissionAttempt = useBlossom((state) => state.recordMissionAttempt);
@@ -451,7 +452,8 @@ export function MissionTheatreExperience() {
   const completeMissionSession = useBlossom((state) => state.completeMissionSession);
   const reopenMissionSession = useBlossom((state) => state.reopenMissionSession);
 
-  const session = sessions[TODAY_MISSION.id];
+  const todayMission = missionForLevel(learner.level);
+  const session = sessions[todayMission.id];
   const run = activeMissionRun(session);
   const completedRuns = session?.runs.filter((item) => item.completedAt) ?? [];
   const previousRun = completedRuns.at(-1) ?? null;
@@ -460,7 +462,7 @@ export function MissionTheatreExperience() {
     : null;
   const history = summariseMissionHistory(session?.runs ?? []);
   const recommendedChallenge = nextMissionChallenge(previousEvaluation?.outcome);
-  const already = hasSource(log, TODAY_MISSION.id);
+  const already = hasSource(log, todayMission.id);
   const journey = journeySnapshot(log);
   const reducedMotion = useReducedMotion();
 
@@ -494,15 +496,15 @@ export function MissionTheatreExperience() {
   const memoryEnabled = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
   const objective = missionObjective(
-    TODAY_MISSION,
+    todayMission,
     memory,
     memoryEnabled,
     previousEvaluation?.outcome,
   );
-  const personalised = personaliseMission(TODAY_MISSION, memory, memoryEnabled);
+  const personalised = personaliseMission(todayMission, memory, memoryEnabled);
 
   function startSession() {
-    const id = startMissionRun(TODAY_MISSION.id, mode, challenge);
+    const id = startMissionRun(todayMission.id, mode, challenge);
     if (!id) return;
     setStep("prepare");
     setSaved(false);
@@ -514,7 +516,7 @@ export function MissionTheatreExperience() {
 
   function finishAttempt(seconds: number) {
     const ok = recordMissionAttempt(
-      TODAY_MISSION.id,
+      todayMission.id,
       "mission",
       "microphone",
       seconds,
@@ -526,7 +528,7 @@ export function MissionTheatreExperience() {
 
   function finishRealWorld() {
     const ok = recordMissionAttempt(
-      TODAY_MISSION.id,
+      todayMission.id,
       "mission",
       "manual",
       0,
@@ -537,7 +539,7 @@ export function MissionTheatreExperience() {
   }
 
   function saveReflection(nextReflection: MissionReflection = reflection) {
-    const ok = saveMissionReflection(TODAY_MISSION.id, nextReflection);
+    const ok = saveMissionReflection(todayMission.id, nextReflection);
     if (!ok) {
       toast("Faites d'abord le geste de la mission.");
       return;
@@ -546,14 +548,14 @@ export function MissionTheatreExperience() {
   }
 
   function useSupport() {
-    const persisted = recordMissionSupport(TODAY_MISSION.id);
+    const persisted = recordMissionSupport(todayMission.id);
     if (!persisted && reflection.supportUsed) return;
     setReflection((current) => ({ ...current, supportUsed: true }));
   }
 
   function finishSession() {
     const before = journeySnapshot(useBlossom.getState().activityLog);
-    const result = completeMissionSession(TODAY_MISSION.id);
+    const result = completeMissionSession(todayMission.id);
     if (result.reason === "already") {
       navigate({ to: "/" });
       return;
@@ -568,8 +570,8 @@ export function MissionTheatreExperience() {
     setGrowth({ before, after, evaluation });
     setStep("brief");
     setGrowthVisible();
-    track("gesture_commit", { missionId: TODAY_MISSION.id, outcome: evaluation.outcome });
-    track("growth_played", { missionId: TODAY_MISSION.id, stage: after.stage.id });
+    track("gesture_commit", { missionId: todayMission.id, outcome: evaluation.outcome });
+    track("growth_played", { missionId: todayMission.id, stage: after.stage.id });
   }
 
   function setGrowthVisible() {
@@ -587,7 +589,7 @@ export function MissionTheatreExperience() {
   function replayStretch() {
     setGrowthVisibility(false);
     setGrowth(null);
-    const id = startMissionRun(TODAY_MISSION.id, "real-world", "stretch");
+    const id = startMissionRun(todayMission.id, "real-world", "stretch");
     if (!id) return;
     setChallenge("stretch");
     setMode("real-world");
@@ -651,7 +653,7 @@ export function MissionTheatreExperience() {
               run={run}
               onWarmup={(seconds) => {
                 recordMissionAttempt(
-                  TODAY_MISSION.id,
+                  todayMission.id,
                   "warmup",
                   "microphone",
                   seconds,
@@ -669,7 +671,7 @@ export function MissionTheatreExperience() {
               challenge={run?.challenge ?? challenge}
               objective={objective}
               attemptCount={missionAttemptCount(run, "mission")}
-              durationMin={TODAY_MISSION.durationMin}
+              durationMin={todayMission.durationMin}
               supportUsed={Boolean(reflection.supportUsed || run?.supportUsed)}
               onSupportUsed={useSupport}
               onFinished={finishAttempt}
@@ -701,7 +703,7 @@ export function MissionTheatreExperience() {
               }}
               onSave={saveReflection}
               onRedo={() => {
-                const reopened = reopenMissionSession(TODAY_MISSION.id);
+                const reopened = reopenMissionSession(todayMission.id);
                 if (!reopened) {
                   toast("Cette session ne peut plus être reprise.");
                   return;
