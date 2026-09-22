@@ -219,7 +219,7 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
       subscriptions[0] &&
       ["centre", "digital", "premium"].includes(String(subscriptions[0].plan))
         ? (String(subscriptions[0].plan) as "centre" | "digital" | "premium")
-        : "centre",
+        : "digital",
     activity: activity.map(mapActivity),
     missionSessions: Object.fromEntries(
       missions.map((row) => [
