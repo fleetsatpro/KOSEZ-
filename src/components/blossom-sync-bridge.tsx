@@ -40,7 +40,7 @@ function mergeBackendState(remote: BackendState): void {
   const current = useBlossom.getState();
 
   let profilePatch: Partial<typeof current.learner> = {};
-  let profilePlan: typeof current.plan = remote.plan ?? current.plan;
+  const profilePlan: typeof current.plan = remote.plan ?? current.plan;
   let profileWarmup = current.warmup;
   let profileLanguageId = current.languageId;
   let profileExportConsent = current.exportConsent;
