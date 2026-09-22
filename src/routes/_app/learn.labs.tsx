@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, speakSyntheticEnglish } from "@/lib/blossom/lab-content";
 import { DIAGNOSTIC_QUESTIONS, diagnosticLevel, diagnosticScore, diagnosticSummary } from "@/lib/blossom/learning-labs";
 import { useBlossom } from "@/lib/blossom/store";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/learn/labs")({ component: LearningLabs });
 
