@@ -161,36 +161,56 @@ test("personaliseMission preserves the real mission and adds evidence when enabl
   assert.equal(on.leo, "Note.");
 });
 
-test("resolveMemory shifts after TH mastery", () => {
+test("resolveMemory ignores untrusted captures and derives from trusted evidence", () => {
   const base = {
-    hesitation: "Les TH",
-    avoided: "I'll have",
-    confidence: "Commander",
-    leoNote: "Les TH bloquent encore.",
+    hesitation: "Aucun point de friction confirmé",
+    avoided: "Aucune structure évitée confirmée",
+    confidence: "Aucune compétence encore assez documentée",
+    leoNote: "Memoire neutre.",
   };
-  const cold = resolveMemory([], base);
-  assert.equal(cold.hesitation, "Les TH");
-  const hot = resolveMemory(
-    [
-      { id: "1", itemId: "th-1", score: 91, tip: "", createdAt: "", seconds: 2 },
-      { id: "2", itemId: "th-2", score: 92, tip: "", createdAt: "", seconds: 2 },
-      { id: "3", itemId: "th-3", score: 90, tip: "", createdAt: "", seconds: 2 },
-    ],
+  assert.deepEqual(resolveMemory([], base), base);
+  assert.deepEqual(
+    resolveMemory([
+      {
+        id: "capture",
+        itemId: "th-1",
+        score: 99,
+        tip: "",
+        createdAt: "",
+        seconds: 2,
+        metadata: { assessment: "capture-only" },
+      },
+    ], base),
     base,
   );
-  assert.ok(hot.leoNote.includes("TH tiennent"));
+  const observed = resolveMemory([
+    {
+      id: "real-1",
+      itemId: "th-1",
+      score: 58,
+      tip: "",
+      createdAt: "",
+      seconds: 2,
+      metadata: { assessment: "phonetic-provider" },
+    },
+    {
+      id: "real-2",
+      itemId: "th-2",
+      score: 88,
+      tip: "",
+      createdAt: "",
+      seconds: 2,
+      metadata: { assessment: "phonetic-provider" },
+    },
+  ], base);
+  assert.ok(observed.hesitation.includes("th-1"));
+  assert.ok(observed.confidence.includes("th-2"));
+  assert.ok(observed.leoNote.includes("consolider"));
 });
-
-test("cafeMemoryHint only rewrites the order turn", () => {
-  assert.equal(
-    cafeMemoryHint("Commandez une boisson.", "you", true),
-    "Commandez avec « I'll have », pas « I want ».",
-  );
+test("cafeMemoryHint preserves the authored turn guidance", () => {
+  assert.equal(cafeMemoryHint("Commandez une boisson.", "you", true), "Commandez une boisson.");
   assert.equal(cafeMemoryHint("Hi!", "ai", true), "Hi!");
-  assert.equal(
-    cafeMemoryHint("Commandez une boisson.", "you", false),
-    "Commandez une boisson.",
-  );
+  assert.equal(cafeMemoryHint("Choisissez une boisson.", "you", false), "Choisissez une boisson.");
 });
 
 test("planAllows: digital is core-only; premium and centre open tandem and memory", () => {
