@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { track } from "@/lib/analytics";
+import { createMutation, enqueueMutation } from "./sync-client";
+import type { SyncJsonValue } from "./sync-types";
 import {
   hasSource,
   journeySnapshot,
@@ -9,6 +11,7 @@ import {
   type ActivityType,
   type PronlabAttempt,
 } from "./engine";
+import { mergeMissionSessions } from "./sync-merge";
 import {
   activeMissionRun,
   appendMissionAttempt,
@@ -87,6 +90,7 @@ type AppState = {
   invoiceRequested: boolean;
   languageId: string;
   missionSessions: Record<string, MissionSession>;
+  backendMissionRevisions: Record<string, number>;
   enter: () => void;
   setParentMode: (value: boolean) => void;
   setTeacherMode: (value: boolean) => void;
@@ -144,6 +148,30 @@ type AppState = {
   resetJourney: () => void;
 };
 
+function queueSyncMutation(input: Parameters<typeof createMutation>[0]): void {
+  void enqueueMutation(createMutation(input));
+}
+
+function queueMissionSync(
+  missionId: string,
+  session: MissionSession,
+  currentRevisions: Record<string, number>,
+): Record<string, number> {
+  const expectedRevision = currentRevisions[missionId] ?? 0;
+  queueSyncMutation({
+    operation: "mission.save",
+    entityId: missionId,
+    expectedRevision,
+    payload: {
+      session: session as unknown as SyncJsonValue,
+    },
+  });
+  return {
+    ...currentRevisions,
+    [missionId]: expectedRevision + 1,
+  };
+}
+
 export const useBlossom = create<AppState>()(
   persist(
     (set, get) => ({
@@ -177,6 +205,7 @@ export const useBlossom = create<AppState>()(
       invoiceRequested: false,
       languageId: "en",
       missionSessions: {},
+      backendMissionRevisions: {},
       enter: () => {
         if (!get().hasEntered) track("onboarding_completed");
         set({ hasEntered: true });
@@ -194,18 +223,26 @@ export const useBlossom = create<AppState>()(
         track("plan_selected", { plan });
       },
       claimProof: () => set({ proofClaimed: true }),
-      updateLearner: (patch) =>
-        set({ learner: { ...get().learner, ...patch } }),
+      updateLearner: (patch) => {
+        const learner = { ...get().learner, ...patch };
+        set({ learner });
+      },
       startMissionRun: (missionId, mode, challenge = "core") => {
         const current =
           get().missionSessions[missionId] ?? createMissionSession(missionId);
         const next = beginMissionRun(current, mode, challenge);
         const active = activeMissionRun(next);
+        const revisions = queueMissionSync(
+          missionId,
+          next,
+          get().backendMissionRevisions,
+        );
         set({
           missionSessions: {
             ...get().missionSessions,
             [missionId]: next,
           },
+          backendMissionRevisions: revisions,
         });
         if (active) {
           track("mission_mode_selected", { mode, challenge, resumed: current.activeRunId === active.id });
@@ -221,11 +258,17 @@ export const useBlossom = create<AppState>()(
           seconds,
         });
         if (next === current) return false;
+        const revisions = queueMissionSync(
+          missionId,
+          next,
+          get().backendMissionRevisions,
+        );
         set({
           missionSessions: {
             ...get().missionSessions,
             [missionId]: next,
           },
+          backendMissionRevisions: revisions,
         });
         track("mission_attempt_completed", {
           missionId,
@@ -240,11 +283,17 @@ export const useBlossom = create<AppState>()(
         if (!current || !activeMissionRun(current)) return false;
         const next = persistMissionSupport(current);
         if (next === current) return false;
+        const revisions = queueMissionSync(
+          missionId,
+          next,
+          get().backendMissionRevisions,
+        );
         set({
           missionSessions: {
             ...get().missionSessions,
             [missionId]: next,
           },
+          backendMissionRevisions: revisions,
         });
         track("mission_lifeline_used", { missionId });
         return true;
@@ -254,11 +303,17 @@ export const useBlossom = create<AppState>()(
         if (!current || !activeMissionRun(current)) return false;
         const next = reopenMissionRun(current);
         if (next === current) return false;
+        const revisions = queueMissionSync(
+          missionId,
+          next,
+          get().backendMissionRevisions,
+        );
         set({
           missionSessions: {
             ...get().missionSessions,
             [missionId]: next,
           },
+          backendMissionRevisions: revisions,
         });
         track("mission_session_reopened", { missionId });
         return true;
@@ -268,11 +323,17 @@ export const useBlossom = create<AppState>()(
         if (!current || !activeMissionRun(current)) return false;
         const next = saveMissionReflection(current, reflection);
         if (next === current) return false;
+        const revisions = queueMissionSync(
+          missionId,
+          next,
+          get().backendMissionRevisions,
+        );
         set({
           missionSessions: {
             ...get().missionSessions,
             [missionId]: next,
           },
+          backendMissionRevisions: revisions,
         });
         const evaluation = evaluateMission(reflection);
         track("mission_reflection_saved", {
@@ -296,11 +357,17 @@ export const useBlossom = create<AppState>()(
           return { ok: false, reason: "session-not-finishable", evaluation };
         }
 
+        const revisions = queueMissionSync(
+          missionId,
+          finished,
+          get().backendMissionRevisions,
+        );
         set({
           missionSessions: {
             ...get().missionSessions,
             [missionId]: finished,
           },
+          backendMissionRevisions: revisions,
         });
 
         const result = get().completeActivity(
@@ -324,15 +391,26 @@ export const useBlossom = create<AppState>()(
           return { ok: false, reason: "already" };
         }
         const before = journeySnapshot(log).stage.id;
+        const mutation = createMutation({
+          operation: "activity.append",
+          entityId: sourceId,
+          payload: {
+            eventType: type,
+            sourceId,
+            note: note ?? null,
+            occurredAt: new Date().toISOString(),
+          },
+        });
         const event = {
-          id: `evt-${Date.now()}`,
+          id: mutation.mutationId,
           type,
-          createdAt: new Date().toISOString(),
+          createdAt: String(mutation.payload.occurredAt),
           sourceId,
           note,
         };
         const nextLog = [...log, event];
         set({ activityLog: nextLog });
+        void enqueueMutation(mutation);
         const after = journeySnapshot(nextLog).stage.id;
         if (type === "MISSION_COMPLETED") track("mission_completed");
         if (type === "SPEAK_COMPLETED") track("speak_completed");
@@ -346,12 +424,23 @@ export const useBlossom = create<AppState>()(
       joinEvent: (id) => {
         if (get().joinedEventIds.includes(id)) return;
         set({ joinedEventIds: [...get().joinedEventIds, id] });
+        queueSyncMutation({
+          operation: "event.register",
+          entityId: id,
+          payload: { status: "joined" },
+        });
         track("event_joined");
       },
-      leaveEvent: (id) =>
+      leaveEvent: (id) => {
         set({
           joinedEventIds: get().joinedEventIds.filter((item) => item !== id),
-        }),
+        });
+        queueSyncMutation({
+          operation: "event.register",
+          entityId: id,
+          payload: { status: "cancelled" },
+        });
+      },
       enroll: (id) => {
         if (get().enrolledIds.includes(id)) return;
         set({ enrolledIds: [...get().enrolledIds, id] });
@@ -363,15 +452,27 @@ export const useBlossom = create<AppState>()(
         const prior = get().pronlabAttempts.filter((a) => a.itemId === itemId);
         const before = summarisePronlabItem(itemId, get().pronlabAttempts);
         const score = scoreAttempt(itemId, prior.length, seconds);
+        const mutation = createMutation({
+          operation: "pronlab.attempt",
+          entityId: itemId,
+          payload: {
+            itemId,
+            score,
+            seconds: Math.max(0, Math.round(seconds)),
+            tip: item.tip,
+            metadata: {},
+          },
+        });
         const attempt: PronlabAttempt = {
-          id: `pa-${Date.now()}`,
+          id: mutation.mutationId,
           itemId,
           score,
           tip: item.tip,
           createdAt: new Date().toISOString(),
-          seconds,
+          seconds: Math.max(0, Math.round(seconds)),
         };
         const nextAttempts = [...get().pronlabAttempts, attempt];
+        void enqueueMutation(mutation);
         set({ pronlabAttempts: nextAttempts });
         track("pronlab_attempted");
         const after = summarisePronlabItem(itemId, nextAttempts);
@@ -395,10 +496,16 @@ export const useBlossom = create<AppState>()(
         if (get().assignedSetIds.includes(setId)) return;
         set({ assignedSetIds: [...get().assignedSetIds, setId] });
       },
-      setTandemStatus: (partnerId, status) =>
+      setTandemStatus: (partnerId, status) => {
         set({
           tandemStatus: { ...get().tandemStatus, [partnerId]: status },
-        }),
+        });
+        queueSyncMutation({
+          operation: "tandem.status",
+          entityId: partnerId,
+          payload: { status, metadata: {} },
+        });
+      },
       setTandemOpen: (value) => set({ tandemOpen: value }),
       reportTandem: (partnerId) => {
         const count = (get().tandemReports[partnerId] ?? 0) + 1;
@@ -469,11 +576,21 @@ export const useBlossom = create<AppState>()(
         set({
           vocabulary: [...get().vocabulary, { word: key, gloss }],
         });
+        queueSyncMutation({
+          operation: "vocabulary.upsert",
+          entityId: key,
+          payload: { word: key, gloss, metadata: {} },
+        });
       },
       setImmersionPhase: (phase) => set({ immersionPhase: phase }),
       completeChallenge: (id) => {
         if (get().immersionDone.includes(id)) return;
         set({ immersionDone: [...get().immersionDone, id] });
+        queueSyncMutation({
+          operation: "challenge.complete",
+          entityId: id,
+          payload: {},
+        });
       },
       completeChildMission: () => set({ childMissionDone: true }),
       markChildWord: (id) => {
@@ -523,6 +640,7 @@ export const useBlossom = create<AppState>()(
           invoiceRequested: false,
           languageId: "en",
           missionSessions: {},
+          backendMissionRevisions: {},
         }),
     }),
     {
