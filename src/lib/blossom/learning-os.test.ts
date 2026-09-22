@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { INITIAL_PRONLAB_ATTEMPTS, LEARNER } from "./data.fixtures.ts";
-import { LEARNER as RUNTIME_DEFAULTS } from "./data.ts";
 import { buildReviewQueue, buildSkillProfile, curriculumUnitProgress, CURRICULUM_UNITS } from "./learning-os.ts";
 
 test("review queue prioritises persistent pronunciation friction", () => {
