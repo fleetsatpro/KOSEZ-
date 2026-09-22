@@ -65,7 +65,7 @@ export type Homework = {
 export type LearningSubmission = {
   id: string;
   taskId: string;
-  kind: "grammar" | "listening" | "writing";
+  kind: "grammar" | "listening" | "writing" | "review";
   content: string;
   checks: string[];
   result: Record<string, unknown>;

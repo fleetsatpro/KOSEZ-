@@ -5,6 +5,7 @@ import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buildReviewQueue, type ReviewItem } from "@/lib/blossom/learning-os";
+import { buildReviewPlan, type ScheduledReviewItem } from "@/lib/blossom/review-scheduler";
 import { useBlossom } from "@/lib/blossom/store";
 
 export const Route = createFileRoute("/_app/learn/review")({
@@ -22,21 +23,49 @@ function kindIcon(kind: ReviewItem["kind"]) {
 function Review() {
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const vocabulary = useBlossom((s) => s.vocabulary);
+  const submissions = useBlossom((s) => s.learningSubmissions);
+  const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const completeActivity = useBlossom((s) => s.completeActivity);
-  const initial = useMemo(() => buildReviewQueue(attempts, vocabulary), [attempts, vocabulary]);
-  const [queue, setQueue] = useState(initial);
+  const plan = useMemo(
+    () => buildReviewPlan(submissions, attempts, vocabulary),
+    [submissions, attempts, vocabulary],
+  );
+  const fallback = useMemo(() => buildReviewQueue(attempts, vocabulary), [attempts, vocabulary]);
+  const initial = useMemo(
+    () => (plan.due.length ? plan.due : fallback.map((item) => ({
+      ...item,
+      dueAt: new Date().toISOString(),
+      intervalDays: 1,
+      sourceKey: item.id,
+      state: "due" as const,
+    }))),
+    [plan.due, fallback],
+  );
+  const [queue, setQueue] = useState<ScheduledReviewItem[]>(() => initial);
+  const [sessionTotal] = useState(() => Math.max(initial.length, 1));
   const [revealed, setRevealed] = useState(false);
   const [done, setDone] = useState(false);
   const [reviewed, setReviewed] = useState(0);
   const [misses, setMisses] = useState<Record<string, number>>({});
 
   const current = queue[0];
-  const total = Math.max(initial.length, 1);
+  const total = sessionTotal;
   const finished = reviewed >= total && !current;
 
   function answer(correct: boolean) {
     if (!current) return;
     const nextMiss = (misses[current.id] ?? 0) + (correct ? 0 : 1);
+    saveLearningSubmission({
+      taskId: current.sourceKey,
+      kind: "review",
+      content: correct ? "correct" : "again",
+      checks: [correct ? "correct" : "again"],
+      result: {
+        correct,
+        sourceKind: current.kind,
+        reviewedAt: new Date().toISOString(),
+      },
+    });
     setMisses((value) => ({ ...value, [current.id]: nextMiss }));
     setQueue((items) => {
       const [, ...rest] = items;
@@ -48,7 +77,7 @@ function Review() {
 
   function finish() {
     const day = new Date().toISOString().slice(0, 10);
-    completeActivity("REVIEW_COMPLETED", `review-${day}`, `Révision · ${reviewed} passages`);
+    completeActivity("REVIEW_COMPLETED", `review-${day}`, `Révision · ${reviewed} passages · ${plan.due.length} dues au départ`);
     setDone(true);
   }
 
@@ -111,7 +140,30 @@ function Review() {
           <div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${progress}%` }} />
         </div>
         <p className="mt-2 text-xs tabular-nums text-subtle">{reviewed} / {total} passages</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Badge variant="outline">{plan.due.length} dues maintenant</Badge>
+          {plan.upcoming.length > 0 ? <Badge variant="outline">{plan.upcoming.length} à venir</Badge> : null}
+        </div>
       </header>
+
+      {plan.upcoming.length > 0 ? (
+        <Surface className="mt-4">
+          <Eyebrow>Prochains rappels</Eyebrow>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {plan.upcoming.slice(0, 6).map((item) => (
+              <div key={item.id} className="rounded-xl border border-border bg-surface-2/40 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-medium">{item.title}</span>
+                  <span className="text-[10px] uppercase tracking-[0.14em] text-subtle">{item.intervalDays} j</span>
+                </div>
+                <p className="mt-1 text-xs text-muted">
+                  {new Date(item.dueAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Surface>
+      ) : null}
 
       <Surface className="mt-8">
         <div className="flex items-start gap-4">

@@ -138,7 +138,7 @@ const tandemPayloadSchema = z.object({
 
 const submissionPayloadSchema = z.object({
   taskId: z.string().trim().min(1).max(160),
-  kind: z.enum(["grammar", "listening", "writing"]),
+  kind: z.enum(["grammar", "listening", "writing", "review"]),
   content: z.string().max(20000),
   checks: z.array(z.string().trim().max(160)).max(24).optional(),
   result: z.record(z.string(), z.unknown()).optional(),

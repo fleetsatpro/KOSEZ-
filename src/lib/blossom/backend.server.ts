@@ -50,7 +50,7 @@ export type BlossomPronlabAttemptRecord = {
 export type BlossomSubmissionRecord = {
   id: string;
   taskId: string;
-  kind: "grammar" | "listening" | "writing";
+  kind: "grammar" | "listening" | "writing" | "review";
   content: string;
   checks: string[];
   result: JsonObject;
@@ -187,7 +187,7 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
     learningSubmissions: submissions.map((row) => ({
       id: String(row.id),
       taskId: String(row.task_id),
-      kind: String(row.kind) as "grammar" | "listening" | "writing",
+      kind: String(row.kind) as "grammar" | "listening" | "writing" | "review",
       content: String(row.content),
       checks: Array.isArray(row.checks) ? row.checks.map(String) : [],
       result: jsonObject(row.result),
