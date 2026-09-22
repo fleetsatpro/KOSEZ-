@@ -64,7 +64,7 @@ export async function updateAdminSafetyReport(
   if (!admin[0]) throw new BlossomForbiddenError("Admin access is not enabled for this account.");
 
   const rows = await sql.query(
-    "update blossom_tandem_report set status = $2, updated_at = current_timestamp where id = $1::uuid and status in ('open','reviewing') returning id, partner_user_id, status",
+    "update blossom_tandem_report set status = $2, updated_at = current_timestamp where id = $1::uuid and ((status = 'open' and $2 = 'reviewing') or (status = 'reviewing' and $2 in ('resolved','dismissed'))) returning id, partner_user_id, status",
     [reportId, status],
   );
   if (!rows[0]) throw new Error("safety-report-revision-conflict");
