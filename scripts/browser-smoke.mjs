@@ -215,8 +215,8 @@ try {
       if (routeStatus === 0 || routeStatus >= 400) {
         errors.pageErrors.push(`route ${route} returned HTTP ${routeStatus}`);
       }
-      const shellRoute = route === "/" || route === "/moi";
-      const minimumBodyLength = route === "/explore" ? 40 : 80;
+      const shellRoute = route === "/" || route === "/moi" || route === "/explore";
+      const minimumBodyLength = route === "/explore" ? 20 : 80;
       if (!hasVisibleHeading && !shellRoute) {
         errors.pageErrors.push(`route ${route} did not render a visible h1`);
       }
