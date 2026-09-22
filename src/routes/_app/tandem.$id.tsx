@@ -260,11 +260,9 @@ function TandemSession() {
             variant="outline"
             className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
             onClick={() => {
-              const result = reportTandem(id);
+              reportTandem(id);
               toast(
-                result.escalated
-                  ? "Signalement répété. Un coordinateur reprend le dossier."
-                  : "Signalement reçu. Un coordinateur relit.",
+                "Signalement transmis au circuit de sécurité. Le profil est masqué pour vous.",
               );
               navigate({ to: "/tandem" });
             }}
