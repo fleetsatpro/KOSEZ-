@@ -6,7 +6,7 @@ import { Eyebrow, Page, Sparkline, DualWave, Surface } from "@/components/app/pr
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { findPronlabSet } from "@/lib/blossom/data";
-import { summarisePronlabItem } from "@/lib/blossom/engine";
+import { summarisePronlabItem, type PronlabAttempt } from "@/lib/blossom/engine";
 import { isSetUnlocked, useBlossom } from "@/lib/blossom/store";
 import { toast } from "sonner";
 
@@ -39,7 +39,7 @@ function PronlabSetPage() {
   const setConsent = useBlossom((s) => s.setExportConsent);
   const [index, setIndex] = useState(0);
   const [heard, setHeard] = useState(false);
-  const [lastScore, setLastScore] = useState<number | null>(null);
+  const [lastAttempt, setLastAttempt] = useState<PronlabAttempt | null>(null);
 
   if (!setDef) {
     return (
@@ -114,7 +114,7 @@ function PronlabSetPage() {
               onClick={() => {
                 setIndex(i);
                 setHeard(false);
-                setLastScore(null);
+                setLastAttempt(null);
               }}
               className={`rounded-full px-3 py-1 text-xs ${
                 i === index
@@ -153,37 +153,59 @@ function PronlabSetPage() {
       </Surface>
 
       <Surface className="mt-4 py-8">
-        {lastScore === null ? (
+        {lastAttempt === null ? (
           <RecordControl
             cta={heard ? "Maintenir pour dire" : "Écoutez, ou tentez"}
             onFinished={(seconds) => {
               const attempt = record(item.id, seconds ?? 2);
               if (attempt) {
-                setLastScore(attempt.score);
-                toast("Tentative enregistrée.");
+                setLastAttempt(attempt);
+                toast("Prise enregistrée. L’analyse viendra avec un vrai moteur phonétique.");
               }
             }}
           />
         ) : (
           <div className="text-center">
-            <p className="text-xs uppercase tracking-[0.16em] text-subtle">
-              Score — secondaire
-            </p>
-            <p className="mt-1 font-display text-4xl tabular-nums">{lastScore}</p>
-            <p className="mt-4 text-sm leading-relaxed">{item.strength}</p>
-            <p className="mt-3 text-sm text-muted">
-              Léo : {item.tip}
-            </p>
-            <p className="mt-3 font-display text-lg">{item.model}</p>
-            <div className="mt-5">
-              <DualWave
-                leftLabel="Modèle"
-                rightLabel="Vous"
-                match={lastScore / 100}
-              />
-            </div>
+            {lastAttempt.metadata?.assessment === "capture-only" ? (
+              <>
+                <p className="text-xs uppercase tracking-[0.16em] text-subtle">
+                  Prise enregistrée
+                </p>
+                <p className="mt-2 font-display text-3xl tracking-tight">
+                  {lastAttempt.seconds}s de parole
+                </p>
+                <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-muted">
+                  Votre voix a bien été capturée, mais K’Osez ne fabrique pas
+                  de note en l’absence d’un moteur phonétique connecté.
+                </p>
+                <div className="mt-5 rounded-2xl border border-border bg-surface-2/50 p-4 text-left">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-subtle">
+                    Léo · repère
+                  </p>
+                  <p className="mt-2 text-sm leading-6">{item.tip}</p>
+                </div>
+                <p className="mt-4 font-display text-lg">{item.model}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs uppercase tracking-[0.16em] text-subtle">
+                  Analyse phonétique
+                </p>
+                <p className="mt-1 font-display text-4xl tabular-nums">{lastAttempt.score}</p>
+                <p className="mt-4 text-sm leading-relaxed">{item.strength}</p>
+                <p className="mt-3 text-sm text-muted">Léo : {item.tip}</p>
+                <p className="mt-3 font-display text-lg">{item.model}</p>
+                <div className="mt-5">
+                  <DualWave
+                    leftLabel="Modèle"
+                    rightLabel="Vous"
+                    match={lastAttempt.score / 100}
+                  />
+                </div>
+              </>
+            )}
             <div className="mt-6 flex flex-col gap-2">
-              <Button variant="outline" onClick={() => setLastScore(null)}>
+              <Button variant="outline" onClick={() => setLastAttempt(null)}>
                 Réessayer
               </Button>
               {index < setDef.items.length - 1 && (
@@ -191,7 +213,7 @@ function PronlabSetPage() {
                   onClick={() => {
                     setIndex((n) => n + 1);
                     setHeard(false);
-                    setLastScore(null);
+                    setLastAttempt(null);
                   }}
                 >
                   Item suivant
@@ -222,9 +244,9 @@ function PronlabSetPage() {
                 <button
                   type="button"
                   className="tabular-nums text-primary"
-                  onClick={() => speak(item.phrase)}
+                  onClick={() => speak(item.model)}
                 >
-                  {a.score} · réécouter
+                  {a.metadata?.assessment === "capture-only" ? `Capture · ${a.seconds}s` : `${a.score} · score`}
                 </button>
               </li>
             ))}
@@ -259,10 +281,10 @@ function PronlabSetPage() {
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = url;
-              a.download = `kosez-pronlab-${item.id}.html`;
+              a.download = `kosez-pronlab-${item.id}-resume.html`;
               a.click();
               URL.revokeObjectURL(url);
-              toast("Clip téléchargé. Rien n'est publié sans vous.");
+              toast("Résumé Pron’Lab téléchargé.");
             }}
           >
             Télécharger le clip
