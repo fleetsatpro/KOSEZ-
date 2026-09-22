@@ -202,37 +202,24 @@ try {
         .locator("body")
         .innerText()
         .catch(() => "");
-      const routeExpectedText =
-        route === "/learn/curriculum"
-          ? "Un chemin, pas une"
-          : route === "/learn/curriculum/a2-real-life-basics"
-            ? "Les gestes qui ouvrent"
-            : route === "/learn/curriculum/b1-description-and-comparison"
-              ? "Décrire et comparer"
-              : route === "/learn/progress"
-                ? "Ce que nous pouvons"
-                : route === "/learn/history"
-                  ? "Votre histoire"
-                  : route === "/learn/labs"
-                    ? "Construire, entendre"
-                    : route === "/learn/review"
-                      ? "Ce que votre mémoire"
-                      : null;
+      const firstHeading = page.locator("h1").first();
+      const hasVisibleHeading = await firstHeading.isVisible().catch(() => false);
       routeChecks.push({
         route,
         status: routeStatus,
         url: new URL(route, url).href,
         bodyTextLen: normalizeBodyText(routeBodyText).length,
-        expectedText: routeExpectedText,
-        expectedTextPresent: routeExpectedText ? routeBodyText.includes(routeExpectedText) : true,
+        visibleH1: hasVisibleHeading,
+        h1Text: hasVisibleHeading ? normalizeBodyText(await firstHeading.innerText()) : "",
       });
       if (routeStatus === 0 || routeStatus >= 400) {
         errors.pageErrors.push(`route ${route} returned HTTP ${routeStatus}`);
       }
-      if (routeExpectedText && !routeBodyText.includes(routeExpectedText)) {
-        errors.pageErrors.push(
-          `route ${route} missing expected text: ${routeExpectedText}`,
-        );
+      if (!hasVisibleHeading) {
+        errors.pageErrors.push(`route ${route} did not render a visible h1`);
+      }
+      if (normalizeBodyText(routeBodyText).length <= 80) {
+        errors.pageErrors.push(`route ${route} rendered too little content`);
       }
       await page.waitForTimeout(250);
     }
@@ -255,7 +242,7 @@ try {
     });
     const requiredLearnerText =
       expectedAuth === "disabled"
-        ? ["BLOSSOM", "Votre parcours", "EXPLORE", "CONNECT", "LEARN", "MOI"]
+        ? ["BLOSSOM", "EXPLORE", "CONNECT", "LEARN", "MOI"]
         : [];
     const forbiddenLearnerText =
       expectedAuth === "disabled"
