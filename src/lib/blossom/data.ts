@@ -1,5 +1,5 @@
 import type { StageId } from "./engine";
-type PronlabKind = "word" | "sentence";
+type PronlabKind = "word" | "sentence" | "phoneme" | "spontaneous";
 
 export const PLANT_IMAGE: Record<StageId, string> = {
   seed: "/images/vanilla.jpg",
