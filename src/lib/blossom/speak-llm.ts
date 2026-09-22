@@ -1,7 +1,7 @@
 /**
- * Online LLM bridge for Speak Rooms.
- * Supports OpenAI-compatible endpoints (Ollama, vLLM, OpenRouter, Groq).
- * Falls back to pure offline swarm when offline or unset.
+ * Speak Rooms — online composition bridge.
+ * Multi-model cascade (OpenAI-compatible). Learner never sees provider names.
+ * Final fallback: pure offline swarm — always returns a room.
  */
 
 import type { LivingRoom, GenerateInput } from "./speak-engine.ts";
@@ -13,6 +13,17 @@ export type TopicRequest = {
   firstName?: string;
   friction?: string | null;
   interests?: string[];
+};
+
+/** Provider slot — ordered cascade. First success wins. */
+export type SpeakModelSlot = {
+  id: string;
+  /** OpenAI-compatible base URL (…/v1 or full …/chat/completions) */
+  url: string;
+  model: string;
+  apiKey?: string;
+  /** Soft timeout ms */
+  timeoutMs?: number;
 };
 
 const TOPIC_ARCHETYPE_HINTS: Array<{ keys: string[]; archetype: string }> = [
@@ -53,8 +64,8 @@ export function generateFromTopicOffline(
   room.title = `${room.titleFr} · ${clean}`;
   room.protocol = [
     ...room.protocol.slice(0, 2),
-    `Sujet libre : « ${clean} » — l'echange tourne autour de cela.`,
-    room.protocol[room.protocol.length - 1] ?? "Le bilan arrive apres.",
+    `Sujet libre : « ${clean} » — l'échange tourne autour de cela.`,
+    room.protocol[room.protocol.length - 1] ?? "Le bilan arrive après.",
   ];
 
   room.turns = room.turns.map((turn, i) => {
@@ -78,24 +89,105 @@ export function generateFromTopicOffline(
   return room;
 }
 
-function getClientLlmConfig(): {
-  url: string;
-  model: string;
-  apiKey?: string;
-} | null {
-  if (typeof import.meta === "undefined") return null;
-  const env = (import.meta as { env?: Record<string, string> }).env ?? {};
-  const url = env.VITE_SPEAK_LLM_URL || env.VITE_OPENAI_BASE_URL || "";
-  if (!url) return null;
-  return {
-    url: url.replace(/\/$/, ""),
-    model: env.VITE_SPEAK_LLM_MODEL || env.VITE_OPENAI_MODEL || "llama-3.1-8b-instruct",
-    apiKey: env.VITE_SPEAK_LLM_KEY || env.VITE_OPENAI_API_KEY,
-  };
+function env(): Record<string, string> {
+  if (typeof import.meta === "undefined") return {};
+  return ((import.meta as { env?: Record<string, string> }).env ?? {}) as Record<
+    string,
+    string
+  >;
 }
 
+/**
+ * Build ordered model cascade from env.
+ *
+ * Primary:
+ *   VITE_SPEAK_LLM_URL + VITE_SPEAK_LLM_MODEL + VITE_SPEAK_LLM_KEY
+ * Fallbacks (optional, comma-separated parallel lists):
+ *   VITE_SPEAK_LLM_FALLBACK_URLS
+ *   VITE_SPEAK_LLM_FALLBACK_MODELS
+ *   VITE_SPEAK_LLM_FALLBACK_KEYS   (same length; empty slot = no key)
+ *
+ * Also accepts single-provider aliases:
+ *   VITE_OPENAI_BASE_URL / VITE_OPENAI_MODEL / VITE_OPENAI_API_KEY
+ *   VITE_GROQ_API_KEY → https://api.groq.com/openai/v1 + llama-3.3-70b-versatile
+ *   VITE_OPENROUTER_API_KEY → https://openrouter.ai/api/v1 + meta-llama/llama-3.1-8b-instruct
+ */
+export function resolveModelCascade(): SpeakModelSlot[] {
+  const e = env();
+  const slots: SpeakModelSlot[] = [];
+
+  const primaryUrl = (e.VITE_SPEAK_LLM_URL || e.VITE_OPENAI_BASE_URL || "").trim();
+  if (primaryUrl) {
+    slots.push({
+      id: "primary",
+      url: primaryUrl.replace(/\/$/, ""),
+      model:
+        e.VITE_SPEAK_LLM_MODEL ||
+        e.VITE_OPENAI_MODEL ||
+        "llama-3.1-8b-instruct",
+      apiKey: e.VITE_SPEAK_LLM_KEY || e.VITE_OPENAI_API_KEY || undefined,
+      timeoutMs: 22000,
+    });
+  }
+
+  const fbUrls = (e.VITE_SPEAK_LLM_FALLBACK_URLS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const fbModels = (e.VITE_SPEAK_LLM_FALLBACK_MODELS || "")
+    .split(",")
+    .map((s) => s.trim());
+  const fbKeys = (e.VITE_SPEAK_LLM_FALLBACK_KEYS || "")
+    .split(",")
+    .map((s) => s.trim());
+
+  fbUrls.forEach((url, i) => {
+    slots.push({
+      id: `fallback-${i + 1}`,
+      url: url.replace(/\/$/, ""),
+      model: fbModels[i] || slots[0]?.model || "llama-3.1-8b-instruct",
+      apiKey: fbKeys[i] || undefined,
+      timeoutMs: 18000,
+    });
+  });
+
+  // Convenience presets (only if not already listed)
+  if (e.VITE_GROQ_API_KEY && !slots.some((s) => s.url.includes("groq.com"))) {
+    slots.push({
+      id: "groq",
+      url: "https://api.groq.com/openai/v1",
+      model: e.VITE_GROQ_MODEL || "llama-3.3-70b-versatile",
+      apiKey: e.VITE_GROQ_API_KEY,
+      timeoutMs: 20000,
+    });
+  }
+  if (
+    e.VITE_OPENROUTER_API_KEY &&
+    !slots.some((s) => s.url.includes("openrouter.ai"))
+  ) {
+    slots.push({
+      id: "openrouter",
+      url: "https://openrouter.ai/api/v1",
+      model:
+        e.VITE_OPENROUTER_MODEL || "meta-llama/llama-3.1-8b-instruct",
+      apiKey: e.VITE_OPENROUTER_API_KEY,
+      timeoutMs: 25000,
+    });
+  }
+
+  // Dedupe by url+model
+  const seen = new Set<string>();
+  return slots.filter((s) => {
+    const k = `${s.url}|${s.model}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+/** True if at least one online slot is configured (not shown to learners). */
 export function isLlmAvailable(): boolean {
-  return Boolean(getClientLlmConfig()?.url);
+  return resolveModelCascade().length > 0;
 }
 
 type LlmRoomPayload = {
@@ -122,7 +214,7 @@ function mergeLlmIntoRoom(base: LivingRoom, payload: LlmRoomPayload): LivingRoom
             "I mean…",
           ],
           beatId: base.turns[i]?.beatId ?? "llm",
-          goal: base.turns[i]?.goal ?? "Echanger",
+          goal: base.turns[i]?.goal ?? "Échanger",
         }))
       : base.turns;
 
@@ -157,14 +249,50 @@ function extractJson(text: string): LlmRoomPayload | null {
   }
 }
 
+async function callSlot(
+  slot: SpeakModelSlot,
+  system: string,
+  user: string,
+): Promise<LlmRoomPayload | null> {
+  const endpoint = slot.url.includes("/chat/completions")
+    ? slot.url
+    : `${slot.url}/chat/completions`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (slot.apiKey) headers.Authorization = `Bearer ${slot.apiKey}`;
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: slot.model,
+      temperature: 0.7,
+      max_tokens: 1200,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+    }),
+    signal: AbortSignal.timeout(slot.timeoutMs ?? 20000),
+  });
+
+  if (!res.ok) return null;
+  const data = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const text = data.choices?.[0]?.message?.content ?? "";
+  return extractJson(text);
+}
+
 export async function generateFromTopicOnline(
   topic: string,
   input: GenerateInput = {},
-): Promise<{ room: LivingRoom; source: "llm" | "swarm" }> {
+): Promise<{ room: LivingRoom; source: "llm" | "swarm"; modelId?: string }> {
   const clean = topic.trim().slice(0, 120);
   const base = generateFromTopicOffline(clean, input);
-  const cfg = getClientLlmConfig();
-  if (!cfg || !clean) {
+  const cascade = resolveModelCascade();
+  if (!cascade.length || !clean) {
     return { room: base, source: "swarm" };
   }
 
@@ -199,46 +327,27 @@ export async function generateFromTopicOnline(
     brief,
   ].join("\n");
 
-  try {
-    const endpoint = cfg.url.includes("/chat/completions")
-      ? cfg.url
-      : `${cfg.url}/chat/completions`;
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (cfg.apiKey) headers.Authorization = `Bearer ${cfg.apiKey}`;
-
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: cfg.model,
-        temperature: 0.7,
-        max_tokens: 1200,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-      }),
-      signal: AbortSignal.timeout(28000),
-    });
-
-    if (!res.ok) return { room: base, source: "swarm" };
-    const data = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const text = data.choices?.[0]?.message?.content ?? "";
-    const payload = extractJson(text);
-    if (!payload) return { room: base, source: "swarm" };
-    return { room: mergeLlmIntoRoom(base, payload), source: "llm" };
-  } catch {
-    return { room: base, source: "swarm" };
+  for (const slot of cascade) {
+    try {
+      const payload = await callSlot(slot, system, user);
+      if (payload) {
+        return {
+          room: mergeLlmIntoRoom(base, payload),
+          source: "llm",
+          modelId: slot.id,
+        };
+      }
+    } catch {
+      // try next slot
+    }
   }
+
+  return { room: base, source: "swarm" };
 }
 
 export async function buildSpeakRoom(
   opts: TopicRequest & { archetype?: string; entropy?: string },
-): Promise<{ room: LivingRoom; source: "llm" | "swarm" }> {
+): Promise<{ room: LivingRoom; source: "llm" | "swarm"; modelId?: string }> {
   const topic = opts.topic?.trim();
   if (topic) {
     return generateFromTopicOnline(topic, {

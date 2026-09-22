@@ -21,7 +21,6 @@ import {
   todaysPulseDare,
 } from "@/lib/blossom/organism";
 import { generateRoomCatalog } from "@/lib/blossom/speak-engine";
-import { isLlmAvailable } from "@/lib/blossom/speak-llm";
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -31,20 +30,20 @@ export const Route = createFileRoute("/_app/osez")({
 });
 
 const STREET_PROTOCOL = [
-  "Choisissez un lieu reel — cafe, marche, comptoir.",
-  "Une phrase claire, sans traduire a voix haute.",
+  "Choisissez un lieu réel — café, marché, comptoir.",
+  "Une phrase claire, sans traduire à voix haute.",
   "Revenez ici ou via la mission Terrain pour noter le geste.",
 ] as const;
 
 const TOPIC_SUGGESTIONS = [
-  "Commander un cafe a la vanille",
-  "Demander mon chemin au marche",
-  "Parler de mon weekend sur la cote",
-  "Check-in a l'aeroport Roland Garros",
-  "Presenter mon parcours en entretien",
-  "Negocier le prix des gousses",
+  "Commander un café à la vanille",
+  "Demander mon chemin au marché",
+  "Parler de mon weekend sur la côte",
+  "Check-in à l'aéroport Roland Garros",
+  "Présenter mon parcours en entretien",
+  "Négocier le prix des gousses",
   "Expliquer un retard de vol",
-  "Inviter quelqu'un a marcher au front de mer",
+  "Inviter quelqu'un à marcher au front de mer",
 ];
 
 function OsezPage() {
@@ -57,7 +56,6 @@ function OsezPage() {
   const courageDays = courageDaysFromLog(log);
   const cells = courageRibbon(courageDays);
   const spoken = cells.filter(Boolean).length;
-  const llmOn = isLlmAvailable();
 
   const [topic, setTopic] = useState("");
   const [building, setBuilding] = useState(false);
@@ -79,7 +77,7 @@ function OsezPage() {
   function launchTopic(raw?: string) {
     const t = (raw ?? topic).trim();
     if (!t) {
-      toast("Ecrivez un sujet — n'importe lequel.");
+      toast("Écrivez un sujet — n'importe lequel.");
       return;
     }
     setBuilding(true);
@@ -100,12 +98,12 @@ function OsezPage() {
           Parler maintenant
         </h1>
         <p className="mt-3 text-sm leading-7 text-muted sm:text-base">
-          Rooms vivantes — recomposees a chaque entree. Sujet libre, lieu,
-          pression, monde reel. Le bilan vient apres, jamais pendant.
+          Rooms vivantes — recomposées à chaque entrée. Sujet libre, lieu,
+          pression, monde réel. Le bilan vient après, jamais pendant.
           {memoryOn ? (
             <>
               {" "}
-              Leo garde « {LEARNER_MEMORY.avoided} » sans vous brusquer.
+              Léo garde « {LEARNER_MEMORY.avoided} » sans vous brusquer.
             </>
           ) : null}
         </p>
@@ -127,7 +125,7 @@ function OsezPage() {
           {cells.map((on, i) => (
             <li
               key={i}
-              title={on ? "Geste ce jour-la" : "Terre en jachere"}
+              title={on ? "Geste ce jour-là" : "Terre en jachère"}
               className={cn(
                 "size-2 rounded-full sm:size-2.5",
                 on
@@ -143,19 +141,13 @@ function OsezPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Wand2 className="size-4 text-primary" />
           <Eyebrow className="text-primary">Sujet libre</Eyebrow>
-          {llmOn ? (
-            <Badge className="bg-primary/20 text-primary">LLM en ligne</Badge>
-          ) : (
-            <Badge variant="outline">Essaim local</Badge>
-          )}
         </div>
         <h2 className="mt-3 font-display text-2xl tracking-tight sm:text-3xl">
-          N'importe quel sujet
+          N&apos;importe quel sujet
         </h2>
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-          Ecrivez ce que vous voulez travailler. L'essaim compose une room
-          unique — et si un modele open-source est branche, il l'enrichit
-          en temps reel.
+          Écrivez ce que vous voulez travailler. Une room unique se compose
+          autour de votre sujet — interlocuteur, lieu, pression.
         </p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
           <input
@@ -207,7 +199,7 @@ function OsezPage() {
               <Sparkles className="size-4" strokeWidth={1.7} />
             </span>
             <span className="rounded-full bg-primary/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">
-              Aujourd'hui
+              Aujourd&apos;hui
             </span>
           </div>
           <h2 className="mt-5 font-display text-2xl tracking-tight sm:text-3xl">
@@ -234,7 +226,7 @@ function OsezPage() {
             Street
           </h2>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Le monde reel. Vous parlez, puis vous notez.
+            Le monde réel. Vous parlez, puis vous notez.
           </p>
           <ol className="mt-4 space-y-2 border-t border-border/60 pt-4">
             {STREET_PROTOCOL.map((step, i) => (
@@ -266,7 +258,7 @@ function OsezPage() {
             Tandem
           </h2>
           <p className="mt-2 flex-1 text-sm leading-6 text-muted">
-            Une constellation de presences — pas un feed.
+            Une constellation de présences — pas un feed.
           </p>
           <p className="mt-5 inline-flex items-center gap-1 border-t border-border/60 pt-4 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
             Ouvrir
@@ -281,11 +273,11 @@ function OsezPage() {
             Speak Rooms
           </h2>
           <p className="mt-2 max-w-lg text-sm text-muted">
-            Catalogue du jour — lieu, pression, evenement reel.
+            Catalogue du jour — lieu, pression, événement réel.
           </p>
         </div>
         <p className="text-xs tabular-nums text-subtle">
-          {roomsDone} / {rooms.length} ancrees
+          {roomsDone} / {rooms.length} ancrées
         </p>
       </div>
 
@@ -301,7 +293,7 @@ function OsezPage() {
           <div>
             <p className="font-display text-xl tracking-tight">Room libre</p>
             <p className="mt-1 text-sm text-muted">
-              L'essaim choisit lieu, pression et ancrage du jour.
+              Une room composée pour aujourd&apos;hui — lieu, pression, ancrage.
             </p>
           </div>
         </div>
@@ -348,7 +340,7 @@ function OsezPage() {
                   >
                     {done ? (
                       <span className="inline-flex items-center gap-1">
-                        <Check className="size-3" /> Ancree
+                        <Check className="size-3" /> Ancrée
                       </span>
                     ) : (
                       `${scene.durationMin} min`

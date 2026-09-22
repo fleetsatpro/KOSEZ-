@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, RefreshCw, Sparkles, X } from "lucide-react";
+import { ArrowLeft, RefreshCw, X } from "lucide-react";
 import { GrowthCeremony } from "@/components/app/growth-ceremony";
 import { RecordControl, Waveform } from "@/components/app/record-control";
 import { Eyebrow, Surface } from "@/components/app/primitives";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { LEARNER_MEMORY, planAllows } from "@/lib/blossom/data";
 import type { LivingRoom } from "@/lib/blossom/speak-engine";
 import { reshuffleRoom } from "@/lib/blossom/speak-engine";
-import { buildSpeakRoom, isLlmAvailable } from "@/lib/blossom/speak-llm";
+import { buildSpeakRoom } from "@/lib/blossom/speak-llm";
 import { useBlossom } from "@/lib/blossom/store";
 import { track } from "@/lib/analytics";
 import { toast } from "sonner";
@@ -150,7 +150,7 @@ function SpeakRoom() {
     mineralsBefore.current = useBlossom.getState().mineralSnapshot;
     const result = complete("SPEAK_COMPLETED", `speak-${room.id}`);
     if (result.ok) {
-      toast("Session close. La tige s'epaissit.");
+      toast("Session close. La tige s'épaissit.");
       setCeremonyOpen(true);
     } else {
       navigate({ to: "/osez" });
@@ -161,9 +161,7 @@ function SpeakRoom() {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-fg px-6 text-primary-foreground">
         <span className="size-2 animate-pulse rounded-full bg-primary" />
-        <p className="text-sm text-white/60">
-          {isLlmAvailable() ? "Composition en ligne…" : "L'essaim compose la room…"}
-        </p>
+        <p className="text-sm text-white/60">Composition de la room…</p>
       </div>
     );
   }
@@ -195,15 +193,7 @@ function SpeakRoom() {
 
           <div className="mt-auto">
             <div className="flex flex-wrap items-center gap-2">
-              <Eyebrow className="text-primary/90">Speak Room · vivante</Eyebrow>
-              {source === "llm" ? (
-                <Badge className="border-primary/30 bg-primary/15 text-primary">
-                  <Sparkles className="mr-1 size-3" />
-                  LLM
-                </Badge>
-              ) : (
-                <Badge className="border-white/20 bg-black/30 text-white/70">Essaim</Badge>
-              )}
+              <Eyebrow className="text-primary/90">Speak Room</Eyebrow>
               {room.event ? (
                 <Badge className="border-primary/30 bg-primary/15 text-primary">{room.event.title}</Badge>
               ) : null}
@@ -280,7 +270,7 @@ function SpeakRoom() {
     return (
       <div className="min-h-dvh bg-bg px-5 py-10 text-fg">
         <div className="mx-auto max-w-lg">
-          <Eyebrow>Bilan prive</Eyebrow>
+          <Eyebrow>Bilan privé</Eyebrow>
           <h1 className="mt-2 font-display text-3xl tracking-tight sm:text-4xl">{room.title}</h1>
           <p className="mt-2 text-sm text-muted">
             Avec {room.cast.name} ·{" "}
@@ -288,7 +278,6 @@ function SpeakRoom() {
               {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")}
             </span>{" "}
             · {yourTurns} prise{yourTurns > 1 ? "s" : ""} de parole
-            {source === "llm" ? " · LLM" : ""}
           </p>
 
           <div className="mt-8 space-y-3">
@@ -297,11 +286,11 @@ function SpeakRoom() {
               <p className="mt-2 text-sm leading-7">{room.debrief.strength}</p>
             </Surface>
             <Surface>
-              <Eyebrow>A ajuster</Eyebrow>
+              <Eyebrow>À ajuster</Eyebrow>
               <p className="mt-2 text-sm leading-7">{room.debrief.improvement}</p>
             </Surface>
             <Surface>
-              <Eyebrow>Phrase modele</Eyebrow>
+              <Eyebrow>Phrase modèle</Eyebrow>
               <p className="mt-2 font-display text-xl leading-snug tracking-tight">{room.debrief.model}</p>
             </Surface>
             <Surface>
@@ -371,7 +360,7 @@ function SpeakRoom() {
             waitingYou ? "text-primary-foreground" : "text-primary-foreground/55",
           )}
         >
-          {waitingYou ? "A vous" : `${room.cast.name} parle`}
+          {waitingYou ? "À vous" : `${room.cast.name} parle`}
         </p>
         <div className="mt-6">
           <Waveform active={!waitingYou} />
@@ -414,7 +403,7 @@ function SpeakRoom() {
           <div className="space-y-3">
             <RecordControl
               inverted
-              cta="Maintenir pour repondre"
+              cta="Maintenir pour répondre"
               onFinished={() => {
                 setYourTurns((n) => n + 1);
                 setShowRescue(false);
@@ -432,7 +421,7 @@ function SpeakRoom() {
         ) : (
           <div className="flex items-center justify-center gap-2 text-sm text-primary-foreground/50">
             <span className="size-1.5 animate-pulse rounded-full bg-primary-foreground/60" />
-            {room.cast.name} enchaine…
+            {room.cast.name} enchaîne…
           </div>
         )}
       </div>
