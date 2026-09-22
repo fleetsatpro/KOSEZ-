@@ -1,13 +1,23 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 
+export type JsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+export type JsonObject = { [key: string]: JsonValue };
+
 export type BlossomProfileRecord = {
   userId: string;
   displayName: string | null;
   targetLanguage: string;
   level: string | null;
   timezone: string | null;
-  preferences: Record<string, unknown>;
+  preferences: JsonObject;
   createdAt: string;
   updatedAt: string;
 };
@@ -17,12 +27,12 @@ export type BlossomActivityRecord = {
   idempotencyKey: string | null;
   eventType: string;
   sourceId: string | null;
-  payload: Record<string, unknown>;
+  payload: JsonObject;
   occurredAt: string;
 };
 
 export type BlossomMissionRecord = {
-  session: unknown;
+  session: JsonValue;
   revision: number;
   updatedAt: string;
 };
@@ -37,6 +47,21 @@ function iso(value: unknown): string {
   return new Date(String(value)).toISOString();
 }
 
+function jsonValue(value: unknown): JsonValue {
+  try {
+    const encoded = JSON.stringify(value);
+    return encoded === undefined ? null : (JSON.parse(encoded) as JsonValue);
+  } catch {
+    return null;
+  }
+}
+
+function jsonObject(value: unknown): JsonObject {
+  const parsed = jsonValue(value);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+  return parsed as JsonObject;
+}
+
 function mapProfile(row: Record<string, unknown>): BlossomProfileRecord {
   return {
     userId: String(row.user_id),
@@ -44,7 +69,7 @@ function mapProfile(row: Record<string, unknown>): BlossomProfileRecord {
     targetLanguage: String(row.target_language),
     level: (row.level as string | null) ?? null,
     timezone: (row.timezone as string | null) ?? null,
-    preferences: (row.preferences as Record<string, unknown>) ?? {},
+    preferences: jsonObject(row.preferences),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   };
@@ -56,7 +81,7 @@ function mapActivity(row: Record<string, unknown>): BlossomActivityRecord {
     idempotencyKey: (row.idempotency_key as string | null) ?? null,
     eventType: String(row.event_type),
     sourceId: (row.source_id as string | null) ?? null,
-    payload: (row.payload as Record<string, unknown>) ?? {},
+    payload: jsonObject(row.payload),
     occurredAt: iso(row.occurred_at),
   };
 }
@@ -85,7 +110,7 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
       missions.map((row) => [
         String(row.mission_id),
         {
-          session: row.session,
+          session: jsonValue(row.session),
           revision: Number(row.revision),
           updatedAt: iso(row.updated_at),
         },
@@ -101,7 +126,7 @@ export async function upsertBlossomProfile(
     targetLanguage: string;
     level?: string | null;
     timezone?: string | null;
-    preferences?: Record<string, unknown>;
+    preferences?: JsonObject;
   },
 ): Promise<BlossomProfileRecord> {
   const sql = await getSql();
@@ -125,7 +150,7 @@ export async function appendBlossomActivity(
   input: {
     eventType: string;
     sourceId?: string | null;
-    payload?: Record<string, unknown>;
+    payload?: JsonObject;
     idempotencyKey?: string | null;
     occurredAt?: string;
   },
@@ -165,7 +190,7 @@ export type SaveMissionResult =
 export async function saveBlossomMissionSession(
   userId: string,
   missionId: string,
-  session: unknown,
+  session: JsonValue,
   expectedRevision: number,
 ): Promise<SaveMissionResult> {
   const sql = await getSql();
@@ -191,7 +216,7 @@ export async function saveBlossomMissionSession(
     reason: "conflict",
     current: current[0]
       ? {
-          session: current[0].session,
+          session: jsonValue(current[0].session),
           revision: Number(current[0].revision),
           updatedAt: iso(current[0].updated_at),
         }
