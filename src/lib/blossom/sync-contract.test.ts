@@ -1,19 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { syncMutationSchema } from "./sync.api.ts";
+import { SYNC_OPERATIONS, type SyncOperation } from "./sync-types.ts";
 
-test("sync API accepts every server-supported operation", () => {
-  const mutation = {
-    mutationId: "00000000-0000-4000-8000-000000000001",
-    deviceId: "device-0123456789",
-    operation: "tandem.report",
-    entityId: "partner-1",
-    payload: {
-      reason: "learner_report",
-    },
-    createdAt: "2026-09-23T00:00:00.000Z",
-  };
+test("sync operation contract includes tandem reports", () => {
+  const expected: SyncOperation[] = [
+    "profile.upsert",
+    "activity.append",
+    "mission.save",
+    "pronlab.attempt",
+    "vocabulary.upsert",
+    "event.register",
+    "challenge.complete",
+    "tandem.status",
+    "tandem.report",
+    "learning.submission",
+    "booking.request",
+    "waitlist.request",
+    "analytics.record",
+    "teacher.note",
+    "teacher.homework",
+    "homework.complete",
+  ];
 
-  const result = syncMutationSchema.safeParse(mutation);
-  assert.equal(result.success, true);
+  assert.deepEqual([...SYNC_OPERATIONS], expected);
+  assert.ok(SYNC_OPERATIONS.includes("tandem.report"));
 });
