@@ -50,6 +50,7 @@ function MoiPage() {
   const setParentMode = useBlossom((s) => s.setParentMode);
   const setTeacherMode = useBlossom((s) => s.setTeacherMode);
   const setOrgMode = useBlossom((s) => s.setOrgMode);
+  const setAdminMode = useBlossom((s) => s.setAdminMode);
   const setChildMode = useBlossom((s) => s.setChildMode);
   const { access, pending: accessPending } = useBlossomWorkspaceAccess();
   const resetJourney = useBlossom((s) => s.resetJourney);
@@ -465,6 +466,15 @@ function MoiPage() {
                 onClick={() => setOrgMode(true)}
               >
                 Espace entreprise
+              </Button>
+            ) : null}
+            {access.isAdmin ? (
+              <Button
+                variant="secondary"
+                className="justify-start"
+                onClick={() => setAdminMode(true)}
+              >
+                Centre opérationnel Admin
               </Button>
             ) : null}
             {access.isGuardian ? (
