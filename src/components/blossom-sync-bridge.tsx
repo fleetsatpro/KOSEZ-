@@ -284,12 +284,19 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
     }
 
     let disposed = false;
-    const userChanged = activeUserRef.current !== user.id;
+    const storedOwner = useBlossom.getState().syncOwnerUserId;
+    const userChanged = Boolean(storedOwner && storedOwner !== user.id);
     activeUserRef.current = user.id;
     setSyncOwner(user.id);
 
     if (userChanged) {
       useBlossom.getState().resetJourney();
+    }
+    useBlossom.setState({ syncOwnerUserId: user.id });
+
+    if (!navigator.onLine) {
+      onReadyRef.current?.();
+      return;
     }
 
     const run = async () => {
