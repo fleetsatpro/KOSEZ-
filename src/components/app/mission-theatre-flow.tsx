@@ -544,10 +544,32 @@ export function ReflectionStage({
   onRedo: () => void;
   onFinish: () => void;
 }) {
+  const [index, setIndex] = useState(0);
   const evaluation = saved ? evaluateMission(draft) : null;
   const spoken = run?.attempts
     .filter((attempt) => attempt.kind === "mission")
     .reduce((sum, attempt) => sum + attempt.seconds, 0) ?? 0;
+
+  const prompts = [
+    { id: "objective", label: "Objectif", question: "Le geste a-t-il réellement eu lieu ?" },
+    { id: "language", label: "Langue cible", question: "Comment la langue cible a-t-elle tenu ?" },
+    { id: "confidence", label: "Confiance", question: "À quel point le geste était-il disponible ?" },
+  ] as const;
+
+  function chooseObjective(value: boolean) {
+    onChange({ ...draft, objectiveAchieved: value });
+    if (index < 2) setIndex(1);
+  }
+
+  function chooseLanguage(value: MissionReflection["stayedInTargetLanguage"]) {
+    onChange({ ...draft, stayedInTargetLanguage: value });
+    if (index < 2) setIndex(2);
+  }
+
+  function chooseConfidence(value: MissionReflection["confidence"]) {
+    onChange({ ...draft, confidence: value });
+    queueMicrotask(onSave);
+  }
 
   return (
     <div className="space-y-5">
@@ -556,9 +578,11 @@ export function ReflectionStage({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <Eyebrow>Trois repères</Eyebrow>
-              <h2 className="mt-3 font-display text-4xl leading-tight sm:text-5xl">Ancre seulement ce que vous savez.</h2>
+              <h2 className="mt-3 font-display text-4xl leading-tight sm:text-5xl">
+                Ancre seulement ce que vous savez.
+              </h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
-                Pas de note globale. Trois repères honnêtes suffisent à choisir la pression de demain.
+                Trois gestes suffisent. Chaque réponse passe immédiatement au repère suivant.
               </p>
             </div>
             {spoken ? (
@@ -571,75 +595,102 @@ export function ReflectionStage({
 
           {!saved ? (
             <>
-              <div className="mt-8 grid gap-4 lg:grid-cols-3">
-                <div className="rounded-[24px] border border-border bg-surface-2/25 p-5">
-                  <Eyebrow>01 · Objectif</Eyebrow>
-                  <p className="mt-2 text-sm font-semibold">Le geste a-t-il réellement eu lieu ?</p>
-                  <div className="mt-4 grid gap-2">
-                    <ReflectionChoice
-                      label="Oui"
-                      detail="L'ouverture a réellement existé."
-                      selected={draft.objectiveAchieved}
-                      onClick={() => onChange({ ...draft, objectiveAchieved: true })}
-                    />
-                    <ReflectionChoice
-                      label="Pas encore"
-                      detail="Pas de faux crédit : on reprend plus petit."
-                      selected={!draft.objectiveAchieved}
-                      onClick={() => onChange({ ...draft, objectiveAchieved: false })}
-                    />
-                  </div>
+              <div className="mt-8 flex gap-2" aria-label="Progression du bilan">
+                {prompts.map((prompt, promptIndex) => (
+                  <span
+                    key={prompt.id}
+                    className={promptIndex <= index ? "h-1.5 flex-1 rounded-full bg-primary" : "h-1.5 flex-1 rounded-full bg-surface-2"}
+                  />
+                ))}
+              </div>
+
+              <div
+                className="mt-8 rounded-[24px] border border-border bg-surface-2/25 p-5 sm:p-7"
+                aria-live="polite"
+              >
+                <Eyebrow>
+                  {String(index + 1).padStart(2, "0")} · {prompts[index]!.label}
+                </Eyebrow>
+                <h3 className="mt-3 max-w-2xl font-display text-3xl leading-tight sm:text-4xl">
+                  {prompts[index]!.question}
+                </h3>
+
+                <div className="mt-7">
+                  {index === 0 ? (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <ReflectionChoice
+                        label="Oui"
+                        detail="La scène a réellement été tentée."
+                        selected={draft.objectiveAchieved}
+                        onClick={() => chooseObjective(true)}
+                      />
+                      <ReflectionChoice
+                        label="Pas encore"
+                        detail="Pas de faux crédit : on reprend plus petit."
+                        selected={!draft.objectiveAchieved}
+                        onClick={() => chooseObjective(false)}
+                      />
+                    </div>
+                  ) : null}
+
+                  {index === 1 ? (
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <ReflectionChoice
+                        label="Du début à la fin"
+                        selected={draft.stayedInTargetLanguage === "yes"}
+                        onClick={() => chooseLanguage("yes")}
+                      />
+                      <ReflectionChoice
+                        label="Par moments"
+                        selected={draft.stayedInTargetLanguage === "partly"}
+                        onClick={() => chooseLanguage("partly")}
+                      />
+                      <ReflectionChoice
+                        label="J'ai basculé"
+                        selected={draft.stayedInTargetLanguage === "no"}
+                        onClick={() => chooseLanguage("no")}
+                      />
+                    </div>
+                  ) : null}
+
+                  {index === 2 ? (
+                    <div>
+                      <div className="grid grid-cols-5 gap-2">
+                        {([1, 2, 3, 4, 5] as const).map((score) => (
+                          <button
+                            type="button"
+                            key={score}
+                            aria-label={`Confiance ${score} sur 5`}
+                            aria-pressed={draft.confidence === score}
+                            onClick={() => chooseConfidence(score)}
+                            className={[
+                              "flex min-h-14 items-center justify-center rounded-xl border text-sm font-semibold tabular-nums transition-[background-color,border-color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                              draft.confidence === score
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border bg-surface hover:bg-surface-2",
+                            ].join(" ")}
+                          >
+                            {score}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="mt-3 flex justify-between text-[11px] text-subtle">
+                        <span>Bloqué</span>
+                        <span>Naturel</span>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
-                <div className="rounded-[24px] border border-border bg-surface-2/25 p-5">
-                  <Eyebrow>02 · Langue cible</Eyebrow>
-                  <p className="mt-2 text-sm font-semibold">Comment l'anglais a-t-il tenu ?</p>
-                  <div className="mt-4 grid gap-2">
-                    <ReflectionChoice
-                      label="Du début à la fin"
-                      selected={draft.stayedInTargetLanguage === "yes"}
-                      onClick={() => onChange({ ...draft, stayedInTargetLanguage: "yes" })}
-                    />
-                    <ReflectionChoice
-                      label="Par moments"
-                      selected={draft.stayedInTargetLanguage === "partly"}
-                      onClick={() => onChange({ ...draft, stayedInTargetLanguage: "partly" })}
-                    />
-                    <ReflectionChoice
-                      label="J'ai basculé"
-                      selected={draft.stayedInTargetLanguage === "no"}
-                      onClick={() => onChange({ ...draft, stayedInTargetLanguage: "no" })}
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-[24px] border border-border bg-surface-2/25 p-5">
-                  <Eyebrow>03 · Confiance</Eyebrow>
-                  <p className="mt-2 text-sm font-semibold">À quel point le geste était disponible ?</p>
-                  <div className="mt-4 grid grid-cols-5 gap-2">
-                    {([1, 2, 3, 4, 5] as const).map((score) => (
-                      <button
-                        type="button"
-                        key={score}
-                        aria-label={`Confiance ${score} sur 5`}
-                        aria-pressed={draft.confidence === score}
-                        onClick={() => onChange({ ...draft, confidence: score })}
-                        className={[
-                          "flex min-h-12 items-center justify-center rounded-lg border text-sm font-semibold tabular-nums transition-[background-color,border-color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-                          draft.confidence === score
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-surface hover:bg-surface-2",
-                        ].join(" ")}
-                      >
-                        {score}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-3 flex justify-between text-[11px] text-subtle">
-                    <span>Bloqué</span>
-                    <span>Naturel</span>
-                  </div>
-                </div>
+                {index > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setIndex((value) => Math.max(0, value - 1))}
+                    className="mt-6 min-h-11 rounded-lg px-2 text-xs font-semibold text-muted underline decoration-border underline-offset-4 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  >
+                    Revenir au repère précédent
+                  </button>
+                ) : null}
               </div>
 
               <details className="group mt-4 rounded-2xl border border-border bg-surface-2/20">
@@ -647,7 +698,9 @@ export function ReflectionStage({
                   <ChevronDown className="size-4 text-subtle transition-transform group-open:rotate-180" />
                   <span className="flex-1 text-sm font-semibold">Détails avancés</span>
                   {draft.supportUsed ? (
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">Avec appui</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">
+                      Avec appui
+                    </span>
                   ) : null}
                 </summary>
                 <div className="border-t border-border p-4 sm:p-5">
@@ -675,23 +728,20 @@ export function ReflectionStage({
                       <Eyebrow>Note libre</Eyebrow>
                       <textarea
                         value={draft.note ?? ""}
-                        onChange={(event) => onChange({ ...draft, note: event.target.value.slice(0, 140) })}
+                        onChange={(event) =>
+                          onChange({ ...draft, note: event.target.value.slice(0, 140) })
+                        }
                         placeholder="Une phrase sur ce qui a réellement compté…"
                         aria-label="Note libre sur la mission"
                         className="mt-3 min-h-28 w-full resize-none rounded-xl border border-border bg-surface px-4 py-3 text-sm text-fg outline-none placeholder:text-subtle focus-visible:ring-2 focus-visible:ring-ring/50"
                       />
-                      <p className="mt-2 text-right text-[10px] tabular-nums text-subtle">{(draft.note ?? "").length}/140</p>
+                      <p className="mt-2 text-right text-[10px] tabular-nums text-subtle">
+                        {(draft.note ?? "").length}/140
+                      </p>
                     </div>
                   </div>
                 </div>
               </details>
-
-              <div className="mt-5 flex items-center justify-end rounded-2xl border border-border bg-surface-2/25 p-3">
-                <Button size="lg" onClick={onSave} className="w-full sm:w-auto">
-                  Ancrer dans le BLOSSOM
-                  <ArrowRight className="size-4" />
-                </Button>
-              </div>
             </>
           ) : null}
         </div>
@@ -709,11 +759,17 @@ export function ReflectionStage({
                     ? "Le geste est là. On le stabilise."
                     : "On garde la même cible."}
               </h3>
-              <p className="mt-4 max-w-xl text-sm leading-6 text-primary-foreground/70">{evaluation.summary}</p>
+              <p className="mt-4 max-w-xl text-sm leading-6 text-primary-foreground/70">
+                {evaluation.summary}
+              </p>
               <div className="mt-6 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full bg-primary-foreground/10 px-3 py-1.5">{evaluation.evidenceCount}/3 signaux</span>
+                <span className="rounded-full bg-primary-foreground/10 px-3 py-1.5">
+                  {evaluation.evidenceCount}/3 signaux
+                </span>
                 {draft.supportUsed ? (
-                  <span className="rounded-full bg-primary-foreground/10 px-3 py-1.5">Avec appui — ça compte encore.</span>
+                  <span className="rounded-full bg-primary-foreground/10 px-3 py-1.5">
+                    Avec appui — ça compte encore.
+                  </span>
                 ) : null}
               </div>
             </div>
@@ -730,7 +786,10 @@ export function ReflectionStage({
                   <RotateCcw className="size-4" />
                   Refaire le geste
                 </Button>
-                <Button onClick={onFinish} className="bg-primary-foreground text-primary hover:bg-primary-foreground/90">
+                <Button
+                  onClick={onFinish}
+                  className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+                >
                   Ancrer et voir la croissance
                   <ArrowRight className="size-4" />
                 </Button>
