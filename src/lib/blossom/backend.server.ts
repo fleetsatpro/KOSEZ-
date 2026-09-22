@@ -67,6 +67,26 @@ export type BlossomVocabularyRecord = {
   updatedAt: string;
 };
 
+export type BlossomHomeworkRecord = {
+  id: string;
+  authorUserId: string;
+  learnerUserId: string;
+  title: string;
+  body: string;
+  status: "draft" | "sent" | "done";
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BlossomTeacherNoteRecord = {
+  id: string;
+  teacherUserId: string;
+  learnerUserId: string;
+  tags: string[];
+  note: string;
+  createdAt: string;
+};
+
 export type BlossomBackendState = {
   profile: BlossomProfileRecord | null;
   activity: BlossomActivityRecord[];
@@ -81,6 +101,8 @@ export type BlossomBackendState = {
   bookingStatuses: Record<string, "requested" | "confirmed">;
   waitlistIds: string[];
   tandemStatus: Record<string, "suggested" | "pending" | "accepted" | "blocked" | "paused">;
+  homework: BlossomHomeworkRecord[];
+  teacherNotes: BlossomTeacherNoteRecord[];
 };
 
 function iso(value: unknown): string {
@@ -128,7 +150,7 @@ function mapActivity(row: Record<string, unknown>): BlossomActivityRecord {
 
 export async function readBlossomState(userId: string): Promise<BlossomBackendState> {
   const sql = await getSql();
-  const [profiles, activity, missions, pronlab, vocabulary, submissions, registrations, eventCounts, challenges, tandem, bookings, waitlists] = await Promise.all([
+  const [profiles, activity, missions, pronlab, vocabulary, submissions, registrations, eventCounts, challenges, tandem, bookings, waitlists, homework, teacherNotes] = await Promise.all([
     sql.query(
       "select user_id, display_name, target_language, level, timezone, preferences, created_at, updated_at from blossom_profile where user_id = $1",
       [userId],
@@ -174,6 +196,14 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
     ),
     sql.query(
       "select item_id from blossom_waitlist_request where user_id = $1 and status <> 'cancelled' order by updated_at desc",
+      [userId],
+    ),
+    sql.query(
+      "select id, author_user_id, learner_user_id, title, body, status, created_at, updated_at from blossom_homework where (learner_user_id = $1 and status in ('sent','done')) or author_user_id = $1 order by updated_at desc",
+      [userId],
+    ),
+    sql.query(
+      "select id, teacher_user_id, learner_user_id, tags, note, created_at from blossom_teacher_note where teacher_user_id = $1 order by created_at desc",
       [userId],
     ),
   ]);
@@ -238,6 +268,24 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
         String(row.status) as "suggested" | "pending" | "accepted" | "blocked" | "paused",
       ]),
     ),
+    homework: homework.map((row) => ({
+      id: String(row.id),
+      authorUserId: String(row.author_user_id),
+      learnerUserId: String(row.learner_user_id),
+      title: String(row.title),
+      body: String(row.body),
+      status: String(row.status) as "draft" | "sent" | "done",
+      createdAt: iso(row.created_at),
+      updatedAt: iso(row.updated_at),
+    })),
+    teacherNotes: teacherNotes.map((row) => ({
+      id: String(row.id),
+      teacherUserId: String(row.teacher_user_id),
+      learnerUserId: String(row.learner_user_id),
+      tags: Array.isArray(row.tags) ? row.tags.map(String) : [],
+      note: String(row.note),
+      createdAt: iso(row.created_at),
+    })),
   };
 }
 
