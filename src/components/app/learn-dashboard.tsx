@@ -6,6 +6,9 @@ import {
   Check,
   ChevronRight,
   Lock,
+  ChartNoAxesCombined,
+  GraduationCap,
+  History,
   Mic2,
   RotateCcw,
   Sparkles,
@@ -22,6 +25,7 @@ import {
   setsForLanguage,
 } from "@/lib/blossom/data";
 import { summarisePronlabItem } from "@/lib/blossom/engine";
+import { buildSkillProfile, nextLearningAction, CURRICULUM_UNITS } from "@/lib/blossom/learning-os";
 import { isSetUnlocked, useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
@@ -429,6 +433,87 @@ export function LearnDashboard() {
               </Link>
             );
           })}
+        </div>
+      </section>
+
+      <section className="mt-10 grid gap-4 lg:grid-cols-[1.15fr_.85fr]">
+        <Link
+          to="/learn/review"
+          className="group relative overflow-hidden rounded-2xl bg-fg p-6 text-primary-foreground shadow-[var(--shadow-border)] sm:p-7"
+        >
+          <div className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full border border-primary-foreground/10" />
+          <div className="relative">
+            <Eyebrow className="text-primary-foreground/55">PROCHAINE ACTION · mémoire</Eyebrow>
+            <h2 className="mt-3 max-w-2xl font-display text-3xl tracking-tight sm:text-4xl">
+              {nextLearningAction(
+                useBlossom.getState().activityLog,
+                useBlossom.getState().pronlabAttempts,
+                useBlossom.getState().vocabulary,
+              ).title}
+            </h2>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-primary-foreground/65">
+              {nextLearningAction(
+                useBlossom.getState().activityLog,
+                useBlossom.getState().pronlabAttempts,
+                useBlossom.getState().vocabulary,
+              ).body}
+            </p>
+            <span className="mt-6 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+              Réviser maintenant <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+            </span>
+          </div>
+        </Link>
+
+        <Surface>
+          <Eyebrow>Profil vivant</Eyebrow>
+          <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-4">
+            {buildSkillProfile(
+              useBlossom.getState().activityLog,
+              useBlossom.getState().pronlabAttempts,
+              useBlossom.getState().vocabulary,
+            ).slice(0, 6).map((entry) => (
+              <div key={entry.domain.id}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted">{entry.domain.shortLabel}</span>
+                  <span className="text-xs tabular-nums text-primary">{entry.coverage}%</span>
+                </div>
+                <Progress className="mt-2 h-1.5" value={entry.coverage} />
+              </div>
+            ))}
+          </div>
+          <Link to="/learn/progress" className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+            Voir les 9 domaines <ChartNoAxesCombined className="size-3.5" />
+          </Link>
+        </Surface>
+      </section>
+
+      <section className="mt-10">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <Eyebrow>Architecture du parcours</Eyebrow>
+            <h2 className="mt-2 font-display text-2xl tracking-tight sm:text-3xl">Les modules sont désormais reliés entre eux.</h2>
+          </div>
+          <Link to="/learn/curriculum" className="hidden text-xs font-semibold uppercase tracking-[0.14em] text-primary sm:inline-flex">
+            Ouvrir le parcours <ArrowRight className="ml-1 size-3.5" />
+          </Link>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            ["/learn/curriculum", "Parcours", `${CURRICULUM_UNITS.length} unités A2`, GraduationCap],
+            ["/learn/review", "Révision", "Mémoire en circulation", RotateCcw],
+            ["/learn/progress", "Compétences", "9 domaines documentés", ChartNoAxesCombined],
+            ["/learn/history", "Historique", "Actions + preuves", History],
+          ].map(([href, label, detail, Icon]) => (
+            <Link
+              key={String(href)}
+              to={href as "/learn/curriculum"}
+              className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60"
+            >
+              <Icon className="size-4 text-primary" />
+              <p className="mt-5 font-display text-xl tracking-tight">{String(label)}</p>
+              <p className="mt-1 text-xs text-muted">{String(detail)}</p>
+            </Link>
+          ))}
         </div>
       </section>
 
