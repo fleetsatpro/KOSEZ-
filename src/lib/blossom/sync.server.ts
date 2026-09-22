@@ -1,7 +1,11 @@
 import { getSql } from "@/lib/db";
+import { z } from "zod";
 import {
   appendBlossomActivity,
   saveBlossomMissionSession,
+} from "./backend.server";
+import {
+  upsertBlossomProfile,
 } from "./backend.server";
 import {
   completeChallenge,
@@ -24,7 +28,7 @@ async function claimMutation(
 ): Promise<"claimed" | "duplicate" | "busy"> {
   const sql = await getSql();
   const inserted = await sql.query(
-    "insert into blossom_sync_mutation (mutation_id, user_id, device_id, operation, entity_id, payload, expected_revision, status, created_at, updated_at) values ($1::uuid, $2, $3, $4, $5, $6::jsonb, $7, 'pending', coalesce($8::timestamptz, current_timestamp), current_timestamp) on conflict (mutation_id) do nothing returning mutation_id",
+    "insert into blossom_sync_mutation (mutation_id, user_id, device_id, operation, entity_id, payload, expected_revision, status, created_at, updated_at) values ($1::uuid, $2, $3, $4, $5, $6::jsonb, $7, 'processing', coalesce($8::timestamptz, current_timestamp), current_timestamp) on conflict (mutation_id) do nothing returning mutation_id",
     [
       mutation.mutationId,
       userId,
@@ -67,6 +71,69 @@ function objectValue(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+const operationSchema = z.enum([
+  "profile.upsert",
+  "activity.append",
+  "mission.save",
+  "pronlab.attempt",
+  "vocabulary.upsert",
+  "event.register",
+  "challenge.complete",
+  "tandem.status",
+]);
+
+const mutationSchema = z.object({
+  mutationId: z.string().uuid(),
+  deviceId: z.string().trim().min(10).max(200),
+  operation: operationSchema,
+  entityId: z.string().trim().min(1).max(200),
+  expectedRevision: z.number().int().nonnegative().optional(),
+  payload: z.record(z.string(), z.unknown()),
+  createdAt: z.string().datetime(),
+});
+
+const activityPayloadSchema = z.object({
+  eventType: z.string().trim().min(1).max(100),
+  sourceId: z.string().trim().max(200).nullable().optional(),
+  payload: z.record(z.string(), z.unknown()).optional(),
+  occurredAt: z.string().datetime().optional(),
+});
+
+const missionPayloadSchema = z.object({
+  session: z.unknown(),
+});
+
+const pronlabPayloadSchema = z.object({
+  itemId: z.string().trim().min(1).max(120),
+  score: z.number().int().min(0).max(100),
+  seconds: z.number().int().nonnegative().max(3600),
+  tip: z.string().trim().max(500).nullable().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+const vocabularyPayloadSchema = z.object({
+  word: z.string().trim().min(1).max(120),
+  gloss: z.string().trim().min(1).max(240),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+const eventPayloadSchema = z.object({
+  status: z.enum(["joined", "waitlist", "cancelled"]),
+});
+
+const tandemPayloadSchema = z.object({
+  status: z.enum(["suggested", "pending", "accepted", "blocked", "paused"]),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+const profilePayloadSchema = z.object({
+  displayName: z.string().trim().max(120).nullable().optional(),
+  targetLanguage: z.string().trim().min(2).max(16),
+  level: z.string().trim().max(16).nullable().optional(),
+  timezone: z.string().trim().max(80).nullable().optional(),
+  preferences: z.record(z.string(), z.unknown()).optional(),
+});
+
 async function storeResult(
   userId: string,
   mutationId: string,
@@ -87,18 +154,18 @@ async function applyMutation(
 ): Promise<SyncResult> {
   switch (mutation.operation) {
     case "activity.append": {
-      const payload = objectValue(mutation.payload);
+      const payload = activityPayloadSchema.parse(mutation.payload);
       await appendBlossomActivity(userId, {
-        eventType: stringValue(payload.eventType),
-        sourceId: typeof payload.sourceId === "string" ? payload.sourceId : null,
-        payload: objectValue(payload.payload),
+        eventType: payload.eventType,
+        sourceId: payload.sourceId ?? null,
+        payload: payload.payload ?? {},
         idempotencyKey: mutation.mutationId,
-        occurredAt: typeof payload.occurredAt === "string" ? payload.occurredAt : undefined,
+        occurredAt: payload.occurredAt,
       });
       return { mutationId: mutation.mutationId, status: "applied" };
     }
     case "mission.save": {
-      const payload = objectValue(mutation.payload);
+      const payload = missionPayloadSchema.parse(mutation.payload);
       const session = payload.session;
       const expectedRevision = mutation.expectedRevision ?? 0;
       const result = await saveBlossomMissionSession(
@@ -138,45 +205,48 @@ async function applyMutation(
       };
     }
     case "pronlab.attempt": {
-      const payload = objectValue(mutation.payload);
+      const payload = pronlabPayloadSchema.parse(mutation.payload);
       await recordPronlabAttempt(userId, {
-        itemId: stringValue(payload.itemId),
-        score: intValue(payload.score),
-        seconds: intValue(payload.seconds),
-        tip: typeof payload.tip === "string" ? payload.tip : null,
-        metadata: objectValue(payload.metadata),
+        itemId: payload.itemId,
+        score: payload.score,
+        seconds: payload.seconds,
+        tip: payload.tip ?? null,
+        metadata: payload.metadata ?? {},
         idempotencyKey: mutation.mutationId,
       });
       return { mutationId: mutation.mutationId, status: "applied" };
     }
     case "vocabulary.upsert": {
-      const payload = objectValue(mutation.payload);
+      const payload = vocabularyPayloadSchema.parse(mutation.payload);
       await saveVocabulary(userId, {
-        word: stringValue(payload.word),
-        gloss: stringValue(payload.gloss),
-        metadata: objectValue(payload.metadata),
+        word: payload.word,
+        gloss: payload.gloss,
+        metadata: payload.metadata ?? {},
       });
       return { mutationId: mutation.mutationId, status: "applied" };
     }
     case "event.register": {
-      const payload = objectValue(mutation.payload);
-      await registerEvent(userId, mutation.entityId, stringValue(payload.status) as "joined" | "waitlist" | "cancelled");
+      const payload = eventPayloadSchema.parse(mutation.payload);
+      await registerEvent(userId, mutation.entityId, payload.status);
       return { mutationId: mutation.mutationId, status: "applied" };
     }
     case "challenge.complete":
       await completeChallenge(userId, mutation.entityId);
       return { mutationId: mutation.mutationId, status: "applied" };
     case "tandem.status": {
-      const payload = objectValue(mutation.payload);
+      const payload = tandemPayloadSchema.parse(mutation.payload);
       await setTandemStatus(userId, {
         partnerUserId: mutation.entityId,
-        status: stringValue(payload.status) as "suggested" | "pending" | "accepted" | "blocked" | "paused",
-        metadata: objectValue(payload.metadata),
+        status: payload.status,
+        metadata: payload.metadata ?? {},
       });
       return { mutationId: mutation.mutationId, status: "applied" };
     }
-    case "profile.upsert":
-      return { mutationId: mutation.mutationId, status: "rejected", errorCode: "profile-sync-not-wired" };
+    case "profile.upsert": {
+      const payload = profilePayloadSchema.parse(mutation.payload);
+      await upsertBlossomProfile(userId, payload);
+      return { mutationId: mutation.mutationId, status: "applied" };
+    }
   }
 }
 
