@@ -703,6 +703,7 @@ export async function saveHomework(
 export async function addTeacherNote(
   actorUserId: string,
   input: {
+    id?: string;
     learnerUserId: string;
     tags: string[];
     note: string;
@@ -713,7 +714,7 @@ export async function addTeacherNote(
   const rows = await sql.query(
     "insert into blossom_teacher_note (id, teacher_user_id, learner_user_id, tags, note) values ($1::uuid, $2, $3, $4::jsonb, $5) returning id, teacher_user_id, learner_user_id, tags, note, created_at, updated_at",
     [
-      randomUUID(),
+      input.id ?? randomUUID(),
       actorUserId,
       input.learnerUserId,
       JSON.stringify(input.tags),
@@ -721,6 +722,31 @@ export async function addTeacherNote(
     ],
   );
   if (!rows[0]) throw new Error("teacher-note-write-failed");
+  return rows[0];
+}
+
+export async function completeHomeworkForLearner(
+  learnerUserId: string,
+  homeworkId: string,
+) {
+  const sql = await getSql();
+  const rows = await sql.query(
+    "update blossom_homework set status = 'done', updated_at = current_timestamp where id = $1::uuid and learner_user_id = $2 and status = 'sent' returning id, author_user_id, learner_user_id, title, body, status, created_at, updated_at",
+    [homeworkId, learnerUserId],
+  );
+  if (!rows[0]) {
+    const current = await sql.query(
+      "select id, author_user_id, learner_user_id, title, body, status, created_at, updated_at from blossom_homework where id = $1::uuid and learner_user_id = $2",
+      [homeworkId, learnerUserId],
+    );
+    if (current[0] && String(current[0].status) === "done") return current[0];
+    throw new BlossomForbiddenError("Ce devoir n'est pas disponible pour vous.");
+  }
+  await writeAuditEvent(learnerUserId, {
+    action: "homework.completed",
+    resourceType: "homework",
+    resourceId: homeworkId,
+  });
   return rows[0];
 }
 
