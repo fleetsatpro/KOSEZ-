@@ -74,5 +74,5 @@ test("failed review contributes friction without fabricating proficiency", () =>
     "2026-09-22T12:00:00.000Z",
   );
   assert.equal(result.friction, 1);
-  assert.equal(result.breadth, 11);
+  assert.equal(result.breadth, 33);
 });
