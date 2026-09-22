@@ -202,6 +202,7 @@ export interface FileRoutesByTo {
   '/osez/$id': typeof AppOsezIdRoute
   '/pronlab/$setId': typeof AppPronlabSetIdRoute
   '/tandem/$id': typeof AppTandemIdRoute
+  '/login': typeof LoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -209,7 +210,12 @@ export interface FileRoutesById {
   '/_app/connect': typeof AppConnectRoute
   '/_app/explore': typeof AppExploreRoute
   '/_app/immersion': typeof AppImmersionRoute
-  '/_app/learn': typeof AppLearnRoute
+  '/_app/learn': typeof AppLearnRouteWithChildren
+  '/_app/learn/curriculum': typeof AppLearnCurriculumRoute
+  '/_app/learn/curriculum/$unitId': typeof AppLearnCurriculumUnitIdRoute
+  '/_app/learn/review': typeof AppLearnReviewRoute
+  '/_app/learn/progress': typeof AppLearnProgressRoute
+  '/_app/learn/history': typeof AppLearnHistoryRoute
   '/_app/library': typeof AppLibraryRouteWithChildren
   '/_app/mission': typeof AppMissionRoute
   '/_app/moi': typeof AppMoiRoute
@@ -223,6 +229,12 @@ export interface FileRoutesById {
   '/_app/osez/$id': typeof AppOsezIdRoute
   '/_app/pronlab/$setId': typeof AppPronlabSetIdRoute
   '/_app/tandem/$id': typeof AppTandemIdRoute
+  '/_app/learn/curriculum': typeof AppLearnCurriculumRoute
+  '/_app/learn/curriculum/$unitId': typeof AppLearnCurriculumUnitIdRoute
+  '/_app/learn/review': typeof AppLearnReviewRoute
+  '/_app/learn/progress': typeof AppLearnProgressRoute
+  '/_app/learn/history': typeof AppLearnHistoryRoute
+  '/login': typeof LoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -244,6 +256,12 @@ export interface FileRouteTypes {
     | '/osez/$id'
     | '/pronlab/$setId'
     | '/tandem/$id'
+    | '/learn/curriculum'
+    | '/learn/curriculum/$unitId'
+    | '/learn/review'
+    | '/learn/progress'
+    | '/learn/history'
+    | '/login'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/connect'
@@ -263,6 +281,12 @@ export interface FileRouteTypes {
     | '/osez/$id'
     | '/pronlab/$setId'
     | '/tandem/$id'
+    | '/learn/curriculum'
+    | '/learn/curriculum/$unitId'
+    | '/learn/review'
+    | '/learn/progress'
+    | '/learn/history'
+    | '/login'
   id:
     | '__root__'
     | '/_app'
@@ -283,16 +307,11 @@ export interface FileRouteTypes {
     | '/_app/osez/$id'
     | '/_app/pronlab/$setId'
     | '/_app/tandem/$id'
-    | '/_app/learn/curriculum'
-    | '/_app/learn/curriculum/$unitId'
-    | '/_app/learn/review'
-    | '/_app/learn/progress'
-    | '/_app/learn/history'
-    | '/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -338,6 +357,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/learn'
       preLoaderRoute: typeof AppLearnRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/_app/learn/curriculum': {
+      id: '/_app/learn/curriculum'
+      path: '/curriculum'
+      fullPath: '/learn/curriculum'
+      preLoaderRoute: typeof AppLearnCurriculumRouteImport
+      parentRoute: typeof AppLearnRoute
+    }
+    '/_app/learn/curriculum/$unitId': {
+      id: '/_app/learn/curriculum/$unitId'
+      path: '/curriculum/$unitId'
+      fullPath: '/learn/curriculum/$unitId'
+      preLoaderRoute: typeof AppLearnCurriculumUnitIdRouteImport
+      parentRoute: typeof AppLearnRoute
+    }
+    '/_app/learn/review': {
+      id: '/_app/learn/review'
+      path: '/review'
+      fullPath: '/learn/review'
+      preLoaderRoute: typeof AppLearnReviewRouteImport
+      parentRoute: typeof AppLearnRoute
+    }
+    '/_app/learn/progress': {
+      id: '/_app/learn/progress'
+      path: '/progress'
+      fullPath: '/learn/progress'
+      preLoaderRoute: typeof AppLearnProgressRouteImport
+      parentRoute: typeof AppLearnRoute
+    }
+    '/_app/learn/history': {
+      id: '/_app/learn/history'
+      path: '/history'
+      fullPath: '/learn/history'
+      preLoaderRoute: typeof AppLearnHistoryRouteImport
+      parentRoute: typeof AppLearnRoute
     }
     '/_app/library': {
       id: '/_app/library'
@@ -423,6 +477,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTandemIdRouteImport
       parentRoute: typeof AppTandemRoute
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -442,7 +503,9 @@ const AppLearnRouteChildren: AppLearnRouteChildren = {
   AppLearnHistoryRoute: AppLearnHistoryRoute,
 }
 
-const AppLearnRouteWithChildren = AppLearnRoute._addFileChildren(AppLearnRouteChildren)
+const AppLearnRouteWithChildren = AppLearnRoute._addFileChildren(
+  AppLearnRouteChildren,
+)
 
 interface AppLibraryRouteChildren {
   AppLibraryIdRoute: typeof AppLibraryIdRoute
@@ -527,6 +590,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
