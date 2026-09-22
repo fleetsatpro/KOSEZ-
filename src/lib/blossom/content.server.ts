@@ -171,7 +171,6 @@ async function ensureBootstrapContent(sql: Awaited<ReturnType<typeof getSql>>) {
 
 export async function getPublishedContent(): Promise<PublishedContent> {
   const sql = await getSql();
-  await ensureBootstrapContent(sql);
   const rows = await sql.query(
     "select content_key, kind, published_payload, state from blossom_content_item where (state = 'published' and published_payload is not null) or state = 'archived' order by updated_at desc",
   );
