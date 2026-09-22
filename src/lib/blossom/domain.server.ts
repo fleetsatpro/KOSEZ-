@@ -197,7 +197,7 @@ function assertFeaturePlan(
 }
 
 export type AdminWorkspace = {
-  learners: number;
+  profiles: number;
   teachers: number;
   guardians: number;
   activeOrganizations: number;
@@ -247,7 +247,7 @@ export async function getAdminWorkspace(userId: string): Promise<AdminWorkspace>
 
   const booking = bookings[0] ?? {};
   return {
-    learners: Number(learners[0]?.count ?? 0),
+    profiles: Number(learners[0]?.count ?? 0),
     teachers: Number(teachers[0]?.count ?? 0),
     guardians: Number(guardians[0]?.count ?? 0),
     activeOrganizations: Number(organizations[0]?.count ?? 0),
