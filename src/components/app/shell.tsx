@@ -26,7 +26,7 @@ import { UserButton } from "@/lib/auth/gates";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { cn } from "@/lib/utils";
-import { outboxCount, syncChangeEventName } from "@/lib/blossom/sync-client";
+import { mutationStatusCounts, syncChangeEventName } from "@/lib/blossom/sync-client";
 
 const NAV = [
   {
@@ -92,6 +92,7 @@ function isActive(pathname: string, hint: readonly string[]) {
 
 function SyncStatus() {
   const [pending, setPending] = useState(0);
+  const [conflicts, setConflicts] = useState(0);
   const [online, setOnline] = useState(
     typeof navigator === "undefined" ? true : navigator.onLine,
   );
@@ -100,8 +101,11 @@ function SyncStatus() {
     let disposed = false;
     const refresh = () => {
       setOnline(typeof navigator === "undefined" ? true : navigator.onLine);
-      void outboxCount().then((count) => {
-        if (!disposed) setPending(count);
+      void mutationStatusCounts().then((counts) => {
+        if (!disposed) {
+          setPending(counts.pending);
+          setConflicts(counts.conflicts);
+        }
       });
     };
 
@@ -120,18 +124,35 @@ function SyncStatus() {
     };
   }, []);
 
-  const icon = !online ? (
+  const icon = conflicts ? (
+    <CloudOff className="size-3.5 text-muted" strokeWidth={1.7} />
+  ) : !online ? (
     <CloudOff className="size-3.5 text-muted" strokeWidth={1.7} />
   ) : pending ? (
     <LoaderCircle className="size-3.5 animate-spin text-primary" strokeWidth={1.7} />
   ) : (
     <Cloud className="size-3.5 text-primary" strokeWidth={1.7} />
   );
-  const label = !online ? "Hors connexion" : pending ? "Synchronisation" : "Synchronisé";
-  const detail = !online
-    ? pending === 1 ? "1 changement en attente" : pending + " changements en attente"
-    : pending ? pending === 1 ? "1 changement en attente" : pending + " changements en attente"
-    : "Aucun changement en attente";
+  const label = conflicts
+    ? "Conflit à résoudre"
+    : !online
+      ? "Hors connexion"
+      : pending
+        ? "Synchronisation"
+        : "Synchronisé";
+  const detail = conflicts
+    ? conflicts === 1
+      ? "1 modification nécessite votre attention"
+      : conflicts + " modifications nécessitent votre attention"
+    : !online
+      ? pending === 1
+        ? "1 changement en attente"
+        : pending + " changements en attente"
+      : pending
+        ? pending === 1
+          ? "1 changement en attente"
+          : pending + " changements en attente"
+        : "Aucun changement en attente";
 
   return (
     <div className="flex items-center gap-2" aria-live="polite">
