@@ -6,12 +6,14 @@ export type BlossomWorkspaceAccess = {
   isTeacher: boolean;
   isGuardian: boolean;
   isOrgStaff: boolean;
+  isChild: boolean;
 };
 
 const EMPTY_ACCESS: BlossomWorkspaceAccess = {
   isTeacher: false,
   isGuardian: false,
   isOrgStaff: false,
+  isChild: false,
 };
 
 export function useBlossomWorkspaceAccess() {
