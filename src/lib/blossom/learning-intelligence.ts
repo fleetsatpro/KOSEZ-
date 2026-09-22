@@ -14,7 +14,8 @@ export type LearningEvidenceKind =
   | "pronunciation"
   | "vocabulary"
   | "review"
-  | "tandem";
+  | "tandem"
+  | "lesson";
 
 export type LearningEvidence = {
   domainId: LearningDomainId;
@@ -92,6 +93,7 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
     HOMEWORK_COMPLETED: { kind: "writing", domains: ["writing"], direct: true, label: "Devoir" },
     IMMERSION_ATTENDED: { kind: "mission", domains: ["speaking", "listening", "interaction"], direct: false, label: "Immersion" },
     DIAGNOSTIC_COMPLETED: { kind: "review", domains: ["speaking", "listening", "writing", "grammar", "interaction"], direct: false, label: "Repère" },
+    LESSON_COMPLETED: { kind: "lesson", domains: ["speaking", "interaction"], direct: false, label: "Pratique du parcours" },
   };
   const entry = map[event.type];
   if (!entry) return [];

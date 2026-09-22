@@ -53,6 +53,22 @@ export const CAN_DO_OBJECTIVES: CanDoObjective[] = [
   { id: "a2-vocab-reuse", level: "A2", domain: "vocabulary", title: "Réutiliser du vocabulaire", evidence: "Rappeler un mot appris et le remettre dans une phrase nouvelle." },
   { id: "a2-grammar-question", level: "A2", domain: "grammar", title: "Construire une question utile", evidence: "Former une question compréhensible sans reconstruire toute la phrase en français." },
   { id: "a2-mediate-simple", level: "A2", domain: "mediation", title: "Transmettre une information simple", evidence: "Expliquer à quelqu'un l'essentiel d'un message ou d'une consigne." },
+  { id: "b1-speak-describe", level: "B1", domain: "speaking", title: "Décrire une expérience", evidence: "Organiser une description compréhensible avec contexte, détail pertinent et impression personnelle." },
+  { id: "b1-speak-compare", level: "B1", domain: "speaking", title: "Comparer des options", evidence: "Comparer au moins deux options et justifier une préférence selon un critère." },
+  { id: "b1-write-explain", level: "B1", domain: "writing", title: "Expliquer un choix", evidence: "Rédiger une recommandation brève avec critères, raisons et formulation adaptée." },
+  { id: "b1-grammar-connectors", level: "B1", domain: "grammar", title: "Relier les idées", evidence: "Utiliser des connecteurs pour exprimer cause, contraste, conséquence ou progression." },
+  { id: "b1-listen-detail", level: "B1", domain: "listening", title: "Repérer un détail implicite", evidence: "Identifier une information utile et une intention dans un échange plus dense." },
+  { id: "b1-read-infer", level: "B1", domain: "reading", title: "Inférer une intention", evidence: "Déduire une opinion ou une implication à partir d'indices textuels." },
+  { id: "b1-mediate", level: "B1", domain: "mediation", title: "Reformuler pour un tiers", evidence: "Transmettre l'essentiel avec ses propres mots et adapter le niveau de détail au destinataire." },
+  { id: "b1-interact-clarify", level: "B1", domain: "interaction", title: "Lever une ambiguïté", evidence: "Demander une précision, vérifier son interprétation et reprendre l'échange." },
+  { id: "b1-argue-opinion", level: "B1", domain: "speaking", title: "Défendre un avis", evidence: "Exprimer une position, la soutenir par une raison et un exemple." },
+  { id: "b1-write-position", level: "B1", domain: "writing", title: "Prendre position à l'écrit", evidence: "Construire un texte bref avec position, arguments et conclusion ou ouverture." },
+  { id: "b1-acknowledge-counterpoint", level: "B1", domain: "interaction", title: "Reconnaître un contre-argument", evidence: "Reformuler un autre point de vue avant de préciser le sien." },
+  { id: "b1-grammar-nuance", level: "B1", domain: "grammar", title: "Nuancer une affirmation", evidence: "Employer des modalisateurs et connecteurs pour éviter les formulations trop absolues." },
+  { id: "b1-solve-problem", level: "B1", domain: "interaction", title: "Résoudre un imprévu", evidence: "Décrire un problème, proposer une solution et vérifier l'accord de l'interlocuteur." },
+  { id: "b1-negotiate", level: "B1", domain: "interaction", title: "Négocier une alternative", evidence: "Faire une contre-proposition et maintenir une coopération visible dans l'échange." },
+  { id: "b1-listen-constraints", level: "B1", domain: "listening", title: "Identifier des contraintes", evidence: "Repérer priorités, contraintes et options dans une conversation plus rapide." },
+  { id: "b1-mediate-solution", level: "B1", domain: "mediation", title: "Expliquer une solution à un tiers", evidence: "Raconter brièvement ce qui s'est passé et transmettre la solution retenue." },
 ];
 
 export type LessonKind = "mission" | "speak" | "pronlab" | "library" | "review" | "grammar" | "listening" | "writing";
@@ -165,6 +181,66 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u6-l3", title: "Mission terrain", kind: "mission", minutes: 5, objectiveIds: ["a2-speak-preference"], description: "Choisir, justifier et relancer dans une situation quotidienne." },
     ],
   },
+  {
+    id: "b1-description-and-comparison",
+    number: 7,
+    title: "Décrire et comparer avec précision",
+    blurb: "Passer du constat simple à une description nuancée, comparer des options et expliquer un choix.",
+    level: "B1",
+    domainIds: ["speaking", "reading", "writing", "grammar"],
+    objectives: ["b1-speak-describe", "b1-speak-compare", "b1-write-explain", "b1-grammar-connectors"],
+    lessons: [
+      { id: "u7-l1", title: "Décrire une expérience", kind: "speak", minutes: 8, objectiveIds: ["b1-speak-describe"], description: "Organiser une description en donnant le contexte, le détail utile et une impression." },
+      { id: "u7-l2", title: "Comparer deux options", kind: "grammar", minutes: 6, objectiveIds: ["b1-speak-compare", "b1-grammar-connectors"], description: "Relier comparaison, justification et conséquence dans une phrase naturelle." },
+      { id: "u7-l3", title: "Une recommandation argumentée", kind: "writing", minutes: 8, objectiveIds: ["b1-write-explain", "b1-speak-compare"], description: "Écrire une recommandation courte qui donne un critère et une raison." },
+      { id: "u7-l4", title: "Lire entre les lignes", kind: "library", minutes: 7, objectiveIds: ["b1-read-infer"], description: "Repérer le ton, les indices et les formulations qui portent une opinion." },
+    ],
+  },
+  {
+    id: "b1-understand-and-mediate",
+    number: 8,
+    title: "Comprendre et transmettre l'essentiel",
+    blurb: "Écouter, sélectionner l'information importante et la reformuler pour quelqu'un d'autre.",
+    level: "B1",
+    domainIds: ["listening", "reading", "mediation", "interaction"],
+    objectives: ["b1-listen-detail", "b1-read-infer", "b1-mediate", "b1-interact-clarify"],
+    lessons: [
+      { id: "u8-l1", title: "Attraper le détail caché", kind: "listening", minutes: 8, objectiveIds: ["b1-listen-detail"], description: "Distinguer l'information centrale d'un détail secondaire dans un échange rapide." },
+      { id: "u8-l2", title: "Comprendre une intention", kind: "library", minutes: 7, objectiveIds: ["b1-read-infer"], description: "Repérer une intention, une réserve ou une implication qui n'est pas formulée directement." },
+      { id: "u8-l3", title: "Reformuler pour quelqu'un", kind: "mission", minutes: 7, objectiveIds: ["b1-mediate", "b1-interact-clarify"], description: "Transmettre l'essentiel sans recopier le message mot à mot." },
+      { id: "u8-l4", title: "Clarifier une ambiguïté", kind: "speak", minutes: 6, objectiveIds: ["b1-interact-clarify"], description: "Demander une précision puis reformuler ce que vous avez compris." },
+    ],
+  },
+  {
+    id: "b1-argument-with-nuance",
+    number: 9,
+    title: "Argumenter sans simplifier",
+    blurb: "Exprimer un avis, reconnaître un contre-argument et défendre une position sans réciter un texte.",
+    level: "B1",
+    domainIds: ["speaking", "writing", "interaction", "grammar"],
+    objectives: ["b1-argue-opinion", "b1-write-position", "b1-acknowledge-counterpoint", "b1-grammar-nuance"],
+    lessons: [
+      { id: "u9-l1", title: "Donner son avis", kind: "speak", minutes: 8, objectiveIds: ["b1-argue-opinion"], description: "Prendre position avec une raison claire et un exemple concret." },
+      { id: "u9-l2", title: "Nuancer une affirmation", kind: "grammar", minutes: 7, objectiveIds: ["b1-grammar-nuance"], description: "Utiliser des connecteurs et modalisateurs pour éviter le tout-ou-rien." },
+      { id: "u9-l3", title: "Répondre à un contre-argument", kind: "mission", minutes: 8, objectiveIds: ["b1-acknowledge-counterpoint", "b1-argue-opinion"], description: "Reconnaître un autre point de vue avant de défendre le sien." },
+      { id: "u9-l4", title: "Écrire une position", kind: "writing", minutes: 9, objectiveIds: ["b1-write-position", "b1-grammar-nuance"], description: "Construire un texte bref avec position, raison et ouverture." },
+    ],
+  },
+  {
+    id: "b1-solve-and-adapt",
+    number: 10,
+    title: "Résoudre et s'adapter",
+    blurb: "Faire face à un imprévu, négocier une solution et réparer la conversation quand la situation dévie.",
+    level: "B1",
+    domainIds: ["interaction", "speaking", "listening", "mediation"],
+    objectives: ["b1-solve-problem", "b1-negotiate", "b1-listen-constraints", "b1-mediate-solution"],
+    lessons: [
+      { id: "u10-l1", title: "Le plan change", kind: "mission", minutes: 8, objectiveIds: ["b1-solve-problem"], description: "Décrire le problème, proposer une solution et vérifier l'accord." },
+      { id: "u10-l2", title: "Négocier une alternative", kind: "speak", minutes: 8, objectiveIds: ["b1-negotiate"], description: "Faire une contre-proposition sans fermer l'échange." },
+      { id: "u10-l3", title: "Écouter les contraintes", kind: "listening", minutes: 7, objectiveIds: ["b1-listen-constraints"], description: "Identifier une contrainte, une priorité et une option dans une conversation." },
+      { id: "u10-l4", title: "Transmettre une solution", kind: "speak", minutes: 7, objectiveIds: ["b1-mediate-solution"], description: "Expliquer à un tiers ce qui s'est passé et quelle solution a été retenue." },
+    ],
+  },
 ];
 
 export type SkillEvidence = {
@@ -190,6 +266,22 @@ export function buildSkillProfile(
   const grammar = count("GRAMMAR_COMPLETED");
   const listening = count("LISTENING_COMPLETED");
   const writing = count("WRITING_COMPLETED");
+  const lessonIds = new Set(
+    log
+      .filter((event) => event.type === "LESSON_COMPLETED" && event.sourceId)
+      .map((event) => event.sourceId as string),
+  );
+  const lessonDomains = CURRICULUM_UNITS.flatMap((unit) =>
+    unit.lessons
+      .filter((lesson) => lessonIds.has(lesson.id))
+      .flatMap((lesson) =>
+        lesson.objectiveIds
+          .map((id) => CAN_DO_OBJECTIVES.find((objective) => objective.id === id)?.domain)
+          .filter((id): id is LearningDomainId => Boolean(id)),
+      ),
+  );
+  const lessonEvidence = (domain: LearningDomainId) =>
+    lessonDomains.filter((id) => id === domain).length;
   const masteredPron = PRONLAB_SETS.flatMap((set) => set.items)
     .filter((item) => summarisePronlabItem(item.id, attempts).mastered)
     .length;
@@ -198,12 +290,12 @@ export function buildSkillProfile(
     speaking: { coverage: missions * 10 + speak * 9 + tandem * 8, evidence: missions + speak + tandem, signal: missions ? "Les missions apportent une preuve située." : "Une première prise de parole donnera un signal utile." },
     interaction: { coverage: missions * 12 + tandem * 10 + speak * 7, evidence: missions + tandem + speak, signal: missions ? "Les gestes réels montrent déjà comment vous entrez dans l'échange." : "Le système attend encore une situation d'interaction." },
     listening: { coverage: speak * 4 + tandem * 5 + reviews * 5 + listening * 18, evidence: speak + tandem + reviews + listening, signal: listening ? "Le lab d'écoute commence à documenter la compréhension de détails concrets." : "Pas assez de données d'écoute pour conclure." },
-    reading: { coverage: vocabulary.length * 3, evidence: vocabulary.length, signal: vocabulary.length ? "Le vocabulaire sauvé indique une première exposition écrite." : "La bibliothèque peut commencer cette branche." },
-    writing: { coverage: writing * 22, evidence: writing, signal: writing ? "Une production écrite est maintenant enregistrée comme trace de travail." : "Aucune production écrite enregistrée pour l'instant." },
+    reading: { coverage: vocabulary.length * 3 + lessonEvidence("reading") * 3, evidence: vocabulary.length + lessonEvidence("reading"), signal: vocabulary.length ? "Le vocabulaire sauvé indique une première exposition écrite." : lessonEvidence("reading") ? "Le parcours contient des pratiques de lecture déclarées ; une trace de compréhension directe renforcera cette branche." : "La bibliothèque peut commencer cette branche." },
+    writing: { coverage: writing * 22 + lessonEvidence("writing") * 3, evidence: writing + lessonEvidence("writing"), signal: writing ? "Une production écrite est maintenant enregistrée comme trace de travail." : lessonEvidence("writing") ? "Le parcours contient des pratiques écrites déclarées ; une production reste à créer pour renforcer la preuve." : "Aucune production écrite enregistrée pour l'instant." },
     pronunciation: { coverage: masteredPron * 16 + attempts.length * 2, evidence: attempts.length, signal: attempts.length ? "Pron'Lab apporte une trace directe des sons travaillés." : "Un passage Pron'Lab donnera une première mesure." },
     vocabulary: { coverage: vocabulary.length * 8 + reviews * 6, evidence: vocabulary.length + reviews, signal: vocabulary.length ? "Les mots sauvés peuvent maintenant entrer dans le rappel espacé." : "Le vocabulaire n'est pas encore enregistré comme mémoire active." },
     grammar: { coverage: missions * 2 + speak * 2 + reviews * 3 + grammar * 18, evidence: missions + speak + reviews + grammar, signal: grammar ? "Le lab de grammaire apporte désormais une trace directe sur les structures ciblées." : "La grammaire est encore évaluée indirectement ; les prochains exercices doivent isoler les structures." },
-    mediation: { coverage: tandem * 3, evidence: tandem, signal: "La médiation sera mieux documentée par des tâches de transmission dédiées." },
+    mediation: { coverage: tandem * 3 + lessonEvidence("mediation") * 3, evidence: tandem + lessonEvidence("mediation"), signal: tandem || lessonEvidence("mediation") ? "Des traces de transmission existent ; les tâches dédiées permettront de mieux distinguer pratique déclarée et performance observée." : "La médiation sera mieux documentée par des tâches de transmission dédiées." },
   };
 
   return LEARNING_DOMAINS.map((domain) => {
@@ -324,18 +416,31 @@ export function curriculumUnitProgress(
 ): number {
   const objectives = new Set(unit.objectives);
   const profile = buildSkillProfile(log, attempts, vocabulary);
-  const relevant = profile.filter((entry) => unit.domainIds.includes(entry.domain.id));
-  if (!relevant.length) return 0;
   const objectiveCoverage = CAN_DO_OBJECTIVES
     .filter((objective) => objectives.has(objective.id))
     .map((objective) => profile.find((entry) => entry.domain.id === objective.domain)?.coverage ?? 0);
-  return cap(objectiveCoverage.reduce((sum, value) => sum + value, 0) / Math.max(1, objectiveCoverage.length));
+  const evidenceCoverage = objectiveCoverage.length
+    ? objectiveCoverage.reduce((sum, value) => sum + value, 0) / objectiveCoverage.length
+    : 0;
+  const lessonCoverage = unit.lessons.length
+    ? (unit.lessons.filter((lesson) => lessonDone(lesson, log)).length / unit.lessons.length) * 100
+    : 0;
+
+  // A unit belongs to its own practice sequence. Other activity can support
+  // competence, but cannot silently complete this particular unit.
+  return cap(lessonCoverage * 0.7 + evidenceCoverage * 0.3);
 }
 
 export function lessonDone(
   lesson: CurriculumLesson,
   log: ActivityEvent[],
 ): boolean {
+  if (log.some((event) => event.type === "LESSON_COMPLETED" && event.sourceId === lesson.id)) {
+    return true;
+  }
+
+  // Preserve compatibility with traces that already used a dedicated source
+  // id while giving the curriculum a canonical completion event.
   const sourceByKind: Record<LessonKind, ActivityType | null> = {
     mission: "MISSION_COMPLETED",
     speak: "SPEAK_COMPLETED",
@@ -347,8 +452,9 @@ export function lessonDone(
     writing: "WRITING_COMPLETED",
   };
   const activityType = sourceByKind[lesson.kind];
-  if (!activityType) return false;
-  return log.some((event) => event.type === activityType && event.sourceId === lesson.id);
+  return activityType
+    ? log.some((event) => event.type === activityType && event.sourceId === lesson.id)
+    : false;
 }
 
 export function unitDoneCount(

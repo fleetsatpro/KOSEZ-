@@ -10,6 +10,7 @@ import {
   buildSkillProfile,
   curriculumUnitProgress,
   type LessonKind,
+  lessonDone,
 } from "@/lib/blossom/learning-os";
 import { useBlossom } from "@/lib/blossom/store";
 
@@ -49,6 +50,7 @@ function CurriculumUnit() {
   const log = useBlossom((s) => s.activityLog);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const vocabulary = useBlossom((s) => s.vocabulary);
+  const completeActivity = useBlossom((s) => s.completeActivity);
   const profile = buildSkillProfile(log, attempts, vocabulary);
 
   if (!unit) {
@@ -124,29 +126,46 @@ function CurriculumUnit() {
           {unit.lessons.map((lesson, index) => {
             const Icon = lessonIcon(lesson.kind);
             const href = lessonLink(lesson.kind);
+            const done = lessonDone(lesson, log);
             return (
-              <Link
-                key={lesson.id}
-                to={href}
-                className="group block rounded-2xl bg-surface p-5 shadow-[var(--shadow-border)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-border-hover)]"
-              >
-                <div className="flex items-start gap-4">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Icon className="size-5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">
-                        0{index + 1} · {lesson.kind}
-                      </span>
-                      <span className="text-xs tabular-nums text-muted">{lesson.minutes} min</span>
+              <div key={lesson.id} className="rounded-2xl bg-surface p-5 shadow-[var(--shadow-border)]">
+                <Link to={href} className="group block">
+                  <div className="flex items-start gap-4">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <Icon className="size-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">0{index + 1} · {lesson.kind}</span>
+                        <span className="text-xs tabular-nums text-muted">{lesson.minutes} min</span>
+                        {done ? <Badge className="border-primary/20 bg-primary/10 text-primary">trace enregistrée</Badge> : null}
+                      </div>
+                      <h3 className="mt-2 font-display text-2xl tracking-tight">{lesson.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-muted">{lesson.description}</p>
                     </div>
-                    <h3 className="mt-2 font-display text-2xl tracking-tight">{lesson.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-muted">{lesson.description}</p>
+                    <ArrowRight className="mt-2 size-4 shrink-0 text-subtle transition group-hover:translate-x-0.5 group-hover:text-primary" />
                   </div>
-                  <ArrowRight className="mt-2 size-4 shrink-0 text-subtle transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                </Link>
+                <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs leading-5 text-subtle">
+                    {done
+                      ? "Votre confirmation reste une trace de parcours ; une activité évaluée apportera une preuve plus forte."
+                      : "Après la pratique, vous pouvez enregistrer honnêtement que cette étape a été réalisée."}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant={done ? "ghost" : "secondary"}
+                    disabled={done}
+                    onClick={() => completeActivity(
+                      "LESSON_COMPLETED",
+                      lesson.id,
+                      `Parcours · unité ${unit.number} · ${lesson.title}`,
+                    )}
+                  >
+                    {done ? "Enregistrée" : "J’ai réalisé cette pratique"}
+                  </Button>
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>

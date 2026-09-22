@@ -177,6 +177,15 @@ export function growthEventForActivity(
         intensity: 0.4,
         label: "Le sol retient un son.",
       };
+    case "LESSON_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "root",
+        sourceId,
+        intensity: 0.2,
+        label: "Une pratique prend racine.",
+      };
     default:
       return {
         id,
