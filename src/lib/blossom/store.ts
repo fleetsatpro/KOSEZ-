@@ -952,9 +952,28 @@ export const useBlossom = create<AppState>()(
         const log = get().activityLog;
         const attempts = get().pronlabAttempts;
         const items = PRONLAB_SETS.flatMap((s) => s.items);
+        const growthEvents = log
+          .map((event) =>
+            growthEventForActivity(event.type, event.sourceId, event.createdAt),
+          )
+          .filter((event): event is GrowthEvent => event !== null)
+          .sort((a, b) => b.at.localeCompare(a.at))
+          .slice(0, 30);
+        const mineralSnapshot = computeMinerals(log);
+        let leoLetters = get().leoLetters;
+        const letter = composeLeoLetter(
+          mineralSnapshot,
+          growthEvents,
+          get().learner.firstName || "Vous",
+        );
+        if (!leoLetters.some((existing) => existing.id === letter.id)) {
+          leoLetters = [letter, ...leoLetters].slice(0, 12);
+        }
         set({
-          mineralSnapshot: computeMinerals(log),
+          growthEvents,
+          mineralSnapshot,
           phonemeLeaves: buildPhonemeLeaves(attempts, items),
+          leoLetters,
         });
       },
       resetJourney: () =>
