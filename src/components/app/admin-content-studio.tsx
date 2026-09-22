@@ -115,7 +115,7 @@ export function AdminContentStudio() {
         setItems((current) =>
           current.map((item) =>
             item.contentKey === selected.contentKey
-              ? { ...item, draftPayload: payload, draftRevision: result.draftRevision, state: "draft" }
+              ? { ...item, draftPayload: payload, draftRevision: result.draftRevision, state: result.state }
               : item,
           ),
         );
