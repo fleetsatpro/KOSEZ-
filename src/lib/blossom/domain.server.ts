@@ -504,6 +504,56 @@ export async function setTandemStatus(
   }
 
   const sql = await getSql();
+  const partnerRows = await sql.query(
+    "select 1 from blossom_profile where user_id = $1 limit 1",
+    [input.partnerUserId],
+  );
+  if (!partnerRows[0]) {
+    throw new BlossomForbiddenError("Ce profil tandem n'est plus disponible.");
+  }
+
+  if (input.status === "accepted") {
+    const incoming = await sql.query(
+      "select status from blossom_tandem_connection where user_id = $1 and partner_user_id = $2",
+      [input.partnerUserId, userId],
+    );
+    const incomingStatus = String(incoming[0]?.status ?? "");
+    if (incomingStatus !== "pending" && incomingStatus !== "accepted") {
+      throw new BlossomForbiddenError(
+        "L'autre personne doit d'abord accepter la demande.",
+      );
+    }
+
+    const accepted = await sql.query(
+      "insert into blossom_tandem_connection (id, user_id, partner_user_id, status, metadata) values ($1::uuid, $2, $3, 'accepted', $4::jsonb) on conflict (user_id, partner_user_id) do update set status = 'accepted', metadata = excluded.metadata, updated_at = current_timestamp returning id, user_id, partner_user_id, status, metadata, created_at, updated_at",
+      [
+        randomUUID(),
+        userId,
+        input.partnerUserId,
+        JSON.stringify(input.metadata ?? {}),
+      ],
+    );
+
+    await sql.query(
+      "insert into blossom_tandem_connection (id, user_id, partner_user_id, status, metadata) values ($1::uuid, $2, $3, 'accepted', $4::jsonb) on conflict (user_id, partner_user_id) do update set status = 'accepted', metadata = excluded.metadata, updated_at = current_timestamp",
+      [
+        randomUUID(),
+        input.partnerUserId,
+        userId,
+        JSON.stringify({ reciprocal: true }),
+      ],
+    );
+
+    if (!accepted[0]) throw new Error("tandem-accept-failed");
+    await writeAuditEvent(userId, {
+      action: "tandem.accepted",
+      subjectUserId: input.partnerUserId,
+      resourceType: "tandem_connection",
+      resourceId: String(accepted[0].id),
+    });
+    return accepted[0];
+  }
+
   const rows = await sql.query(
     "insert into blossom_tandem_connection (id, user_id, partner_user_id, status, metadata) values ($1::uuid, $2, $3, $4, $5::jsonb) on conflict (user_id, partner_user_id) do update set status = excluded.status, metadata = excluded.metadata, updated_at = current_timestamp returning id, user_id, partner_user_id, status, metadata, created_at, updated_at",
     [
@@ -515,6 +565,13 @@ export async function setTandemStatus(
     ],
   );
   if (!rows[0]) throw new Error("tandem-write-failed");
+
+  await writeAuditEvent(userId, {
+    action: `tandem.${input.status}`,
+    subjectUserId: input.partnerUserId,
+    resourceType: "tandem_connection",
+    resourceId: String(rows[0].id),
+  });
   return rows[0];
 }
 
