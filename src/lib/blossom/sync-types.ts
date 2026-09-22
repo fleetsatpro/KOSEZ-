@@ -80,7 +80,7 @@ export type BackendPronlabAttempt = {
 export type BackendSubmission = {
   id: string;
   taskId: string;
-  kind: "grammar" | "listening" | "writing";
+  kind: "grammar" | "listening" | "writing" | "review";
   content: string;
   checks: string[];
   result: SyncJsonObject;
