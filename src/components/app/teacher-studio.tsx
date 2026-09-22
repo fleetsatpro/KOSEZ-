@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Mic, MicOff } from "lucide-react";
 import { Eyebrow, Initials, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,40 @@ import { pronlabFlags } from "@/lib/blossom/engine";
 import { useBlossom } from "@/lib/blossom/store";
 
 type Tab = "prep" | "roster" | "lecture";
+
+type RecognitionResult = {
+  length: number;
+  [index: number]: {
+    [index: number]: { transcript: string } | undefined;
+  } | undefined;
+};
+
+type RecognitionEvent = {
+  results: RecognitionResult;
+};
+
+type RecognitionErrorEvent = {
+  error?: string;
+};
+
+type RecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: RecognitionEvent) => void) | null;
+  onerror: ((event: RecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type RecognitionConstructor = new () => RecognitionLike;
+
+type SpeechRecognitionWindow = Window & {
+  SpeechRecognition?: RecognitionConstructor;
+  webkitSpeechRecognition?: RecognitionConstructor;
+};
+
 
 export function TeacherStudio() {
   const setTeacherMode = useBlossom((s) => s.setTeacherMode);
@@ -36,6 +71,71 @@ export function TeacherStudio() {
   const [hwStudent, setHwStudent] = useState("camille");
   const [hwTitle, setHwTitle] = useState(HOMEWORK_DRAFTS.camille!.title);
   const [hwBody, setHwBody] = useState(HOMEWORK_DRAFTS.camille!.body);
+  const [voiceRecording, setVoiceRecording] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const recognitionRef = useRef<RecognitionLike | null>(null);
+  const voiceBaseTextRef = useRef("");
+
+  useEffect(() => {
+    const speechWindow = window as SpeechRecognitionWindow;
+    setVoiceSupported(Boolean(speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition));
+    return () => {
+      recognitionRef.current?.stop();
+      recognitionRef.current = null;
+    };
+  }, []);
+
+  function startVoiceNote() {
+    const speechWindow = window as SpeechRecognitionWindow;
+    const Constructor = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
+    if (!Constructor) {
+      setVoiceSupported(false);
+      setVoiceError("La dictée vocale n'est pas disponible dans ce navigateur.");
+      return;
+    }
+
+    const recognition = new Constructor();
+    recognition.lang = "fr-FR";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    voiceBaseTextRef.current = noteText.trim();
+    recognition.onresult = (event) => {
+      let transcript = "";
+      for (let index = 0; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const spoken = result?.[0]?.transcript?.trim();
+        if (spoken) transcript = `${transcript} ${spoken}`.trim();
+      }
+      if (transcript) {
+        setNoteText([voiceBaseTextRef.current, transcript].filter(Boolean).join(" "));
+      }
+    };
+    recognition.onerror = () => {
+      setVoiceRecording(false);
+      recognitionRef.current = null;
+      setVoiceError("La dictée n'a pas pu démarrer. Vous pouvez saisir la note au clavier.");
+    };
+    recognition.onend = () => {
+      setVoiceRecording(false);
+      recognitionRef.current = null;
+    };
+
+    try {
+      recognitionRef.current = recognition;
+      recognition.start();
+      setVoiceError(null);
+      setVoiceRecording(true);
+    } catch {
+      recognitionRef.current = null;
+      setVoiceRecording(false);
+      setVoiceError("La dictée n'a pas pu démarrer.");
+    }
+  }
+
+  function stopVoiceNote() {
+    recognitionRef.current?.stop();
+  }
 
   const camilleFlags = pronlabFlags(
     attempts,
@@ -221,15 +321,18 @@ export function TeacherStudio() {
             <Button
               className="mt-2 w-full"
               variant="ghost"
-              onClick={() => {
-                const spoken =
-                  "TH encore dur en fin de phrase. Reprendre le set demain, sans forcer.";
-                addNote(noteStudent, [...new Set([...noteTags, "prononciation"])], spoken);
-                toast("Note vocale transcrite. Vous relisez avant tout envoi.");
-              }}
+              disabled={!voiceSupported}
+              onClick={() => (voiceRecording ? stopVoiceNote() : startVoiceNote())}
             >
-              Note vocale · 20 s (transcription)
+              {voiceRecording ? <MicOff className="size-4" /> : <Mic className="size-4" />}
+              {voiceRecording ? "Arrêter la dictée" : "Dicter la note"}
             </Button>
+            <p className="mt-2 text-[11px] leading-5 text-subtle">
+              {voiceError ??
+                (voiceSupported
+                  ? "La transcription apparaît dans le champ ci-dessus. Vous relisez puis vous enregistrez."
+                  : "Dictée vocale indisponible ici : utilisez la saisie texte.")}
+            </p>
             {notes.length > 0 && (
               <ul className="mt-4 space-y-2 text-sm">
                 {notes.slice(-3).map((n) => (
