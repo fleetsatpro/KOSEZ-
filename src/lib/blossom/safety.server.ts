@@ -51,6 +51,37 @@ export async function reportTandem(
 }
 
 
+export async function updateAdminSafetyReport(
+  userId: string,
+  reportId: string,
+  status: "reviewing" | "resolved" | "dismissed",
+) {
+  const sql = await getSql();
+  const admin = await sql.query(
+    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    [userId],
+  );
+  if (!admin[0]) throw new BlossomForbiddenError("Admin access is not enabled for this account.");
+
+  const rows = await sql.query(
+    "update blossom_tandem_report set status = $2, updated_at = current_timestamp where id = $1::uuid and status in ('open','reviewing') returning id, partner_user_id, status",
+    [reportId, status],
+  );
+  if (!rows[0]) throw new Error("safety-report-revision-conflict");
+
+  await writeAuditEvent(userId, {
+    action: `tandem_report.${status}`,
+    resourceType: "tandem_report",
+    resourceId: reportId,
+  });
+
+  return {
+    id: String(rows[0].id),
+    partnerUserId: String(rows[0].partner_user_id),
+    status: String(rows[0].status) as "reviewing" | "resolved" | "dismissed",
+  };
+}
+
 export async function getAdminSafetySummary(userId: string) {
   const sql = await getSql();
   const admin = await sql.query(
