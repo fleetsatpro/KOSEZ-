@@ -83,6 +83,9 @@ function MoiPage() {
   const leoLine = organismStatusLine(minerals);
   const plantSrc = PLANT_IMAGE[journey.stage.id];
   const progress = Math.max(4, Math.round(journey.progress * 100));
+  const initials = learner.firstName
+    ? learner.firstName.slice(0, 1).toUpperCase()
+    : "K";
 
   const calendar = [
     ...EVENTS.filter((e) => joined.includes(e.id)).map((e) => ({
@@ -108,11 +111,17 @@ function MoiPage() {
             aria-hidden
           />
           <div className="absolute inset-x-0 bottom-0 flex items-end gap-4 p-5 sm:p-7">
-            <img
-              src={learner.avatar}
-              alt=""
-              className="size-16 shrink-0 rounded-2xl object-cover ring-2 ring-white/20 sm:size-20"
-            />
+            {learner.avatar ? (
+              <img
+                src={learner.avatar}
+                alt=""
+                className="size-16 shrink-0 rounded-2xl object-cover ring-2 ring-white/20 sm:size-20"
+              />
+            ) : (
+              <span className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-primary/20 font-display text-2xl text-white ring-2 ring-white/20 sm:size-20 sm:text-3xl">
+                {initials}
+              </span>
+            )}
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/45">
                 MOI · {journey.stage.label}
