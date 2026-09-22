@@ -761,6 +761,7 @@ export const useBlossom = create<AppState>()(
           current.plan,
           text,
           current.exportConsent,
+          current.tandemOpen,
         );
       },
       saveHomeworkDraft: (studentId, title, body) => {
@@ -870,6 +871,7 @@ export const useBlossom = create<AppState>()(
           current.plan,
           current.warmup,
           value,
+          current.tandemOpen,
         );
       },
       saveWord: (word, gloss) => {
@@ -929,6 +931,7 @@ export const useBlossom = create<AppState>()(
           current.plan,
           current.warmup,
           current.exportConsent,
+          current.tandemOpen,
         );
       },
       completePulse: (dareId, seconds, offline) => {
