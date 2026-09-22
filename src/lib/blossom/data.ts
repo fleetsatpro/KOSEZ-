@@ -1132,11 +1132,11 @@ export const HOMEWORK_DRAFTS: Record<string, { title: string; body: string }> = 
 };
 
 export const LEARNER_MEMORY = {
-  hesitation: "Les TH (think / this / other)",
-  avoided: "I'll have",
-  confidence: "Commander, décrire un plat",
+  hesitation: "Aucun point de friction confirmé",
+  avoided: "Aucune structure évitée confirmée",
+  confidence: "Aucune compétence encore assez documentée",
   leoNote:
-    "Les TH bloquent encore. La mission du jour les contourne ; Pron'Lab les reprend. Au café, préférez « I'll have » à « I want ».",
+    "Votre mémoire de pratique se construit à partir de vos traces réelles. Léo précisera ses repères au fur et à mesure.",
 };
 
 export const CHILD = {
