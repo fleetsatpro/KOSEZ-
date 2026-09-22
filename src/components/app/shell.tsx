@@ -11,6 +11,9 @@ import {
   Sprout,
   User,
   UserRound,
+  Target,
+  MapPin,
+  Users,
   Cloud,
   CloudOff,
   LoaderCircle,
@@ -73,14 +76,48 @@ const NAV = [
   },
 ] as const;
 
-const SECONDARY_NAV = [
-  { to: "/learn/curriculum", label: "Parcours", icon: Sprout },
-  { to: "/pronlab", label: "Pron'Lab", icon: Mic },
-  { to: "/learn/review", label: "Réviser", icon: RotateCcw },
-  { to: "/learn/progress", label: "Compétences", icon: ChartNoAxesCombined },
-  { to: "/learn/history", label: "Historique", icon: History },
-  { to: "/learn/labs", label: "Labs", icon: FlaskConical },
-] as const;
+const CONTEXT_NAV = {
+  blossom: [
+    { to: "/", label: "BLOSSOM", icon: Sprout },
+    { to: "/plant", label: "Végétal", icon: Sprout },
+    { to: "/mission", label: "Mission terrain", icon: Target },
+  ],
+  osez: [
+    { to: "/osez/pulse", label: "Pulse", icon: Mic },
+    { to: "/mission", label: "Mission terrain", icon: Target },
+  ],
+  explore: [
+    { to: "/explore", label: "Rencontres", icon: Compass },
+    { to: "/immersion", label: "Immersion", icon: MapPin },
+  ],
+  connect: [
+    { to: "/connect", label: "Présences", icon: User },
+    { to: "/tandem", label: "Tandem", icon: Users },
+  ],
+  learn: [
+    { to: "/learn/curriculum", label: "Parcours", icon: Sprout },
+    { to: "/pronlab", label: "Pron'Lab", icon: Mic },
+    { to: "/library", label: "Bibliothèque", icon: BookOpen },
+    { to: "/learn/review", label: "Réviser", icon: RotateCcw },
+    { to: "/learn/progress", label: "Compétences", icon: ChartNoAxesCombined },
+    { to: "/learn/history", label: "Historique", icon: History },
+    { to: "/learn/labs", label: "Labs", icon: FlaskConical },
+  ],
+  moi: [],
+} as const;
+
+function contextKey(pathname: string) {
+  if (pathname === "/" || pathname === "/plant" || pathname === "/mission") return "blossom";
+  if (pathname === "/osez" || pathname.startsWith("/osez/")) return "osez";
+  if (pathname === "/explore" || pathname === "/immersion") return "explore";
+  if (pathname === "/connect" || pathname.startsWith("/tandem")) return "connect";
+  if (pathname === "/learn" || pathname.startsWith("/learn/") || pathname === "/library" || pathname.startsWith("/library/") || pathname === "/pronlab" || pathname.startsWith("/pronlab/")) return "learn";
+  return "moi";
+}
+
+function contextNavFor(pathname: string) {
+  return CONTEXT_NAV[contextKey(pathname)];
+}
 
 function isActive(pathname: string, hint: readonly string[]) {
   return hint.some((path) =>
@@ -176,6 +213,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { access, pending: accessPending } = useBlossomWorkspaceAccess();
   const journey = useJourney();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const contextNav = contextNavFor(pathname);
+  const contextLabel =
+    contextKey(pathname) === "learn"
+      ? "Atelier LEARN"
+      : contextKey(pathname) === "osez"
+        ? "Parler"
+        : contextKey(pathname) === "explore"
+          ? "Sortir"
+          : contextKey(pathname) === "connect"
+            ? "Présences"
+            : contextKey(pathname) === "blossom"
+              ? "Votre croissance"
+              : "Votre espace";
   const hideChrome =
     pathname === "/mission" || pathname.startsWith("/osez/") || pathname.startsWith("/tandem/");
 
@@ -301,10 +351,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </nav>
 
-          <nav className="mt-8" aria-label="Espaces secondaires">
-            <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">Explorer</p>
+          {contextNav.length > 0 && (
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">{contextLabel}</p>
             <div className="mt-2 grid gap-0.5">
-              {SECONDARY_NAV.map((item) => {
+              {contextNav.map((item) => {
                 const Icon = item.icon;
                 const active = pathname === item.to || pathname.startsWith(`${item.to}/`);
                 return (
@@ -363,7 +413,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {!hideChrome && (
           <nav className="border-b border-border/60 bg-bg/80 px-4 py-2 backdrop-blur-md lg:hidden" aria-label="Navigation secondaire">
             <div className="mx-auto flex max-w-full gap-1 overflow-x-auto pb-0.5">
-              {SECONDARY_NAV.map((item) => (
+              {contextNav.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
@@ -377,7 +427,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               ))}
             </div>
           </nav>
-        )}
+          )}
         {children}
       </div>
 
