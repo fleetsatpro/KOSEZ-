@@ -194,10 +194,19 @@ const waitlistPayloadSchema = z.object({
 const analyticsPayloadSchema = z.object({
   name: z.string().trim().min(1).max(120),
   occurredAt: z.string().datetime(),
-  props: z.record(
-    z.string().trim().max(80),
-    z.union([z.string().max(500), z.number().finite(), z.boolean()]),
-  ).refine((value) => Object.keys(value).length <= 24),
+  props: z
+    .record(
+      z.string().trim().max(80),
+      z.union([z.string().max(500), z.number().finite(), z.boolean()]),
+    )
+    .refine((value) => Object.keys(value).length <= 24)
+    .refine(
+      (value) =>
+        !Object.keys(value).some((key) =>
+          /password|secret|token|authorization|cookie|email|phone|address/i.test(key),
+        ),
+      "analytics-sensitive-field",
+    ),
 });
 
 const teacherNotePayloadSchema = z.object({
