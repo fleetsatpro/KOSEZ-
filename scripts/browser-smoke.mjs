@@ -68,6 +68,21 @@ const VIEWPORTS = [
   { name: "mobile", width: 390, height: 844, screenshot: mobilePng },
 ];
 
+async function gotoWithRetry(page, targetUrl, options, attempts = 3) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await page.goto(targetUrl, options);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) {
+        await page.waitForTimeout(300 * attempt);
+      }
+    }
+  }
+  throw lastError;
+}
+
 const SMOKE_STATE_KEY = "kosez-blossom-v2";
 const SMOKE_ROUTES = [
   "/",
@@ -147,7 +162,11 @@ try {
     page.on("pageerror", (err) => errors.pageErrors.push(String(err?.message || err)));
     // `domcontentloaded`, not `networkidle`: Vite keeps an HMR websocket open, so
     // networkidle never settles and would burn the whole timeout.
-    const resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+    const resp = await gotoWithRetry(
+      page,
+      url,
+      { waitUntil: "domcontentloaded", timeout: timeoutMs },
+    );
     const status = resp?.status() ?? 0;
     await page.waitForTimeout(1000);
 
@@ -155,10 +174,11 @@ try {
     for (const route of SMOKE_ROUTES) {
       const response = route === "/"
         ? resp
-        : await page.goto(new URL(route, url).href, {
-            waitUntil: "domcontentloaded",
-            timeout: timeoutMs,
-          });
+        : await gotoWithRetry(
+            page,
+            new URL(route, url).href,
+            { waitUntil: "domcontentloaded", timeout: timeoutMs },
+          );
       const routeStatus = response?.status() ?? 0;
       routeChecks.push({
         route,
@@ -170,7 +190,11 @@ try {
       }
       await page.waitForTimeout(250);
     }
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+    await gotoWithRetry(
+      page,
+      url,
+      { waitUntil: "domcontentloaded", timeout: timeoutMs },
+    );
     await page.waitForTimeout(500);
 
     const title = await page.title();
