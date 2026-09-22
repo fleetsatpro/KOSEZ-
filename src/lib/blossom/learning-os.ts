@@ -1,7 +1,7 @@
-import type { ActivityEvent, ActivityType, PronlabAttempt } from "./engine";
-import type { MissionSession } from "./mission";
-import { PRONLAB_SETS, TODAY_MISSION, type PronlabItem } from "./data";
-import { summarisePronlabItem } from "./engine";
+import type { ActivityEvent, ActivityType, PronlabAttempt } from "./engine.ts";
+import type { MissionSession } from "./mission.ts";
+import { PRONLAB_SETS, TODAY_MISSION, type PronlabItem } from "./data.ts";
+import { summarisePronlabItem } from "./engine.ts";
 
 export type LearningDomainId =
   | "speaking"

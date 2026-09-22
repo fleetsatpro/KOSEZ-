@@ -2,7 +2,7 @@ import {
   activeMissionRun,
   type MissionRun,
   type MissionSession,
-} from "./mission";
+} from "./mission.ts";
 import type { BackendMission } from "./sync-types";
 
 function timestamp(value: string | null | undefined): number {
