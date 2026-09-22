@@ -11,6 +11,7 @@ import {
   markConflict,
   removeMutation,
   replaceConflictWithMutation,
+  setSyncOwner,
   syncChangeEventName,
 } from "@/lib/blossom/sync-client";
 import { mergeMissionSessions } from "@/lib/blossom/sync-merge";
@@ -82,8 +83,7 @@ function mergeBackendState(remote: BackendState): void {
   );
   for (const entry of remote.vocabulary) {
     const key = entry.word.toLowerCase();
-    const local = vocabularyByWord.get(key);
-    if (!local || timestamp(entry.updatedAt) >= timestamp(new Date(0).toISOString())) {
+    if (!vocabularyByWord.has(key)) {
       vocabularyByWord.set(key, {
         word: key,
         gloss: entry.gloss,
@@ -274,11 +274,18 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
   const syncingRef = useRef(false);
 
   useEffect(() => {
-    if (isPending || !user) return;
+    if (isPending) return;
+
+    if (!user) {
+      setSyncOwner(null);
+      useBlossom.getState().resetJourney();
+      return;
+    }
 
     let disposed = false;
     const userChanged = activeUserRef.current !== user.id;
     activeUserRef.current = user.id;
+    setSyncOwner(user.id);
 
     if (userChanged) {
       useBlossom.getState().resetJourney();
@@ -329,23 +336,24 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
 
 export function BlossomSyncBoundary({ children }: { children: ReactNode }) {
   const { user, isPending } = useCurrentUserState();
-  const [readyUserId, setReadyUserId] = useState<string | null>(null);
+  const [readyKey, setReadyKey] = useState<string | null>(null);
+  const identityKey = isPending ? null : user?.id ?? "__signed-out__";
 
   useEffect(() => {
-    if (isPending) return;
-    if (!user) {
-      setReadyUserId(null);
-      return;
-    }
-    setReadyUserId(null);
+    setReadyKey(null);
+    if (!isPending && !user) setReadyKey("__signed-out__");
   }, [isPending, user?.id]);
 
-  const ready = Boolean(user && readyUserId === user.id);
+  const ready = identityKey !== null && readyKey === identityKey;
 
   return (
     <>
-      {!isPending && !user ? children : <SyncMark ready={ready} />}
-      <BlossomSyncBridge onReady={() => user && setReadyUserId(user.id)} />
+      {ready ? children : <SyncMark ready={false} />}
+      <BlossomSyncBridge
+        onReady={() => {
+          setReadyKey(identityKey);
+        }}
+      />
     </>
   );
 }
