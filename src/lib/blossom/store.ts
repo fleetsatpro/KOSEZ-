@@ -173,6 +173,47 @@ function queueMissionSync(
   };
 }
 
+function localTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
+function queueProfileSync(
+  learner: LearnerProfile,
+  languageId: string,
+  plan: PlanId,
+  warmup: string | null,
+  exportConsent: boolean,
+): void {
+  queueSyncMutation({
+    operation: "profile.upsert",
+    entityId: "profile",
+    payload: {
+      displayName: `${learner.firstName} ${learner.lastName}`.trim(),
+      targetLanguage: languageId,
+      level: learner.level,
+      timezone: localTimezone(),
+      preferences: {
+        city: learner.city,
+        nativeLanguage: learner.nativeLanguage,
+        creole: learner.creole,
+        goal: learner.goal,
+        interests: learner.interests,
+        practiceWindow: learner.practiceWindow,
+        coach: learner.coach,
+        coachVoice: learner.coachVoice,
+        avatar: learner.avatar,
+        plan,
+        warmup,
+        exportConsent,
+      },
+    },
+  });
+}
+
 export const useBlossom = create<AppState>()(
   persist(
     (set, get) => ({
@@ -221,13 +262,29 @@ export const useBlossom = create<AppState>()(
       setChildMode: (value) =>
         set({ childMode: value, parentMode: false, teacherMode: false, orgMode: false }),
       setPlan: (plan) => {
+        const current = get();
         set({ plan });
+        queueProfileSync(
+          current.learner,
+          current.languageId,
+          plan,
+          current.warmup,
+          current.exportConsent,
+        );
         track("plan_selected", { plan });
       },
       claimProof: () => set({ proofClaimed: true }),
       updateLearner: (patch) => {
-        const learner = { ...get().learner, ...patch };
+        const current = get();
+        const learner = { ...current.learner, ...patch };
         set({ learner });
+        queueProfileSync(
+          learner,
+          current.languageId,
+          current.plan,
+          current.warmup,
+          current.exportConsent,
+        );
       },
       startMissionRun: (missionId, mode, challenge = "core") => {
         const current =
@@ -530,7 +587,17 @@ export const useBlossom = create<AppState>()(
         };
         set({ teacherNotes: [...get().teacherNotes, note] });
       },
-      saveWarmup: (text) => set({ warmup: text }),
+      saveWarmup: (text) => {
+        const current = get();
+        set({ warmup: text });
+        queueProfileSync(
+          current.learner,
+          current.languageId,
+          current.plan,
+          text,
+          current.exportConsent,
+        );
+      },
       saveHomeworkDraft: (studentId, title, body) => {
         const existing = get().homework.find(
           (h) => h.studentId === studentId && h.status === "draft",
@@ -574,7 +641,17 @@ export const useBlossom = create<AppState>()(
         });
         get().completeActivity("HOMEWORK_COMPLETED", `hw-${item.id}`);
       },
-      setExportConsent: (value) => set({ exportConsent: value }),
+      setExportConsent: (value) => {
+        const current = get();
+        set({ exportConsent: value });
+        queueProfileSync(
+          current.learner,
+          current.languageId,
+          current.plan,
+          current.warmup,
+          value,
+        );
+      },
       saveWord: (word, gloss) => {
         const key = word.toLowerCase();
         if (get().vocabulary.some((v) => v.word === key)) return;
@@ -614,7 +691,17 @@ export const useBlossom = create<AppState>()(
         return { ok: true };
       },
       requestInvoice: () => set({ invoiceRequested: true }),
-      setLanguage: (id) => set({ languageId: id }),
+      setLanguage: (id) => {
+        const current = get();
+        set({ languageId: id });
+        queueProfileSync(
+          current.learner,
+          id,
+          current.plan,
+          current.warmup,
+          current.exportConsent,
+        );
+      },
       resetJourney: () =>
         set({
           learner: LEARNER,
