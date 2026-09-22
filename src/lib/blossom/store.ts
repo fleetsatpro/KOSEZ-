@@ -252,6 +252,7 @@ function queueProfileSync(
   plan: PlanId,
   warmup: string | null,
   exportConsent: boolean,
+  tandemOpen: boolean,
 ): void {
   queueSyncMutation({
     operation: "profile.upsert",
@@ -274,6 +275,7 @@ function queueProfileSync(
         plan,
         warmup,
         exportConsent,
+        tandemOpen,
       },
     },
   });
@@ -350,6 +352,7 @@ export const useBlossom = create<AppState>()(
           current.plan,
           current.warmup,
           current.exportConsent,
+          current.tandemOpen,
         );
       },
       startMissionRun: (missionId, mode, challenge = "core") => {
@@ -685,7 +688,18 @@ export const useBlossom = create<AppState>()(
           payload: { status, metadata: {} },
         });
       },
-      setTandemOpen: (value) => set({ tandemOpen: value }),
+      setTandemOpen: (value) => {
+        const current = get();
+        set({ tandemOpen: value });
+        queueProfileSync(
+          current.learner,
+          current.languageId,
+          current.plan,
+          current.warmup,
+          current.exportConsent,
+          value,
+        );
+      },
       reportTandem: (partnerId) => {
         const count = (get().tandemReports[partnerId] ?? 0) + 1;
         set({
