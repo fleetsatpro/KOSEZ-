@@ -19,7 +19,7 @@ function PulsePage() {
   const growthEvents = useBlossom((s) => s.growthEvents);
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const mineralsBefore = useRef(minerals);
-  const [secondsLeft, setSecondsLeft] = useState(dare.seconds);
+  const [secondsLeft, setSecondsLeft] = useState<number>(dare.seconds);
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(false);
   const [ceremonyOpen, setCeremonyOpen] = useState(false);
