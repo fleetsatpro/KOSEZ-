@@ -69,7 +69,16 @@ const VIEWPORTS = [
 ];
 
 const SMOKE_STATE_KEY = "kosez-blossom-v2";
-const SMOKE_ROUTES = ["/", "/explore", "/connect", "/learn", "/moi"];
+const SMOKE_ROUTES = [
+  "/",
+  "/explore",
+  "/connect",
+  "/tandem",
+  "/immersion",
+  "/learn",
+  "/pronlab",
+  "/moi",
+];
 
 mkdirSync(dirname(outPng), { recursive: true });
 
