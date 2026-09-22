@@ -488,17 +488,6 @@ export const CATALOGUE: CatalogueItem[] = [
   },
 ];
 
-export const NEXT_CLASS = {
-  id: "class-tue",
-  title: "Conversation A2",
-  date: dateFromToday(8),
-  time: "18:00",
-  duration: "1 h 30",
-  instructor: "Léa Moreau",
-  instructorAvatar: "/images/lea.jpg",
-  place: "Maison K'Osez, Saint-Pierre",
-};
-
 export const MISSION_FEEDBACK = {
   strength: "Vous avez posé la question jusqu'au bout, sans revenir au français.",
   improvement: "Remplacez « I want » par « I'll have » — plus naturel au restaurant comme à la cantine.",
@@ -1074,14 +1063,14 @@ export const IMMERSION = {
     { when: "Samedi 16:00", what: "Côte. Décrire ce que l'on voit." },
     { when: "Dimanche 9:30", what: "Atelier Pron'Lab, puis débrief." },
   ],
-  participants: ["Camille", "Noah", "Inès", "Hugo", "Léa"],
+  participants: [] as string[],
   challenges: [
     "Ask someone what they recommend for lunch.",
     "Describe the coast in three sentences.",
     "Hold one minute on yesterday — no French.",
   ],
   story:
-    "Deux jours. Un marché, une côte, une table. Vous avez commandé sans traduire. Le plant s'en souvient.",
+    "Deux jours. Un marché, une côte, une table. Vos défis vous accompagnent ; la participation, elle, est enregistrée séparément.",
 };
 
 export type PlanId = "centre" | "digital" | "premium";
@@ -1142,7 +1131,7 @@ export const MARKETPLACE = [
   {
     id: "imm-east",
     title: "Est · vanille et table",
-    dates: "10–12 octobre",
+    dates: rangeLabelFromToday(18, 20),
     place: "Sainte-Anne",
     spots: 8,
     price: "Liste d'attente",
@@ -1154,7 +1143,7 @@ export const MARKETPLACE = [
   {
     id: "imm-maurice",
     title: "Partenaire · Maurice",
-    dates: "7–9 novembre",
+    dates: rangeLabelFromToday(46, 48),
     place: "Pointe d'Esny",
     spots: 12,
     price: "Sur devis",
