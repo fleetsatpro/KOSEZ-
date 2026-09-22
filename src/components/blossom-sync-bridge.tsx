@@ -44,6 +44,7 @@ function mergeBackendState(remote: BackendState): void {
   let profileWarmup = current.warmup;
   let profileLanguageId = current.languageId;
   let profileExportConsent = current.exportConsent;
+  let profileTandemOpen = current.tandemOpen;
 
   if (remote.profile) {
     const displayName = remote.profile.displayName?.trim();
@@ -62,6 +63,9 @@ function mergeBackendState(remote: BackendState): void {
     }
     if (typeof prefs.exportConsent === "boolean") {
       profileExportConsent = prefs.exportConsent;
+    }
+    if (typeof prefs.tandemOpen === "boolean") {
+      profileTandemOpen = prefs.tandemOpen;
     }
   }
 
@@ -214,6 +218,7 @@ function mergeBackendState(remote: BackendState): void {
     warmup: profileWarmup,
     languageId: profileLanguageId,
     exportConsent: profileExportConsent,
+    tandemOpen: profileTandemOpen,
     activityLog: [...activity.values()].sort(
       (a, b) => timestamp(a.createdAt) - timestamp(b.createdAt),
     ),
