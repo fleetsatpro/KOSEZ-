@@ -5,9 +5,12 @@ import {
   addTeacherNote,
   completeChallenge,
   getBlossomAccessContext,
+  getConnectPeers,
   getGuardianWorkspace,
   getOrganizationWorkspace,
   getTeacherWorkspace,
+  getTandemCandidates,
+  getTandemSession,
   recordPronlabAttempt,
   registerEvent,
   saveHomework,
@@ -21,6 +24,21 @@ const metadataJson = z.string().trim().max(20000).optional();
 export const getBlossomWorkspaceAccess = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => getBlossomAccessContext(context.userId));
+
+export const getConnectPeersOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getConnectPeers(context.userId));
+
+export const getTandemCandidatesOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getTandemCandidates(context.userId));
+
+export const getTandemSessionOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ partnerUserId: z.string().trim().min(1).max(200) }))
+  .handler(async ({ context, data }) =>
+    getTandemSession(context.userId, data.partnerUserId),
+  );
 
 export const getTeacherWorkspaceOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
