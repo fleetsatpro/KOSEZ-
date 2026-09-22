@@ -97,14 +97,19 @@ function codeFallbackContent(): PublishedContent {
 export async function getPublishedContent(): Promise<PublishedContent> {
   const sql = await getSql();
   const rows = await sql.query(
-    "select content_key, kind, published_payload from blossom_content_item where state = 'published' and published_payload is not null order by updated_at desc",
+    "select content_key, kind, published_payload, state from blossom_content_item where (state = 'published' and published_payload is not null) or state = 'archived' order by updated_at desc",
   );
 
   const result = codeFallbackContent();
   const eventMap = new Map(result.events.map((event) => [event.id, event]));
   const catalogueMap = new Map(result.catalogue.map((item) => [item.id, item]));
+  const archivedKeys = new Set<string>();
 
   for (const row of rows) {
+    if (String(row.state) === "archived") {
+      archivedKeys.add(String(row.content_key));
+      continue;
+    }
     try {
       const mapped = mapPublishedRow(row);
       if (mapped.kind === "event") {
@@ -116,6 +121,11 @@ export async function getPublishedContent(): Promise<PublishedContent> {
       // A malformed published row must never take down discovery. The authored
       // runtime fallback remains the safer source until an admin repairs it.
     }
+  }
+
+  for (const key of archivedKeys) {
+    eventMap.delete(key);
+    catalogueMap.delete(key);
   }
 
   return {
@@ -247,6 +257,37 @@ export async function saveContentDraft(
     draftRevision: Number(row.draft_revision),
     publishedRevision: Number(row.published_revision),
     state: String(row.state) as ContentState,
+  };
+}
+
+export async function archiveContent(
+  userId: string,
+  contentKeyInput: string,
+  expectedPublishedRevision: number,
+) {
+  await assertAdmin(userId);
+  const contentKey = contentKeySchema.parse(contentKeyInput);
+  const sql = await getSql();
+  const rows = await sql.query(
+    "update blossom_content_item set state = 'archived', updated_by = $3, updated_at = current_timestamp where content_key = $1 and published_revision = $2 and published_payload is not null returning content_key, kind, published_revision",
+    [contentKey, expectedPublishedRevision, userId],
+  );
+  if (!rows[0]) throw new Error("content-revision-conflict");
+
+  await sql.query(
+    "insert into blossom_audit_event (id, actor_user_id, action, resource_type, resource_id, metadata) values ($1::uuid, $2, 'content.archived', 'content', $3, $4::jsonb)",
+    [
+      randomUUID(),
+      userId,
+      contentKey,
+      JSON.stringify({ revision: Number(rows[0].published_revision) }),
+    ],
+  );
+
+  return {
+    contentKey,
+    kind: String(rows[0].kind) as ContentKind,
+    publishedRevision: Number(rows[0].published_revision),
   };
 }
 
