@@ -8,6 +8,7 @@ import {
   getAdminWorkspaceOnServer,
 } from "@/lib/blossom/domain.api";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
+import { AdminContentStudio } from "./admin-content-studio";
 import { useBlossom } from "@/lib/blossom/store";
 
 type AdminWorkspace = Awaited<ReturnType<typeof getAdminWorkspaceOnServer>>;
@@ -173,7 +174,9 @@ export function AdminStudio() {
             <Metric label="Non payées" value={workspace.bookingRequests.unpaid} />
           </div>
 
-          <p className="mt-5 text-xs leading-5 text-subtle">
+          <AdminContentStudio />
+
+      <p className="mt-5 text-xs leading-5 text-subtle">
             Une demande n’est jamais affichée comme payée ou confirmée par
             simple action client. Les changements d’état doivent venir du
             workflow serveur concerné.
