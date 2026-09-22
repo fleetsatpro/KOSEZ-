@@ -6,7 +6,7 @@ import type { SyncJsonValue } from "./sync-types";
 import {
   hasSource,
   journeySnapshot,
-    summarisePronlabItem,
+  summarisePronlabItem,
   type ActivityType,
   type PronlabAttempt,
 } from "./engine";
