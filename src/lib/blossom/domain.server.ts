@@ -101,17 +101,11 @@ export async function recordPronlabAttempt(
   const sql = await getSql();
   const recordId = input.idempotencyKey ?? randomUUID();
   const metadata = input.metadata ?? {};
-  const assessment = metadata.assessment === "phonetic-provider"
-    ? "phonetic-provider"
-    : "capture-only";
-  const safeScore =
-    assessment === "phonetic-provider"
-      ? Math.max(0, Math.min(100, Math.round(input.score)))
-      : 0;
+  const safeScore = 0;
   const safeMetadata = {
     ...metadata,
-    assessment,
-    ...(assessment === "capture-only" ? { provider: "unavailable" } : {}),
+    assessment: "capture-only",
+    provider: "unavailable",
   };
 
   if (input.idempotencyKey) {
