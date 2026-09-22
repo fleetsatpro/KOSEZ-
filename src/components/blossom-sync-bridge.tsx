@@ -346,7 +346,7 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
 
     let disposed = false;
     const storedOwner = useBlossom.getState().syncOwnerUserId;
-    const userChanged = Boolean(storedOwner && storedOwner !== user.id);
+    const userChanged = storedOwner !== user.id;
     setSyncOwner(user.id);
 
     if (userChanged) {
