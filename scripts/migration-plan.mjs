@@ -38,9 +38,23 @@ export function isMigrationFile(path) {
  */
 export function pendingMigrations(paths, applied) {
   const done = new Set(applied);
-  return [...paths]
+  const candidates = [...paths]
     .filter(isMigrationFile)
-    .map((path) => ({ name: migrationName(path), path }))
+    .map((path) => ({ name: migrationName(path), path }));
+
+  const seen = new Set();
+  const duplicates = new Set();
+  for (const migration of candidates) {
+    if (seen.has(migration.name)) duplicates.add(migration.name);
+    seen.add(migration.name);
+  }
+  if (duplicates.size) {
+    throw new Error(
+      `duplicate migration names: ${[...duplicates].sort().join(", ")}`,
+    );
+  }
+
+  return candidates
     .sort((a, b) => a.name.localeCompare(b.name))
     .filter(({ name }) => !done.has(name));
 }
