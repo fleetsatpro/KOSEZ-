@@ -14,6 +14,8 @@ import {
   saveVocabulary,
   setTandemStatus,
   saveLearningSubmission,
+  requestCatalogueBooking,
+  requestWaitlist,
 } from "./domain.server";
 import type { SyncMutation, SyncResult } from "./sync-types";
 
@@ -89,6 +91,8 @@ const operationSchema = z.enum([
   "challenge.complete",
   "tandem.status",
   "learning.submission",
+  "booking.request",
+  "waitlist.request",
 ]);
 
 const mutationSchema = z.object({
@@ -150,6 +154,14 @@ const profilePayloadSchema = z.object({
   level: z.string().trim().max(16).nullable().optional(),
   timezone: z.string().trim().max(80).nullable().optional(),
   preferences: z.record(z.string(), z.unknown()).optional(),
+});
+
+const catalogueBookingPayloadSchema = z.object({
+  catalogueItemId: z.string().trim().min(1).max(160),
+});
+
+const waitlistPayloadSchema = z.object({
+  itemId: z.string().trim().min(1).max(160),
 });
 
 async function storeResult(
@@ -280,6 +292,16 @@ async function applyMutation(
         preferences: objectValue(payload.preferences),
         mutationCreatedAt: mutation.createdAt,
       });
+      return { mutationId: mutation.mutationId, status: "applied" };
+    }
+    case "booking.request": {
+      const payload = catalogueBookingPayloadSchema.parse(mutation.payload);
+      await requestCatalogueBooking(userId, payload.catalogueItemId);
+      return { mutationId: mutation.mutationId, status: "applied" };
+    }
+    case "waitlist.request": {
+      const payload = waitlistPayloadSchema.parse(mutation.payload);
+      await requestWaitlist(userId, payload.itemId);
       return { mutationId: mutation.mutationId, status: "applied" };
     }
   }
