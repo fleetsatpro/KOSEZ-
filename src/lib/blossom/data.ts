@@ -358,7 +358,7 @@ export const EVENTS: EventItem[] = [
     language: "English · A1–A2",
     spots: 12,
     image: "/images/marche.jpg",
-    host: "Camille R.",
+    host: "Équipe K'Osez",
   },
   {
     id: "evt-cote",
