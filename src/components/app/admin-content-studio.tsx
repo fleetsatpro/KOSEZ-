@@ -7,6 +7,7 @@ import { Eyebrow, Surface } from "@/components/app/primitives";
 import {
   getAdminContentItemsOnServer,
   publishAdminContentOnServer,
+  archiveAdminContentOnServer,
   saveAdminContentDraftOnServer,
 } from "@/lib/blossom/content.api";
 import type { AdminContentItem } from "@/lib/blossom/content.server";
@@ -144,6 +145,28 @@ export function AdminContentStudio() {
     } finally { setSaving(false); }
   }
 
+  async function archive() {
+    if (!selected || selected.state !== "published") return;
+    try {
+      await archiveAdminContentOnServer({
+        data: {
+          contentKey: selected.contentKey,
+          expectedPublishedRevision: selected.publishedRevision,
+        },
+      });
+      setItems((current) =>
+        current.map((item) =>
+          item.contentKey === selected.contentKey
+            ? { ...item, state: "archived" }
+            : item,
+        ),
+      );
+      toast("Contenu archivé.");
+    } catch {
+      toast("L’archivage a échoué. Le contenu publié reste inchangé.");
+    }
+  }
+
   async function publish() {
     if (!selected) return;
     setPublishing(true);
@@ -194,7 +217,7 @@ export function AdminContentStudio() {
             </div>
             <div className="flex gap-2">
               <Button variant="secondary" disabled={saving || publishing || !changed} onClick={save}><Save className="size-4" />{saving ? "Enregistrement…" : "Enregistrer"}</Button>
-              <Button disabled={saving || publishing || changed || selected.state === "published"} onClick={publish}><Send className="size-4" />{publishing ? "Publication…" : "Publier"}</Button>
+              <Button disabled={saving || publishing || changed || selected.state === "published"} onClick={publish}><Send className="size-4" />{publishing ? "Publication…" : "Publier"}</Button><Button variant="outline" disabled={saving || publishing || selected.state !== "published"} onClick={archive}>Archiver</Button>
             </div>
           </div>
 
