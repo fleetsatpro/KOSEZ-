@@ -10,7 +10,6 @@ import {
   pointsFromLog,
   pronlabFlags,
   resolveMemory,
-  scoreAttempt,
   stageFromPoints,
   summarisePronlabItem,
   tandemMatchScore,
