@@ -317,10 +317,40 @@ async function flushOutbox(): Promise<void> {
       }
 
       if (result.status === "rejected") {
-        // The server's sync ledger is the durable dead letter record. Removing
-        // the local command prevents infinite retries while retaining evidence
-        // server-side for later diagnostics/admin tooling.
+        // The server's sync ledger is the durable dead letter record. Remove the
+        // local command to prevent infinite retries, and roll back only the
+        // optimistic UI state that this mutation could have created.
         await removeMutation(result.mutationId);
+
+        const state = useBlossom.getState();
+        if (mutation.operation === "event.register") {
+          const status =
+            typeof mutation.payload.status === "string"
+              ? mutation.payload.status
+              : undefined;
+          if (status === "joined") {
+            state.joinedEventIds.includes(mutation.entityId) &&
+              useBlossom.setState({
+                joinedEventIds: state.joinedEventIds.filter((id) => id !== mutation.entityId),
+                eventRegistrationCounts: {
+                  ...state.eventRegistrationCounts,
+                  [mutation.entityId]: Math.max(
+                    0,
+                    (state.eventRegistrationCounts[mutation.entityId] ?? 1) - 1,
+                  ),
+                },
+              });
+          }
+        } else if (mutation.operation === "booking.request") {
+          useBlossom.setState({
+            enrolledIds: state.enrolledIds.filter((id) => id !== mutation.entityId),
+          });
+        } else if (mutation.operation === "waitlist.request") {
+          useBlossom.setState({
+            waitlistIds: state.waitlistIds.filter((id) => id !== mutation.entityId),
+          });
+        }
+
         console.error("[blossom-sync] mutation rejected", {
           mutationId: result.mutationId,
           errorCode: result.errorCode,
