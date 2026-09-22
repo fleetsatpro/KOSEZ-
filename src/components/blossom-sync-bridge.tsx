@@ -214,6 +214,10 @@ function mergeBackendState(remote: BackendState): void {
     immersionDone: [...immersionDone],
     tandemStatus,
     learningSubmissions: [...submissionById.values()].sort((a, b) => timestamp(a.createdAt) - timestamp(b.createdAt)),
+    bookingStatuses: {
+      ...current.bookingStatuses,
+      ...(remote.bookingStatuses ?? {}),
+    },
     enrolledIds: [...new Set([
       ...current.enrolledIds,
       ...(remote.bookingCatalogueIds ?? []),
@@ -341,8 +345,11 @@ async function flushOutbox(): Promise<void> {
             });
           }
         } else if (mutation.operation === "booking.request") {
+          const nextStatuses = { ...state.bookingStatuses };
+          delete nextStatuses[mutation.entityId];
           useBlossom.setState({
             enrolledIds: state.enrolledIds.filter((id) => id !== mutation.entityId),
+            bookingStatuses: nextStatuses,
           });
         } else if (mutation.operation === "waitlist.request") {
           useBlossom.setState({
