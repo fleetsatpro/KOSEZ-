@@ -744,6 +744,8 @@ export async function registerEvent(
     return rows[0];
   }
 
+  if (!event) throw new Error("unknown-event");
+
   const existing = await sql.query(
     "select status, seat_no from blossom_event_registration where user_id = $1 and event_id = $2",
     [userId, eventId],
