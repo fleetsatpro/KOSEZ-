@@ -282,8 +282,8 @@ export function composeLeoLetter(
   const leaves = growth.filter((g) => g.kind === "leaf").length;
   const status = organismStatusLine(minerals);
   const body = [
-    `${firstName || "Vous"},`
-    ``,
+    `${firstName || "Vous"},`,
+    "",
     status,
     roots > 0
       ? `Cette semaine, ${roots} racine${roots > 1 ? "s" : ""} a/ont progressé grâce à des gestes ancrés.`
