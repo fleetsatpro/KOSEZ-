@@ -7,6 +7,7 @@ export type BlossomWorkspaceAccess = {
   isGuardian: boolean;
   isOrgStaff: boolean;
   isChild: boolean;
+  isAdmin: boolean;
 };
 
 const EMPTY_ACCESS: BlossomWorkspaceAccess = {
@@ -14,6 +15,7 @@ const EMPTY_ACCESS: BlossomWorkspaceAccess = {
   isGuardian: false,
   isOrgStaff: false,
   isChild: false,
+  isAdmin: false,
 };
 
 export function useBlossomWorkspaceAccess() {
