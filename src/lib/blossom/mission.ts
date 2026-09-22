@@ -35,6 +35,8 @@ export type MissionRun = {
   attempts: MissionAttempt[];
   reflection: MissionReflection | null;
   completedAt: string | null;
+  /** Persistent execution evidence: a lifeline was opened during the mission. */
+  supportUsed?: boolean;
 };
 
 export type MissionSession = {
@@ -157,6 +159,7 @@ export function beginMissionRun(
     attempts: [],
     reflection: null,
     completedAt: null,
+    supportUsed: false,
   };
 
   return {
@@ -180,17 +183,14 @@ export function appendMissionAttempt(
   if (!run || run.completedAt) return session;
   if (input.kind === "mission" && missionAttemptCount(run, "mission") >= 2) return session;
 
-  const endedAt = now;
-  const startedAt = new Date(
-    Math.max(
-      0,
-      new Date(endedAt).getTime() - Math.max(0, input.seconds) * 1000,
-    ),
-  ).toISOString();
-
   const safeSeconds = Number.isFinite(input.seconds)
     ? Math.max(0, Math.round(input.seconds))
     : 0;
+
+  const endedAt = now;
+  const startedAt = new Date(
+    Math.max(0, new Date(endedAt).getTime() - safeSeconds * 1000),
+  ).toISOString();
 
   const attempt: MissionAttempt = {
     id: attemptId,
@@ -204,6 +204,20 @@ export function appendMissionAttempt(
   return updateRun(session, run.id, (current) => ({
     ...current,
     attempts: [...current.attempts, attempt],
+    lastUpdatedAt: now,
+  }));
+}
+
+export function recordMissionSupport(
+  session: MissionSession,
+  now = new Date().toISOString(),
+): MissionSession {
+  const run = activeMissionRun(session);
+  if (!run || run.completedAt || run.supportUsed) return session;
+
+  return updateRun(session, run.id, (current) => ({
+    ...current,
+    supportUsed: true,
     lastUpdatedAt: now,
   }));
 }
@@ -233,7 +247,10 @@ export function saveMissionReflection(
 
   return updateRun(session, run.id, (current) => ({
     ...current,
-    reflection,
+    reflection: {
+      ...reflection,
+      supportUsed: reflection.supportUsed ?? current.supportUsed ?? false,
+    },
     lastUpdatedAt: now,
   }));
 }
