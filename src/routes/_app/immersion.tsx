@@ -34,6 +34,25 @@ function ImmersionPage() {
   const doneCount = done.length;
   const total = IMMERSION.challenges.length;
 
+  useEffect(() => {
+    let disposed = false;
+    void getPublishedContentOnServer()
+      .then((content) => {
+        if (!disposed) {
+          const item = content.catalogue.find((entry) => entry.id === IMMERSION.id) ?? null;
+          setPublished(item);
+          setRegistryStatus(item ? "available" : "unavailable");
+        }
+      })
+      .catch(() => {
+        if (!disposed) setRegistryStatus("error");
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+
   if (registryStatus === "loading") {
     return (
       <Page className="max-w-2xl">
@@ -60,25 +79,6 @@ function ImmersionPage() {
       </Page>
     );
   }
-
-  useEffect(() => {
-    let disposed = false;
-    void getPublishedContentOnServer()
-      .then((content) => {
-        if (!disposed) {
-          const item = content.catalogue.find((entry) => entry.id === IMMERSION.id) ?? null;
-          setPublished(item);
-          setRegistryStatus(item ? "available" : "unavailable");
-        }
-      })
-      .catch(() => {
-        if (!disposed) setRegistryStatus("error");
-      });
-    return () => {
-      disposed = true;
-    };
-  }, []);
-
 
   return (
     <Page className="kosez-feature-page max-w-2xl">
