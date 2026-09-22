@@ -260,7 +260,7 @@ export async function getAdminWorkspace(userId: string): Promise<AdminWorkspace>
       subjectUserId: row.subject_user_id ? String(row.subject_user_id) : null,
       resourceType: String(row.resource_type),
       resourceId: row.resource_id ? String(row.resource_id) : null,
-      occurredAt: iso(row.occurred_at),
+      occurredAt: new Date(String(row.occurred_at)).toISOString(),
     })),
   };
 }
