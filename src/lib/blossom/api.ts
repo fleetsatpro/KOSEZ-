@@ -34,6 +34,7 @@ export const recordBlossomActivity = createServerFn({ method: "POST" })
       eventType: z.string().trim().min(1).max(100),
       sourceId: z.string().trim().max(200).nullable().optional(),
       payload: jsonObject.optional(),
+      idempotencyKey: z.string().uuid().nullable().optional(),
       occurredAt: z.string().datetime().optional(),
     }),
   )
@@ -45,9 +46,14 @@ export const persistBlossomMissionSession = createServerFn({ method: "POST" })
     z.object({
       missionId: z.string().trim().min(1).max(120),
       session: z.unknown(),
+      expectedRevision: z.number().int().nonnegative(),
     }),
   )
-  .handler(async ({ context, data }) => {
-    await saveBlossomMissionSession(context.userId, data.missionId, data.session);
-    return { ok: true as const };
-  });
+  .handler(async ({ context, data }) =>
+    saveBlossomMissionSession(
+      context.userId,
+      data.missionId,
+      data.session,
+      data.expectedRevision,
+    ),
+  );
