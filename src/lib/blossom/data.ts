@@ -1,4 +1,5 @@
-import type { PronlabKind, StageId } from "./engine";
+import type { StageId } from "./engine";
+type PronlabKind = "word" | "sentence";
 
 export const PLANT_IMAGE: Record<StageId, string> = {
   seed: "/images/vanilla.jpg",
