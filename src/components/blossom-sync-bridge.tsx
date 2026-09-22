@@ -376,6 +376,31 @@ async function flushOutbox(): Promise<void> {
           const next = { ...state.tandemStatus };
           delete next[mutation.entityId];
           useBlossom.setState({ tandemStatus: next });
+        } else if (mutation.operation === "tandem.report") {
+          const payload = mutation.payload as {
+            previousStatus?: string;
+          };
+          const nextReports = { ...state.tandemReports };
+          const nextCount = Math.max(
+            0,
+            (nextReports[mutation.entityId] ?? 1) - 1,
+          );
+          if (nextCount === 0) delete nextReports[mutation.entityId];
+          const restoredStatus =
+            payload.previousStatus === "pending" ||
+            payload.previousStatus === "accepted" ||
+            payload.previousStatus === "paused" ||
+            payload.previousStatus === "blocked" ||
+            payload.previousStatus === "suggested"
+              ? payload.previousStatus
+              : "suggested";
+          useBlossom.setState({
+            tandemReports: nextReports,
+            tandemStatus: {
+              ...state.tandemStatus,
+              [mutation.entityId]: restoredStatus,
+            },
+          });
         } else if (mutation.operation === "teacher.note") {
           useBlossom.setState({
             teacherNotes: state.teacherNotes.filter((note) => note.id !== mutation.mutationId),
