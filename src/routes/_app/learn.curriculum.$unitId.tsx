@@ -30,7 +30,7 @@ function lessonIcon(kind: LessonKind) {
 function lessonLink(kind: LessonKind) {
   switch (kind) {
     case "mission": return "/mission";
-    case "speak": return "/osez/live";
+    case "speak": return "/osez";
     case "pronlab": return "/pronlab";
     case "library": return "/library/lib-market";
     case "review": return "/learn/review";
