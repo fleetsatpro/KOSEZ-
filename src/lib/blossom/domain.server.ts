@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
+import { CATALOGUE, EVENTS, MARKETPLACE } from "./data";
 
 export class BlossomForbiddenError extends Error {
   readonly status = 403;
