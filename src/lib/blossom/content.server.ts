@@ -9,7 +9,13 @@ const eventPayloadSchema = z.object({
   id: contentKeySchema,
   title: z.string().trim().min(1).max(200),
   blurb: z.string().trim().max(1000),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .refine((value) => {
+      const parsed = new Date(value + "T00:00:00Z");
+      return parsed.toISOString().slice(0, 10) === value;
+    }, "invalid-calendar-date"),
   time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
   place: z.string().trim().min(1).max(240),
   language: z.string().trim().min(1).max(120),
