@@ -111,8 +111,8 @@ test("tandem matching ranks language direction and shared interests", () => {
     initials: "M",
     avatar: null,
   };
-  assert.ok(tandemMatchScore(me, noah) > tandemMatchScore(me, maya));
   assert.ok(tandemMatchScore(me, noah) >= 60);
+  assert.ok(tandemMatchScore(me, noah) > tandemMatchScore(me, maya));
 });
 
 test("homework and tandem feed the same point table", () => {
