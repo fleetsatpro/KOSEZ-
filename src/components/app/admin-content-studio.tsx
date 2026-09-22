@@ -9,6 +9,7 @@ import {
   publishAdminContentOnServer,
   archiveAdminContentOnServer,
   saveAdminContentDraftOnServer,
+  getAdminContentHistoryOnServer,
 } from "@/lib/blossom/content.api";
 import type { AdminContentItem } from "@/lib/blossom/content.server";
 
@@ -51,6 +52,8 @@ export function AdminContentStudio() {
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<Awaited<ReturnType<typeof getAdminContentHistoryOnServer>>>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const selected = useMemo(() => items.find((item) => item.contentKey === selectedKey) ?? items[0], [items, selectedKey]);
 
@@ -63,7 +66,15 @@ export function AdminContentStudio() {
     return () => { disposed = true; };
   }, []);
 
-  useEffect(() => { if (selected) setDraft({ ...selected.draftPayload }); }, [selected]);
+  useEffect(() => {
+    if (!selected) return;
+    setDraft({ ...selected.draftPayload });
+    setHistoryLoading(true);
+    void getAdminContentHistoryOnServer({ data: { contentKey: selected.contentKey } })
+      .then(setHistory)
+      .catch(() => setHistory([]))
+      .finally(() => setHistoryLoading(false));
+  }, [selected]);
 
   function createItem(kind: "event" | "catalogue", subtype: "course" | "immersion" = "course") {
     const token = typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -284,6 +295,35 @@ export function AdminContentStudio() {
               </label>
             </div>
           ) : null}
+
+          <div className="mt-6 rounded-xl border border-border bg-surface-2/30 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Eyebrow>Historique</Eyebrow>
+                <p className="mt-1 text-sm text-muted">
+                  {historyLoading ? "Chargement…" : `${history.length} révision${history.length > 1 ? "s" : ""}`}
+                </p>
+              </div>
+              <ShieldCheck className="size-4 text-primary" />
+            </div>
+            {!historyLoading && history.length === 0 ? (
+              <p className="mt-4 text-xs text-subtle">
+                Les prochaines sauvegardes et publications seront archivées ici.
+              </p>
+            ) : (
+              <ol className="mt-4 space-y-2">
+                {history.slice(0, 8).map((entry) => (
+                  <li key={entry.revisionId} className="flex items-center gap-3 rounded-lg border border-border/70 bg-bg/40 px-3 py-2.5">
+                    <Badge variant="outline">v{entry.revision}</Badge>
+                    <span className="text-xs uppercase tracking-[0.12em] text-subtle">{entry.channel}</span>
+                    <span className="ml-auto text-xs text-muted">
+                      {new Date(entry.createdAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <Status icon={FileEdit} label="Brouillon" value={"v" + selected.draftRevision} />
