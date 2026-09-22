@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
+import { getAdminSafetySummary } from "./safety.server";
 import {
   addTeacherNote,
   completeChallenge,
@@ -25,6 +26,10 @@ const metadataJson = z.string().trim().max(20000).optional();
 export const getAdminWorkspaceOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => getAdminWorkspace(context.userId));
+
+export const getAdminSafetySummaryOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getAdminSafetySummary(context.userId));
 
 export const getBlossomWorkspaceAccess = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
