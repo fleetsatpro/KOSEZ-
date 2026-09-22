@@ -27,10 +27,12 @@ if (args.error) {
 }
 
 const url = checkedUrl(args.url);
-const outPng = checkedOutputPath(args.outPng, ["/workspace"]);
+const outputDirs = ["/workspace"];
+if (process.env.GITHUB_WORKSPACE) outputDirs.push(process.env.GITHUB_WORKSPACE);
+const outPng = checkedOutputPath(args.outPng, outputDirs);
 const derived = derivedPaths(outPng);
-const mobilePng = checkedOutputPath(derived.mobilePng, ["/workspace"]);
-const outJson = checkedOutputPath(derived.verdictJson, ["/workspace"], "verdict JSON");
+const mobilePng = checkedOutputPath(derived.mobilePng, outputDirs);
+const outJson = checkedOutputPath(derived.verdictJson, outputDirs, "verdict JSON");
 
 const MAX_BASELINE_BYTES = 1024 * 1024;
 const baselineRequested = Boolean(args.baseline);
