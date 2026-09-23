@@ -30,6 +30,32 @@ function LibraryDocPage() {
   const [picked, setPicked] = useState<string | null>(null);
   const docId = doc?.id ?? null;
 
+useEffect(() => {
+    const end = readingEndRef.current;
+    if (!docId) return;
+    if (!end || readingCompleted) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return;
+      const sourceId = `library:${docId}:${new Date().toISOString().slice(0, 10)}`;
+      completeActivity("LIBRARY_COMPLETED", sourceId, `Lecture · ${docId}`);
+      if (curriculumLessonId) {
+        const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find((item) => item.id === curriculumLessonId);
+        if (lesson?.kind === "library" && lesson.taskId === docId) {
+          completeActivity(
+            "CURRICULUM_EVIDENCE_RECORDED",
+            curriculumLessonId,
+            `Preuve curriculum · lecture · ${docId}`,
+            { supportId: sourceId },
+          );
+        }
+      }
+      setReadingCompleted(true);
+      observer.disconnect();
+    }, { threshold: 0.95 });
+    observer.observe(end);
+    return () => observer.disconnect();
+  }, [completeActivity, curriculumLessonId, docId, readingCompleted]);
+
   if (!doc) {
     return (
       <Page>
@@ -65,32 +91,6 @@ function LibraryDocPage() {
   const pickedGloss = picked
     ? (LIBRARY_GLOSS[picked] ?? "sens à préciser avec Léo")
     : null;
-  useEffect(() => {
-    const end = readingEndRef.current;
-    if (!docId) return;
-    if (!end || readingCompleted) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry?.isIntersecting) return;
-      const sourceId = `library:${docId}:${new Date().toISOString().slice(0, 10)}`;
-      completeActivity("LIBRARY_COMPLETED", sourceId, `Lecture · ${docId}`);
-      if (curriculumLessonId) {
-        const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find((item) => item.id === curriculumLessonId);
-        if (lesson?.kind === "library" && lesson.taskId === docId) {
-          completeActivity(
-            "CURRICULUM_EVIDENCE_RECORDED",
-            curriculumLessonId,
-            `Preuve curriculum · lecture · ${docId}`,
-            { supportId: sourceId },
-          );
-        }
-      }
-      setReadingCompleted(true);
-      observer.disconnect();
-    }, { threshold: 0.95 });
-    observer.observe(end);
-    return () => observer.disconnect();
-  }, [completeActivity, curriculumLessonId, docId, readingCompleted]);
-
 
 
   return (
