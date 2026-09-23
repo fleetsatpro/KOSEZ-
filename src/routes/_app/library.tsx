@@ -19,9 +19,10 @@ function LibraryPage() {
     select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
   });
 
-  if (pathname !== "/library") {
-    return <Outlet />;
-  }
+  return pathname === "/library" ? <LibraryIndex /> : <Outlet />;
+}
+
+function LibraryIndex() {
   const vocab = useBlossom((s) => s.vocabulary);
   const plan = useBlossom((s) => s.plan);
   const libraryOk = planAllows(plan, "library");
