@@ -3,10 +3,17 @@ import { ArrowRight, Check, Leaf } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   LEARNER_MEMORY,
-  focusMissionForLevel,
+  missionForLevel,
+  B1_TODAY_MISSION,
+  TODAY_MISSION,
+  UPCOMING_MISSIONS,
   planAllows,
   PLANT_IMAGE,
 } from "@/lib/blossom/data";
+import {
+  EXTRA_MISSIONS,
+  selectMissionForLevel,
+} from "@/lib/blossom/mission-bank";
 import {
   hasSource,
   nextStage,
@@ -34,7 +41,18 @@ export function HomeDashboard() {
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const journey = useJourney();
 
-  const todayMission = focusMissionForLevel(learner.level, { rotate: true });
+  const missionBank = [
+    TODAY_MISSION,
+    B1_TODAY_MISSION,
+    ...UPCOMING_MISSIONS,
+    ...EXTRA_MISSIONS,
+  ];
+  const todayMission = selectMissionForLevel(
+    learner.level,
+    missionBank,
+    missionForLevel(learner.level),
+    { rotate: true },
+  );
   const missionDone = hasSource(log, todayMission.id);
   const memoryOn = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
