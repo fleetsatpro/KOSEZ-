@@ -568,10 +568,15 @@ export async function recordPronlabAttempt(
   const recordId = input.idempotencyKey ?? randomUUID();
   const metadata = input.metadata ?? {};
   const safeScore = 0;
+  const assessment =
+    metadata.assessment === "transcript" ? "transcript" : "capture-only";
   const safeMetadata = {
     ...metadata,
-    assessment: "capture-only",
-    provider: "unavailable",
+    assessment,
+    provider:
+      typeof metadata.provider === "string"
+        ? metadata.provider
+        : "speech-evidence",
   };
 
   if (input.idempotencyKey) {
