@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, BookOpenCheck, BrainCircuit, CircleCheck, Clock3, Sprout } from "lucide-react";
+import { ArrowRight, BookOpenCheck, BrainCircuit, Clock3, Sprout } from "lucide-react";
 import { Eyebrow, Page } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
