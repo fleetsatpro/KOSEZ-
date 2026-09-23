@@ -205,7 +205,7 @@ function LibraryPage() {
           <Link
             key={doc.id}
             to="/library/$id"
-            params={{ id: doc.id }}
+            params={{ id: doc.id }} search={{ lessonId: undefined }}
             className="group overflow-hidden rounded-2xl border border-border/50 bg-surface shadow-[var(--shadow-border)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-border-hover)]"
           >
             <div className="relative aspect-[16/10] overflow-hidden">
