@@ -259,7 +259,10 @@ try {
           new URL("/learn/curriculum/a2-food-and-service", url).href,
           { waitUntil: "domcontentloaded", timeout: timeoutMs },
         );
-        await page.getByRole("link", { name: /At the covered market/i }).click();
+        await page.waitForTimeout(750);
+        const readingLessonLink = page.getByRole("link", { name: /At the covered market/i });
+        await readingLessonLink.waitFor({ state: "visible", timeout: 10000 });
+        await readingLessonLink.click();
         await page.waitForTimeout(250);
         if (!page.url().includes("/library/lib-market")) {
           errors.pageErrors.push("curriculum library lesson did not route to the bound document");
@@ -281,7 +284,12 @@ try {
           errors.pageErrors.push("curriculum did not reflect the linked reading evidence");
         }
       } catch (error) {
-        errors.pageErrors.push(`curriculum evidence journey failed: ${String(error?.message || error)}`);
+        const journeyUrl = page.url();
+        const journeyBody = await page.locator("body").innerText().catch(() => "");
+        const journeyLinks = await page.locator("a").allTextContents().catch(() => []);
+        errors.pageErrors.push(
+          `curriculum evidence journey failed: ${String(error?.message || error)} · url=${journeyUrl} · body=${normalizeBodyText(journeyBody).slice(0, 900)} · links=${journeyLinks.slice(0, 40).join(" | ")}`,
+        );
       }
       await gotoWithRetry(page, url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
       await page.waitForTimeout(250);
