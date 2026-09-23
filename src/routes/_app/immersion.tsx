@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, MapPin, Backpack, Users, BookOpen } from "lucide-react";
+import { ArrowLeft, Check, MapPin, Backpack, Users, BookOpen, Volume2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
@@ -169,7 +169,10 @@ function ImmersionPage() {
                   <span className="shrink-0 tabular-nums text-muted">
                     {row.when}
                   </span>
-                  <span className="text-right leading-6">{row.what}</span>
+                  <span className="text-right leading-6">
+                    <span className="block">{row.what}</span>
+                    <span className="mt-1 block text-xs text-subtle">{row.goal}</span>
+                  </span>
                 </li>
               ))}
             </ul>
@@ -205,16 +208,56 @@ function ImmersionPage() {
               Pas un feed social — un cercle fermé pour le weekend.
             </p>
           </Surface>
+
+          <Surface className="!p-5 sm:!p-6">
+            <div className="flex items-center gap-2">
+              <Volume2 className="size-4 text-primary" strokeWidth={1.7} />
+              <Eyebrow>Kit de terrain</Eyebrow>
+            </div>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Cinq appuis utiles. Ils sont là pour soutenir l'action, pas pour
+              remplacer votre parole.
+            </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {IMMERSION.fieldKit.map((item) => (
+                <button
+                  key={item.phrase}
+                  type="button"
+                  onClick={() => {
+                    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+                    const utterance = new SpeechSynthesisUtterance(item.phrase);
+                    utterance.lang = "en-GB";
+                    utterance.rate = 0.9;
+                    window.speechSynthesis.cancel();
+                    window.speechSynthesis.speak(utterance);
+                  }}
+                  className="rounded-xl border border-border bg-surface-2/35 p-3 text-left transition hover:-translate-y-0.5 hover:border-primary/20"
+                >
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="font-display text-lg">{item.phrase}</span>
+                    <Volume2 className="size-3.5 text-subtle" />
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-muted">{item.use}</span>
+                </button>
+              ))}
+            </div>
+          </Surface>
         </div>
       )}
 
       {phase === "during" && (
         <div className="mt-6 space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-2">
-            <p className="max-w-md text-sm leading-6 text-muted">
-              Trois gestes, pas un jeu. Cochez quand c'est fait — dehors, dans
-              le réel.
-            </p>
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-2">
+                <Sparkles className="size-4 text-primary" />
+                <Eyebrow>Gestes dehors</Eyebrow>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Quatre situations, quatre intentions. Faites le geste dans le
+                monde réel, puis gardez une trace honnête ici.
+              </p>
+            </div>
             <p className="text-xs tabular-nums text-subtle">
               {doneCount} / {total}
             </p>
@@ -230,31 +273,56 @@ function ImmersionPage() {
           </div>
 
           {IMMERSION.challenges.map((challenge, i) => {
-            const id = `ch-${i}`;
+            const id = challenge.id;
             const ok = done.includes(id);
             return (
               <Surface
                 key={id}
                 className={cn(
-                  "flex items-start justify-between gap-4 !p-5",
+                  "overflow-hidden !p-0",
                   ok && "border border-primary/20 bg-primary/5",
                 )}
               >
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">
-                    Geste {i + 1}
-                  </p>
-                  <p className="mt-2 text-sm leading-7">{challenge}</p>
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">
+                        Geste {i + 1} · {challenge.place}
+                      </p>
+                      <p className="mt-2 font-display text-2xl tracking-tight">
+                        {challenge.title}
+                      </p>
+                    </div>
+                    {ok ? (
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Check className="size-4" />
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-3 text-sm leading-7">{challenge.action}</p>
                 </div>
-                <Button
-                  size="sm"
-                  variant={ok ? "secondary" : "default"}
-                  onClick={() => completeChallenge(id)}
-                  disabled={ok}
-                  className="shrink-0"
-                >
-                  {ok ? <Check className="size-4" /> : "Fait"}
-                </Button>
+
+                <div className="grid gap-px border-t border-border bg-border sm:grid-cols-[1fr_1fr_auto]">
+                  <div className="bg-surface p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">Appui</p>
+                    <p className="mt-1 text-sm font-medium">{challenge.languageCue}</p>
+                  </div>
+                  <div className="bg-surface p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">Extension</p>
+                    <p className="mt-1 text-sm leading-5 text-muted">{challenge.stretch}</p>
+                  </div>
+                  <div className="bg-surface p-4 sm:flex sm:items-center">
+                    <Button
+                      size="sm"
+                      variant={ok ? "secondary" : "default"}
+                      onClick={() => completeChallenge(id)}
+                      disabled={ok}
+                      className="w-full sm:w-auto"
+                    >
+                      {ok ? <Check className="size-4" /> : "J’ai fait le geste"}
+                    </Button>
+                  </div>
+                </div>
               </Surface>
             );
           })}
