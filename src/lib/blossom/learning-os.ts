@@ -93,6 +93,64 @@ export type CurriculumUnit = {
   lessons: CurriculumLesson[];
 };
 
+export type CurriculumResource =
+  | { kind: "mission"; id: string }
+  | { kind: "speak"; id: string }
+  | { kind: "pronlab"; id: string }
+  | { kind: "library"; id: string }
+  | { kind: "review"; id: null }
+  | { kind: "grammar"; id: string }
+  | { kind: "listening"; id: string }
+  | { kind: "writing"; id: string };
+
+const CURRICULUM_RESOURCE_MAP: Record<string, CurriculumResource> = {
+  "u1-l1": { kind: "mission", id: "mission-recommend" },
+  "u1-l2": { kind: "speak", id: "cafe" },
+  "u1-l3": { kind: "pronlab", id: "set-th" },
+  "u2-l1": { kind: "speak", id: "market" },
+  "u2-l2": { kind: "pronlab", id: "set-midi" },
+  "u2-l3": { kind: "library", id: "lib-market" },
+  "u2-l4": { kind: "grammar", id: "grammar-question-1" },
+  "u3-l1": { kind: "speak", id: "office" },
+  "u3-l2": { kind: "review", id: null },
+  "u3-l3": { kind: "mission", id: "mission-directions" },
+  "u3-l4": { kind: "listening", id: "listen-4" },
+  "u4-l1": { kind: "speak", id: "social" },
+  "u4-l2": { kind: "review", id: null },
+  "u4-l3": { kind: "library", id: "lib-workday" },
+  "u4-l4": { kind: "writing", id: "write-after-class" },
+  "u5-l1": { kind: "speak", id: "airport" },
+  "u5-l2": { kind: "mission", id: "mission-repair" },
+  "u5-l3": { kind: "speak", id: "transit" },
+  "u6-l1": { kind: "speak", id: "hotel" },
+  "u6-l2": { kind: "review", id: null },
+  "u6-l3": { kind: "mission", id: "mission-choose" },
+  "u7-l1": { kind: "speak", id: "coast" },
+  "u7-l2": { kind: "grammar", id: "grammar-b1-1" },
+  "u7-l3": { kind: "writing", id: "write-b1-1" },
+  "u7-l4": { kind: "library", id: "lib-weekend" },
+  "u8-l1": { kind: "listening", id: "listen-b1-1" },
+  "u8-l2": { kind: "library", id: "lib-guest" },
+  "u8-l3": { kind: "mission", id: "mission-mediate" },
+  "u8-l4": { kind: "speak", id: "office" },
+  "u9-l1": { kind: "speak", id: "social" },
+  "u9-l2": { kind: "grammar", id: "grammar-b1-6" },
+  "u9-l3": { kind: "mission", id: "mission-counterpoint" },
+  "u9-l4": { kind: "writing", id: "write-b1-3" },
+  "u10-l1": { kind: "mission", id: "mission-plan-change" },
+  "u10-l2": { kind: "speak", id: "office" },
+  "u10-l3": { kind: "listening", id: "listen-b1-3" },
+  "u10-l4": { kind: "mission", id: "mission-mediate" },
+};
+
+export function curriculumResource(lesson: CurriculumLesson): CurriculumResource {
+  return CURRICULUM_RESOURCE_MAP[lesson.id] ?? (
+    lesson.kind === "review"
+      ? { kind: "review", id: null }
+      : { kind: lesson.kind, id: lesson.id } as CurriculumResource
+  );
+}
+
 export const CURRICULUM_UNITS: CurriculumUnit[] = [
   {
     id: "a2-real-life-basics",
@@ -290,7 +348,7 @@ export function buildSkillProfile(
     speaking: { coverage: missions * 10 + speak * 9 + tandem * 8, evidence: missions + speak + tandem, signal: missions ? "Les missions apportent une preuve située." : "Une première prise de parole donnera un signal utile." },
     interaction: { coverage: missions * 12 + tandem * 10 + speak * 7, evidence: missions + tandem + speak, signal: missions ? "Les gestes réels montrent déjà comment vous entrez dans l'échange." : "Le système attend encore une situation d'interaction." },
     listening: { coverage: speak * 4 + tandem * 5 + reviews * 5 + listening * 18, evidence: speak + tandem + reviews + listening, signal: listening ? "Le lab d'écoute commence à documenter la compréhension de détails concrets." : "Pas assez de données d'écoute pour conclure." },
-    reading: { coverage: vocabulary.length * 3 + lessonEvidence("reading") * 3, evidence: vocabulary.length + lessonEvidence("reading"), signal: vocabulary.length ? "Le vocabulaire sauvé indique une première exposition écrite." : lessonEvidence("reading") ? "Le parcours contient des pratiques de lecture déclarées ; une trace de compréhension directe renforcera cette branche." : "La bibliothèque peut commencer cette branche." },
+    reading: { coverage: vocabulary.length * 3 + log.filter((event) => event.type === "LIBRARY_COMPLETED").length * 14 + lessonEvidence("reading") * 3, evidence: vocabulary.length + log.filter((event) => event.type === "LIBRARY_COMPLETED").length + lessonEvidence("reading"), signal: log.some((event) => event.type === "LIBRARY_COMPLETED") ? "Des lectures ont produit une preuve de compréhension ; les mots sauvegardés prolongent maintenant cette trace." : vocabulary.length ? "Le vocabulaire sauvé indique une première exposition écrite. Une lecture comprise renforcera cette branche." : "La bibliothèque peut commencer cette branche." },
     writing: { coverage: writing * 22 + lessonEvidence("writing") * 3, evidence: writing + lessonEvidence("writing"), signal: writing ? "Une production écrite est maintenant enregistrée comme trace de travail." : lessonEvidence("writing") ? "Le parcours contient des pratiques écrites déclarées ; une production reste à créer pour renforcer la preuve." : "Aucune production écrite enregistrée pour l'instant." },
     pronunciation: { coverage: masteredPron * 16 + attempts.length * 2, evidence: attempts.length, signal: attempts.length ? "Pron'Lab apporte une trace directe des sons travaillés." : "Un passage Pron'Lab donnera une première mesure." },
     vocabulary: { coverage: vocabulary.length * 8 + reviews * 6, evidence: vocabulary.length + reviews, signal: vocabulary.length ? "Les mots sauvés peuvent maintenant entrer dans le rappel espacé." : "Le vocabulaire n'est pas encore enregistré comme mémoire active." },
@@ -439,22 +497,42 @@ export function lessonDone(
     return true;
   }
 
-  // Preserve compatibility with traces that already used a dedicated source
-  // id while giving the curriculum a canonical completion event.
-  const sourceByKind: Record<LessonKind, ActivityType | null> = {
-    mission: "MISSION_COMPLETED",
-    speak: "SPEAK_COMPLETED",
-    pronlab: "PRONLAB_COMPLETED",
-    library: null,
-    review: "REVIEW_COMPLETED",
-    grammar: "GRAMMAR_COMPLETED",
-    listening: "LISTENING_COMPLETED",
-    writing: "WRITING_COMPLETED",
-  };
-  const activityType = sourceByKind[lesson.kind];
-  return activityType
-    ? log.some((event) => event.type === activityType && event.sourceId === lesson.id)
-    : false;
+  const resource = curriculumResource(lesson);
+  if (resource.kind === "library") {
+    return log.some(
+      (event) =>
+        event.type === "LIBRARY_COMPLETED" &&
+        event.sourceId === `library:${resource.id}`,
+    );
+  }
+  if (resource.kind === "grammar" || resource.kind === "listening" || resource.kind === "writing") {
+    return log.some(
+      (event) =>
+        event.type === resource.kind.toUpperCase() + "_COMPLETED" &&
+        event.sourceId?.startsWith(`lab:${resource.kind}:${resource.id}:`),
+    );
+  }
+  if (resource.kind === "mission") {
+    return log.some((event) => event.type === "MISSION_COMPLETED" && event.sourceId === resource.id);
+  }
+  if (resource.kind === "speak") {
+    return log.some(
+      (event) =>
+        event.type === "SPEAK_COMPLETED" &&
+        (event.sourceId?.includes(`room-${resource.id}-`) || event.sourceId?.includes(resource.id)),
+    );
+  }
+  if (resource.kind === "review") {
+    return log.some((event) => event.type === "REVIEW_COMPLETED");
+  }
+  if (resource.kind === "pronlab") {
+    return log.some(
+      (event) =>
+        event.type === "PRONLAB_COMPLETED" &&
+        event.sourceId === `pronlab-${resource.id}`,
+    );
+  }
+  return false;
 }
 
 export function unitDoneCount(
