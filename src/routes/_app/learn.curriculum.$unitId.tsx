@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   CAN_DO_OBJECTIVES,
   CURRICULUM_UNITS,
-  buildSkillProfile,
   curriculumUnitProgress,
   type LessonKind,
   lessonDone,
@@ -96,7 +95,11 @@ function CurriculumUnit() {
           <Eyebrow>Objectifs communicatifs</Eyebrow>
           <div className="mt-5 space-y-3">
             {CAN_DO_OBJECTIVES.filter((objective) => unit.objectives.includes(objective.id)).map((objective) => {
-              const coverage = profile.find((item) => item.domain.id === objective.domain)?.coverage ?? 0;
+              const linkedLessons = unit.lessons.filter((lesson) => lesson.objectiveIds.includes(objective.id));
+              const completedLessons = linkedLessons.filter((lesson) => lessonDone(lesson, log)).length;
+              const localCoverage = linkedLessons.length
+                ? Math.round((completedLessons / linkedLessons.length) * 100)
+                : 0;
               return (
                 <div key={objective.id} className="rounded-xl border border-border bg-surface-2/45 p-4">
                   <div className="flex items-start gap-3">
@@ -109,8 +112,14 @@ function CurriculumUnit() {
                     </div>
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-3 text-[11px]">
-                    <span className="text-subtle">Signal du domaine</span>
-                    <span className="tabular-nums text-primary">{coverage}%</span>
+                    <span className="text-subtle">Preuve dans cette unité</span>
+                    <span className="tabular-nums text-primary">{completedLessons}/{linkedLessons.length}</span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
+                    <div
+                      className="h-full rounded-full bg-primary transition-[width]"
+                      style={{ width: String(localCoverage) + "%" }}
+                    />
                   </div>
                 </div>
               );
