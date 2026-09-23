@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, Headphones, LibraryBig, MessageCircle, Mic2, PenLine, RotateCcw, Target, type LucideIcon } from "lucide-react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,39 @@ function lessonLink(kind: LessonKind): "/mission" | "/osez" | "/pronlab" | "/lib
     case "listening":
     case "writing": return "/learn/labs";
   }
+}
+
+function CurriculumLessonLink({
+  lesson,
+  className,
+  children,
+}: {
+  lesson: { id: string; kind: LessonKind; taskId?: string };
+  className?: string;
+  children: ReactNode;
+}) {
+  if (lesson.kind === "library" && lesson.taskId) {
+    return (
+      <Link
+        to="/library/$id"
+        params={{ id: lesson.taskId }}
+        className={className}
+        onClick={() => setCurriculumLessonContext(lesson.id)}
+      >
+        {children}
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      to={lessonLink(lesson.kind)}
+      className={className}
+      onClick={() => setCurriculumLessonContext(lesson.id)}
+    >
+      {children}
+    </Link>
+  );
 }
 
 function CurriculumUnit() {
@@ -131,15 +165,10 @@ function CurriculumUnit() {
           </div>
           {unit.lessons.map((lesson, index) => {
             const Icon = lessonIcon(lesson.kind);
-            const href = lessonLink(lesson.kind);
             const done = lessonDone(lesson, log);
             return (
               <div key={lesson.id} className="rounded-2xl bg-surface p-5 shadow-[var(--shadow-border)]">
-                <Link
-                  to={href}
-                  className="group block"
-                  onClick={() => setCurriculumLessonContext(lesson.id)}
-                >
+                <CurriculumLessonLink lesson={lesson} className="group block">
                   <div className="flex items-start gap-4">
                     <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                       <Icon className="size-5" />
@@ -155,7 +184,7 @@ function CurriculumUnit() {
                     </div>
                     <ArrowRight className="mt-2 size-4 shrink-0 text-subtle transition group-hover:translate-x-0.5 group-hover:text-primary" />
                   </div>
-                </Link>
+                </CurriculumLessonLink>
                 <div className="mt-4 border-t border-border pt-4">
                   <p className="text-xs leading-5 text-subtle">
                     {done
