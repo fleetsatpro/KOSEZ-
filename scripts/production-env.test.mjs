@@ -22,6 +22,17 @@ test("complete Vercel production configuration passes", () => {
   assert.deepEqual(productionEnvProblems(complete), []);
 });
 
+test("Vercel production rejects malformed auth configuration", () => {
+  const problems = productionEnvProblems({
+    ...complete,
+    BETTER_AUTH_SECRET: "short",
+    GROK_AUTH_ISSUER: "http://auth.example.invalid",
+  });
+
+  assert.ok(problems.some((message) => message.includes("BETTER_AUTH_SECRET must be at least 32 characters")));
+  assert.ok(problems.some((message) => message.includes("GROK_AUTH_ISSUER must use https")));
+});
+
 test("Vercel production fails closed when durable/auth configuration is incomplete", () => {
   const problems = productionEnvProblems({
     ...complete,
