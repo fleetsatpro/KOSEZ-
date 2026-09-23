@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { z } from "zod";
 import { ArrowLeft, ArrowRight, Check, GraduationCap, Headphones, PenLine, RotateCcw, Sparkles, Target } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
@@ -9,7 +10,22 @@ import { DIAGNOSTIC_QUESTIONS, diagnosticLevel, diagnosticScore, diagnosticSumma
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/_app/learn/labs")({ component: LearningLabs });
+export const Route = createFileRoute("/_app/learn/labs")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    lab:
+      search.lab === "grammar" ||
+      search.lab === "listening" ||
+      search.lab === "writing" ||
+      search.lab === "diagnostic"
+        ? search.lab
+        : undefined,
+    task:
+      typeof search.task === "string" && search.task.trim()
+        ? search.task.trim()
+        : undefined,
+  }),
+  component: LearningLabs,
+});
 
 type Lab = "grammar" | "listening" | "writing" | "diagnostic";
 const LABS: Array<{ id: Lab; label: string; detail: string }> = [
@@ -26,7 +42,8 @@ function dailyLabSource(kind: string, taskId: string) {
 function LearningLabs() {
   const learnerLevel = useBlossom((s) => s.learner.level);
   const activeLevel: LabLevel = learnerLevel === "B1" ? "B1" : "A2";
-  const [lab, setLab] = useState<Lab>("grammar");
+  const search = Route.useSearch();
+  const [lab, setLab] = useState<Lab>(search.lab ?? "grammar");
   return <Page className="kosez-feature-page">
     <Link to="/learn" className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted hover:text-primary"><ArrowLeft className="size-3.5" /> Atelier</Link>
     <header className="mt-6 overflow-hidden rounded-[28px] bg-fg p-6 text-primary-foreground shadow-[var(--shadow-border)] sm:p-8">
@@ -37,15 +54,16 @@ function LearningLabs() {
     <div className="mt-6 grid gap-2 sm:grid-cols-3">{LABS.map((item) => <button key={item.id} type="button" onClick={() => setLab(item.id)} className={`rounded-2xl border p-4 text-left transition ${lab === item.id ? "border-primary/30 bg-primary/8 text-fg" : "border-border bg-surface text-muted hover:bg-surface-2/60 hover:text-fg"}`}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">{item.label}</p><p className="mt-2 font-display text-xl tracking-tight">{item.detail}</p>
     </button>)}</div>
-    {lab === "grammar" ? <GrammarLab level={activeLevel} /> : null}{lab === "listening" ? <ListeningLab level={activeLevel} /> : null}{lab === "writing" ? <WritingLab level={activeLevel} /> : null}{lab === "diagnostic" ? <DiagnosticLab /> : null}
+    {lab === "grammar" ? <GrammarLab level={activeLevel} taskId={search.task} /> : null}{lab === "listening" ? <ListeningLab level={activeLevel} taskId={search.task} /> : null}{lab === "writing" ? <WritingLab level={activeLevel} taskId={search.task} /> : null}{lab === "diagnostic" ? <DiagnosticLab /> : null}
   </Page>;
 }
 
-function GrammarLab({ level }: { level: LabLevel }) {
+function GrammarLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const tasks = useMemo(() => GRAMMAR_TASKS.filter((item) => item.level === level), [level]);
-  const [index, setIndex] = useState(0), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
+  const initialIndex = Math.max(0, tasks.findIndex((item) => item.id === taskId));
+  const [index, setIndex] = useState(initialIndex === -1 ? 0 : initialIndex), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
   const task = tasks[index]!, answered = choice !== null;
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
@@ -64,11 +82,12 @@ function GrammarLab({ level }: { level: LabLevel }) {
   </Surface>;
 }
 
-function ListeningLab({ level }: { level: LabLevel }) {
+function ListeningLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const tasks = useMemo(() => LISTENING_TASKS.filter((item) => item.level === level), [level]);
-  const [index, setIndex] = useState(0), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
+  const initialIndex = Math.max(0, tasks.findIndex((item) => item.id === taskId));
+  const [index, setIndex] = useState(initialIndex === -1 ? 0 : initialIndex), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
   const task = tasks[index]!, answered = choice !== null;
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
@@ -86,11 +105,12 @@ function ListeningLab({ level }: { level: LabLevel }) {
   </Surface>;
 }
 
-function WritingLab({ level }: { level: LabLevel }) {
+function WritingLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const prompts = useMemo(() => WRITING_PROMPTS.filter((item) => item.level === level), [level]);
-  const [promptIndex, setPromptIndex] = useState(0), [draft, setDraft] = useState(""), [checks, setChecks] = useState<string[]>([]), [submitted, setSubmitted] = useState(false);
+  const initialPromptIndex = Math.max(0, prompts.findIndex((item) => item.id === taskId));
+  const [promptIndex, setPromptIndex] = useState(initialPromptIndex === -1 ? 0 : initialPromptIndex), [draft, setDraft] = useState(""), [checks, setChecks] = useState<string[]>([]), [submitted, setSubmitted] = useState(false);
   const prompt = useMemo(() => prompts[promptIndex % prompts.length]!, [promptIndex, prompts]);
   function submit() { if (!draft.trim()) return; saveLearningSubmission({ taskId: prompt.id, kind: "writing", content: draft.trim(), checks, result: { checkCount: checks.length, checkTotal: prompt.checks.length } }); completeActivity("WRITING_COMPLETED", dailyLabSource("writing", prompt.id), `Écrit · ${prompt.id} · ${checks.length}/${prompt.checks.length} auto-vérifications`); setSubmitted(true); }
   function next() { setPromptIndex((v) => (v + 1) % WRITING_PROMPTS.length); setDraft(""); setChecks([]); setSubmitted(false); }
