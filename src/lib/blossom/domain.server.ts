@@ -476,7 +476,43 @@ export async function getOrganizationWorkspace(
            when m.role = 'learner'
             and a.occurred_at >= current_timestamp - interval '7 days'
             and a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
-            and coalesce(a.payload->'metadata'->>'minutes', a.payload->>'minutes','') ~ '^[0-9]+
+            and coalesce(a.payload->'metadata'->>'minutes', a.payload->>'minutes','') ~ '^[0-9]+$'
+           then coalesce(
+             (a.payload->'metadata'->>'minutes')::integer,
+             (a.payload->>'minutes')::integer
+           )
+           else 0
+         end
+       ), 0)::integer as speaking_minutes
+     from blossom_organization_member m
+     left join blossom_activity_event a on a.user_id = m.user_id
+     where m.organization_id = $1 and m.status = 'active'`,
+    [organizationId],
+  );
+  const stats = statsRows[0] ?? {};
+  const metadata =
+    rows[0].metadata && typeof rows[0].metadata === "object"
+      ? (rows[0].metadata as Record<string, unknown>)
+      : {};
+
+  return {
+    id: organizationId,
+    name: String(rows[0].name),
+    city: typeof metadata.city === "string" ? metadata.city : null,
+    members: rows.map((row) => ({
+      id: String(row.user_id),
+      name: String(row.display_name),
+      role: String(row.role),
+      status: String(row.status),
+    })),
+    stats: {
+      learners: Number(stats.learners ?? 0),
+      staff: Number(stats.staff ?? 0),
+      activeLearnersThisWeek: Number(stats.active_learners_this_week ?? 0),
+      speakingMinutesThisWeek: Number(stats.speaking_minutes ?? 0),
+    },
+  };
+}
 
 export async function requestCatalogueBooking(
   userId: string,
