@@ -249,7 +249,7 @@ export async function getAdminWorkspace(userId: string): Promise<AdminWorkspace>
       sql.query("select count(*)::integer as count from blossom_profile where user_id is not null"),
       sql.query("select count(distinct teacher_user_id)::integer as count from blossom_teacher_link where status = 'active'"),
       sql.query("select count(distinct guardian_user_id)::integer as count from blossom_guardian_link where status = 'active'"),
-      sql.query("select count(*)::integer as count from blossom_organization"),
+      sql.query("select count(distinct organization_id)::integer as count from blossom_organization_member where status = 'active'"),
       sql.query("select count(*)::integer as count from blossom_event_registration where status = 'joined'"),
       sql.query(
         "select count(*) filter (where status = 'requested')::integer as requested, count(*) filter (where status = 'confirmed')::integer as confirmed, count(*) filter (where status = 'cancelled')::integer as cancelled, count(*) filter (where payment_status = 'paid')::integer as paid, count(*) filter (where payment_status = 'unpaid')::integer as unpaid from blossom_booking_request",
