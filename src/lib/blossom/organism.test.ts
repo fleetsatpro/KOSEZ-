@@ -48,6 +48,17 @@ describe("growth events", () => {
     assert.equal(g?.kind, "root");
   });
 
+  it("maps library completion to flower", () => {
+    const g = growthEventForActivity(
+      "LIBRARY_COMPLETED",
+      "lib-1",
+      "2026-01-01T00:00:00.000Z",
+    );
+    assert.equal(g?.kind, "flower");
+    assert.ok((g?.intensity ?? 0) > 0.5);
+  });
+
+
   it("caps event list", () => {
     const events = Array.from({ length: 35 }, (_, i) => ({
       id: `e${i}`,

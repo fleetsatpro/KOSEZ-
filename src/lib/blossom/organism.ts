@@ -194,6 +194,17 @@ const LEAF_LABELS = [
   "Un son se détache du bruit.",
   "La canopée gagne une nervure.",
 ] as const;
+const FLOWER_LABELS = [
+  "Une présence partagée fleurit.",
+  "Quelque chose s'ouvre — sans forçage.",
+  "Le sol accueille une rencontre.",
+  "Une lecture s'épanouit en geste.",
+] as const;
+const MINERAL_LABELS = [
+  "Le sol se souvient.",
+  "Un nutriment entre dans la terre.",
+  "La terre retient le geste.",
+] as const;
 
 function pickLabel(pool: readonly string[], seed: string): string {
   let h = 0;
@@ -251,10 +262,10 @@ export function growthEventForActivity(
       return {
         id,
         at,
-        kind: "mineral",
+        kind: "flower",
         sourceId,
-        intensity: 0.48,
-        label: "Une lecture nourrit le sol.",
+        intensity: 0.62,
+        label: pickLabel(FLOWER_LABELS, seed),
       };
     case "LESSON_COMPLETED":
       return {
@@ -273,8 +284,8 @@ export function growthEventForActivity(
         at,
         kind: "flower",
         sourceId,
-        intensity: 0.7,
-        label: "Une présence partagée fleurit.",
+        intensity: 0.74,
+        label: pickLabel(FLOWER_LABELS, seed),
       };
     default:
       return {
@@ -427,6 +438,26 @@ export const PULSE_DARES = [
     id: "pulse-order",
     line: "Commandez quelque chose sans basculer en français.",
     seconds: 90,
+  },
+  {
+    id: "pulse-time",
+    line: "Demandez l'heure ou l'horaire d'un bus, en anglais.",
+    seconds: 90,
+  },
+  {
+    id: "pulse-price",
+    line: "Demandez le prix de deux produits au marché.",
+    seconds: 90,
+  },
+  {
+    id: "pulse-repeat",
+    line: "Faites répéter poliment une information entendue.",
+    seconds: 90,
+  },
+  {
+    id: "pulse-intro",
+    line: "Présentez-vous en trois phrases à quelqu'un de nouveau.",
+    seconds: 120,
   },
 ] as const;
 
