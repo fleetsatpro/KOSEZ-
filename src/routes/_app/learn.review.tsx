@@ -21,7 +21,8 @@ export const Route = createFileRoute("/_app/learn/review")({
 function kindIcon(kind: ReviewItem["kind"]) {
   switch (kind) {
     case "pronunciation": return Mic2;
-    case "vocabulary": return LibraryBig;
+    case "vocabulary":
+    case "reading": return LibraryBig;
     case "mission": return Target;
     case "grammar": return Wrench;
     case "listening": return Headphones;
@@ -33,6 +34,7 @@ function focusKind(focus: string | undefined): ReviewItem["kind"] | null {
   if (!focus) return null;
   const value = focus.toLowerCase();
   if (value.includes("listening")) return "listening";
+  if (value.includes("read")) return "reading";
   if (value.includes("vocab")) return "vocabulary";
   if (value.includes("pron")) return "pronunciation";
   if (value.includes("grammar")) return "grammar";
