@@ -514,13 +514,14 @@ function SpeakRoom() {
                   }
                 }
                 setSpeechSummary((summary) => appendSpeechTurn(summary, evidence));
-                if (evidence.assessment === "transcript" && evidence.transcript) {
+                const transcript = evidence.transcript;
+                if (evidence.assessment === "transcript" && transcript) {
                   setRoom((currentRoom) =>
                     currentRoom
                       ? adaptLivingRoomAfterTranscript(
                           currentRoom,
                           turn + 1,
-                          evidence.transcript,
+                          transcript,
                         )
                       : currentRoom,
                   );
