@@ -190,7 +190,7 @@ function LibraryPage() {
                 } catch {
                   /* session storage can be unavailable in privacy modes */
                 }
-                navigate({ to: "/osez/$id", params: { id: "topic" } });
+                navigate({ to: "/osez/$id", params: { id: "topic" }, search: { lessonId: undefined } });
               }}
             >
               Les faire vivre à l'oral
