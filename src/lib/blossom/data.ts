@@ -1152,7 +1152,6 @@ export const LIBRARY_GLOSS: Record<string, string> = {
   document: "document",
   negotiate: "négocier",
   visitor: "visiteur",
-  recommend: "recommander",
   solution: "solution",
 };
 
