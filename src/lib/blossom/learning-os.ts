@@ -414,21 +414,14 @@ export function curriculumUnitProgress(
   attempts: PronlabAttempt[],
   vocabulary: Array<{ word: string; gloss: string }>,
 ): number {
-  const objectives = new Set(unit.objectives);
-  const profile = buildSkillProfile(log, attempts, vocabulary);
-  const objectiveCoverage = CAN_DO_OBJECTIVES
-    .filter((objective) => objectives.has(objective.id))
-    .map((objective) => profile.find((entry) => entry.domain.id === objective.domain)?.coverage ?? 0);
-  const evidenceCoverage = objectiveCoverage.length
-    ? objectiveCoverage.reduce((sum, value) => sum + value, 0) / objectiveCoverage.length
-    : 0;
   const lessonCoverage = unit.lessons.length
     ? (unit.lessons.filter((lesson) => lessonDone(lesson, log)).length / unit.lessons.length) * 100
     : 0;
 
-  // A unit belongs to its own practice sequence. Other activity can support
-  // competence, but cannot silently complete this particular unit.
-  return cap(lessonCoverage * 0.7 + evidenceCoverage * 0.3);
+  // Unit progress is execution progress, not a global competence score.
+  // Evidence from another unit may improve the learner profile, but it cannot
+  // complete this unit.
+  return cap(lessonCoverage);
 }
 
 export function lessonDone(
