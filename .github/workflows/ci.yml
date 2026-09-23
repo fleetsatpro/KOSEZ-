@@ -64,15 +64,21 @@ jobs:
             rm -f /tmp/kosez-dev.pid
           fi
 
-      - name: Start auth-disabled learner smoke server
+      - name: Build learner smoke preview
         env:
           VITE_AUTH_ENABLED: "false"
-          KOSEZ_VITE_CACHE_DIR: /tmp/kosez-vite-smoke
         run: |
-          npm run dev -- --port 8081 > /tmp/kosez-smoke.log 2>&1 &
+          npm run build:dev > /tmp/kosez-smoke-build.log 2>&1
+          tail -n 80 /tmp/kosez-smoke-build.log
+
+      - name: Start auth-disabled learner smoke preview
+        env:
+          VITE_AUTH_ENABLED: "false"
+        run: |
+          npm run preview -- --host 0.0.0.0 --port 8081 > /tmp/kosez-smoke.log 2>&1 &
           echo $! > /tmp/kosez-smoke.pid
           for attempt in {1..30}; do
-            if curl -fsS http://127.0.0.1:8081/__app-env > /tmp/kosez-smoke-env.json; then
+            if curl -fsS http://127.0.0.1:8081/ > /tmp/kosez-smoke-home.html; then
               exit 0
             fi
             sleep 1
