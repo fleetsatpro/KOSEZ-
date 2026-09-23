@@ -1312,6 +1312,13 @@ export type LibraryDoc = {
   minutes: number;
   image: string;
   body: string;
+  comprehension?: Array<{
+    prompt: string;
+    choices: string[];
+    answer: string;
+    explanation: string;
+  }>;
+  transferPrompt?: string;
 };
 
 export const LIBRARY: LibraryDoc[] = [
@@ -1324,6 +1331,8 @@ export const LIBRARY: LibraryDoc[] = [
     minutes: 4,
     image: "/images/marche.jpg",
     body: "The covered market in Saint-Pierre opens early. You can smell vanilla and fresh fruit before you see the stalls. A woman offers you three dark pods. How much is this? Four euros, she says. You take them, thank her, and walk toward the ocean.",
+    comprehension: [{"prompt":"Pourquoi le personnage demande-t-il le prix ?","choices":["Pour choisir entre deux hôtels","Parce qu'il regarde des gousses de vanille","Parce qu'il cherche un billet de bus"],"answer":"Parce qu'il regarde des gousses de vanille","explanation":"Le texte situe l'échange devant un étal de vanille."},{"prompt":"Qu'est-ce que le personnage fait après l'achat ?","choices":["Il retourne au bureau","Il remercie la vendeuse et marche vers l'océan.","Il monte dans un bus."],"answer":"Il remercie la vendeuse et marche vers l'océan.","explanation":"La dernière phrase suit l'achat : remerciement puis marche vers l'océan."},{"prompt":"Quelle question pourriez-vous réellement poser au marché après cette lecture ?","choices":["How much is this?","Where is my passport?","Why is the hotel closed?"],"answer":"How much is this?","explanation":"La question correspond directement à une interaction utile dans la scène du marché."}],
+    transferPrompt: "Réutilisez une phrase du texte pour demander quelque chose à un vendeur cette semaine.",
   },
   {
     id: "lib-coast",
@@ -1334,6 +1343,8 @@ export const LIBRARY: LibraryDoc[] = [
     minutes: 3,
     image: "/images/reunion-coast.jpg",
     body: "Black rock meets the Indian Ocean. The light is warm and slow. You sit for a minute and try to name what you see: the cliff, a fishing boat, the sky. You do not need a long sentence. Three true words are enough.",
+    comprehension: [{"prompt":"Quels éléments le personnage essaie-t-il de nommer ?","choices":["Un avion et une gare","Une falaise, un bateau de pêche et le ciel","Un hôtel et un restaurant"],"answer":"Une falaise, un bateau de pêche et le ciel","explanation":"Le texte propose trois éléments concrets à observer."},{"prompt":"Quelle attitude est encouragée ?","choices":["Produire un long discours","Nommer quelques éléments vrais et simples","Traduire chaque mot avant de parler"],"answer":"Nommer quelques éléments vrais et simples","explanation":"L'objectif est de commencer petit et précis."},{"prompt":"Quelle phrase conviendrait pour prolonger l'activité ?","choices":["I can see a fishing boat.","I need a room key.","Where is gate twelve?"],"answer":"I can see a fishing boat.","explanation":"Cette phrase reprend directement l'observation de la côte."}],
+    transferPrompt: "Décrivez un lieu réel en trois phrases courtes sans chercher de vocabulaire compliqué.",
   },
   {
     id: "lib-bus-stop",
@@ -1344,6 +1355,8 @@ export const LIBRARY: LibraryDoc[] = [
     minutes: 4,
     image: "/images/reunion-coast.jpg",
     body: "The bus is late and you need to check the route. You ask another passenger where the next bus goes. They answer quickly. You miss one word, smile, and ask them to repeat it. The conversation lasts less than a minute, but you get what you need.",
+    comprehension: [{"prompt":"Quel est le problème initial ?","choices":["Le bus est en retard.","Le marché est fermé.","Le billet est trop cher."],"answer":"Le bus est en retard.","explanation":"Le texte commence par un retard qui oblige à vérifier l'itinéraire."},{"prompt":"Comment le personnage récupère-t-il un mot qu'il n'a pas compris ?","choices":["Il quitte la conversation.","Il demande de répéter.","Il change de langue immédiatement."],"answer":"Il demande de répéter.","explanation":"La réparation fait partie de l'objectif de la lecture."},{"prompt":"Quelle est la finalité de l'échange ?","choices":["Obtenir une promotion","Obtenir l'information utile pour le trajet","Apprendre toute la grammaire du futur"],"answer":"Obtenir l'information utile pour le trajet","explanation":"La conversation est courte mais fonctionnelle."}],
+    transferPrompt: "La prochaine fois qu'un détail vous échappe, utilisez une formule de réparation au lieu de faire semblant.",
   },
   {
     id: "lib-workday",
@@ -1354,6 +1367,8 @@ export const LIBRARY: LibraryDoc[] = [
     minutes: 4,
     image: "/images/atelier.jpg",
     body: "You promised a colleague a document before lunch. It is not ready yet. You explain why, give a new time, and ask whether that works. The goal is simple: be clear enough that the other person knows what happens next.",
+    comprehension: [{"prompt":"Qu'est-ce qui n'est pas prêt ?","choices":["Le document.","Le déjeuner.","La salle."],"answer":"Le document.","explanation":"Le personnage avait promis un document avant midi."},{"prompt":"Que doit-il ajouter à son explication ?","choices":["Une nouvelle heure réaliste.","Une histoire très longue.","Une excuse sans solution."],"answer":"Une nouvelle heure réaliste.","explanation":"Le but est que l'autre personne sache ce qui se passera ensuite."},{"prompt":"Quelle formulation est la plus utile ?","choices":["It isn't ready yet. I'll send it at three.","Maybe someday.","I don't know."],"answer":"It isn't ready yet. I'll send it at three.","explanation":"Elle combine problème et prochaine étape."}],
+    transferPrompt: "Expliquez un petit retard réel avec : fait + nouvel horaire + question de confirmation.",
   },
   {
     id: "lib-weekend",
@@ -1364,6 +1379,8 @@ export const LIBRARY: LibraryDoc[] = [
     minutes: 5,
     image: "/images/reunion-coast.jpg",
     body: "You want to walk by the coast on Sunday morning. A friend prefers a late start. You suggest ten thirty, explain why, and offer coffee afterwards. No perfect sentence is required; the plan only needs to become clear enough for both people.",
+    comprehension: [{"prompt":"Sur quoi les deux personnes ne sont-elles pas d'accord ?","choices":["Le lieu du marché","L'heure du départ","Le prix du café"],"answer":"L'heure du départ","explanation":"L'une veut partir plus tôt, l'autre préfère commencer plus tard."},{"prompt":"Quelle stratégie rend la proposition coopérative ?","choices":["Imposer dix heures.","Proposer dix heures trente et expliquer pourquoi.","Annuler sans discuter."],"answer":"Proposer dix heures trente et expliquer pourquoi.","explanation":"La proposition prend en compte la contrainte de l'autre."},{"prompt":"Qu'est-ce que l'exemple montre surtout ?","choices":["Une décision se construit par négociation simple.","Il faut parler parfaitement.","Il faut éviter toute préférence personnelle."],"answer":"Une décision se construit par négociation simple.","explanation":"La langue sert ici à rendre un plan acceptable pour les deux personnes."}],
+    transferPrompt: "Négociez une petite décision réelle en donnant une proposition et une alternative.",
   },
   {
     id: "lib-guest",
@@ -1374,6 +1391,8 @@ export const LIBRARY: LibraryDoc[] = [
     minutes: 5,
     image: "/images/vanilla.jpg",
     body: "A visitor arrives in Saint-Pierre for the first time. You welcome them, ask what they enjoy, and recommend one place to eat and one place to walk. They ask you which one you prefer. Give a real answer, not a memorised one.",
+    comprehension: [{"prompt":"Que fait le personnage avant de recommander un lieu ?","choices":["Il demande ce que le visiteur aime.","Il lui donne une carte sans parler.","Il réserve un hôtel."],"answer":"Il demande ce que le visiteur aime.","explanation":"La recommandation est adaptée aux préférences de la personne."},{"prompt":"Combien de recommandations sont demandées ?","choices":["Une","Deux","Cinq"],"answer":"Deux","explanation":"Le texte propose un lieu pour manger et un lieu pour marcher."},{"prompt":"Pourquoi donner une préférence personnelle ensuite ?","choices":["Pour rendre la réponse plus authentique.","Pour éviter de répondre.","Pour changer complètement de sujet."],"answer":"Pour rendre la réponse plus authentique.","explanation":"Le visiteur demande laquelle vous préférez réellement."}],
+    transferPrompt: "Imaginez accueillir un visiteur. Donnez une recommandation de nourriture et une de promenade.",
   },
   {
     id: "lib-repair",
@@ -1384,6 +1403,8 @@ export const LIBRARY: LibraryDoc[] = [
     minutes: 5,
     image: "/images/cafe.jpg",
     body: "Something you ordered is wrong. You explain the problem without blaming anyone, say what you expected, and ask what can be done. The useful language is practical: enough detail to solve the situation, no speech required.",
+    comprehension: [{"prompt":"Quel est le bon ordre d'une réparation ?","choices":["Blâmer, partir, revenir.","Décrire le problème, expliquer l'impact, demander une solution.","Changer de sujet."],"answer":"Décrire le problème, expliquer l'impact, demander une solution.","explanation":"Le texte organise la communication autour de la résolution."},{"prompt":"Quel ton est recommandé ?","choices":["Accusateur","Clair et calme","Très long et défensif"],"answer":"Clair et calme","explanation":"Le but est d'obtenir une solution, pas de gagner un conflit."},{"prompt":"Quelle phrase aide à ouvrir la solution ?","choices":["Could you check it today?","You are wrong.","Forget it."],"answer":"Could you check it today?","explanation":"Elle transforme le problème en demande concrète."}],
+    transferPrompt: "Choisissez un petit problème réel et formulez une demande de solution en anglais.",
   },
 ];
 
