@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
+import { causalNextGesture } from "@/lib/blossom/organism";
 import { cn } from "@/lib/utils";
 
 const KIND_META: Record<
@@ -149,7 +151,7 @@ export function GrowthCeremony({
           </h2>
           <p className="mt-2 text-sm leading-6 text-muted">{meta.whisper}</p>
           <p className="mt-1 text-xs leading-5 text-subtle">
-            La terre s&apos;en souvient. Rien à forcer.
+            La terre s'en souvient. Rien à forcer.
           </p>
 
           {deltas && deltas.length > 0 ? (
@@ -170,18 +172,45 @@ export function GrowthCeremony({
             </ul>
           ) : null}
 
+          <CausalDoor minerals={minerals} onNavigate={onDismiss} />
+
           <button
             type="button"
             onClick={() => {
               setPhase("exit");
               window.setTimeout(onDismiss, 320);
             }}
-            className="mt-7 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02] active:scale-[0.98]"
+            className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full border border-border/80 bg-transparent px-5 text-sm font-medium text-muted transition-colors hover:text-fg"
           >
             Continuer
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function CausalDoor({
+  minerals,
+  onNavigate,
+}: {
+  minerals: MineralSnapshot;
+  onNavigate: () => void;
+}) {
+  const next = causalNextGesture(minerals);
+  return (
+    <div className="mt-6 rounded-2xl border border-primary/25 bg-primary/5 px-4 py-3 text-left">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/80">
+        Prochain geste · {next.mineral}
+      </p>
+      <p className="mt-1 text-sm leading-5 text-fg/90">{next.line}</p>
+      <Link
+        to={next.door as "/osez" | "/pronlab" | "/mission" | "/tandem"}
+        onClick={onNavigate}
+        className="mt-3 inline-flex text-sm font-semibold text-primary hover:underline"
+      >
+        Ouvrir la porte →
+      </Link>
     </div>
   );
 }
