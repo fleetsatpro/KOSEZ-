@@ -69,6 +69,35 @@ test("pronlab mastery: best >= 90", () => {
   assert.equal(summarisePronlabItem("x", attempts).mastered, true);
 });
 
+test("pronlab ignores capture and transcript evidence when deriving scores", () => {
+  const attempts = [
+    {
+      id: "capture",
+      itemId: "x",
+      score: 99,
+      tip: "",
+      createdAt: "",
+      seconds: 2,
+      metadata: { assessment: "capture-only" },
+    },
+    {
+      id: "transcript",
+      itemId: "x",
+      score: 0,
+      tip: "",
+      createdAt: "",
+      seconds: 2,
+      metadata: { assessment: "transcript", transcript: "I need a ticket." },
+    },
+  ];
+  const sum = summarisePronlabItem("x", attempts);
+  assert.equal(sum.attemptCount, 2);
+  assert.deepEqual(sum.scores, []);
+  assert.equal(sum.bestScore, 0);
+  assert.equal(sum.mastered, false);
+  assert.equal(sum.struggling, false);
+});
+
 test("pronlab flags: best < 60 after 2 attempts", () => {
   const flags = pronlabFlags(INITIAL_PRONLAB_ATTEMPTS, ["th-1", "pl-1"]);
   assert.equal(flags.length, 1);
