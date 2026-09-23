@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowLeft, Volume2, BookMarked } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowLeft, Volume2, BookMarked, Check, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,11 @@ function LibraryDocPage() {
   const doc = LIBRARY.find((d) => d.id === id);
   const saveWord = useBlossom((s) => s.saveWord);
   const vocab = useBlossom((s) => s.vocabulary);
+  const activityLog = useBlossom((s) => s.activityLog);
+  const completeActivity = useBlossom((s) => s.completeActivity);
   const [picked, setPicked] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [completed, setCompleted] = useState(false);
 
   if (!doc) {
     return (
@@ -58,6 +62,34 @@ function LibraryDocPage() {
   const pickedGloss = picked
     ? (LIBRARY_GLOSS[picked] ?? "sens à préciser avec Léo")
     : null;
+  const comprehension = doc.comprehension ?? [];
+  const score = useMemo(
+    () =>
+      comprehension.reduce(
+        (total, item, index) => total + (answers[index] === item.answer ? 1 : 0),
+        0,
+      ),
+    [answers, comprehension],
+  );
+  const alreadyCompleted = activityLog.some(
+    (event) =>
+      event.type === "LIBRARY_COMPLETED" &&
+      event.sourceId === "library:" + doc.id,
+  );
+  const readyToComplete =
+    comprehension.length === 0 ||
+    (Object.keys(answers).length === comprehension.length &&
+      score >= Math.max(2, Math.ceil(comprehension.length * 0.66)));
+
+  function completeReading() {
+    if (!readyToComplete || alreadyCompleted || completed) return;
+    const result = completeActivity(
+      "LIBRARY_COMPLETED",
+      "library:" + doc.id,
+      "Lecture comprise · " + score + "/" + comprehension.length,
+    );
+    if (result.ok || result.reason === "already") setCompleted(true);
+  }
 
   return (
     <Page className="kosez-feature-page max-w-2xl">
@@ -134,6 +166,104 @@ function LibraryDocPage() {
           </p>
         </Surface>
       )}
+
+      {comprehension.length > 0 ? (
+        <section className="mt-8">
+          <div className="max-w-2xl">
+            <Eyebrow>Comprendre avant de passer</Eyebrow>
+            <h2 className="mt-2 font-display text-3xl tracking-tight">
+              Qu'avez-vous réellement retenu ?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Trois décisions simples vérifient la compréhension, pas votre capacité à réciter le texte.
+            </p>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {comprehension.map((item, index) => {
+              const selected = answers[index];
+              const answered = Boolean(selected);
+              const correct = selected === item.answer;
+              return (
+                <div key={item.prompt} className="rounded-2xl border border-border bg-surface p-5 shadow-[var(--shadow-border)]">
+                  <div className="flex items-start gap-3">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xs font-semibold text-primary">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-display text-xl leading-tight">{item.prompt}</p>
+                      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                        {item.choices.map((choice) => {
+                          const isSelected = selected === choice;
+                          return (
+                            <button
+                              key={choice}
+                              type="button"
+                              onClick={() =>
+                                setAnswers((current) => ({
+                                  ...current,
+                                  [index]: choice,
+                                }))
+                              }
+                              className={cn(
+                                "min-h-12 rounded-xl border px-3.5 py-3 text-left text-sm transition",
+                                isSelected
+                                  ? correct
+                                    ? "border-primary/30 bg-primary/8"
+                                    : "border-destructive/25 bg-destructive/5"
+                                  : "border-border bg-surface-2/35 hover:bg-surface-2",
+                              )}
+                            >
+                              {choice}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {answered ? (
+                        <div className="mt-4 rounded-xl bg-surface-2/50 p-3.5">
+                          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em]">
+                            {correct ? <Check className="size-3.5 text-primary" /> : null}
+                            {correct ? "Compris" : "À relire"}
+                          </p>
+                          <p className="mt-2 text-xs leading-5 text-muted">{item.explanation}</p>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {doc.transferPrompt ? (
+            <Surface className="mt-4 border border-primary/15 bg-primary/5 !p-5">
+              <Eyebrow>Transfert</Eyebrow>
+              <p className="mt-2 text-sm leading-6">{doc.transferPrompt}</p>
+            </Surface>
+          ) : null}
+
+          <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-primary/15 bg-primary/5 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium">
+                {alreadyCompleted || completed ? "Lecture ancrée" : "Ancrer cette lecture"}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-muted">
+                {readyToComplete
+                  ? "La compréhension minimale est établie. Enregistrez la trace."
+                  : "Répondez aux " + comprehension.length + " questions · " + score + "/" + comprehension.length + " correctes."}
+              </p>
+            </div>
+            <Button
+              disabled={!readyToComplete || alreadyCompleted || completed}
+              onClick={completeReading}
+              className="shrink-0"
+            >
+              {alreadyCompleted || completed ? "Enregistrée" : "Marquer comme comprise"}
+              <ArrowRight className="size-4" />
+            </Button>
+          </div>
+        </section>
+      ) : null}
 
       <Surface className="mt-4 !p-5">
         <div className="flex items-center gap-2">
