@@ -122,7 +122,7 @@ function WritingLab({ level }: { level: LabLevel }) {
   function submit() {
     if (!draft.trim()) return;
     saveLearningSubmission({ taskId: prompt.id, kind: "writing", content: draft.trim(), checks, result: { checkCount: checks.length, checkTotal: prompt.checks.length } });
-    completeActivity("WRITING_COMPLETED", dailyLabSource("writing", prompt.id), `Écrit · ${prompt.id} · ${checks.length}/${prompt.checks.length} auto-vérifications`);
+    completeActivity("WRITING_COMPLETED", dailyLabSource("writing", prompt.id), `Écrit · ${prompt.id} · ${checks.length}/${prompt.checks.length} points de contrôle personnels`);
     if (curriculumLessonId && linkedLessonKind(curriculumLessonId) === "writing") {
       completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · écrit · ${prompt.id}`);
     }
