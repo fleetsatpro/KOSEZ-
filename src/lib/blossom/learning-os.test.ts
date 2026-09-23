@@ -4,12 +4,15 @@ import { INITIAL_PRONLAB_ATTEMPTS, LEARNER } from "./data.fixtures.ts";
 import {
   buildObjectiveEvidence,
   buildReviewQueue,
+  CURRICULUM_RESOURCE_MAP,
   buildSkillProfile,
   curriculumUnitProgress,
   lessonDone,
   CURRICULUM_UNITS,
   nextLearningAction,
 } from "./learning-os.ts";
+import { LIBRARY, MISSION_BANK, PRONLAB_SETS } from "./data.ts";
+import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS } from "./lab-content.ts";
 
 test("review queue prioritises persistent pronunciation friction", () => {
   const queue = buildReviewQueue(INITIAL_PRONLAB_ATTEMPTS, []);
@@ -115,4 +118,28 @@ test("objective evidence distinguishes direct practice from supporting signals",
 test("blind-spot intelligence points at a matching practice family", () => {
   const next = nextLearningAction([], [], []);
   assert.ok(["mission", "labs", "library", "pronlab"].includes(next.kind));
+});
+
+
+test("every curriculum lesson resolves to a real learning resource", () => {
+  const lessons = CURRICULUM_UNITS.flatMap((unit) => unit.lessons);
+  assert.equal(Object.keys(CURRICULUM_RESOURCE_MAP).length, lessons.length);
+  for (const lesson of lessons) {
+    const resource = CURRICULUM_RESOURCE_MAP[lesson.id];
+    assert.ok(resource, `missing resource for ${lesson.id}`);
+    if (!resource) continue;
+    if (resource.kind === "mission") {
+      assert.ok(MISSION_BANK.some((item) => item.id === resource.id), `missing mission ${resource.id}`);
+    } else if (resource.kind === "library") {
+      assert.ok(LIBRARY.some((item) => item.id === resource.id), `missing library ${resource.id}`);
+    } else if (resource.kind === "pronlab") {
+      assert.ok(PRONLAB_SETS.some((set) => set.id === resource.id), `missing Pron'Lab set ${resource.id}`);
+    } else if (resource.kind === "grammar") {
+      assert.ok(GRAMMAR_TASKS.some((item) => item.id === resource.id), `missing grammar task ${resource.id}`);
+    } else if (resource.kind === "listening") {
+      assert.ok(LISTENING_TASKS.some((item) => item.id === resource.id), `missing listening task ${resource.id}`);
+    } else if (resource.kind === "writing") {
+      assert.ok(WRITING_PROMPTS.some((item) => item.id === resource.id), `missing writing prompt ${resource.id}`);
+    }
+  }
 });
