@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Check, Headphones, LibraryBig, Mic2, PenLine, RotateCcw, Target, Wrench } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Headphones, LibraryBig, Mic2, PenLine, Target, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
