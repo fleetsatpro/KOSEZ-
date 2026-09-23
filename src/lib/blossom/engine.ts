@@ -49,8 +49,6 @@ export const POINTS: Record<ActivityType, number> = {
   LISTENING_COMPLETED: 4,
   WRITING_COMPLETED: 4,
   DIAGNOSTIC_COMPLETED: 0,
-  // Curriculum acknowledgement is intentionally lightweight: it records
-  // practice without pretending that self-report is performance assessment.
   LESSON_COMPLETED: 0,
   CURRICULUM_EVIDENCE_RECORDED: 0,
   LIBRARY_COMPLETED: 2,
@@ -178,15 +176,29 @@ export function summarisePronlabItem(
   attempts: PronlabAttempt[],
 ): PronlabSummary {
   const mine = attempts.filter((a) => a.itemId === itemId);
-  const scored = mine.filter((attempt) => attempt.metadata?.assessment !== "capture-only");
+  const scored = mine.filter(
+    (attempt) =>
+      attempt.metadata?.assessment === "transcript" ||
+      (typeof attempt.score === "number" &&
+        attempt.score > 0 &&
+        attempt.metadata?.assessment !== "capture-only"),
+  );
   const scores = scored.map((a) => a.score);
   const lastThree = scores.slice(-3);
   const bestScore = scores.length ? Math.max(...scores) : 0;
   const lastScore = scores.length ? scores[scores.length - 1]! : 0;
-  const mastered =
+  const practiceAttempts = mine.filter((a) => a.seconds >= 2);
+  const practiceMastered =
+    practiceAttempts.length >= 2 ||
+    (mine.length >= 3 && mine.reduce((s, a) => s + a.seconds, 0) >= 6);
+  const scoreMastered =
     bestScore >= 90 ||
     (lastThree.length >= 3 && lastThree.every((s) => s >= 75));
-  const struggling = scored.length >= 2 && bestScore < 60;
+  const mastered = scoreMastered || (scored.length === 0 && practiceMastered);
+  const struggling =
+    scored.length >= 2 && bestScore < 60
+      ? true
+      : scored.length === 0 && mine.length >= 4 && practiceAttempts.length < 2;
   return {
     itemId,
     attemptCount: mine.length,
@@ -280,7 +292,7 @@ export function resolveMemory(
   return {
     hesitation: `Le point « ${weakest[0]} »`,
     avoided: weakest[1] < 60 ? "à reprendre à voix haute" : "encore en consolidation",
-    confidence: `Le point « ${strongest[0]} »` ,
+    confidence: `Le point « ${strongest[0]} »`,
     leoNote: weakest[1] < 75
       ? `Votre dernière observation sur « ${weakest[0]} » montre encore un point à consolider. Léo propose une reprise courte.`
       : `Les observations récentes sont plutôt solides ; continuez par une situation réelle.`,
