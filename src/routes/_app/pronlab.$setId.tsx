@@ -284,17 +284,9 @@ function PronlabSetPage() {
       {summary.scores.length >= 2 && (
         <Surface className="mt-4">
           <Eyebrow>Avant / après</Eyebrow>
-          {summary.scores.length ? (
-            <>
-              <p className="mt-3 text-sm tabular-nums">
-                Premier {summary.scores[0]} → dernier {summary.lastScore}
-              </p>
-            </>
-          ) : (
-            <p className="mt-3 text-sm leading-6 text-muted">
-              Les prises vocales sont conservées comme preuves de pratique ; une comparaison chiffrée apparaîtra seulement lorsque des analyses phonétiques réelles existent.
-            </p>
-          )
+          <p className="mt-3 text-sm tabular-nums">
+            Premier {summary.scores[0]} → dernier {summary.lastScore}
+          </p>
           <p className="mt-3 text-sm leading-6 text-muted">
             Ce résumé compare uniquement des analyses phonétiques réellement disponibles.
           </p>
