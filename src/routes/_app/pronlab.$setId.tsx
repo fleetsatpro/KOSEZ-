@@ -9,6 +9,8 @@ import { findPronlabSet } from "@/lib/blossom/data";
 import { summarisePronlabItem, type PronlabAttempt } from "@/lib/blossom/engine";
 import { isSetUnlocked, useBlossom } from "@/lib/blossom/store";
 import { toast } from "sonner";
+import { transcribeSpeakTurn } from "@/lib/blossom/speech.api";
+import { blobToBase64, captureOnlyEvidence } from "@/lib/blossom/speech-stt";
 
 export const Route = createFileRoute("/_app/pronlab/$setId")({
   component: PronlabSetPage,
@@ -154,11 +156,38 @@ function PronlabSetPage() {
         {lastAttempt === null ? (
           <RecordControl
             cta={heard ? "Maintenir pour dire" : "Écoutez, ou tentez"}
-            onFinished={(seconds) => {
-              const attempt = record(item.id, seconds ?? 2);
+            onFinished={async ({ seconds, blob, mimeType }) => {
+              let evidence = captureOnlyEvidence(seconds);
+              if (blob) {
+                try {
+                  const audioBase64 = await blobToBase64(blob);
+                  if (audioBase64) {
+                    evidence = await transcribeSpeakTurn({
+                      data: {
+                        audioBase64,
+                        mimeType,
+                        seconds,
+                        fileName: `kosez-pronlab-${item.id}.webm`,
+                      },
+                    });
+                  }
+                } catch {
+                  evidence = captureOnlyEvidence(seconds);
+                }
+              }
+              const attempt = record(item.id, seconds, {
+                assessment: evidence.assessment,
+                provider: evidence.providerId ?? "speech-evidence",
+                language: evidence.language ?? "",
+                transcript: evidence.transcript ?? "",
+              });
               if (attempt) {
                 setLastAttempt(attempt);
-                toast("Prise enregistrée. L’analyse viendra avec un vrai moteur phonétique.");
+                toast(
+                  evidence.assessment === "transcript"
+                    ? "Prise transcrite. Aucune note phonétique n’est inventée."
+                    : "Prise enregistrée. K’Osez n’invente pas de note sans moteur phonétique.",
+                );
               }
             }}
           />
@@ -255,9 +284,17 @@ function PronlabSetPage() {
       {summary.scores.length >= 2 && (
         <Surface className="mt-4">
           <Eyebrow>Avant / après</Eyebrow>
-          <p className="mt-3 text-sm tabular-nums">
-            Premier {summary.scores[0]} → dernier {summary.lastScore}
-          </p>
+          {summary.scores.length ? (
+            <>
+              <p className="mt-3 text-sm tabular-nums">
+                Premier {summary.scores[0]} → dernier {summary.lastScore}
+              </p>
+            </>
+          ) : (
+            <p className="mt-3 text-sm leading-6 text-muted">
+              Les prises vocales sont conservées comme preuves de pratique ; une comparaison chiffrée apparaîtra seulement lorsque des analyses phonétiques réelles existent.
+            </p>
+          )
           <p className="mt-3 text-sm leading-6 text-muted">
             Ce résumé compare uniquement des analyses phonétiques réellement disponibles.
           </p>
