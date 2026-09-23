@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button";
 import { buildReviewQueue, type ReviewItem } from "@/lib/blossom/learning-os";
 import { buildReviewPlan, type ScheduledReviewItem } from "@/lib/blossom/review-scheduler";
 import { useBlossom } from "@/lib/blossom/store";
-import { takeCurriculumLessonContext } from "@/lib/blossom/curriculum-context";
+import {
+  clearCurriculumLessonContext,
+  readCurriculumLessonContext,
+} from "@/lib/blossom/curriculum-context";
 
 export const Route = createFileRoute("/_app/learn/review")({
   component: Review,
@@ -22,7 +25,10 @@ function kindIcon(kind: ReviewItem["kind"]) {
 }
 
 function Review() {
-  const [curriculumLessonId] = useState<string | null>(() => takeCurriculumLessonContext());
+  const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
+  useEffect(() => {
+    if (curriculumLessonId) clearCurriculumLessonContext();
+  }, [curriculumLessonId]);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const vocabulary = useBlossom((s) => s.vocabulary);
   const submissions = useBlossom((s) => s.learningSubmissions);
