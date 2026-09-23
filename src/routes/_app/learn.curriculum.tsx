@@ -28,11 +28,11 @@ function Curriculum() {
             Un chemin, pas une <span className="text-primary">file de contenus.</span>
           </h1>
           <p className="mt-5 max-w-2xl text-sm leading-7 text-primary-foreground/70 sm:text-base">
-            Chaque unité relie une intention communicative, une compétence, une pratique et une situation où la langue doit réellement servir.
+            Chaque unité relie une intention communicative, une compétence, une pratique et une situation où la langue doit réellement servir, de la première rencontre jusqu'aux tâches B1 plus ouvertes.
           </p>
           <div className="mt-7 flex flex-wrap gap-2">
             <Badge className="border-primary-foreground/10 bg-primary-foreground/8 text-primary-foreground">
-              A2 → B1 · 10 unités
+              A1 → B1 · 13 unités
             </Badge>
             <Badge className="border-primary-foreground/10 bg-primary-foreground/8 text-primary-foreground">
               {CURRICULUM_UNITS.reduce((sum, unit) => sum + unit.lessons.length, 0)} pratiques
