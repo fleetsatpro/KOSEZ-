@@ -131,13 +131,21 @@ function LibraryDocPage() {
   }
 
   function seedSpeakFromText() {
-    const topic = `${docTitle}. ${docBlurb} Context from the reading: ${text.slice(0, 220)}…`;
+    const wordHint = picked
+      ? ` Keep the word « ${picked} » available in the exchange.`
+      : "";
+    const topic = `${docTitle}. ${docBlurb} Context from the reading: ${text.slice(0, 200)}…${wordHint}`;
     try {
-      sessionStorage.setItem("kosez-speak-topic", topic);
+      sessionStorage.setItem("kosez-speak-topic", topic.slice(0, 280));
+      if (picked) sessionStorage.setItem("kosez-speak-word", picked);
     } catch {
       /* ignore */
     }
-    toast("La room se compose à partir de ce texte.");
+    toast(
+      picked
+        ? `Room ancrée sur « ${picked} » et ce texte.`
+        : "La room se compose à partir de ce texte.",
+    );
     navigate({ to: "/osez/$id", params: { id: "topic" } });
   }
 
