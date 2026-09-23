@@ -129,7 +129,7 @@ function Review() {
           <p className="mt-2 text-sm leading-6 text-muted">
             Votre prochain meilleur geste est une activité qui crée une nouvelle preuve.
           </p>
-          <Button className="mt-5" asChild><Link to="/mission">Faire une mission <ArrowRight className="size-4" /></Link></Button>
+          <Button className="mt-5" asChild><Link to="/mission" search={{}}>Faire une mission <ArrowRight className="size-4" /></Link></Button>
         </Surface>
       </Page>
     );
