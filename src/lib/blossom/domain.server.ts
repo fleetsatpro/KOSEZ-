@@ -536,6 +536,12 @@ export async function requestCatalogueBooking(
     throw new Error("unknown-catalogue-item");
   }
   const sql = await getSql();
+  const existing = await sql.query(
+    "select id, status from blossom_booking_request where user_id = $1 and catalogue_item_id = $2",
+    [userId, catalogueItemId],
+  );
+  const previousStatus = existing[0]?.status ? String(existing[0].status) : null;
+
   const rows = await sql.query(
     `insert into blossom_booking_request (id, user_id, catalogue_item_id, status)
      values ($1::uuid, $2, $3, 'requested')
@@ -551,12 +557,15 @@ export async function requestCatalogueBooking(
     [randomUUID(), userId, catalogueItemId],
   );
   if (rows[0]) {
-    await writeAuditEvent(userId, {
-      action: "commerce.booking_requested",
-      resourceType: "booking_request",
-      resourceId: String(rows[0].id),
-      metadata: { status: String(rows[0].status) },
-    });
+    const nextStatus = String(rows[0].status);
+    if (previousStatus !== nextStatus) {
+      await writeAuditEvent(userId, {
+        action: "commerce.booking_requested",
+        resourceType: "booking_request",
+        resourceId: String(rows[0].id),
+        metadata: { previousStatus, nextStatus },
+      });
+    }
     return rows[0];
   }
 
