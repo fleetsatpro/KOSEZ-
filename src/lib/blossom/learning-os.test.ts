@@ -169,3 +169,14 @@ test("objective mastery needs repeated direct evidence across distinct contexts"
   assert.equal(varied.directSourceCount, 3);
   assert.equal(varied.status, "ancré");
 });
+
+
+test("curriculum mission resources are unique so completion traces cannot collide", () => {
+  const missionIds = CURRICULUM_UNITS.flatMap((unit) =>
+    unit.lessons
+      .map((lesson) => CURRICULUM_RESOURCE_MAP[lesson.id])
+      .filter((resource): resource is { kind: "mission"; id: string } => resource?.kind === "mission")
+      .map((resource) => resource.id),
+  );
+  assert.equal(new Set(missionIds).size, missionIds.length);
+});
