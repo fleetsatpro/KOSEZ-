@@ -109,6 +109,8 @@ function LibraryDocPage() {
   }
 
   const text = doc.body;
+  const docTitle = doc.title;
+  const docBlurb = doc.blurb;
 
   function onWord(raw: string) {
     const word = raw.replace(/[.,!?]/g, "").toLowerCase();
@@ -129,7 +131,7 @@ function LibraryDocPage() {
   }
 
   function seedSpeakFromText() {
-    const topic = `${doc.title}. ${doc.blurb} Context from the reading: ${text.slice(0, 220)}…`;
+    const topic = `${docTitle}. ${docBlurb} Context from the reading: ${text.slice(0, 220)}…`;
     try {
       sessionStorage.setItem("kosez-speak-topic", topic);
     } catch {
