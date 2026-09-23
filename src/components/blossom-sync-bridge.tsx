@@ -595,11 +595,6 @@ export function BlossomSyncBoundary({ children }: { children: ReactNode }) {
   const [readyKey, setReadyKey] = useState<string | null>(null);
   const identityKey = isPending ? null : user?.id ?? "__signed-out__";
 
-  useEffect(() => {
-    setReadyKey(null);
-    if (!isPending && !user) setReadyKey("__signed-out__");
-  }, [isPending, user?.id]);
-
   const ready = identityKey !== null && readyKey === identityKey;
 
   return (
