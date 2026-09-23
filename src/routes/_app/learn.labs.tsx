@@ -9,7 +9,10 @@ import { DIAGNOSTIC_QUESTIONS, diagnosticLevel, diagnosticScore, diagnosticSumma
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 import { CURRICULUM_UNITS } from "@/lib/blossom/learning-os";
-import { takeCurriculumLessonContext } from "@/lib/blossom/curriculum-context";
+import {
+  clearCurriculumLessonContext,
+  readCurriculumLessonContext,
+} from "@/lib/blossom/curriculum-context";
 
 export const Route = createFileRoute("/_app/learn/labs")({ component: LearningLabs });
 
@@ -44,7 +47,10 @@ function LearningLabs() {
 }
 
 function GrammarLab({ level }: { level: LabLevel }) {
-  const [curriculumLessonId] = useState<string | null>(() => takeCurriculumLessonContext());
+  const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
+  useEffect(() => {
+    if (curriculumLessonId) clearCurriculumLessonContext();
+  }, [curriculumLessonId]);
   const linkedTaskId = linkedLessonTask(curriculumLessonId, "grammar");
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
@@ -88,7 +94,10 @@ function GrammarLab({ level }: { level: LabLevel }) {
 }
 
 function ListeningLab({ level }: { level: LabLevel }) {
-  const [curriculumLessonId] = useState<string | null>(() => takeCurriculumLessonContext());
+  const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
+  useEffect(() => {
+    if (curriculumLessonId) clearCurriculumLessonContext();
+  }, [curriculumLessonId]);
   const linkedTaskId = linkedLessonTask(curriculumLessonId, "listening");
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
@@ -131,7 +140,10 @@ function ListeningLab({ level }: { level: LabLevel }) {
 }
 
 function WritingLab({ level }: { level: LabLevel }) {
-  const [curriculumLessonId] = useState<string | null>(() => takeCurriculumLessonContext());
+  const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
+  useEffect(() => {
+    if (curriculumLessonId) clearCurriculumLessonContext();
+  }, [curriculumLessonId]);
   const linkedTaskId = linkedLessonTask(curriculumLessonId, "writing");
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
