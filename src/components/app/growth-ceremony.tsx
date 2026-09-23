@@ -4,33 +4,45 @@ import { cn } from "@/lib/utils";
 
 const KIND_META: Record<
   GrowthEvent["kind"],
-  { glyph: string; tone: string; title: string }
+  { glyph: string; tone: string; title: string; motion: string }
 > = {
   root: {
     glyph: "◉",
-    tone: "from-primary/25 via-primary/5 to-transparent",
+    tone: "from-primary/30 via-primary/8 to-transparent",
     title: "Racine",
+    motion: "grow-root",
   },
   stem: {
     glyph: "│",
-    tone: "from-emerald-400/20 via-emerald-400/5 to-transparent",
+    tone: "from-emerald-400/25 via-emerald-400/8 to-transparent",
     title: "Tige",
+    motion: "grow-stem",
   },
   leaf: {
     glyph: "❧",
-    tone: "from-lime-300/25 via-lime-300/5 to-transparent",
+    tone: "from-lime-300/30 via-lime-300/8 to-transparent",
     title: "Feuille",
+    motion: "grow-leaf",
   },
   flower: {
     glyph: "❀",
-    tone: "from-fuchsia-300/20 via-fuchsia-300/5 to-transparent",
+    tone: "from-fuchsia-300/25 via-fuchsia-300/8 to-transparent",
     title: "Fleur",
+    motion: "grow-flower",
   },
   mineral: {
     glyph: "·",
-    tone: "from-white/10 via-transparent to-transparent",
+    tone: "from-white/15 via-transparent to-transparent",
     title: "Minéral",
+    motion: "grow-mineral",
   },
+};
+
+const MINERAL_LABEL: Record<"mission" | "parole" | "pron" | "social", string> = {
+  mission: "Mission",
+  parole: "Parole",
+  pron: "Pron",
+  social: "Social",
 };
 
 export function GrowthCeremony({
@@ -53,11 +65,11 @@ export function GrowthCeremony({
   useEffect(() => {
     if (!open || !event) return;
     setPhase("enter");
-    const hold = window.setTimeout(() => setPhase("hold"), 420);
+    const hold = window.setTimeout(() => setPhase("hold"), 480);
     const auto = window.setTimeout(() => {
       setPhase("exit");
-      window.setTimeout(onDismiss, 380);
-    }, 4200);
+      window.setTimeout(onDismiss, 420);
+    }, 5200);
     return () => {
       window.clearTimeout(hold);
       window.clearTimeout(auto);
@@ -93,7 +105,7 @@ export function GrowthCeremony({
         type="button"
         aria-label="Fermer"
         className={cn(
-          "absolute inset-0 bg-black/55 backdrop-blur-[2px] transition-opacity duration-300",
+          "absolute inset-0 bg-black/60 backdrop-blur-[3px] transition-opacity duration-300",
           phase === "exit" ? "opacity-0" : "opacity-100",
         )}
         onClick={() => {
@@ -104,54 +116,54 @@ export function GrowthCeremony({
 
       <div
         className={cn(
-          "relative w-full max-w-sm overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-[0_24px_80px_-20px_rgba(0,0,0,0.65)]",
-          "transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]",
-          phase === "enter" && "translate-y-6 scale-[0.97] opacity-0",
+          "relative w-full max-w-sm overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-[0_28px_90px_-24px_rgba(0,0,0,0.7)]",
+          "transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          phase === "enter" && "translate-y-8 scale-[0.94] opacity-0",
           phase === "hold" && "translate-y-0 scale-100 opacity-100",
-          phase === "exit" && "translate-y-4 scale-[0.98] opacity-0",
+          phase === "exit" && "translate-y-5 scale-[0.97] opacity-0",
         )}
       >
         <div
-          className={cn(
-            "pointer-events-none absolute inset-0 bg-gradient-to-b",
-            meta.tone,
-          )}
+          className={cn("pointer-events-none absolute inset-0 bg-gradient-to-b", meta.tone)}
           aria-hidden
         />
 
-        <div className="relative px-6 pb-6 pt-8 text-center">
+        <div className="relative flex h-36 items-end justify-center pt-8" aria-hidden>
           <div
             className={cn(
-              "mx-auto flex size-16 items-center justify-center rounded-full border border-primary/30 bg-primary/10",
-              "font-display text-3xl text-primary",
-              phase === "hold" && "animate-[pulse_2.4s_ease-in-out_infinite]",
+              "growth-stage relative flex h-28 w-24 items-end justify-center",
+              phase === "hold" && meta.motion,
             )}
-            style={{
-              animationDuration: `${Math.max(1.2, 2.8 - event.intensity)}s`,
-            }}
           >
-            <span aria-hidden>{meta.glyph}</span>
+            <span className="growth-stem absolute bottom-2 h-16 w-1 rounded-full bg-primary/80" />
+            <span className="growth-leaf growth-leaf-l absolute bottom-14 left-3 size-7 rounded-full bg-lime-300/70" />
+            <span className="growth-leaf growth-leaf-r absolute bottom-16 right-3 size-6 rounded-full bg-primary/60" />
+            <span className="growth-core absolute bottom-20 flex size-12 items-center justify-center rounded-full border border-primary/40 bg-primary/15 font-display text-2xl text-primary">
+              {meta.glyph}
+            </span>
           </div>
+        </div>
 
-          <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.22em] text-subtle">
+        <div className="relative px-6 pb-7 pt-2 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-subtle">
             {meta.title} · intensité {Math.round(event.intensity * 100)}%
           </p>
           <h2 className="mt-2 font-display text-2xl tracking-tight text-fg">
             {event.label}
           </h2>
           <p className="mt-2 text-sm leading-6 text-muted">
-            La terre s'en souvient. Rien à forcer.
+            La terre s'en souvient. Ce geste nourrit la plante.
           </p>
 
           {deltas && deltas.length > 0 ? (
-            <ul className="mt-6 flex flex-wrap justify-center gap-2">
+            <ul className="mt-5 flex flex-wrap justify-center gap-2">
               {deltas.map((d) => (
                 <li
                   key={d.key}
-                  className="rounded-full border border-border/70 bg-surface-2/80 px-3 py-1 text-[11px] tabular-nums text-fg"
+                  className="rounded-full border border-border/70 bg-surface-2/90 px-3 py-1.5 text-[11px] tabular-nums text-fg"
                 >
                   <span className="uppercase tracking-[0.12em] text-subtle">
-                    {d.key}
+                    {MINERAL_LABEL[d.key]}
                   </span>{" "}
                   <span className="ml-1 font-semibold text-primary">
                     {d.delta > 0 ? `+${d.delta}` : d.delta}
@@ -167,7 +179,7 @@ export function GrowthCeremony({
               setPhase("exit");
               window.setTimeout(onDismiss, 320);
             }}
-            className="mt-7 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02] active:scale-[0.98]"
+            className="mt-7 inline-flex min-h-11 items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.02] active:scale-[0.98]"
           >
             Continuer
           </button>
