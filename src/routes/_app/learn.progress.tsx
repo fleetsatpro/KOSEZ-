@@ -205,7 +205,7 @@ function ProgressPage() {
             <Eyebrow>Profil de preuves</Eyebrow>
             <h2 className="mt-2 font-display text-3xl tracking-tight">Neuf branches, une seule histoire.</h2>
           </div>
-          <Link to="/learn/review" search={{ focus: undefined }} className="hidden items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary sm:inline-flex">
+          <Link to="/learn/review" search={{ focus: undefined, lessonId: undefined }} className="hidden items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary sm:inline-flex">
             Réviser <ArrowRight className="size-3.5" />
           </Link>
         </div>
