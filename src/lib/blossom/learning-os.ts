@@ -135,12 +135,12 @@ export const CURRICULUM_RESOURCE_MAP: Record<string, CurriculumResource> = {
   "u2-l4": { kind: "grammar", id: "grammar-question-1" },
   "u2-l5": { kind: "mission", id: "mission-invite" },
   "u3-l1": { kind: "speak", id: "office" },
-  "u3-l2": { kind: "review", id: "u3-listening-detail" },
+  "u3-l2": { kind: "review", id: "listening" },
   "u3-l3": { kind: "mission", id: "mission-directions" },
   "u3-l4": { kind: "listening", id: "listen-4" },
   "u3-l5": { kind: "listening", id: "listen-5" },
   "u4-l1": { kind: "speak", id: "social" },
-  "u4-l2": { kind: "review", id: "u4-vocabulary-recall" },
+  "u4-l2": { kind: "review", id: "vocabulary" },
   "u4-l3": { kind: "library", id: "lib-workday" },
   "u4-l4": { kind: "writing", id: "write-after-class" },
   "u4-l5": { kind: "writing", id: "write-after-class-2" },
@@ -149,7 +149,7 @@ export const CURRICULUM_RESOURCE_MAP: Record<string, CurriculumResource> = {
   "u5-l3": { kind: "speak", id: "transit" },
   "u5-l4": { kind: "mission", id: "mission-delay" },
   "u6-l1": { kind: "speak", id: "home" },
-  "u6-l2": { kind: "review", id: "u6-targeted-stabilisation" },
+  "u6-l2": { kind: "review", id: "pronunciation" },
   "u6-l3": { kind: "mission", id: "mission-choose" },
   "u6-l4": { kind: "grammar", id: "grammar-question-6" },
   "u7-l1": { kind: "speak", id: "coast" },
@@ -175,11 +175,11 @@ export const CURRICULUM_RESOURCE_MAP: Record<string, CurriculumResource> = {
 };
 
 export function curriculumResource(lesson: CurriculumLesson): CurriculumResource {
-  return CURRICULUM_RESOURCE_MAP[lesson.id] ?? (
-    lesson.kind === "review"
-      ? { kind: "review", id: "review-" + lesson.id }
-      : { kind: lesson.kind, id: lesson.id } as CurriculumResource
-  );
+  const resource = CURRICULUM_RESOURCE_MAP[lesson.id];
+  if (!resource) {
+    throw new Error(`Unmapped curriculum lesson resource: ${lesson.id}`);
+  }
+  return resource;
 }
 
 export const CURRICULUM_UNITS: CurriculumUnit[] = [
