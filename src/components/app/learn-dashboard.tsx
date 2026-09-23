@@ -96,7 +96,7 @@ function NextActionLink({
       );
     case "mission":
       return (
-        <Link to="/mission" search={{ missionId: action.targetId }} className={className}>
+        <Link to="/mission" search={{ missionId: action.targetId, lessonId: undefined }} className={className}>
           {children}
         </Link>
       );
@@ -254,7 +254,7 @@ export function LearnDashboard() {
               size="lg"
               className="mt-6 bg-primary-foreground text-fg hover:bg-primary-foreground/90"
             >
-              <Link to="/pronlab/$setId" params={{ setId: activeSet.id }}>
+              <Link to="/pronlab/$setId" params={{ setId: activeSet.id }} search={{ lessonId: undefined }}>
                 Reprendre
                 <ArrowRight className="size-4" />
               </Link>
@@ -265,7 +265,7 @@ export function LearnDashboard() {
               size="lg"
               className="mt-6 bg-primary-foreground text-fg hover:bg-primary-foreground/90"
             >
-              <Link to="/library/$id" params={{ id: LIBRARY[0].id }}>
+              <Link to="/library/$id" params={{ id: LIBRARY[0].id }} search={{ lessonId: undefined }}>
                 Lire
                 <ArrowRight className="size-4" />
               </Link>
@@ -344,7 +344,7 @@ export function LearnDashboard() {
           <Eyebrow>Mémoire · maintenant</Eyebrow>
           <p className="mt-3 font-display text-4xl tabular-nums text-primary">{intelligence.dueNow}</p>
           <p className="mt-1 text-xs text-muted">rappel{intelligence.dueNow === 1 ? "" : "s"} dû{intelligence.dueNow === 1 ? "" : "s"} aujourd'hui</p>
-          <Link to="/learn/review" search={{ focus: undefined }} className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+          <Link to="/learn/review" search={{ focus: undefined, lessonId: undefined }} className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
             Ouvrir la mémoire <ArrowRight className="size-3.5" />
           </Link>
         </article>
@@ -660,7 +660,7 @@ export function LearnDashboard() {
               {CURRICULUM_UNITS.reduce((total, unit) => total + unit.lessons.length, 0)} pratiques · A1 → B1
             </p>
           </Link>
-          <Link to="/learn/review" search={{ focus: undefined }} className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
+          <Link to="/learn/review" search={{ focus: undefined, lessonId: undefined }} className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
             <RotateCcw className="size-4 text-primary" />
             <p className="mt-5 font-display text-xl tracking-tight">Révision</p>
             <p className="mt-1 text-xs text-muted">Mémoire en circulation</p>
@@ -677,7 +677,7 @@ export function LearnDashboard() {
             <p className="mt-5 font-display text-xl tracking-tight">Historique</p>
             <p className="mt-1 text-xs text-muted">Actions + preuves</p>
           </Link>
-          <Link to="/learn/labs" search={{ lab: undefined, task: undefined }} className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
+          <Link to="/learn/labs" search={{ lab: undefined, task: undefined, lessonId: undefined }} className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
             <FlaskConical className="size-4 text-primary" />
             <p className="mt-5 font-display text-xl tracking-tight">Labs</p>
             <p className="mt-1 text-xs text-muted">Grammaire · écoute · écrit</p>
