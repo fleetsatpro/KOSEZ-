@@ -26,6 +26,7 @@ import { ChildHome } from "@/components/app/child-home";
 import { AdminStudio } from "@/components/app/admin-studio";
 import { Wordmark } from "@/components/app/primitives";
 import { UserButton } from "@/lib/auth/gates";
+import { NotificationCenter } from "@/components/app/notification-center";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { cn } from "@/lib/utils";
@@ -379,10 +380,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             </nav>
           )}
 
-          <div className="mb-4 rounded-2xl border border-border bg-bg/70 px-4 py-3 shadow-[var(--shadow-border)]">
-            <SyncStatus />
-            <div className="mt-3 border-t border-border pt-3">
-              <UserButton />
+          <div className="mb-4 space-y-2 rounded-2xl">
+            <NotificationCenter />
+            <div className="rounded-2xl border border-border bg-bg/70 px-4 py-3 shadow-[var(--shadow-border)]">
+              <SyncStatus />
+              <div className="mt-3 border-t border-border pt-3">
+                <UserButton />
+              </div>
             </div>
           </div>
 
