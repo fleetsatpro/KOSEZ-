@@ -3,7 +3,7 @@ import { ArrowRight, Check, Leaf } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   LEARNER_MEMORY,
-  missionForLevel,
+  focusMissionForLevel,
   planAllows,
   PLANT_IMAGE,
 } from "@/lib/blossom/data";
@@ -34,7 +34,7 @@ export function HomeDashboard() {
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const journey = useJourney();
 
-  const todayMission = missionForLevel(learner.level);
+  const todayMission = focusMissionForLevel(learner.level, { rotate: true });
   const missionDone = hasSource(log, todayMission.id);
   const memoryOn = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
@@ -51,7 +51,6 @@ export function HomeDashboard() {
 
   return (
     <div data-smoke="blossom-home" className="kosez-home relative min-h-[calc(100dvh-5.5rem)] lg:min-h-dvh">
-      {/* —— Living stage (full-bleed plant) —— */}
       <div className="relative isolate min-h-[72dvh] overflow-hidden lg:min-h-dvh">
         <img
           src={plantSrc}
@@ -67,7 +66,6 @@ export function HomeDashboard() {
           aria-hidden
         />
 
-        {/* Top chrome */}
         <header className="relative z-10 flex items-start justify-between gap-4 px-5 pt-7 lg:px-12 lg:pt-11">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/45">
@@ -96,7 +94,6 @@ export function HomeDashboard() {
           </Link>
         </header>
 
-        {/* Centre: one sentence from the organism + stage */}
         <div className="relative z-10 mx-auto flex max-w-2xl flex-col items-center px-5 pt-[12vh] text-center lg:pt-[18vh]">
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-primary/90">
             {journey.stage.label}
@@ -109,9 +106,7 @@ export function HomeDashboard() {
           </p>
         </div>
 
-        {/* Bottom of stage: courage atmosphere + primary CTA */}
         <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-8 lg:px-12 lg:pb-12">
-          {/* Courage as atmosphere — not a card */}
           <div className="mb-6 flex flex-col items-center gap-2">
             <ul
               className="flex flex-wrap justify-center gap-1"
@@ -133,7 +128,6 @@ export function HomeDashboard() {
             </p>
           </div>
 
-          {/* The only real action */}
           <div className="mx-auto max-w-lg rounded-3xl border border-white/10 bg-black/40 p-5 shadow-[0_24px_80px_-24px_rgba(0,0,0,0.8)] backdrop-blur-md sm:p-6">
             <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
               <Leaf className="size-3 text-primary" />
@@ -171,7 +165,6 @@ export function HomeDashboard() {
             ) : null}
           </div>
 
-          {/* Stage progress — whisper, not a panel */}
           <div className="mx-auto mt-5 max-w-lg">
             <div className="flex items-center justify-between gap-3 text-[11px] text-white/40">
               <span className="font-display text-sm text-white/70">
@@ -203,7 +196,6 @@ export function HomeDashboard() {
         </div>
       </div>
 
-      {/* —— Secondary doors: text, not cards —— */}
       <nav
         className="border-t border-border/60 bg-bg px-5 py-6 lg:px-12"
         aria-label="Portes secondaires"
