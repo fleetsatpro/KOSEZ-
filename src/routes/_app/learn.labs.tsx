@@ -185,7 +185,12 @@ function WritingLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
   const [promptIndex, setPromptIndex] = useState(initialPromptIndex === -1 ? 0 : initialPromptIndex), [draft, setDraft] = useState(""), [checks, setChecks] = useState<string[]>([]), [submitted, setSubmitted] = useState(false);
   const prompt = useMemo(() => prompts[promptIndex % prompts.length]!, [promptIndex, prompts]);
   function submit() { if (!draft.trim()) return; saveLearningSubmission({ taskId: prompt.id, kind: "writing", content: draft.trim(), checks, result: { checkCount: checks.length, checkTotal: prompt.checks.length } }); completeActivity("WRITING_COMPLETED", dailyLabSource("writing", prompt.id), `Écrit · ${prompt.id} · ${checks.length}/${prompt.checks.length} auto-vérifications`); setSubmitted(true); }
-  function next() { setPromptIndex((v) => (v + 1) % WRITING_PROMPTS.length); setDraft(""); setChecks([]); setSubmitted(false); }
+  function next() {
+    setPromptIndex((v) => (v + 1) % Math.max(1, prompts.length));
+    setDraft("");
+    setChecks([]);
+    setSubmitted(false);
+  }
   return <Surface className="mt-6 p-5 sm:p-7">
     <div className="flex items-start justify-between gap-3"><div><Eyebrow>Écrit · pratique guidée</Eyebrow><h2 className="mt-2 font-display text-3xl tracking-tight">{prompt.title}</h2></div><PenLine className="size-5 text-primary" /></div>
     <p className="mt-3 text-sm leading-6 text-muted">{prompt.situation}</p><div className="mt-5 rounded-xl bg-surface-2/50 p-4"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-subtle">Consigne</p><p className="mt-2 text-sm leading-6">{prompt.task}</p></div>
