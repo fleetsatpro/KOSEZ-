@@ -223,5 +223,5 @@ function DiagnosticLab() {
 }
 
 function LabComplete({ title, detail }: { title: string; detail: string }) {
-  return <Surface className="mt-6 border border-primary/20 bg-primary/5 p-6 sm:p-8"><Check className="size-6 text-primary" /><Eyebrow className="mt-5">TRACE CRÉÉE</Eyebrow><h2 className="mt-2 font-display text-3xl tracking-tight">{title}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{detail}</p><div className="mt-6 flex flex-wrap gap-2"><Button asChild><Link to="/learn">Retour à Atelier</Link></Button><Button variant="secondary" asChild><Link to="/learn/review">Réviser</Link></Button></div></Surface>;
+  return <Surface className="mt-6 border border-primary/20 bg-primary/5 p-6 sm:p-8"><Check className="size-6 text-primary" /><Eyebrow className="mt-5">TRACE CRÉÉE</Eyebrow><h2 className="mt-2 font-display text-3xl tracking-tight">{title}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{detail}</p><div className="mt-6 flex flex-wrap gap-2"><Button asChild><Link to="/learn">Retour à Atelier</Link></Button><Button variant="secondary" asChild><Link to="/learn/review" search={{}}>Réviser</Link></Button></div></Surface>;
 }
