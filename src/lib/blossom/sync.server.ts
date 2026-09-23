@@ -50,7 +50,10 @@ export async function assertCurriculumEvidence(
     grammar: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'grammar' limit 1", [userId, supportId]))[0]),
     listening: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'listening' limit 1", [userId, supportId]))[0]),
     writing: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'writing' limit 1", [userId, supportId]))[0]),
-    library: async () => false,
+    library: async () => Boolean((await sql.query(
+      "select 1 from blossom_activity_event where user_id = $1 and event_type = 'LIBRARY_COMPLETED' and source_id = $2 limit 1",
+      [userId, supportId],
+    ))[0]),
   };
 
   if ((lesson.kind === "grammar" || lesson.kind === "listening" || lesson.kind === "writing") && lesson.taskId && supportId !== lesson.taskId) {
