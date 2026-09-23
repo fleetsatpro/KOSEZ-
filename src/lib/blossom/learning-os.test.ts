@@ -77,3 +77,23 @@ test("self-reported lesson completion cannot create unit progress", () => {
   }];
   assert.equal(curriculumUnitProgress(unit, selfReport, [], []), 0);
 });
+
+
+test("curriculum library lessons bind to real reading documents", () => {
+  const libraries = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).filter((lesson) => lesson.kind === "library");
+  assert.ok(libraries.length >= 4);
+  assert.ok(libraries.every((lesson) => lesson.taskId?.startsWith("lib-")));
+});
+
+test("curriculum progress ignores legacy self-report events", () => {
+  const unit = CURRICULUM_UNITS[0]!;
+  assert.equal(
+    curriculumUnitProgress(unit, [{
+      id: "legacy",
+      type: "LESSON_COMPLETED" as const,
+      sourceId: unit.lessons[0]!.id,
+      createdAt: "2026-09-22T10:00:00.000Z",
+    }]),
+    0,
+  );
+});
