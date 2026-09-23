@@ -1359,8 +1359,6 @@ export const PRONLAB_SETS: PronlabSetDef[] = [
       },
     ],
   },
-];
-
   {
     id: "set-connected",
     title: "Parler en chaîne",
