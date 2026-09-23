@@ -40,6 +40,8 @@ jobs:
         run: npm run typecheck
 
       - name: Start auth-on dev server
+        env:
+          KOSEZ_VITE_CACHE_DIR: /tmp/kosez-vite-auth-on
         run: |
           npm run dev -- --force > /tmp/kosez-dev.log 2>&1 &
           echo $! > /tmp/kosez-dev.pid
@@ -53,8 +55,11 @@ jobs:
           exit 1
 
       - name: Start auth-disabled learner smoke server
+        env:
+          VITE_AUTH_ENABLED: "false"
+          KOSEZ_VITE_CACHE_DIR: /tmp/kosez-vite-smoke
         run: |
-          VITE_AUTH_ENABLED=false npm run dev -- --force --port 8081 > /tmp/kosez-smoke.log 2>&1 &
+          npm run dev -- --force --port 8081 > /tmp/kosez-smoke.log 2>&1 &
           echo $! > /tmp/kosez-smoke.pid
           for attempt in {1..30}; do
             if curl -fsS http://127.0.0.1:8081/__app-env > /tmp/kosez-smoke-env.json; then
