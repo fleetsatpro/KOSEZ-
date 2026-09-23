@@ -32,6 +32,7 @@ import { LeoLetterCard } from "@/components/app/leo-letter-card";
 import { formatShortDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
+import { MoiSettings } from "@/components/app/moi-settings";
 
 export const Route = createFileRoute("/_app/moi")({
   component: MoiPage,
@@ -225,6 +226,8 @@ function MoiPage() {
           </p>
         </Surface>
       </div>
+
+      <MoiSettings />
 
       {/* Léo memory — denser */}
       {memoryOn ? (
