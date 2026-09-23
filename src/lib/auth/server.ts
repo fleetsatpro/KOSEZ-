@@ -161,6 +161,11 @@ if (isVercelProduction) {
     );
   }
 
+  const productionSecret = env("BETTER_AUTH_SECRET");
+  if (!productionSecret || productionSecret.length < 32) {
+    throw new Error("[auth] BETTER_AUTH_SECRET must be at least 32 characters in Vercel production.");
+  }
+
   try {
     const parsed = new URL(explicitBaseURL ?? "");
     if (parsed.protocol !== "https:") {
@@ -168,6 +173,15 @@ if (isVercelProduction) {
     }
   } catch {
     throw new Error("[auth] BETTER_AUTH_URL must be an absolute HTTPS URL in Vercel production.");
+  }
+
+  try {
+    const parsed = new URL(configuredGrokIssuer ?? "");
+    if (parsed.protocol !== "https:") {
+      throw new Error("must use https");
+    }
+  } catch {
+    throw new Error("[auth] GROK_AUTH_ISSUER must be an absolute HTTPS URL in Vercel production.");
   }
 }
 
