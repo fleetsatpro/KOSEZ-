@@ -56,6 +56,7 @@ export type LearningIntelligence = {
     title: string;
     body: string;
     kind: "pronlab" | "mission" | "library" | "review" | "labs";
+    labKind?: "grammar" | "listening" | "writing";
     reasons: string[];
   };
 };
@@ -281,9 +282,10 @@ function recommendation(
       title: "Créer votre première trace écrite",
       body: "Votre profil ne contient pas encore de preuve directe en production écrite.",
       kind: "labs",
+      labKind: "writing",
       reasons: [
         "Aucune production écrite enregistrée.",
-        "Un lab de quelques minutes suffit pour créer cette première preuve.",
+        "Un lab d’écriture de quelques minutes suffit pour créer cette première preuve.",
       ],
     };
   }
@@ -298,7 +300,24 @@ function recommendation(
       eyebrow: "SIGNAL · À RAVIVER",
       title: `Revenir à « ${label} »`,
       body: "Cette branche a des traces, mais elles commencent à dater.",
-      kind: fading.domainId === "pronunciation" ? "pronlab" : "labs",
+      kind:
+        fading.domainId === "pronunciation"
+          ? "pronlab"
+          : fading.domainId === "reading"
+            ? "library"
+            : fading.domainId === "speaking" ||
+                fading.domainId === "interaction" ||
+                fading.domainId === "mediation"
+              ? "mission"
+              : "labs",
+      labKind:
+        fading.domainId === "grammar"
+          ? "grammar"
+          : fading.domainId === "listening"
+            ? "listening"
+            : fading.domainId === "writing"
+              ? "writing"
+              : undefined,
       reasons: [
         `Dernière preuve il y a ${fading.recencyDays} jours.`,
         "Raviver une compétence évite que la progression repose uniquement sur les nouveautés.",
@@ -330,9 +349,29 @@ function recommendation(
     eyebrow: "PROCHAINE ACTION",
     title: `Approfondir « ${label} »`,
     body: "Votre profil est assez nourri pour passer de l'exposition à une pratique plus ciblée.",
-    kind: "labs",
+    kind:
+      freshest?.domainId === "pronunciation"
+        ? "pronlab"
+        : freshest?.domainId === "reading"
+          ? "library"
+          : freshest?.domainId === "speaking" ||
+              freshest?.domainId === "interaction" ||
+              freshest?.domainId === "mediation"
+            ? "mission"
+            : "labs",
+    labKind:
+      freshest?.domainId === "grammar"
+        ? "grammar"
+        : freshest?.domainId === "listening"
+          ? "listening"
+          : freshest?.domainId === "writing"
+            ? "writing"
+            : undefined,
     reasons: [
-      `${domains.filter((domain) => domain.evidenceCount > 0).length}/${domains.length} domaines ont déjà des traces.`,
+      domains.filter((domain) => domain.evidenceCount > 0).length +
+        "/" +
+        domains.length +
+        " domaines ont déjà des traces.",
       "La prochaine valeur vient maintenant d'une preuve plus précise.",
     ],
   };
