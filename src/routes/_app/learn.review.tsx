@@ -163,7 +163,7 @@ function Review() {
           <p className="mt-2 text-sm leading-6 text-muted">
             Votre prochain meilleur geste est une activité qui crée une nouvelle preuve.
           </p>
-          <Button className="mt-5" asChild><Link to="/mission" search={{ missionId: undefined }}>Faire une mission <ArrowRight className="size-4" /></Link></Button>
+          <Button className="mt-5" asChild><Link to="/mission" search={{ missionId: undefined, lessonId: undefined }}>Faire une mission <ArrowRight className="size-4" /></Link></Button>
         </Surface>
       </Page>
     );
@@ -271,7 +271,7 @@ function Review() {
           ) : current.link === "mission" ? (
             <Link
               to="/mission"
-              search={{ missionId: undefined }}
+              search={{ missionId: undefined, lessonId: undefined }}
               className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
             >
               Ouvrir une mission <ArrowRight className="size-3.5" />
