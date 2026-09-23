@@ -118,15 +118,23 @@ test("weekly brief counts dated evidence and keeps review accuracy explicit", ()
 });
 
 
-test("curriculum acknowledgements follow the lesson objectives and stay non-direct", () => {
+test("legacy curriculum acknowledgements are not direct evidence", () => {
   const lesson = CURRICULUM_UNITS[1]!.lessons.find((item) => item.id === "u2-l4")!;
   const result = buildLearningIntelligence(
-    [{
-      id: "lesson",
-      type: "LESSON_COMPLETED",
-      sourceId: lesson.id,
-      createdAt: "2026-09-22T10:00:00.000Z",
-    }],
+    [{ id: "lesson", type: "LESSON_COMPLETED", sourceId: lesson.id, createdAt: "2026-09-22T10:00:00.000Z" }],
+    [],
+    [],
+    [],
+    plan(),
+    "2026-09-22T12:00:00.000Z",
+  );
+  assert.equal(result.domains.find((item) => item.domainId === "grammar")?.directEvidenceCount, 0);
+});
+
+test("linked curriculum evidence is direct and objective-scoped", () => {
+  const lesson = CURRICULUM_UNITS[1]!.lessons.find((item) => item.id === "u2-l4")!;
+  const result = buildLearningIntelligence(
+    [{ id: "evidence", type: "CURRICULUM_EVIDENCE_RECORDED", sourceId: lesson.id, createdAt: "2026-09-22T10:00:00.000Z" }],
     [],
     [],
     [],
@@ -134,6 +142,6 @@ test("curriculum acknowledgements follow the lesson objectives and stay non-dire
     "2026-09-22T12:00:00.000Z",
   );
   assert.ok((result.domains.find((item) => item.domainId === "grammar")?.evidenceCount ?? 0) > 0);
-  assert.equal(result.domains.find((item) => item.domainId === "grammar")?.directEvidenceCount, 0);
+  assert.ok((result.domains.find((item) => item.domainId === "grammar")?.directEvidenceCount ?? 0) > 0);
   assert.equal(result.domains.find((item) => item.domainId === "speaking")?.evidenceCount, 0);
 });
