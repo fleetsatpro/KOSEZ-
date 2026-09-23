@@ -104,8 +104,9 @@ function PronlabHub() {
                     setId:
                       PRONLAB_SETS.find((s) =>
                         s.items.some((i) => i.id === struggle.id),
-                      )?.id ?? sets[0]?.id ?? "th",
+                      )?.id ?? sets[0]?.id ?? "set-th",
                   }}
+                  search={{ lessonId: undefined }}
                 >
                   Reprendre ce son
                   <ArrowRight className="size-3.5" />
