@@ -57,13 +57,24 @@ function GrammarLab({ level }: { level: LabLevel }) {
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
     if (!answered) return;
-    if (index >= tasks.length - 1) { saveLearningSubmission({ taskId: task.id, kind: "grammar", content: choice ?? "", checks: [choice === task.answer ? "correct" : "incorrect"], result: { correct: choice === task.answer, target: task.target } });
-      completeActivity("GRAMMAR_COMPLETED", dailyLabSource("grammar", task.id), `Grammaire · ${correct + (choice === task.answer ? 1 : 0)}/${tasks.length}`);
+    const isCorrect = choice === task.answer;
+    saveLearningSubmission({
+      taskId: task.id,
+      kind: "grammar",
+      content: choice ?? "",
+      checks: [isCorrect ? "correct" : "incorrect"],
+      result: { correct: isCorrect, target: task.target, position: index + 1, level: task.level },
+    });
+    if (index >= tasks.length - 1) {
+      completeActivity("GRAMMAR_COMPLETED", dailyLabSource("grammar", task.id), `Grammaire · ${correct + (isCorrect ? 1 : 0)}/${tasks.length}`);
       if (curriculumLessonId && linkedLessonKind(curriculumLessonId) === "grammar") {
-        completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · grammaire · ${task.id}`);
+        completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · grammaire · ${task.id}`, { supportId: task.id });
       }
-      setFinished(true); return; }
-    setIndex((v) => v + 1); setChoice(null);
+      setFinished(true);
+      return;
+    }
+    setIndex((v) => v + 1);
+    setChoice(null);
   }
   if (finished) return <LabComplete title="Grammaire terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. Cette trace mesure une séance de pratique, pas un niveau CEFR.`} />;
   return <Surface className="mt-6 overflow-hidden p-0">
@@ -90,13 +101,24 @@ function ListeningLab({ level }: { level: LabLevel }) {
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
     if (!answered) return;
-    if (index >= tasks.length - 1) { saveLearningSubmission({ taskId: task.id, kind: "listening", content: choice ?? "", checks: [choice === task.answer ? "correct" : "incorrect"], result: { correct: choice === task.answer, level: task.level } });
-      completeActivity("LISTENING_COMPLETED", dailyLabSource("listening", task.id), `Écoute · ${correct + (choice === task.answer ? 1 : 0)}/${tasks.length}`);
+    const isCorrect = choice === task.answer;
+    saveLearningSubmission({
+      taskId: task.id,
+      kind: "listening",
+      content: choice ?? "",
+      checks: [isCorrect ? "correct" : "incorrect"],
+      result: { correct: isCorrect, level: task.level, position: index + 1 },
+    });
+    if (index >= tasks.length - 1) {
+      completeActivity("LISTENING_COMPLETED", dailyLabSource("listening", task.id), `Écoute · ${correct + (isCorrect ? 1 : 0)}/${tasks.length}`);
       if (curriculumLessonId && linkedLessonKind(curriculumLessonId) === "listening") {
-        completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · écoute · ${task.id}`);
+        completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · écoute · ${task.id}`, { supportId: task.id });
       }
-      setFinished(true); return; }
-    setIndex((v) => v + 1); setChoice(null);
+      setFinished(true);
+      return;
+    }
+    setIndex((v) => v + 1);
+    setChoice(null);
   }
   if (finished) return <LabComplete title="Écoute terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. Vous avez travaillé des détails concrets : heure, lieu, prix et option.`} />;
   return <Surface className="mt-6 p-5 sm:p-7">
