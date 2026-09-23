@@ -48,7 +48,6 @@ function CurriculumUnit() {
   const { unitId } = Route.useParams();
   const unit = CURRICULUM_UNITS.find((item) => item.id === unitId);
   const log = useBlossom((s) => s.activityLog);
-  const log = useBlossom((s) => s.activityLog);
 
   if (!unit) {
     return (
