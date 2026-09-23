@@ -70,7 +70,9 @@ async function callWhisperCompatible(
     : `${slot.url}/audio/transcriptions`;
 
   const form = new FormData();
-  const blob = new Blob([bytes], { type: mimeType || "audio/webm" });
+  const audioBuffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(audioBuffer).set(bytes);
+  const blob = new Blob([audioBuffer], { type: mimeType || "audio/webm" });
   form.append("file", blob, fileName || "speak.webm");
   form.append("model", slot.model);
   form.append("response_format", "json");
