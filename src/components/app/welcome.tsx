@@ -10,7 +10,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TODAY_MISSION } from "@/lib/blossom/data";
+import { todayMissionForLevel } from "@/lib/blossom/mission-today";
 import { useBlossom } from "@/lib/blossom/store";
 import { Wordmark } from "./primitives";
 
@@ -153,6 +153,7 @@ export function Welcome() {
 
   const step = STEPS[stepIndex]!;
   const isLast = stepIndex === STEPS.length - 1;
+  const todayMission = todayMissionForLevel(level || learner.level);
 
   const canContinue = useMemo(() => {
     if (step.id === "identity") return firstName.trim().length >= 2;
@@ -316,11 +317,11 @@ export function Welcome() {
                     <div className="mt-3 rounded-2xl border border-primary-foreground/10 bg-primary-foreground/5 p-4">
                       <div className="flex items-center gap-2 text-xs text-primary-foreground/42">
                         <Sparkles className="size-3.5 text-primary" />
-                        {TODAY_MISSION.durationMin} min · {TODAY_MISSION.level}
+                        {todayMission.durationMin} min · {todayMission.level}
                       </div>
-                      <p className="mt-3 font-display text-xl">{TODAY_MISSION.title}</p>
+                      <p className="mt-3 font-display text-xl">{todayMission.title}</p>
                       <p className="mt-2 text-sm leading-6 text-primary-foreground/52">
-                        {TODAY_MISSION.prompt}
+                        {todayMission.prompt}
                       </p>
                     </div>
                   </div>
@@ -462,11 +463,13 @@ export function Welcome() {
                               <span className="block text-sm font-medium text-primary-foreground/88">
                                 {item.label}
                               </span>
-                              <span className="mt-0.5 block text-xs text-primary-foreground/40">
+                              <span className="mt-0.5 block text-xs text-primary-foreground/42">
                                 {item.detail}
                               </span>
                             </span>
-                            <span className="text-xs tabular-nums text-primary-foreground/38">{item.id}</span>
+                            <span className="text-[10px] tabular-nums text-primary-foreground/40">
+                              {item.id}
+                            </span>
                           </button>
                         );
                       })}
@@ -475,26 +478,28 @@ export function Welcome() {
 
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-foreground/48">
-                      Comment Léo doit vous accompagner
+                      Voix de Léo
                     </p>
                     <div className="mt-3 grid gap-2 sm:grid-cols-3">
                       {COACHES.map((item) => {
-                        const selected = coachVoice === item.voice;
+                        const selected = coachVoice === item.id;
                         return (
                           <button
                             key={item.id}
                             type="button"
                             aria-pressed={selected}
-                            onClick={() => setCoachVoice(item.voice)}
+                            onClick={() => setCoachVoice(item.id)}
                             className={[
-                              "min-h-24 rounded-xl border px-3 py-3 text-left transition-colors",
+                              "min-h-20 rounded-xl border px-3 py-3 text-left transition-colors",
                               selected
                                 ? "border-primary/30 bg-primary/10"
                                 : "border-primary-foreground/10 bg-primary-foreground/4 hover:bg-primary-foreground/7",
                             ].join(" ")}
                           >
-                            <span className="text-sm font-medium text-primary-foreground/88">{item.id}</span>
-                            <span className="mt-1.5 block text-xs leading-5 text-primary-foreground/40">
+                            <span className="block text-sm font-medium text-primary-foreground/88">
+                              {item.id}
+                            </span>
+                            <span className="mt-1 block text-[11px] leading-4 text-primary-foreground/42">
                               {item.detail}
                             </span>
                           </button>
@@ -502,36 +507,27 @@ export function Welcome() {
                       })}
                     </div>
                   </div>
-
-                  <div className="rounded-2xl border border-primary/15 bg-primary/8 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                      Ce que K’Osez va faire avec ces choix
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-primary-foreground/56">
-                      Adapter vos missions, les Speak Rooms et certaines relances à
-                      votre niveau, vos centres d’intérêt et votre manière préférée d’être coaché.
-                    </p>
-                  </div>
                 </div>
               ) : null}
 
-              <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mt-8 flex items-center justify-between gap-3">
                 <Button
                   type="button"
                   variant="ghost"
-                  disabled={stepIndex === 0}
+                  size="sm"
                   onClick={back}
-                  className="min-h-11 text-primary-foreground/55 hover:bg-primary-foreground/5 hover:text-primary-foreground"
+                  disabled={stepIndex === 0}
+                  className="text-primary-foreground/55 hover:text-primary-foreground"
                 >
                   <ArrowLeft className="size-4" />
                   Retour
                 </Button>
-
                 <Button
                   type="button"
-                  disabled={!canContinue}
+                  size="lg"
                   onClick={next}
-                  className="min-h-11 bg-primary text-primary-foreground hover:bg-primary/90"
+                  disabled={!canContinue}
+                  className="min-h-12 rounded-xl bg-primary px-6 text-primary-foreground hover:bg-primary/90"
                 >
                   {isLast ? "Entrer dans BLOSSOM" : "Continuer"}
                   <ArrowRight className="size-4" />
@@ -541,9 +537,9 @@ export function Welcome() {
           </div>
         </div>
 
-        <footer className="flex items-center justify-between gap-4 border-t border-primary-foreground/10 pt-4 text-[11px] text-primary-foreground/30">
-          <span>Une pratique utile vaut mieux qu’une séance parfaite.</span>
-          <span className="hidden sm:inline">K’Osez · Saint-Pierre</span>
+        <footer className="mt-auto flex items-center justify-between gap-4 pt-6 text-[10px] uppercase tracking-[0.16em] text-primary-foreground/30">
+          <span>Configuration · 4 étapes</span>
+          <span>K’Osez · Saint-Pierre</span>
         </footer>
       </div>
     </main>
