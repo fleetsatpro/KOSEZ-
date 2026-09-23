@@ -136,12 +136,17 @@ export function MissionTheatreExperience() {
   }
 
   function finishAttempt(seconds: number) {
-    recordMissionAttempt(todayMission.id, "mission", seconds);
+    recordMissionAttempt(todayMission.id, "mission", "microphone", seconds);
     setStep("reflect");
   }
 
   function finishRealWorld() {
-    recordMissionAttempt(todayMission.id, "mission", Math.max(60, todayMission.durationMin * 60));
+    recordMissionAttempt(
+      todayMission.id,
+      "mission",
+      "manual",
+      Math.max(60, todayMission.durationMin * 60),
+    );
     setStep("reflect");
   }
 
@@ -382,13 +387,15 @@ export function MissionTheatreExperience() {
     <div className="min-h-dvh bg-bg">
       <CinematicTop step={step} language={todayMission.language} />
       <div className="mx-auto max-w-6xl px-5 pb-16 pt-4 lg:px-8">
-        <ProgressRail step={step} />
+        <ProgressRail step={step} completed={saved} />
         {step === "prepare" ? (
           <div className="mt-8">
             <PrepareStage
               objective={objective}
               run={run}
-              onWarmup={(seconds) => recordMissionAttempt(todayMission.id, "warmup", seconds)}
+              onWarmup={(seconds) =>
+                recordMissionAttempt(todayMission.id, "warmup", "microphone", seconds)
+              }
               onContinue={() => setStep("execute")}
             />
           </div>
@@ -423,6 +430,7 @@ export function MissionTheatreExperience() {
               draft={reflection}
               saved={saved}
               run={run}
+              history={history}
               onChange={(next) => {
                 setReflection(next);
                 setSaved(false);
