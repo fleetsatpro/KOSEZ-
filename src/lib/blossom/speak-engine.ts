@@ -362,6 +362,53 @@ function durationFor(turns: SpeakTurn[], pressure: PressurePattern): number {
   return base;
 }
 
+export function adaptLivingRoomAfterTranscript(
+  room: LivingRoom,
+  nextTurnIndex: number,
+  transcript: string,
+): LivingRoom {
+  const clean = transcript.trim().replace(/\s+/g, " ");
+  if (!clean || clean.length < 3) return room;
+
+  const nextAiIndex = room.turns.findIndex(
+    (turn, index) => index >= nextTurnIndex && turn.speaker === "ai",
+  );
+  if (nextAiIndex < 0) return room;
+
+  const lower = clean.toLowerCase();
+  const next = room.turns[nextAiIndex]!;
+  const goal = next.goal.toLowerCase();
+  const responseLooksLikeQuestion =
+    /\?|\b(what|where|when|why|how|can|could|would|do|does|is|are)\b/.test(lower);
+  const asksForRepair = /\b(repeat|again|slow|clarify|mean|understand)\b/.test(lower);
+  const chooses = /\b(i'd|i would|i prefer|i want|i'll|i will|choose|rather|like)\b/.test(lower);
+  const isVeryShort = clean.split(/\s+/).length <= 3;
+
+  let line = next.line ?? "And you?";
+  if (asksForRepair || /clarif/.test(goal)) {
+    line = "Of course. The important detail is this — does that make sense?";
+  } else if (chooses || /choisir|choice|recommend/.test(goal)) {
+    line = "That makes sense. What is the main reason for your choice?";
+  } else if (responseLooksLikeQuestion) {
+    line = "Good question. What matters most to you here?";
+  } else if (isVeryShort) {
+    line = "Could you tell me a little more about that?";
+  } else if (clean.length >= 40) {
+    line = "That is useful. Could you give me one concrete example?";
+  } else {
+    line = "I see. And what about the other option?";
+  }
+
+  return {
+    ...room,
+    turns: room.turns.map((turn, index) =>
+      index === nextAiIndex
+        ? { ...turn, line }
+        : turn,
+    ),
+  };
+}
+
 export function generateLivingRoom(input: GenerateInput = {}): LivingRoom {
   const now = input.now ?? new Date();
   const dayKey = now.toISOString().slice(0, 10);
