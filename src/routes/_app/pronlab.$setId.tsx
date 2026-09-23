@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Volume2 } from "lucide-react";
 import { RecordControl } from "@/components/app/record-control";
 import { Eyebrow, Page, Sparkline, DualWave, Surface } from "@/components/app/primitives";
