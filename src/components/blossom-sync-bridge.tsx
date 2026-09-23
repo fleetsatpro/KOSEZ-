@@ -597,6 +597,14 @@ export function BlossomSyncBoundary({ children }: { children: ReactNode }) {
 
   const ready = identityKey !== null && readyKey === identityKey;
 
+  useEffect(() => {
+    if (identityKey === null || ready) return;
+    // Never block the learner shell indefinitely on a remote/bootstrap problem.
+    // BLOSSOM is offline-first: local state is usable while sync keeps retrying.
+    const timer = window.setTimeout(() => setReadyKey(identityKey), 2500);
+    return () => window.clearTimeout(timer);
+  }, [identityKey, ready]);
+
   return (
     <>
       {ready ? children : <SyncMark ready={false} />}
