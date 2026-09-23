@@ -136,8 +136,6 @@ function ProgressPage() {
               Agir maintenant <ArrowRight className="size-3.5" />
             </Link>
           )}
-            Agir maintenant <ArrowRight className="size-3.5" />
-          </Link>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           {intelligence.next.reasons.map((reason) => (
