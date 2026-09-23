@@ -267,6 +267,15 @@ export function missionForLevel(level: string): Mission {
   return level === "B1" ? B1_TODAY_MISSION : TODAY_MISSION;
 }
 
+export function missionForToday(level: string, now = new Date()): Mission {
+  const bank = MISSION_BANK.filter((mission) => mission.level === level);
+  if (!bank.length) return missionForLevel(level);
+
+  const day = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const index = Math.floor(day / 86_400_000) % bank.length;
+  return bank[index]!;
+}
+
 export const MISSION_BANK: Mission[] = [
   {
     id: "mission-recommend",
@@ -509,7 +518,7 @@ export function missionForId(id: string | undefined, level: string): Mission {
   if (requested && (requested.level === level || level === "B1" || requested.level === "A2")) {
     return requested;
   }
-  return missionForLevel(level);
+  return missionForToday(level);
 }
 
 export function missionsForLevel(level: string): Mission[] {
