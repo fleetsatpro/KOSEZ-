@@ -8,6 +8,7 @@ import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { getTeacherWorkspaceOnServer } from "@/lib/blossom/domain.api";
 import { TEACHER_TAGS } from "@/lib/blossom/data";
 import { useBlossom } from "@/lib/blossom/store";
+import { LearnerDetail } from "./learner-detail";
 
 type Tab = "prep" | "roster" | "lecture";
 type TeacherRow = Awaited<ReturnType<typeof getTeacherWorkspaceOnServer>>[number];
@@ -104,6 +105,7 @@ export function TeacherStudio() {
   const [hwStudent, setHwStudent] = useState("");
   const [hwTitle, setHwTitle] = useState("");
   const [hwBody, setHwBody] = useState("");
+  const [selectedLearnerId, setSelectedLearnerId] = useState("");
 
   const [voiceRecording, setVoiceRecording] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
@@ -521,8 +523,14 @@ export function TeacherStudio() {
                   {roster.map((student) => (
                     <tr key={student.id} className="border-t border-border">
                       <td className="py-3">
-                        {student.name}
-                        <span className="block text-xs text-subtle">{student.level ?? "—"}</span>
+                        <button
+                          type="button"
+                          className="text-left hover:text-primary"
+                          onClick={() => setSelectedLearnerId(student.id)}
+                        >
+                          {student.name}
+                          <span className="block text-xs text-subtle">{student.level ?? "—"}</span>
+                        </button>
                       </td>
                       <td className="py-3 tabular-nums">{student.activitiesThisWeek}</td>
                       <td className="py-3 tabular-nums">{student.speakingMinutes} min</td>
@@ -533,6 +541,13 @@ export function TeacherStudio() {
                 </tbody>
               </table>
             </div>
+            {selectedLearnerId ? (
+              <LearnerDetail learnerUserId={selectedLearnerId} role="teacher" />
+            ) : (
+              <Surface className="mt-5 border-dashed">
+                <p className="text-sm text-muted">Sélectionnez un apprenant pour ouvrir son fil de preuves.</p>
+              </Surface>
+            )}
           ) : null}
 
           {tab === "lecture" ? (
