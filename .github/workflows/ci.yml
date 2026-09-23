@@ -75,15 +75,14 @@ jobs:
         env:
           VITE_AUTH_ENABLED: "false"
         run: |
-          npm run preview -- --host 0.0.0.0 --port 8081 > /tmp/kosez-smoke.log 2>&1 &
-          echo $! > /tmp/kosez-smoke.pid
+          npm run preview:restart
           for attempt in {1..30}; do
             if curl -fsS http://127.0.0.1:8081/ > /tmp/kosez-smoke-home.html; then
               exit 0
             fi
             sleep 1
           done
-          cat /tmp/kosez-smoke.log
+          cat .grok/preview.log
           exit 1
 
       - name: Install Chromium for browser smoke
@@ -100,9 +99,7 @@ jobs:
           if [ -f /tmp/kosez-dev.pid ]; then
             kill "$(cat /tmp/kosez-dev.pid)" || true
           fi
-          if [ -f /tmp/kosez-smoke.pid ]; then
-            kill "$(cat /tmp/kosez-smoke.pid)" || true
-          fi
+          npm run preview:stop || true
 
       - name: Upload browser smoke evidence
         if: always()
