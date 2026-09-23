@@ -253,6 +253,24 @@ function domainSignal(
   };
 }
 
+function resourceForDomain(domainId: LearningDomainId): {
+  kind: "pronlab" | "mission" | "library" | "labs" | "speak";
+  targetId?: string;
+  labKind?: "grammar" | "listening" | "writing";
+} {
+  switch (domainId) {
+    case "pronunciation": return { kind: "pronlab", targetId: "set-th" };
+    case "reading": return { kind: "library", targetId: "lib-market" };
+    case "speaking": return { kind: "speak", targetId: "cafe" };
+    case "interaction": return { kind: "mission", targetId: "mission-recommend" };
+    case "mediation": return { kind: "mission", targetId: "mission-mediate" };
+    case "grammar": return { kind: "labs", labKind: "grammar", targetId: "grammar-question-1" };
+    case "listening": return { kind: "labs", labKind: "listening", targetId: "listen-4" };
+    case "writing": return { kind: "labs", labKind: "writing", targetId: "write-after-class" };
+    case "vocabulary": return { kind: "library", targetId: "lib-market" };
+  }
+}
+
 function targetFromEvidence(item: LearningEvidence): {
   kind: "pronlab" | "mission" | "library" | "labs" | "speak";
   targetId?: string;
