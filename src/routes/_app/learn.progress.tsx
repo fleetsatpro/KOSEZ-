@@ -35,6 +35,7 @@ function ProgressPage() {
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const vocabulary = useBlossom((s) => s.vocabulary);
   const submissions = useBlossom((s) => s.learningSubmissions);
+  const learnerLevel = useBlossom((s) => s.learner.level);
   const profile = buildSkillProfile(log, attempts, vocabulary);
   const objectiveEvidence = buildObjectiveEvidence(log);
   const reviewPlan = buildReviewPlan(submissions, attempts, vocabulary);
@@ -138,7 +139,7 @@ function ProgressPage() {
 
         <div className="mt-5 grid gap-3 md:grid-cols-2">
           {objectiveEvidence
-            .filter((entry) => entry.objective.level === useBlossom.getState().learner.level)
+            .filter((entry) => entry.objective.level === learnerLevel)
             .map((entry) => (
               <article
                 key={entry.objective.id}
