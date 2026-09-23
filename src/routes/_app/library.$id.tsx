@@ -18,16 +18,9 @@ export const Route = createFileRoute("/_app/library/$id")({
  */
 function LibraryDocPage() {
   const { id } = Route.useParams();
-  const selectedDoc = LIBRARY.find((d) => d.id === id);
-  const saveWord = useBlossom((s) => s.saveWord);
-  const vocab = useBlossom((s) => s.vocabulary);
-  const activityLog = useBlossom((s) => s.activityLog);
-  const completeActivity = useBlossom((s) => s.completeActivity);
-  const [picked, setPicked] = useState<string | null>(null);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [completed, setCompleted] = useState(false);
+  const doc = LIBRARY.find((d) => d.id === id);
 
-  if (!selectedDoc) {
+  if (!doc) {
     return (
       <Page>
         <p className="font-display text-2xl">Texte introuvable</p>
@@ -38,7 +31,17 @@ function LibraryDocPage() {
     );
   }
 
-  const doc = selectedDoc;
+  return <LibraryReader doc={doc} />;
+}
+
+function LibraryReader({ doc }: { doc: (typeof LIBRARY)[number] }) {
+  const saveWord = useBlossom((s) => s.saveWord);
+  const vocab = useBlossom((s) => s.vocabulary);
+  const activityLog = useBlossom((s) => s.activityLog);
+  const completeActivity = useBlossom((s) => s.completeActivity);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [completed, setCompleted] = useState(false);
   const text = doc.body;
 
   function onWord(raw: string) {
