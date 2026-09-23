@@ -297,6 +297,7 @@ export type ConnectPeer = {
   interests: string[];
   lastSeen: string | null;
   sharedEvents: number;
+  sharedEventIds: string[];
 };
 
 export async function getConnectPeers(userId: string): Promise<ConnectPeer[]> {
@@ -308,14 +309,17 @@ export async function getConnectPeers(userId: string): Promise<ConnectPeer[]> {
       p.level,
       p.preferences->>'city' as city,
       p.preferences->'interests' as interests,
-      max(their.updated_at) as last_seen,
-      count(distinct mine.event_id)::integer as shared_events
+      max(a.occurred_at) as last_seen,
+      count(distinct mine.event_id)::integer as shared_events,
+      array_agg(distinct mine.event_id order by mine.event_id) as shared_event_ids
     from blossom_event_registration mine
     join blossom_event_registration their
       on their.event_id = mine.event_id
      and their.status = 'joined'
      and their.user_id <> $1
     join blossom_profile p on p.user_id = their.user_id
+    left join blossom_activity_event a
+      on a.user_id = their.user_id
     where mine.user_id = $1
       and mine.status = 'joined'
       and lower(coalesce(p.preferences->>'tandemOpen', 'false')) = 'true'
@@ -333,6 +337,9 @@ export async function getConnectPeers(userId: string): Promise<ConnectPeer[]> {
     interests: Array.isArray(row.interests) ? row.interests.map(String) : [],
     lastSeen: row.last_seen ? new Date(String(row.last_seen)).toISOString() : null,
     sharedEvents: Number(row.shared_events ?? 0),
+    sharedEventIds: Array.isArray(row.shared_event_ids)
+      ? row.shared_event_ids.map(String)
+      : [],
   }));
 }
 
