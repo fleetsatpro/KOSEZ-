@@ -213,7 +213,7 @@ export type AdminWorkspace = {
   profiles: number;
   teachers: number;
   guardians: number;
-  activeOrganizations: number;
+  organizations: number;
   joinedEventRegistrations: number;
   bookingRequests: {
     requested: number;
@@ -263,7 +263,7 @@ export async function getAdminWorkspace(userId: string): Promise<AdminWorkspace>
     profiles: Number(learners[0]?.count ?? 0),
     teachers: Number(teachers[0]?.count ?? 0),
     guardians: Number(guardians[0]?.count ?? 0),
-    activeOrganizations: Number(organizations[0]?.count ?? 0),
+    organizations: Number(organizations[0]?.count ?? 0),
     joinedEventRegistrations: Number(registrations[0]?.count ?? 0),
     bookingRequests: {
       requested: Number(booking.requested ?? 0),
