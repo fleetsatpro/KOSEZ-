@@ -477,7 +477,7 @@ export const useBlossom = create<AppState>()(
         });
         return true;
       },
-      completeMissionSession: (missionId) => {
+      completeMissionSession: (missionId, curriculumLessonId) => {
         const current = get().missionSessions[missionId];
         const active = current ? activeMissionRun(current) : null;
         if (!active?.reflection) {
@@ -510,6 +510,7 @@ export const useBlossom = create<AppState>()(
             String(evaluation.evidenceCount) +
             "/3 · " +
             evaluation.outcome,
+          curriculumLessonId ? { curriculumLessonId } : undefined,
         );
         track("mission_session_completed", {
           missionId,
