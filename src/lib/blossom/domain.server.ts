@@ -95,7 +95,8 @@ export async function getTeacherWorkspace(userId: string): Promise<TeacherWorksp
       coalesce(sum(
         case
           when a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
-           and coalesce(a.payload->'metadata'->>'minutes', a.payload->>'minutes','') ~ '^[0-9]+$'
+           and a.payload->'metadata'->>'serverAuthoritativeMinutes' = 'true'
+           and coalesce(a.payload->'metadata'->>'minutes', '') ~ '^[0-9]+$'
           then coalesce(
             (a.payload->'metadata'->>'minutes')::integer,
             (a.payload->>'minutes')::integer
@@ -109,7 +110,10 @@ export async function getTeacherWorkspace(userId: string): Promise<TeacherWorksp
     left join blossom_profile p on p.user_id = tl.learner_user_id
     left join blossom_activity_event a on a.user_id = tl.learner_user_id
     left join lateral (
-      select count(*) as attempts, max(score) as best_score
+      select count(*) as attempts,
+             max(score) filter (
+               where metadata->>'assessment' = 'phonetic-provider'
+             ) as best_score
       from blossom_pronlab_attempt
       where user_id = tl.learner_user_id
     ) pr on true
@@ -155,7 +159,8 @@ export async function getGuardianWorkspace(userId: string): Promise<GuardianWork
       coalesce(sum(
         case
           when a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
-           and coalesce(a.payload->'metadata'->>'minutes', a.payload->>'minutes','') ~ '^[0-9]+$'
+           and a.payload->'metadata'->>'serverAuthoritativeMinutes' = 'true'
+           and coalesce(a.payload->'metadata'->>'minutes', '') ~ '^[0-9]+$'
           then coalesce(
             (a.payload->'metadata'->>'minutes')::integer,
             (a.payload->>'minutes')::integer
@@ -428,6 +433,157 @@ export async function getTandemSession(
   return partner;
 }
 
+export async function startSpeakSession(userId: string, roomId: string) {
+  const sql = await getSql();
+  const active = await sql.query(
+    `select id, room_id, started_at
+     from blossom_speak_session
+     where user_id = $1 and status = 'active'
+     order by created_at desc
+     limit 1`,
+    [userId],
+  );
+  if (active[0]) {
+    const ageSeconds = Math.max(
+      0,
+      Math.floor((Date.now() - new Date(String(active[0].started_at)).getTime()) / 1000),
+    );
+    if (ageSeconds <= 90 * 60) {
+      return {
+        id: String(active[0].id),
+        roomId: String(active[0].room_id),
+        startedAt: new Date(String(active[0].started_at)).toISOString(),
+      };
+    }
+    await sql.query(
+      `update blossom_speak_session
+       set status = 'cancelled',
+           ended_at = coalesce(ended_at, current_timestamp),
+           duration_seconds = least(3600, greatest(0, $2)),
+           updated_at = current_timestamp
+       where id = $1::uuid and status = 'active'`,
+      [String(active[0].id), ageSeconds],
+    );
+  }
+
+  const sessionId = randomUUID();
+  await sql.query(
+    `insert into blossom_speak_session (id, user_id, room_id, status)
+     values ($1::uuid, $2, $3, 'active')
+     on conflict do nothing`,
+    [sessionId, userId, roomId],
+  );
+  const durable = await sql.query(
+    `select id, room_id, started_at
+     from blossom_speak_session
+     where user_id = $1 and status = 'active'
+     order by created_at desc
+     limit 1`,
+    [userId],
+  );
+  if (!durable[0]) throw new Error("speak-session-start-failed");
+
+  const durableId = String(durable[0].id);
+  if (durableId === sessionId) {
+    await writeAuditEvent(userId, {
+      action: "speak.session.started",
+      resourceType: "speak_session",
+      resourceId: durableId,
+      metadata: { roomId },
+    });
+  }
+  return {
+    id: durableId,
+    roomId: String(durable[0].room_id),
+    startedAt: new Date(String(durable[0].started_at)).toISOString(),
+  };
+}
+
+export async function endSpeakSession(
+  userId: string,
+  sessionId: string,
+  status: "completed" | "cancelled",
+) {
+  const sql = await getSql();
+  const activityId = randomUUID();
+  const rows = await sql.query(
+    `with closed as (
+       update blossom_speak_session
+       set status = $2,
+           ended_at = current_timestamp,
+           duration_seconds = least(
+             3600,
+             greatest(
+               0,
+               floor(extract(epoch from (current_timestamp - started_at)))
+             )
+           )::integer,
+           updated_at = current_timestamp
+       where id = $1::uuid
+         and user_id = $3
+         and status = 'active'
+       returning id, user_id, room_id, status, ended_at, duration_seconds
+     ),
+     activity as (
+       insert into blossom_activity_event (
+         id, user_id, idempotency_key, event_type, source_id, payload, occurred_at
+       )
+       select
+         $4::uuid,
+         c.user_id,
+         c.id,
+         'SPEAK_COMPLETED',
+         concat('speak-session:', c.id::text),
+         jsonb_build_object(
+           'metadata',
+           jsonb_build_object(
+             'serverAuthoritativeMinutes', true,
+             'minutes', floor(c.duration_seconds / 60.0)::integer,
+             'durationSeconds', c.duration_seconds,
+             'sessionId', c.id::text,
+             'roomId', c.room_id
+           )
+         ),
+         c.ended_at
+       from closed c
+       where c.status = 'completed'
+       on conflict (user_id, idempotency_key) do nothing
+       returning id
+     )
+     select
+       c.id,
+       c.room_id,
+       c.status,
+       c.ended_at,
+       c.duration_seconds,
+       a.id as activity_id
+     from closed c
+     left join activity a on true`,
+    [sessionId, status, userId, activityId],
+  );
+  if (!rows[0]) {
+    throw new BlossomForbiddenError("Cette session de parole n'est plus active.");
+  }
+
+  await writeAuditEvent(userId, {
+    action: `speak.session.${status}`,
+    resourceType: "speak_session",
+    resourceId: sessionId,
+    metadata: {
+      durationSeconds: Number(rows[0].duration_seconds ?? 0),
+      roomId: String(rows[0].room_id),
+    },
+  });
+
+  return {
+    id: String(rows[0].id),
+    roomId: String(rows[0].room_id),
+    status: String(rows[0].status) as "completed" | "cancelled",
+    endedAt: new Date(String(rows[0].ended_at)).toISOString(),
+    durationSeconds: Number(rows[0].duration_seconds ?? 0),
+  };
+}
+
 export type OrganizationWorkspace = {
   id: string;
   name: string;
@@ -488,7 +644,8 @@ export async function getOrganizationWorkspace(
            when m.role = 'learner'
             and a.occurred_at >= current_timestamp - interval '7 days'
             and a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
-            and coalesce(a.payload->'metadata'->>'minutes', a.payload->>'minutes','') ~ '^[0-9]+$'
+            and a.payload->'metadata'->>'serverAuthoritativeMinutes' = 'true'
+           and coalesce(a.payload->'metadata'->>'minutes', '') ~ '^[0-9]+$'
            then coalesce(
              (a.payload->'metadata'->>'minutes')::integer,
              (a.payload->>'minutes')::integer
@@ -1410,12 +1567,17 @@ function mapLearnerDetail(
     pronlab: pronlabRows.map((row) => ({
       id: String(row.id),
       itemId: String(row.item_id),
-      score: Number(row.score ?? 0),
       seconds: Number(row.seconds ?? 0),
       assessment:
         row.metadata && typeof row.metadata === "object"
           ? String((row.metadata as Record<string, unknown>).assessment ?? "unknown")
           : "unknown",
+      score:
+        row.metadata &&
+        typeof row.metadata === "object" &&
+        (row.metadata as Record<string, unknown>).assessment === "phonetic-provider"
+          ? Number(row.score ?? 0)
+          : 0,
       createdAt: new Date(String(row.created_at)).toISOString(),
     })),
     homework: homeworkRows.map((row) => ({
