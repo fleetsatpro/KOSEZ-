@@ -116,3 +116,57 @@ export async function blobToBase64(blob: Blob, maxBytes = 1_200_000): Promise<st
   }
   return btoa(binary);
 }
+
+export type RecordCapture = {
+  seconds: number;
+  blob?: Blob;
+  mimeType?: string;
+};
+
+/**
+ * Shared client path for OSEZ + Pron’Lab: blob → STT server fn, or honest capture-only.
+ * Never invents transcripts when the server is unavailable.
+ */
+export async function resolveSpeechEvidence(
+  result: RecordCapture,
+  opts?: { fileName?: string },
+): Promise<SpeechTurnEvidence> {
+  if (result.seconds <= 0 && (!result.blob || result.blob.size < 64)) {
+    return skippedEvidence();
+  }
+  if (result.blob && result.blob.size > 64) {
+    try {
+      const b64 = await blobToBase64(result.blob);
+      if (b64) {
+        const { transcribeSpeakTurn } = await import("./speech.api");
+        const evidence = await transcribeSpeakTurn({
+          data: {
+            audioBase64: b64,
+            mimeType: result.mimeType,
+            seconds: result.seconds,
+            fileName: opts?.fileName ?? "speak-turn.webm",
+          },
+        });
+        if (evidence?.assessment) return evidence as SpeechTurnEvidence;
+      }
+    } catch {
+      /* fall through to capture-only */
+    }
+  }
+  return captureOnlyEvidence(result.seconds);
+}
+
+/** Short French line for Pron’Lab / tandem after one attempt. */
+export function speechAttemptNote(evidence: SpeechTurnEvidence): string {
+  if (evidence.assessment === "transcript" && evidence.transcript?.trim()) {
+    const snippet = evidence.transcript.trim().slice(0, 120);
+    return `Vous avez dit : « ${snippet} »`;
+  }
+  if (evidence.assessment === "capture-only" && evidence.seconds > 0) {
+    return `Parole capturée · ${evidence.seconds}s. Rien n'est inventé sans moteur de transcription.`;
+  }
+  if (evidence.assessment === "skipped") {
+    return "Pas d'enregistrement micro — vous pouvez réessayer.";
+  }
+  return "Prise enregistrée.";
+}
