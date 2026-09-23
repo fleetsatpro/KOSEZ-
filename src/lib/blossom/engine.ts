@@ -22,7 +22,8 @@ export type ActivityType =
   | "WRITING_COMPLETED"
   | "DIAGNOSTIC_COMPLETED"
   | "LESSON_COMPLETED"
-  | "CURRICULUM_EVIDENCE_RECORDED";
+  | "CURRICULUM_EVIDENCE_RECORDED"
+  | "LIBRARY_COMPLETED";
 
 export type ActivityEvent = {
   id: string;
@@ -52,6 +53,7 @@ export const POINTS: Record<ActivityType, number> = {
   // practice without pretending that self-report is performance assessment.
   LESSON_COMPLETED: 0,
   CURRICULUM_EVIDENCE_RECORDED: 0,
+  LIBRARY_COMPLETED: 2,
 };
 
 export const STAGES: ReadonlyArray<{
