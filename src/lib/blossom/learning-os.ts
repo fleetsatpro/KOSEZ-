@@ -399,6 +399,7 @@ export type SkillEvidence = {
 export type ObjectiveEvidence = {
   objective: CanDoObjective;
   directCount: number;
+  directSourceCount: number;
   supportingCount: number;
   lastSeenAt: string | null;
   status: "à découvrir" | "en pratique" | "à consolider" | "ancré";
