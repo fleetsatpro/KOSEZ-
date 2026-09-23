@@ -40,7 +40,7 @@ function dailyLabSource(kind: string, taskId: string) {
 
 function LearningLabs() {
   const learnerLevel = useBlossom((s) => s.learner.level);
-  const activeLevel: LabLevel = learnerLevel === "B1" ? "B1" : "A2";
+  const activeLevel: LabLevel = learnerLevel === "A1" ? "A1" : learnerLevel === "B1" ? "B1" : "A2";
   const search = Route.useSearch();
   const [lab, setLab] = useState<Lab>((search.lab as Lab | undefined) ?? "grammar");
   return <Page className="kosez-feature-page">
