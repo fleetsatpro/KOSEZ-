@@ -67,7 +67,7 @@ function CurriculumUnit() {
     );
   }
 
-  const progress = curriculumUnitProgress(unit, log, attempts, vocabulary);
+  const progress = curriculumUnitProgress(unit, log);
 
   return (
     <Page className="kosez-feature-page">
@@ -82,7 +82,7 @@ function CurriculumUnit() {
       <header className="mt-6 rounded-[28px] bg-surface p-6 shadow-[var(--shadow-border)] sm:p-8">
         <div className="flex flex-wrap items-center gap-2">
           <Eyebrow>UNITÉ {String(unit.number).padStart(2, "0")} · {unit.level}</Eyebrow>
-          <Badge variant="outline">{progress}% preuve couverte</Badge>
+          <Badge variant="outline">{progress}% étapes exécutées</Badge>
         </div>
         <h1 className="mt-3 max-w-4xl font-display text-[clamp(2.5rem,6vw,5rem)] leading-[0.92] tracking-[-0.05em]">
           {unit.title}
