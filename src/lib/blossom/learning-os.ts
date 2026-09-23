@@ -42,6 +42,15 @@ export type CanDoObjective = {
 };
 
 export const CAN_DO_OBJECTIVES: CanDoObjective[] = [
+  { id: "a1-interact-greet", level: "A1", domain: "interaction", title: "Saluer et se présenter", evidence: "Ouvrir une interaction très courte avec son nom et une information simple." },
+  { id: "a1-speak-intro", level: "A1", domain: "speaking", title: "Donner une mini-présentation", evidence: "Produire deux ou trois phrases simples sur soi, son lieu et un intérêt." },
+  { id: "a1-listen-basic", level: "A1", domain: "listening", title: "Repérer une information de base", evidence: "Identifier correctement un nom, un lieu, un nombre ou une direction dans une phrase courte." },
+  { id: "a1-read-short", level: "A1", domain: "reading", title: "Comprendre une consigne courte", evidence: "Retrouver une information explicite dans un message très court." },
+  { id: "a1-write-simple", level: "A1", domain: "writing", title: "Écrire un message très simple", evidence: "Transmettre une heure, un lieu ou une information personnelle dans quelques phrases." },
+  { id: "a1-grammar-be", level: "A1", domain: "grammar", title: "Utiliser be dans des phrases de base", evidence: "Employer am, is et are dans une présentation ou une question simple." },
+  { id: "a1-vocab-basics", level: "A1", domain: "vocabulary", title: "Réutiliser un vocabulaire essentiel", evidence: "Réutiliser quelques mots fonctionnels dans une phrase nouvelle." },
+  { id: "a1-request-place", level: "A1", domain: "interaction", title: "Demander où se trouve un lieu", evidence: "Poser une question de localisation et remercier après la réponse." },
+
   { id: "a2-interact-ask", level: "A2", domain: "interaction", title: "Demander une recommandation", evidence: "Une interaction réelle ou simulée où la demande ouvre effectivement l'échange." },
   { id: "a2-interact-repair", level: "A2", domain: "interaction", title: "Demander de répéter", evidence: "Utiliser une formule de réparation sans quitter la langue cible." },
   { id: "a2-speak-routine", level: "A2", domain: "speaking", title: "Décrire une routine", evidence: "Produire plusieurs phrases reliées sur une journée ou une activité familière." },
@@ -104,6 +113,19 @@ export type CurriculumResource =
   | { kind: "writing"; id: string };
 
 const CURRICULUM_RESOURCE_MAP: Record<string, CurriculumResource> = {
+  "a1-l1-hello": { kind: "mission", id: "mission-a1-intro" },
+  "a1-l2-basic-listening": { kind: "listening", id: "listen-a1-1" },
+  "a1-l3-simple-writing": { kind: "writing", id: "write-a1-1" },
+  "a1-l4-hello-practice": { kind: "speak", id: "cafe" },
+  "a1b-l1-order": { kind: "mission", id: "mission-a1-order" },
+  "a1b-l2-place": { kind: "mission", id: "mission-a1-way" },
+  "a1b-l3-grammar": { kind: "grammar", id: "grammar-a1-2" },
+  "a1b-l4-listening": { kind: "listening", id: "listen-a1-3" },
+  "a1c-l1-question": { kind: "grammar", id: "grammar-a1-3" },
+  "a1c-l2-writing": { kind: "writing", id: "write-a1-3" },
+  "a1c-l3-listening": { kind: "listening", id: "listen-a1-2" },
+  "a1c-l4-pronunciation": { kind: "pronlab", id: "set-a1-basics" },
+
   "u1-l1": { kind: "mission", id: "mission-recommend" },
   "u1-l2": { kind: "speak", id: "cafe" },
   "u1-l3": { kind: "pronlab", id: "set-th" },
@@ -162,6 +184,52 @@ export function curriculumResource(lesson: CurriculumLesson): CurriculumResource
 }
 
 export const CURRICULUM_UNITS: CurriculumUnit[] = [
+  {
+    id: "a1-first-steps",
+    number: 1,
+    title: "Commencer à parler",
+    blurb: "Saluer, se présenter et comprendre les informations les plus simples sans construire une phrase parfaite.",
+    level: "A1",
+    domainIds: ["interaction", "speaking", "listening", "writing"],
+    objectives: ["a1-interact-greet", "a1-speak-intro", "a1-listen-basic", "a1-write-simple"],
+    lessons: [
+      { id: "a1-l1-hello", title: "Bonjour, je m'appelle…", kind: "mission", minutes: 3, objectiveIds: ["a1-interact-greet", "a1-speak-intro"], description: "Se présenter en trois phrases dans une vraie rencontre." },
+      { id: "a1-l2-basic-listening", title: "Attraper un prénom", kind: "listening", minutes: 3, objectiveIds: ["a1-listen-basic"], description: "Reconnaître un prénom dans une phrase courte." },
+      { id: "a1-l3-simple-writing", title: "Écrire un premier message", kind: "writing", minutes: 4, objectiveIds: ["a1-write-simple"], description: "Donner son nom, son lieu et un intérêt en quelques phrases." },
+      { id: "a1-l4-hello-practice", title: "Premiers tours de parole", kind: "speak", minutes: 5, objectiveIds: ["a1-interact-greet"], description: "Saluer, répondre et poser une petite question en retour." },
+    ],
+  },
+  {
+    id: "a1-everyday-needs",
+    number: 2,
+    title: "Les besoins du quotidien",
+    blurb: "Commander, demander une information et comprendre un nombre ou une direction utile.",
+    level: "A1",
+    domainIds: ["interaction", "listening", "grammar", "vocabulary"],
+    objectives: ["a1-request-place", "a1-listen-basic", "a1-vocab-basics"],
+    lessons: [
+      { id: "a1b-l1-order", title: "Commander simplement", kind: "mission", minutes: 3, objectiveIds: ["a1-interact-greet", "a1-vocab-basics"], description: "Faire une demande simple et terminer poliment." },
+      { id: "a1b-l2-place", title: "Demander où c'est", kind: "mission", minutes: 3, objectiveIds: ["a1-request-place"], description: "Poser une question de lieu et écouter le repère." },
+      { id: "a1b-l3-grammar", title: "I am, you are", kind: "grammar", minutes: 4, objectiveIds: ["a1-grammar-be"], description: "Stabiliser be dans une présentation et une question." },
+      { id: "a1b-l4-listening", title: "Un billet, un nombre", kind: "listening", minutes: 3, objectiveIds: ["a1-listen-basic"], description: "Identifier un nombre fonctionnel dans une phrase courte." },
+    ],
+  },
+  {
+    id: "a1-simple-exchange",
+    number: 3,
+    title: "Tenir un petit échange",
+    blurb: "Répondre, demander, confirmer et laisser l'autre personne parler à son tour.",
+    level: "A1",
+    domainIds: ["interaction", "grammar", "writing", "pronunciation"],
+    objectives: ["a1-interact-greet", "a1-grammar-be", "a1-write-simple", "a1-vocab-basics"],
+    lessons: [
+      { id: "a1c-l1-question", title: "Construire une question", kind: "grammar", minutes: 4, objectiveIds: ["a1-grammar-be", "a1-request-place"], description: "Former une question simple que quelqu'un peut comprendre." },
+      { id: "a1c-l2-writing", title: "Demander une information", kind: "writing", minutes: 4, objectiveIds: ["a1-write-simple", "a1-request-place"], description: "Écrire une question courte avec une relance." },
+      { id: "a1c-l3-listening", title: "Suivre une direction", kind: "listening", minutes: 3, objectiveIds: ["a1-listen-basic"], description: "Repérer left, right et un lieu dans une phrase." },
+      { id: "a1c-l4-pronunciation", title: "Le kit des premiers sons", kind: "pronlab", minutes: 6, objectiveIds: ["a1-speak-intro"], description: "Poser une base sonore sur les premières phrases fonctionnelles." },
+    ],
+  },
+
   {
     id: "a2-real-life-basics",
     number: 1,
