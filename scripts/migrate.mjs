@@ -18,8 +18,18 @@ import { dirname, join } from "node:path";
 import pg from "pg";
 import { pendingMigrations } from "./migration-plan.mjs";
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL?.trim();
+const isVercelProduction =
+  process.env.VERCEL === "1" && process.env.VERCEL_ENV === "production";
+
 if (!databaseUrl) {
+  if (isVercelProduction) {
+    console.error(
+      "[migrate] DATABASE_URL is required for Vercel production deployments — refusing to deploy without durable Postgres.",
+    );
+    process.exit(1);
+  }
+
   console.log(
     "[migrate] DATABASE_URL not set — skipping (the PGLite fallback migrates itself).",
   );
