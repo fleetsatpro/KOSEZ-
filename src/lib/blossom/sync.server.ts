@@ -23,6 +23,7 @@ import {
 import { reportTandem } from "./safety.server";
 import { SYNC_OPERATIONS, type SyncMutation, type SyncResult } from "./sync-types";
 import { CURRICULUM_UNITS, type LessonKind } from "./learning-os";
+import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure } from "./lab-content";
 
 const SYNC_TIMEOUT_MS = 120_000;
 
@@ -188,6 +189,57 @@ const submissionPayloadSchema = z.object({
   checks: z.array(z.string().trim().max(160)).max(24).optional(),
   result: z.record(z.string(), z.unknown()).optional(),
 });
+
+function validateLearningSubmission(payload: z.infer<typeof submissionPayloadSchema>) {
+  if (payload.kind === "grammar") {
+    const task = GRAMMAR_TASKS.find((item) => item.id === payload.taskId);
+    if (!task) throw new Error("unknown-grammar-task");
+    const correct = payload.content === task.answer;
+    const expectedChecks = [correct ? "correct" : "incorrect"];
+    if (JSON.stringify(payload.checks ?? []) !== JSON.stringify(expectedChecks)) {
+      throw new Error("forged-grammar-checks");
+    }
+    return {
+      checks: expectedChecks,
+      result: { ...objectValue(payload.result), correct, target: task.target },
+    };
+  }
+  if (payload.kind === "listening") {
+    const task = LISTENING_TASKS.find((item) => item.id === payload.taskId);
+    if (!task) throw new Error("unknown-listening-task");
+    const correct = payload.content === task.answer;
+    const expectedChecks = [correct ? "correct" : "incorrect"];
+    if (JSON.stringify(payload.checks ?? []) !== JSON.stringify(expectedChecks)) {
+      throw new Error("forged-listening-checks");
+    }
+    return {
+      checks: expectedChecks,
+      result: { ...objectValue(payload.result), correct, level: task.level },
+    };
+  }
+  if (payload.kind === "writing") {
+    const prompt = WRITING_PROMPTS.find((item) => item.id === payload.taskId);
+    if (!prompt) throw new Error("unknown-writing-task");
+    const evaluation = evaluateWritingStructure(prompt, payload.content);
+    if (JSON.stringify(payload.checks ?? []) !== JSON.stringify(evaluation.passed)) {
+      throw new Error("forged-writing-checks");
+    }
+    return {
+      checks: evaluation.passed,
+      result: {
+        ...objectValue(payload.result),
+        checkCount: evaluation.passed.length,
+        checkTotal: evaluation.total,
+        structureScore: evaluation.score,
+        method: evaluation.method,
+      },
+    };
+  }
+  return {
+    checks: payload.checks ?? [],
+    result: payload.result ?? {},
+  };
+}
 
 const profilePayloadSchema = z.object({
   displayName: z.string().trim().max(120).nullable().optional(),
@@ -376,13 +428,14 @@ async function applyMutation(
     }
     case "learning.submission": {
       const payload = submissionPayloadSchema.parse(mutation.payload);
+      const validated = validateLearningSubmission(payload);
       await saveLearningSubmission(userId, {
         id: mutation.mutationId,
         taskId: payload.taskId,
         kind: payload.kind,
         content: payload.content,
-        checks: payload.checks ?? [],
-        result: payload.result ?? {},
+        checks: validated.checks,
+        result: validated.result,
       });
       return { mutationId: mutation.mutationId, status: "applied" };
     }
