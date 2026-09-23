@@ -44,9 +44,9 @@ test("curriculum includes direct practice labs", () => {
 test("curriculum completion is explicit and unit-specific", () => {
   const unit = CURRICULUM_UNITS[0]!;
   const log = [
-    { id: "lesson-1", type: "LESSON_COMPLETED" as const, sourceId: unit.lessons[0]!.id, createdAt: "2026-09-22T10:00:00.000Z" },
+    { id: "evidence-1", type: "CURRICULUM_EVIDENCE_RECORDED" as const, sourceId: unit.lessons[0]!.id, createdAt: "2026-09-22T10:00:00.000Z" },
   ];
-  assert.equal(unit.lessons.filter((lesson) => log.some((event) => event.sourceId === lesson.id)).length, 1);
+  assert.equal(unit.lessons.filter((lesson) => lessonDone(lesson, log)).length, 1);
   assert.ok(curriculumUnitProgress(unit, log, [], []) > 0);
   assert.ok(curriculumUnitProgress(CURRICULUM_UNITS[6]!, log, [], []) < 50);
 });
