@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   generateFromTopicOffline,
   inferArchetypeFromTopic,
+  resolveModelCascade,
 } from "./speak-llm.ts";
 
 describe("speak-llm topic", () => {
@@ -23,5 +24,13 @@ describe("speak-llm topic", () => {
         room.protocol.some((p) => p.includes("litchis")),
     );
     assert.ok(room.turns.length >= 6);
+  });
+
+  it("cascade is empty without env (offline-safe)", () => {
+    // Without VITE_* slots, cascade must be empty → pure swarm path
+    const slots = resolveModelCascade();
+    assert.ok(Array.isArray(slots));
+    // In node test env import.meta.env is typically empty
+    assert.equal(slots.length, 0);
   });
 });
