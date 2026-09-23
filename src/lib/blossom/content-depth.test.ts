@@ -24,7 +24,7 @@ import {
 } from "./lab-content.ts";
 
 test("product depth floor remains above demo-scale content", () => {
-  assert.ok(MISSION_BANK.length >= 10, "mission bank regressed below 10");
+  assert.ok(MISSION_BANK.length >= 20, "mission bank regressed below 20");
   assert.ok(LIBRARY.length >= 12, "library regressed below 12");
   assert.ok(PRONLAB_SETS.length >= 10, "Pron'Lab sets regressed below 10");
   assert.ok(EVENTS.length >= 9, "event catalogue regressed below 9");
@@ -37,8 +37,8 @@ test("product depth floor remains above demo-scale content", () => {
   assert.ok(WRITING_PROMPTS.length >= 10, "writing lab regressed below 10 prompts");
   assert.ok(CURRICULUM_UNITS.length >= 10, "curriculum regressed below 10 units");
   assert.ok(
-    CURRICULUM_UNITS.reduce((sum, unit) => sum + unit.lessons.length, 0) >= 35,
-    "curriculum regressed below 35 linked practices",
+    CURRICULUM_UNITS.reduce((sum, unit) => sum + unit.lessons.length, 0) >= 47,
+    "curriculum regressed below 47 linked practices",
   );
   assert.ok(CAN_DO_OBJECTIVES.length >= 20, "Can-Do objective bank regressed below 20 objectives");
 });
