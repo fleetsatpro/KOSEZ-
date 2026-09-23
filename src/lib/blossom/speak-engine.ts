@@ -399,6 +399,14 @@ export function adaptLivingRoomAfterTranscript(
     line = "I see. And what about the other option?";
   }
 
+  // A transcript can legitimately land on the same branch as a generated line.
+  // Adaptation still needs to be observable: choose a nearby follow-up instead.
+  if (line === next.line) {
+    line = clean.length >= 40
+      ? "That is useful. What happened next?"
+      : "Tell me one more detail about that.";
+  }
+
   return {
     ...room,
     turns: room.turns.map((turn, index) =>
