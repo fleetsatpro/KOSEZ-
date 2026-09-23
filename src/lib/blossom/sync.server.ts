@@ -61,13 +61,6 @@ export async function assertCurriculumEvidence(
     throw new Error("curriculum-evidence-wrong-task");
   }
 
-  const existing = await sql.query(
-    "select source_id from blossom_activity_event where user_id = $1 and event_type = 'CURRICULUM_EVIDENCE_RECORDED' and payload->'metadata'->>'supportId' = $2 limit 1",
-    [userId, supportId],
-  );
-  if (existing[0]?.source_id && String(existing[0].source_id) !== lessonId) {
-    throw new Error("curriculum-support-already-attributed");
-  }
   if (!(await checks[lesson.kind]())) throw new Error("curriculum-evidence-without-support");
 }
 
