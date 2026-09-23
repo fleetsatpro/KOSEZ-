@@ -36,9 +36,9 @@ export const INITIAL_LOG: ActivityEvent[] = [
 ];
 
 export const INITIAL_PRONLAB_ATTEMPTS: PronlabAttempt[] = [
-  { id: "pa1", itemId: "th-1", score: 48, tip: "Pas un S.", createdAt: daysAgo(5, 12), seconds: 2 },
-  { id: "pa2", itemId: "th-1", score: 54, tip: "Le souffle y est presque.", createdAt: daysAgo(3, 12), seconds: 3 },
-  { id: "pa3", itemId: "pl-1", score: 71, tip: "Bill encore un peu trop tenu.", createdAt: daysAgo(4, 13), seconds: 4 },
-  { id: "pa4", itemId: "pl-1", score: 79, tip: "Le could est plus doux.", createdAt: daysAgo(2, 13), seconds: 3 },
-  { id: "pa5", itemId: "pl-1", score: 86, tip: "Vous y êtes.", createdAt: daysAgo(1, 13), seconds: 3 },
+  { id: "pa1", itemId: "th-1", score: 48, tip: "Pas un S.", createdAt: daysAgo(5, 12), seconds: 2, metadata: { assessment: "phonetic-provider" } },
+  { id: "pa2", itemId: "th-1", score: 54, tip: "Le souffle y est presque.", createdAt: daysAgo(3, 12), seconds: 3, metadata: { assessment: "phonetic-provider" } },
+  { id: "pa3", itemId: "pl-1", score: 71, tip: "Bill encore un peu trop tenu.", createdAt: daysAgo(4, 13), seconds: 4, metadata: { assessment: "phonetic-provider" } },
+  { id: "pa4", itemId: "pl-1", score: 79, tip: "Le could est plus doux.", createdAt: daysAgo(2, 13), seconds: 3, metadata: { assessment: "phonetic-provider" } },
+  { id: "pa5", itemId: "pl-1", score: 86, tip: "Vous y êtes.", createdAt: daysAgo(1, 13), seconds: 3, metadata: { assessment: "phonetic-provider" } },
 ];
