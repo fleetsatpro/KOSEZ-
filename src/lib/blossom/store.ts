@@ -174,7 +174,7 @@ type AppState = {
     reflection: MissionReflection,
   ) => boolean;
   reopenMissionSession: (missionId: string) => boolean;
-  completeMissionSession: (missionId: string) => {
+  completeMissionSession: (missionId: string, curriculumLessonId?: string) => {
     ok: boolean;
     reason?: string;
     evaluation?: ReturnType<typeof evaluateMission>;
