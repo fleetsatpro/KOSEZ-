@@ -1118,22 +1118,30 @@ async function createNotification(
     metadata?: Record<string, unknown>;
   },
 ) {
-  const sql = await getSql();
-  const rows = await sql.query(
-    `insert into blossom_notification (id, user_id, kind, title, body, href, metadata)
-     values ($1::uuid, $2, $3, $4, $5, $6, $7::jsonb)
-     returning id, kind, title, body, href, metadata, read_at, created_at`,
-    [
-      randomUUID(),
-      userId,
-      input.kind,
-      input.title,
-      input.body,
-      input.href ?? null,
-      JSON.stringify(input.metadata ?? {}),
-    ],
-  );
-  return rows[0] ?? null;
+  try {
+    const sql = await getSql();
+    const rows = await sql.query(
+      `insert into blossom_notification (id, user_id, kind, title, body, href, metadata)
+       values ($1::uuid, $2, $3, $4, $5, $6, $7::jsonb)
+       returning id, kind, title, body, href, metadata, read_at, created_at`,
+      [
+        randomUUID(),
+        userId,
+        input.kind,
+        input.title,
+        input.body,
+        input.href ?? null,
+        JSON.stringify(input.metadata ?? {}),
+      ],
+    );
+    return rows[0] ?? null;
+  } catch (error) {
+    // Notification delivery is secondary to the mutation that triggered it.
+    // A missing/unavailable notification store must never turn a committed
+    // homework/booking/tandem action into a false failure.
+    console.error("[blossom] notification write failed", error);
+    return null;
+  }
 }
 
 export async function getNotifications(
@@ -1507,13 +1515,15 @@ export async function startTandemSession(userId: string, partnerUserId: string) 
   if (!durable[0]) throw new Error("tandem-session-start-failed");
 
   const durableId = String(durable[0].id);
-  await writeAuditEvent(userId, {
-    subjectUserId: partnerUserId,
-    action: "tandem.session.started",
-    resourceType: "tandem_session",
-    resourceId: durableId,
-    metadata: { createdByThisRequest: durableId === sessionId },
-  });
+  if (durableId === sessionId) {
+    await writeAuditEvent(userId, {
+      subjectUserId: partnerUserId,
+      action: "tandem.session.started",
+      resourceType: "tandem_session",
+      resourceId: durableId,
+      metadata: { createdByThisRequest: true },
+    });
+  }
   return durableId;
 }
 
@@ -1547,11 +1557,17 @@ export async function endTandemSession(
   const sql = await getSql();
   const rows = await sql.query(
     `update blossom_tandem_session
-     set status = $2, ended_at = coalesce(ended_at, current_timestamp), updated_at = current_timestamp
+     set status = $2,
+         ended_at = coalesce(ended_at, current_timestamp),
+         duration_seconds = greatest(
+           0,
+           floor(extract(epoch from (current_timestamp - started_at)))
+         )::integer,
+         updated_at = current_timestamp
      where id = $1::uuid
        and (user_id = $3 or partner_user_id = $3)
        and status = 'active'
-     returning id, status, ended_at`,
+     returning id, status, ended_at, duration_seconds`,
     [sessionId, status, userId],
   );
   if (!rows[0]) throw new BlossomForbiddenError("Cette session tandem n'est pas disponible.");
@@ -1559,6 +1575,14 @@ export async function endTandemSession(
     action: `tandem.session.${status}`,
     resourceType: "tandem_session",
     resourceId: sessionId,
+    metadata: {
+      durationSeconds: Number(rows[0].duration_seconds ?? 0),
+    },
   });
-  return { id: String(rows[0].id), status: String(rows[0].status), endedAt: new Date(String(rows[0].ended_at)).toISOString() };
+  return {
+    id: String(rows[0].id),
+    status: String(rows[0].status),
+    endedAt: new Date(String(rows[0].ended_at)).toISOString(),
+    durationSeconds: Number(rows[0].duration_seconds ?? 0),
+  };
 }
