@@ -15,9 +15,10 @@ function Curriculum() {
     select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
   });
 
-  if (pathname !== "/learn/curriculum") {
-    return <Outlet />;
-  }
+  return pathname === "/learn/curriculum" ? <CurriculumIndex /> : <Outlet />;
+}
+
+function CurriculumIndex() {
 
   const log = useBlossom((s) => s.activityLog);
   const attempts = useBlossom((s) => s.pronlabAttempts);
