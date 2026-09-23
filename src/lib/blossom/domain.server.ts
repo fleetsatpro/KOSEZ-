@@ -693,7 +693,7 @@ export async function setTandemStatus(
   input: {
     partnerUserId: string;
     status: "suggested" | "pending" | "accepted" | "blocked" | "paused";
-    metadata?: Record<string, unknown>;
+    metadata?: JsonObject;
   },
 ) {
   assertFeaturePlan(await getServerPlan(userId), "tandem");
@@ -1150,7 +1150,7 @@ export async function getNotifications(
     href: row.href ? String(row.href) : null,
     metadata:
       row.metadata && typeof row.metadata === "object"
-        ? (row.metadata as Record<string, unknown>)
+        ? (row.metadata as JsonObject)
         : {},
     readAt: row.read_at ? new Date(String(row.read_at)).toISOString() : null,
     createdAt: new Date(String(row.created_at)).toISOString(),
@@ -1221,6 +1221,13 @@ export async function getAdminBookingQueue(userId: string): Promise<AdminBooking
   }));
 }
 
+export type AdminBookingUpdateResult = {
+  bookingId: string;
+  status: AdminBookingRow["status"];
+  paymentStatus: AdminBookingRow["paymentStatus"];
+  providerReference: string | null;
+};
+
 export async function updateAdminBooking(
   userId: string,
   input: {
@@ -1229,7 +1236,7 @@ export async function updateAdminBooking(
     paymentStatus?: "unpaid" | "paid" | "refunded";
     providerReference?: string | null;
   },
-) {
+): Promise<AdminBookingUpdateResult> {
   await assertAdmin(userId);
   const sql = await getSql();
   const currentRows = await sql.query(
@@ -1328,7 +1335,14 @@ export async function updateAdminBooking(
     });
   }
 
-  return rows[0];
+  return {
+    bookingId: String(rows[0].id),
+    status: String(rows[0].status) as AdminBookingRow["status"],
+    paymentStatus: String(rows[0].payment_status) as AdminBookingRow["paymentStatus"],
+    providerReference: rows[0].provider_reference
+      ? String(rows[0].provider_reference)
+      : null,
+  };
 }
 
 export type LearnerDetail = {
@@ -1375,8 +1389,7 @@ function mapLearnerDetail(
       seconds: Number(row.seconds ?? 0),
       assessment:
         row.metadata && typeof row.metadata === "object"
-          ? String((row.metadata as Record<string, unknown>).assessment ?? "")
-          : ""
+          ? String((row.metadata as Record<string, unknown>).assessment ?? "unknown")
           : "unknown",
       createdAt: new Date(String(row.created_at)).toISOString(),
     })),
