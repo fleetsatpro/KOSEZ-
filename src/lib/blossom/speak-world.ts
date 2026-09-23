@@ -528,6 +528,20 @@ export const EVENT_ANCHORS: EventAnchor[] = [
     vocabulary: ["early", "fruit", "Saturday", "fresh", "regular"],
   },
   {
+    id: "exam-period",
+    title: "Période d'examens",
+    kind: "seasonal",
+    window: { monthStart: 5, monthEnd: 7 },
+    placeBias: ["campus", "cafe", "campus"],
+    atmosphere: "Les tables se remplissent, les étudiants comparent les horaires et cherchent un endroit calme.",
+    talkHooks: [
+      "Have you finished the assignment?",
+      "Where are you studying today?",
+      "Do you know when the exam starts?",
+    ],
+    vocabulary: ["assignment", "deadline", "quiet", "exam", "library"],
+  },
+  {
     id: "job-interview-week",
     title: "Semaine d'entretiens",
     kind: "global",
@@ -580,6 +594,20 @@ export const PRESSURES: PressurePattern[] = [
     socialRisk: "high",
   },
   {
+    id: "misunderstood",
+    label: "Petit malentendu",
+    description: "Vous avez compris un détail différemment et devez vérifier avant d'avancer.",
+    timePressure: "medium",
+    socialRisk: "medium",
+  },
+  {
+    id: "decision",
+    label: "Décision à prendre",
+    description: "Vous avez deux options et l'autre personne attend une préférence claire.",
+    timePressure: "medium",
+    socialRisk: "high",
+  },
+    {
     id: "friendly",
     label: "Amical",
     description: "Aucune urgence ; l'échange peut s'étirer un peu.",
