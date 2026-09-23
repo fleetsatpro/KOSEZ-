@@ -38,7 +38,7 @@ function LibraryDocPage() {
 
   const recordReadingCompletion = useCallback(() => {
     if (!docId || readingCompleted) return;
-    const sourceId = `library:${docId}:${new Date().toISOString().slice(0, 10)}`;
+    const sourceId = docId;
     completeActivity("LIBRARY_COMPLETED", sourceId, `Lecture · ${docId}`);
     if (curriculumLessonId) {
       const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find(
