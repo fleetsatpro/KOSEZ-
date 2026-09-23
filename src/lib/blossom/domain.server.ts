@@ -448,13 +448,16 @@ export async function startSpeakSession(userId: string, roomId: string) {
       0,
       Math.floor((Date.now() - new Date(String(active[0].started_at)).getTime()) / 1000),
     );
-    if (ageSeconds <= 90 * 60) {
+    const sameRoom = String(active[0].room_id) === roomId;
+    if (sameRoom && ageSeconds <= 90 * 60) {
       return {
         id: String(active[0].id),
         roomId: String(active[0].room_id),
         startedAt: new Date(String(active[0].started_at)).toISOString(),
       };
     }
+    // A different room must never inherit the timing identity of another
+    // room. Close the old session before creating the new room session.
     await sql.query(
       `update blossom_speak_session
        set status = 'cancelled',
