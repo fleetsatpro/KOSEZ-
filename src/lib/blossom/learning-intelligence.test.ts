@@ -147,7 +147,10 @@ test("weekly brief counts dated evidence and keeps review accuracy explicit", ()
 
 
 test("curriculum acknowledgements follow the lesson objectives and stay non-direct", () => {
-  const lesson = CURRICULUM_UNITS[1]!.lessons.find((item) => item.id === "u2-l4")!;
+  const lesson = CURRICULUM_UNITS
+    .flatMap((unit) => unit.lessons)
+    .find((item) => item.id === "u2-l4")!;
+  assert.ok(lesson, "u2-l4 must remain addressable by stable lesson id");
   const result = buildLearningIntelligence(
     [{
       id: "lesson",
