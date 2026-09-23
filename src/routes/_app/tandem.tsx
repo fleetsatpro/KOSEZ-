@@ -29,9 +29,10 @@ function TandemPage() {
     select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
   });
 
-  if (pathname !== "/tandem") {
-    return <Outlet />;
-  }
+  return pathname === "/tandem" ? <TandemHub /> : <Outlet />;
+}
+
+function TandemHub() {
   const learner = useBlossom((s) => s.learner);
   const languageId = useBlossom((s) => s.languageId);
   const statusMap = useBlossom((s) => s.tandemStatus);
