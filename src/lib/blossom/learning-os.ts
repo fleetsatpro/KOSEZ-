@@ -317,6 +317,7 @@ export function buildSkillProfile(
   const grammar = count("GRAMMAR_COMPLETED");
   const listening = count("LISTENING_COMPLETED");
   const writing = count("WRITING_COMPLETED");
+  const library = count("LIBRARY_COMPLETED");
   const lessonIds = new Set(
     log
       .filter((event) => event.type === "CURRICULUM_EVIDENCE_RECORDED" && event.sourceId)
@@ -341,7 +342,7 @@ export function buildSkillProfile(
     speaking: { coverage: missions * 10 + speak * 9 + tandem * 8, evidence: missions + speak + tandem, signal: missions ? "Les missions apportent une preuve située." : "Une première prise de parole donnera un signal utile." },
     interaction: { coverage: missions * 12 + tandem * 10 + speak * 7, evidence: missions + tandem + speak, signal: missions ? "Les gestes réels montrent déjà comment vous entrez dans l'échange." : "Le système attend encore une situation d'interaction." },
     listening: { coverage: speak * 4 + tandem * 5 + reviews * 5 + listening * 18, evidence: speak + tandem + reviews + listening, signal: listening ? "Le lab d'écoute commence à documenter la compréhension de détails concrets." : "Pas assez de données d'écoute pour conclure." },
-    reading: { coverage: vocabulary.length * 3 + lessonEvidence("reading") * 3, evidence: vocabulary.length + lessonEvidence("reading"), signal: vocabulary.length ? "Le vocabulaire sauvé indique une première exposition écrite." : lessonEvidence("reading") ? "Le parcours contient des pratiques de lecture déclarées ; une trace de compréhension directe renforcera cette branche." : "La bibliothèque peut commencer cette branche." },
+    reading: { coverage: vocabulary.length * 3 + library * 14 + lessonEvidence("reading") * 3, evidence: vocabulary.length + library + lessonEvidence("reading"), signal: library ? "Des lectures ont été parcourues jusqu'au bout ; une tâche de compréhension renforcera encore la preuve." : vocabulary.length ? "Le vocabulaire sauvé indique une première exposition écrite." : lessonEvidence("reading") ? "Le parcours contient des pratiques de lecture déclarées ; une trace de compréhension directe renforcera cette branche." : "La bibliothèque peut commencer cette branche." },
     writing: { coverage: writing * 22 + lessonEvidence("writing") * 3, evidence: writing + lessonEvidence("writing"), signal: writing ? "Une production écrite est maintenant enregistrée comme trace de travail." : lessonEvidence("writing") ? "Le parcours contient des pratiques écrites déclarées ; une production reste à créer pour renforcer la preuve." : "Aucune production écrite enregistrée pour l'instant." },
     pronunciation: { coverage: masteredPron * 16 + attempts.length * 2, evidence: attempts.length, signal: attempts.length ? "Pron'Lab apporte une trace directe des sons travaillés." : "Un passage Pron'Lab donnera une première mesure." },
     vocabulary: { coverage: vocabulary.length * 8 + reviews * 6, evidence: vocabulary.length + reviews, signal: vocabulary.length ? "Les mots sauvés peuvent maintenant entrer dans le rappel espacé." : "Le vocabulaire n'est pas encore enregistré comme mémoire active." },
@@ -551,6 +552,7 @@ export function activityLabel(type: ActivityType): string {
     DIAGNOSTIC_COMPLETED: "Repère indicatif enregistré",
     LESSON_COMPLETED: "Ancienne confirmation de parcours",
     CURRICULUM_EVIDENCE_RECORDED: "Preuve reliée au parcours",
+    LIBRARY_COMPLETED: "Lecture terminée",
   };
   return labels[type] ?? "Activité";
 }
