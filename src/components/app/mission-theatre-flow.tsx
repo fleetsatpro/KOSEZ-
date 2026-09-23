@@ -86,7 +86,7 @@ export function PrepareStage({
                     <div className="mt-4">
                       <RecordControl
                         cta="Maintenir pour parler"
-                        onFinished={(seconds) => {
+                        onFinished={({ seconds }) => {
                           onWarmup(seconds ?? 0);
                           setWarmupOpen(false);
                         }}
@@ -440,7 +440,7 @@ export function ExecuteStage({
                   <div className="mt-5">
                     <RecordControl
                       cta="Maintenir pour parler"
-                      onFinished={(seconds) => onFinished(seconds ?? 0)}
+                      onFinished={({ seconds }) => onFinished(seconds ?? 0)}
                     />
                   </div>
                   <p className="mx-auto mt-4 max-w-md text-xs leading-5 text-muted">
