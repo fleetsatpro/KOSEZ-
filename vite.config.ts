@@ -146,6 +146,10 @@ function authPopupPlugin(): Plugin {
 // The dev server starts once `src/router.tsx` and `src/routes/` exist — see
 // AGENTS.md § "First scaffold".
 export default defineConfig(({ command, isPreview }) => ({
+  // CI can run two dev servers from the same checkout (auth-on + smoke).
+  // Give each process an isolated Vite optimizer cache so --force on one
+  // server cannot invalidate the other server's optimized dependency graph.
+  cacheDir: process.env.KOSEZ_VITE_CACHE_DIR || "node_modules/.vite",
   server: {
     host: "0.0.0.0",
     port: 8080,
