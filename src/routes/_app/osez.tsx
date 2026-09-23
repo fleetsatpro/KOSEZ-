@@ -309,7 +309,7 @@ function OsezPage() {
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {rooms.map((scene) => {
-          const done = hasSource(log, `speak-${scene.id}`);
+          const done = log.some((event) => event.type === "SPEAK_COMPLETED" && event.sourceId?.includes(`speak-${scene.place.archetype}-${scene.id}`));
           return (
             <Link
               key={scene.id}
