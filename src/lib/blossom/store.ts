@@ -535,12 +535,13 @@ export const useBlossom = create<AppState>()(
             occurredAt: new Date().toISOString(),
           },
         });
-        const event = {
+        const event: ActivityEvent = {
           id: mutation.mutationId,
           type,
           createdAt: String(mutation.payload.occurredAt),
           sourceId,
           note,
+          metadata: metadata ? { ...metadata } : undefined,
         };
         const nextLog = [...log, event];
         const ge = growthEventForActivity(type, sourceId, event.createdAt);
