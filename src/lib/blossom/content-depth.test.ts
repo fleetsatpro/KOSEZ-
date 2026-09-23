@@ -7,6 +7,7 @@ import {
   IMMERSION,
   LIBRARY,
   MISSION_BANK,
+  missionForToday,
   PRONLAB_SETS,
   TANDEM_PROMPTS,
   setsForLanguage,
@@ -117,6 +118,50 @@ test("every curriculum lesson points to a real underlying resource", () => {
       if (resource.kind === "grammar") assert.ok(grammar.has(resource.id), lesson.id + " points to missing grammar task " + resource.id);
       if (resource.kind === "listening") assert.ok(listening.has(resource.id), lesson.id + " points to missing listening task " + resource.id);
       if (resource.kind === "writing") assert.ok(writing.has(resource.id), lesson.id + " points to missing writing prompt " + resource.id);
+    }
+  }
+});
+
+
+test("daily mission rotates through the deep bank deterministically", () => {
+  const first = missionForToday("A2", new Date("2026-09-23T00:00:00Z"));
+  const second = missionForToday("A2", new Date("2026-09-24T00:00:00Z"));
+  assert.notEqual(first.id, second.id);
+  assert.ok(MISSION_BANK.some((mission) => mission.id === first.id));
+  assert.ok(MISSION_BANK.some((mission) => mission.id === second.id));
+  assert.equal(
+    missionForToday("A2", new Date("2026-09-23T18:00:00Z")).id,
+    first.id,
+  );
+});
+
+test("all curriculum speak resources target supported room archetypes", () => {
+  const supported = new Set([
+    "cafe",
+    "market",
+    "airport",
+    "hotel",
+    "office",
+    "campus",
+    "coast",
+    "clinic",
+    "shop",
+    "social",
+    "transit",
+    "home",
+  ]);
+  for (const unit of CURRICULUM_UNITS) {
+    for (const lesson of unit.lessons) {
+      const resource = curriculumResource(lesson);
+      if (resource.kind === "speak") {
+        assert.ok(
+          supported.has(resource.id),
+          lesson.id + " targets unsupported Speak room " + resource.id,
+        );
+      }
+      if (resource.kind === "review") {
+        assert.ok(resource.id.trim().length > 0, lesson.id + " has an empty review focus");
+      }
     }
   }
 });
