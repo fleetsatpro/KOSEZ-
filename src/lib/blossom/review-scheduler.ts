@@ -1,4 +1,5 @@
 import { PRONLAB_SETS, TODAY_MISSION } from "./data.ts";
+import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS } from "./lab-content.ts";
 import { summarisePronlabItem, type PronlabAttempt } from "./engine.ts";
 import type { LearningSubmission } from "./store.ts";
 import type { ReviewItem } from "./learning-os.ts";
@@ -128,6 +129,74 @@ export function buildReviewPlan(
     });
   }
 
+
+  const latestPractice = new Map<string, LearningSubmission>();
+  for (const submission of submissions) {
+    if (!["grammar", "listening", "writing"].includes(submission.kind)) continue;
+    const key = submission.kind + ":" + submission.taskId;
+    const prior = latestPractice.get(key);
+    if (!prior || prior.createdAt < submission.createdAt) {
+      latestPractice.set(key, submission);
+    }
+  }
+
+  for (const submission of latestPractice.values()) {
+    const sourceKey = submission.kind + ":" + submission.taskId;
+    const latest = latestReview(submissions, sourceKey);
+    const correct = isCorrectSubmission(submission);
+    const anchorTime = submission.createdAt;
+    const dueAt = latest
+      ? addDays(latest.createdAt, intervalForSubmission(latest, submissions))
+      : addDays(anchorTime, correct ? 3 : 1);
+
+    const task =
+      submission.kind === "grammar"
+        ? GRAMMAR_TASKS.find((item) => item.id === submission.taskId)
+        : submission.kind === "listening"
+          ? LISTENING_TASKS.find((item) => item.id === submission.taskId)
+          : WRITING_PROMPTS.find((item) => item.id === submission.taskId);
+    if (!task) continue;
+
+    const reviewItem = {
+      id: "review-" + submission.kind + "-" + submission.taskId,
+      kind: submission.kind,
+      title:
+        submission.kind === "writing"
+          ? task.title
+          : submission.kind === "grammar"
+            ? task.target
+            : task.question,
+      prompt:
+        submission.kind === "grammar"
+          ? task.prompt
+          : submission.kind === "listening"
+            ? task.question
+            : task.task,
+      answer:
+        submission.kind === "grammar"
+          ? task.answer
+          : submission.kind === "listening"
+            ? task.answer
+            : task.model,
+      reason:
+        latest && !isCorrectSubmission(latest)
+          ? "Votre dernier rappel demande encore un passage."
+          : correct
+            ? "Cette pratique vient d'être travaillée ; le rappel espacé la remettra en circulation."
+            : "La dernière production n'était pas entièrement maîtrisée.",
+      priority: !correct || (latest !== null && !isCorrectSubmission(latest))
+        ? "haute"
+        : "normale",
+      link: "labs",
+      dueAt,
+      intervalDays: Math.max(1, daysBetween(latest?.createdAt ?? anchorTime, dueAt)),
+      sourceKey,
+      state: dueAt <= now ? "due" : "upcoming",
+      lastReviewedAt: latest?.createdAt,
+    } satisfies ScheduledReviewItem;
+
+    items.push(reviewItem);
+  }
 
   for (const kit of TODAY_MISSION.scene?.languageKit ?? []) {
     const sourceKey = `mission:${kit.phrase}`;
