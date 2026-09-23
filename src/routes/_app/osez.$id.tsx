@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LEARNER_MEMORY, planAllows } from "@/lib/blossom/data";
 import type { LivingRoom } from "@/lib/blossom/speak-engine";
-import { reshuffleRoom } from "@/lib/blossom/speak-engine";
+import { adaptLivingRoomAfterTranscript, reshuffleRoom } from "@/lib/blossom/speak-engine";
 import { buildSpeakRoom } from "@/lib/blossom/speak-llm";
 import { transcribeSpeakTurn } from "@/lib/blossom/speech.api";
 import {
@@ -514,6 +514,17 @@ function SpeakRoom() {
                   }
                 }
                 setSpeechSummary((summary) => appendSpeechTurn(summary, evidence));
+                if (evidence.assessment === "transcript" && evidence.transcript) {
+                  setRoom((currentRoom) =>
+                    currentRoom
+                      ? adaptLivingRoomAfterTranscript(
+                          currentRoom,
+                          turn + 1,
+                          evidence.transcript,
+                        )
+                      : currentRoom,
+                  );
+                }
                 track("speak_turn_evidence", {
                   roomId: room.id,
                   assessment: evidence.assessment,
