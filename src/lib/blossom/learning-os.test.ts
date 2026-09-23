@@ -180,3 +180,22 @@ test("curriculum mission resources are unique so completion traces cannot collid
   );
   assert.equal(new Set(missionIds).size, missionIds.length);
 });
+
+
+test("curriculum-linked evidence cannot inflate unrelated objectives", () => {
+  const linked = buildObjectiveEvidence([
+    {
+      id: "linked-grammar",
+      type: "GRAMMAR_COMPLETED",
+      sourceId: "lab:grammar:grammar-question-1:2026-09-23",
+      createdAt: "2026-09-23T10:00:00.000Z",
+      metadata: { curriculumLessonId: "u2-l4" },
+    },
+  ]);
+  const grammar = linked.find((item) => item.objective.id === "a2-grammar-question")!;
+  const preference = linked.find((item) => item.objective.id === "a2-speak-preference")!;
+  assert.equal(grammar.directCount, 1);
+  assert.equal(grammar.status, "en pratique");
+  assert.equal(preference.directCount, 0);
+  assert.equal(preference.supportingCount, 0);
+});
