@@ -146,19 +146,24 @@ function ProgressPage() {
               </div>
               <Progress className="mt-3" value={entry.coverage} />
               <p className="mt-4 text-sm leading-6 text-muted">{entry.signal}</p>
-              <div className="mt-4 grid grid-cols-2 gap-2 text-[11px]">
-                <div className="rounded-lg bg-surface-2/60 p-2.5">
-                  <p className="uppercase tracking-[0.14em] text-subtle">Direct</p>
-                  <p className="mt-1 font-semibold tabular-nums">
-                    {entry.directEvidenceCount}
-                    <span className="font-normal text-muted"> / {entry.evidenceCount}</span>
-                  </p>
-                </div>
-                <div className="rounded-lg bg-surface-2/60 p-2.5">
-                  <p className="uppercase tracking-[0.14em] text-subtle">Dernière preuve</p>
-                  <p className="mt-1 font-semibold text-muted">{relativeProofDate(entry.lastSeenAt)}</p>
-                </div>
-              </div>
+              {(() => {
+                const evidence = intelligence.domains.find((item) => item.domainId === entry.domain.id);
+                return (
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="rounded-lg bg-surface-2/60 p-2.5">
+                      <p className="uppercase tracking-[0.14em] text-subtle">Direct</p>
+                      <p className="mt-1 font-semibold tabular-nums">
+                        {evidence?.directEvidenceCount ?? 0}
+                        <span className="font-normal text-muted"> / {evidence?.evidenceCount ?? entry.evidenceCount}</span>
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-surface-2/60 p-2.5">
+                      <p className="uppercase tracking-[0.14em] text-subtle">Dernière preuve</p>
+                      <p className="mt-1 font-semibold text-muted">{relativeProofDate(evidence?.lastSeenAt ?? null)}</p>
+                    </div>
+                  </div>
+                );
+              })()}
               <p className="mt-3 flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] text-subtle">
                 <FileCheck2 className="size-3.5" />
                 {entry.evidenceCount} signal{entry.evidenceCount > 1 ? "s" : ""} · {entry.signal}
