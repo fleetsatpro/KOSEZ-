@@ -45,9 +45,13 @@ function LearningLabs() {
 
 function GrammarLab({ level }: { level: LabLevel }) {
   const [curriculumLessonId] = useState<string | null>(() => takeCurriculumLessonContext());
+  const linkedTaskId = linkedLessonTask(curriculumLessonId, "grammar");
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
-  const tasks = useMemo(() => GRAMMAR_TASKS.filter((item) => item.level === level), [level]);
+  const tasks = useMemo(() => {
+    const all = GRAMMAR_TASKS.filter((item) => item.level === level);
+    return linkedTaskId ? all.filter((item) => item.id === linkedTaskId) : all;
+  }, [level, linkedTaskId]);
   const [index, setIndex] = useState(0), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
   const task = tasks[index]!, answered = choice !== null;
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
@@ -74,9 +78,13 @@ function GrammarLab({ level }: { level: LabLevel }) {
 
 function ListeningLab({ level }: { level: LabLevel }) {
   const [curriculumLessonId] = useState<string | null>(() => takeCurriculumLessonContext());
+  const linkedTaskId = linkedLessonTask(curriculumLessonId, "listening");
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
-  const tasks = useMemo(() => LISTENING_TASKS.filter((item) => item.level === level), [level]);
+  const tasks = useMemo(() => {
+    const all = LISTENING_TASKS.filter((item) => item.level === level);
+    return linkedTaskId ? all.filter((item) => item.id === linkedTaskId) : all;
+  }, [level, linkedTaskId]);
   const [index, setIndex] = useState(0), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
   const task = tasks[index]!, answered = choice !== null;
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
@@ -102,9 +110,13 @@ function ListeningLab({ level }: { level: LabLevel }) {
 
 function WritingLab({ level }: { level: LabLevel }) {
   const [curriculumLessonId] = useState<string | null>(() => takeCurriculumLessonContext());
+  const linkedTaskId = linkedLessonTask(curriculumLessonId, "writing");
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
-  const prompts = useMemo(() => WRITING_PROMPTS.filter((item) => item.level === level), [level]);
+  const prompts = useMemo(() => {
+    const all = WRITING_PROMPTS.filter((item) => item.level === level);
+    return linkedTaskId ? all.filter((item) => item.id === linkedTaskId) : all;
+  }, [level, linkedTaskId]);
   const [promptIndex, setPromptIndex] = useState(0), [draft, setDraft] = useState(""), [checks, setChecks] = useState<string[]>([]), [submitted, setSubmitted] = useState(false);
   const prompt = useMemo(() => prompts[promptIndex % prompts.length]!, [promptIndex, prompts]);
   function submit() {
@@ -132,6 +144,12 @@ function linkedLessonKind(lessonId: string): string | null {
     if (lesson) return lesson.kind;
   }
   return null;
+}
+
+function linkedLessonTask(lessonId: string | null, kind: "grammar" | "listening" | "writing"): string | null {
+  if (!lessonId) return null;
+  const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find((item) => item.id === lessonId);
+  return lesson?.kind === kind ? lesson.taskId ?? null : null;
 }
 
 function DiagnosticLab() {
