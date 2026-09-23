@@ -164,6 +164,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u1-l1", title: "Demander une recommandation", kind: "mission", minutes: 4, objectiveIds: ["a2-interact-ask"], description: "Une demande courte qui crée immédiatement une réponse." },
       { id: "u1-l2", title: "Réparer sans basculer", kind: "speak", minutes: 6, objectiveIds: ["a2-interact-repair"], description: "Faire répéter, gagner une seconde et reprendre le fil." },
       { id: "u1-l3", title: "Les TH dans la vraie vie", kind: "pronlab", minutes: 8, objectiveIds: ["a2-pron-th"], description: "Du son isolé à une phrase réellement utile." },
+      { id: "u1-l4", title: "Accueillir un visiteur", kind: "mission", minutes: 5, objectiveIds: ["a2-interact-ask"], description: "Commencer par comprendre ce que cherche quelqu'un avant de proposer une réponse." },
     ],
   },
   {
@@ -179,6 +180,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u2-l2", title: "I'll have…", kind: "pronlab", minutes: 5, objectiveIds: ["a2-vocab-reuse"], description: "Transformer une structure apprise en réflexe utilisable." },
       { id: "u2-l3", title: "At the covered market", kind: "library", minutes: 4, objectiveIds: ["a2-vocab-reuse", "a2-read-short"], description: "Lire, écouter et récupérer les mots qui reviennent." },
       { id: "u2-l4", title: "Questions qui servent", kind: "grammar", minutes: 5, objectiveIds: ["a2-grammar-question"], description: "Construire une question courte qui déclenche une information utile." },
+      { id: "u2-l5", title: "Faire un check-in", kind: "mission", minutes: 5, objectiveIds: ["a2-interact-ask", "a2-grammar-question"], description: "Confirmer une réservation, demander un détail et vérifier une information." },
     ],
   },
   {
@@ -194,6 +196,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u3-l2", title: "Attraper le détail", kind: "review", minutes: 4, objectiveIds: ["a2-listen-key"], description: "Revoir heures, lieux, nombres et options dans des phrases courtes." },
       { id: "u3-l3", title: "Is it far from here?", kind: "mission", minutes: 4, objectiveIds: ["a2-grammar-question"], description: "Produire une question simple qui demande une information exploitable." },
       { id: "u3-l4", title: "Attraper le détail", kind: "listening", minutes: 5, objectiveIds: ["a2-listen-key"], description: "Écouter une information concrète puis la restituer sans perdre le détail." },
+      { id: "u3-l5", title: "Attraper une information réelle", kind: "listening", minutes: 6, objectiveIds: ["a2-listen-key"], description: "Repérer un lieu, une direction et un détail utile dans une courte annonce." },
     ],
   },
   {
@@ -209,6 +212,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u4-l2", title: "Les mots qui reviennent", kind: "review", minutes: 5, objectiveIds: ["a2-vocab-reuse"], description: "Rappeler puis réutiliser des mots déjà rencontrés." },
       { id: "u4-l3", title: "Un message après le cours", kind: "library", minutes: 5, objectiveIds: ["a2-write-message"], description: "Observer comment une information pratique se formule à l'écrit." },
       { id: "u4-l4", title: "Écrire pour agir", kind: "writing", minutes: 7, objectiveIds: ["a2-write-message"], description: "Écrire un message bref, clair et adapté à une situation réelle." },
+      { id: "u4-l5", title: "Déplacer un rendez-vous", kind: "writing", minutes: 6, objectiveIds: ["a2-write-message"], description: "Expliquer une contrainte, proposer une nouvelle heure et demander confirmation." },
     ],
   },
   {
@@ -223,6 +227,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u5-l1", title: "Check-in", kind: "speak", minutes: 6, objectiveIds: ["a2-listen-key"], description: "Comprendre destination, bagage et porte d'embarquement." },
       { id: "u5-l2", title: "Réparer une information", kind: "mission", minutes: 4, objectiveIds: ["a2-interact-repair"], description: "Demander une répétition et reformuler ce que vous avez compris." },
       { id: "u5-l3", title: "Expliquer l'itinéraire", kind: "speak", minutes: 7, objectiveIds: ["a2-mediate-simple"], description: "Transmettre l'essentiel à quelqu'un qui n'a pas vu le message initial." },
+      { id: "u5-l4", title: "S'excuser et réparer", kind: "mission", minutes: 4, objectiveIds: ["a2-interact-repair"], description: "Reconnaître un petit problème puis reprendre l'échange avec une solution simple." },
     ],
   },
   {
@@ -237,6 +242,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u6-l1", title: "Room libre", kind: "speak", minutes: 8, objectiveIds: ["a2-interact-repair"], description: "Une conversation semi-ouverte avec moins de soutien visible." },
       { id: "u6-l2", title: "Révision ciblée", kind: "review", minutes: 5, objectiveIds: ["a2-pron-th", "a2-vocab-reuse"], description: "Le rappel revient là où votre historique montre une vraie friction." },
       { id: "u6-l3", title: "Mission terrain", kind: "mission", minutes: 5, objectiveIds: ["a2-speak-preference"], description: "Choisir, justifier et relancer dans une situation quotidienne." },
+      { id: "u6-l4", title: "Questions en mouvement", kind: "grammar", minutes: 6, objectiveIds: ["a2-grammar-question"], description: "Faire varier la structure d'une question sans reconstruire toute la phrase." },
     ],
   },
   {
@@ -252,6 +258,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u7-l2", title: "Comparer deux options", kind: "grammar", minutes: 6, objectiveIds: ["b1-speak-compare", "b1-grammar-connectors"], description: "Relier comparaison, justification et conséquence dans une phrase naturelle." },
       { id: "u7-l3", title: "Une recommandation argumentée", kind: "writing", minutes: 8, objectiveIds: ["b1-write-explain", "b1-speak-compare"], description: "Écrire une recommandation courte qui donne un critère et une raison." },
       { id: "u7-l4", title: "Lire entre les lignes", kind: "library", minutes: 7, objectiveIds: ["b1-read-infer"], description: "Repérer le ton, les indices et les formulations qui portent une opinion." },
+      { id: "u7-l5", title: "Répondre à une proposition", kind: "writing", minutes: 8, objectiveIds: ["b1-write-explain"], description: "Exprimer un accord partiel, une contrainte et une contre-proposition." },
     ],
   },
   {
@@ -267,6 +274,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u8-l2", title: "Comprendre une intention", kind: "library", minutes: 7, objectiveIds: ["b1-read-infer"], description: "Repérer une intention, une réserve ou une implication qui n'est pas formulée directement." },
       { id: "u8-l3", title: "Reformuler pour quelqu'un", kind: "mission", minutes: 7, objectiveIds: ["b1-mediate", "b1-interact-clarify"], description: "Transmettre l'essentiel sans recopier le message mot à mot." },
       { id: "u8-l4", title: "Clarifier une ambiguïté", kind: "speak", minutes: 6, objectiveIds: ["b1-interact-clarify"], description: "Demander une précision puis reformuler ce que vous avez compris." },
+      { id: "u8-l5", title: "Entendre la contrainte", kind: "listening", minutes: 8, objectiveIds: ["b1-listen-constraints"], description: "Distinguer ce qui est possible, ce qui est souhaité et ce qui bloque." },
     ],
   },
   {
@@ -282,6 +290,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u9-l2", title: "Nuancer une affirmation", kind: "grammar", minutes: 7, objectiveIds: ["b1-grammar-nuance"], description: "Utiliser des connecteurs et modalisateurs pour éviter le tout-ou-rien." },
       { id: "u9-l3", title: "Répondre à un contre-argument", kind: "mission", minutes: 8, objectiveIds: ["b1-acknowledge-counterpoint", "b1-argue-opinion"], description: "Reconnaître un autre point de vue avant de défendre le sien." },
       { id: "u9-l4", title: "Écrire une position", kind: "writing", minutes: 9, objectiveIds: ["b1-write-position", "b1-grammar-nuance"], description: "Construire un texte bref avec position, raison et ouverture." },
+      { id: "u9-l5", title: "Résumer une décision", kind: "mission", minutes: 6, objectiveIds: ["b1-mediate", "b1-mediate-solution"], description: "Transmettre une décision à une personne absente sans recopier le message original." },
     ],
   },
   {
@@ -297,6 +306,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u10-l2", title: "Négocier une alternative", kind: "speak", minutes: 8, objectiveIds: ["b1-negotiate"], description: "Faire une contre-proposition sans fermer l'échange." },
       { id: "u10-l3", title: "Écouter les contraintes", kind: "listening", minutes: 7, objectiveIds: ["b1-listen-constraints"], description: "Identifier une contrainte, une priorité et une option dans une conversation." },
       { id: "u10-l4", title: "Transmettre une solution", kind: "speak", minutes: 7, objectiveIds: ["b1-mediate-solution"], description: "Expliquer à un tiers ce qui s'est passé et quelle solution a été retenue." },
+      { id: "u10-l5", title: "S'excuser sans perdre le fil", kind: "mission", minutes: 4, objectiveIds: ["b1-solve-problem"], description: "Reconnaître l'impact d'un problème, annoncer une action et vérifier l'accord." }
     ],
   },
 ];
