@@ -66,7 +66,7 @@ function LibraryReader({ doc }: { doc: (typeof LIBRARY)[number] }) {
   const pickedGloss = picked
     ? (LIBRARY_GLOSS[picked] ?? "sens à préciser avec Léo")
     : null;
-  const comprehension = doc.comprehension ?? [];
+  const comprehension = useMemo(() => doc.comprehension ?? [], [doc.comprehension]);
   const score = comprehension.reduce(
     (total, item, index) => total + (answers[index] === item.answer ? 1 : 0),
     0,
