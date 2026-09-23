@@ -62,7 +62,9 @@ function GrammarLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const tasks = useMemo(() => GRAMMAR_TASKS.filter((item) => item.level === level), [level]);
   const initialIndex = Math.max(0, tasks.findIndex((item) => item.id === taskId));
-  const [index, setIndex] = useState(initialIndex === -1 ? 0 : initialIndex), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
+  const startIndex = initialIndex === -1 ? 0 : initialIndex;
+  const sessionTotal = Math.max(1, tasks.length - startIndex);
+  const [index, setIndex] = useState(startIndex), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [answeredCount, setAnsweredCount] = useState(0), [finished, setFinished] = useState(false);
   const task = tasks[index]!, answered = choice !== null;
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
@@ -75,11 +77,14 @@ function GrammarLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
       checks: [isCorrect ? "correct" : "incorrect"],
       result: { correct: isCorrect, target: task.target },
     });
+    const nextCorrect = correct + (isCorrect ? 1 : 0);
+    const nextAnswered = answeredCount + 1;
     completeActivity(
       "GRAMMAR_COMPLETED",
       dailyLabSource("grammar", task.id),
-      `Grammaire · ${correct + (isCorrect ? 1 : 0)}/${index + 1}`,
+      `Grammaire · ${nextCorrect}/${nextAnswered}`,
     );
+    setAnsweredCount(nextAnswered);
     if (index >= tasks.length - 1) {
       setFinished(true);
       return;
@@ -88,7 +93,7 @@ function GrammarLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
     setChoice(null);
   }
   if (finished) {
-    const accuracy = Math.round((correct / Math.max(1, tasks.length)) * 100);
+    const accuracy = Math.round((correct / sessionTotal) * 100);
     const target = tasks[0]?.target ?? "la structure ciblée";
     return (
       <LabComplete
@@ -118,7 +123,9 @@ function ListeningLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const tasks = useMemo(() => LISTENING_TASKS.filter((item) => item.level === level), [level]);
   const initialIndex = Math.max(0, tasks.findIndex((item) => item.id === taskId));
-  const [index, setIndex] = useState(initialIndex === -1 ? 0 : initialIndex), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
+  const startIndex = initialIndex === -1 ? 0 : initialIndex;
+  const sessionTotal = Math.max(1, tasks.length - startIndex);
+  const [index, setIndex] = useState(startIndex), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [answeredCount, setAnsweredCount] = useState(0), [finished, setFinished] = useState(false);
   const task = tasks[index]!, answered = choice !== null;
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
@@ -131,11 +138,14 @@ function ListeningLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
       checks: [isCorrect ? "correct" : "incorrect"],
       result: { correct: isCorrect, level: task.level },
     });
+    const nextCorrect = correct + (isCorrect ? 1 : 0);
+    const nextAnswered = answeredCount + 1;
     completeActivity(
       "LISTENING_COMPLETED",
       dailyLabSource("listening", task.id),
-      `Écoute · ${correct + (isCorrect ? 1 : 0)}/${index + 1}`,
+      `Écoute · ${nextCorrect}/${nextAnswered}`,
     );
+    setAnsweredCount(nextAnswered);
     if (index >= tasks.length - 1) {
       setFinished(true);
       return;
@@ -144,7 +154,7 @@ function ListeningLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
     setChoice(null);
   }
   if (finished) {
-    const accuracy = Math.round((correct / Math.max(1, tasks.length)) * 100);
+    const accuracy = Math.round((correct / sessionTotal) * 100);
     return (
       <LabComplete
         title="Écoute terminée"
