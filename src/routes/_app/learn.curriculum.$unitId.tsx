@@ -230,7 +230,7 @@ function CurriculumUnit() {
           </div>
           <Link
             to="/learn/review"
-            search={{ focus: undefined }}
+            search={{ focus: undefined, lessonId: undefined }}
             className="inline-flex shrink-0 items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary"
           >
             Réviser maintenant <ArrowRight className="size-3.5" />
