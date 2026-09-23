@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
+import { IMMERSION, PRONLAB_SETS } from "./data";
 import type { JsonObject } from "./backend.server";
 
 import { getPublishedContent } from "./content.server";
@@ -624,6 +625,11 @@ export async function recordPronlabAttempt(
   userId: string,
   input: PronlabAttemptInput,
 ) {
+  const knownItem = PRONLAB_SETS.flatMap((set) => set.items).find((item) => item.id === input.itemId);
+  if (!knownItem) {
+    throw new BlossomForbiddenError("Cet exercice Pron'Lab n'existe pas.");
+  }
+
   const sql = await getSql();
   const recordId = input.idempotencyKey ?? randomUUID();
   const metadata = input.metadata ?? {};
@@ -895,6 +901,9 @@ export async function registerEvent(
 }
 
 export async function completeChallenge(userId: string, challengeId: string) {
+  if (!IMMERSION.challenges.includes(challengeId)) {
+    throw new BlossomForbiddenError("Ce défi d'immersion n'existe pas.");
+  }
   const sql = await getSql();
   const rows = await sql.query(
     "insert into blossom_challenge_completion (user_id, challenge_id) values ($1, $2) on conflict (user_id, challenge_id) do nothing returning user_id, challenge_id, completed_at",
