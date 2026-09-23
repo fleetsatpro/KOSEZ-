@@ -149,53 +149,60 @@ export function buildReviewPlan(
       ? addDays(latest.createdAt, intervalForSubmission(latest, submissions))
       : addDays(anchorTime, correct ? 3 : 1);
 
-    const task =
-      submission.kind === "grammar"
-        ? GRAMMAR_TASKS.find((item) => item.id === submission.taskId)
-        : submission.kind === "listening"
-          ? LISTENING_TASKS.find((item) => item.id === submission.taskId)
-          : WRITING_PROMPTS.find((item) => item.id === submission.taskId);
-    if (!task) continue;
-
-    const reviewItem = {
+    const common = {
       id: "review-" + submission.kind + "-" + submission.taskId,
-      kind: submission.kind,
-      title:
-        submission.kind === "writing"
-          ? task.title
-          : submission.kind === "grammar"
-            ? task.target
-            : task.question,
-      prompt:
-        submission.kind === "grammar"
-          ? task.prompt
-          : submission.kind === "listening"
-            ? task.question
-            : task.task,
-      answer:
-        submission.kind === "grammar"
-          ? task.answer
-          : submission.kind === "listening"
-            ? task.answer
-            : task.model,
       reason:
         latest && !isCorrectSubmission(latest)
           ? "Votre dernier rappel demande encore un passage."
           : correct
             ? "Cette pratique vient d'être travaillée ; le rappel espacé la remettra en circulation."
             : "La dernière production n'était pas entièrement maîtrisée.",
-      priority: !correct || (latest !== null && !isCorrectSubmission(latest))
+      priority: (!correct || (latest !== null && !isCorrectSubmission(latest))
         ? "haute"
-        : "normale",
-      link: "labs",
+        : "normale") as "haute" | "normale",
+      link: "labs" as const,
       dueAt,
       intervalDays: Math.max(1, daysBetween(latest?.createdAt ?? anchorTime, dueAt)),
       sourceKey,
-      state: dueAt <= now ? "due" : "upcoming",
+      state: (dueAt <= now ? "due" : "upcoming") as "due" | "upcoming",
       lastReviewedAt: latest?.createdAt,
-    } satisfies ScheduledReviewItem;
+    };
 
-    items.push(reviewItem);
+    if (submission.kind === "grammar") {
+      const task = GRAMMAR_TASKS.find((item) => item.id === submission.taskId);
+      if (!task) continue;
+      items.push({
+        ...common,
+        kind: "grammar",
+        title: task.target,
+        prompt: task.prompt,
+        answer: task.answer,
+      });
+      continue;
+    }
+
+    if (submission.kind === "listening") {
+      const task = LISTENING_TASKS.find((item) => item.id === submission.taskId);
+      if (!task) continue;
+      items.push({
+        ...common,
+        kind: "listening",
+        title: task.question,
+        prompt: task.question,
+        answer: task.answer,
+      });
+      continue;
+    }
+
+    const task = WRITING_PROMPTS.find((item) => item.id === submission.taskId);
+    if (!task) continue;
+    items.push({
+      ...common,
+      kind: "writing",
+      title: task.title,
+      prompt: task.task,
+      answer: task.model,
+    });
   }
 
   for (const kit of TODAY_MISSION.scene?.languageKit ?? []) {
