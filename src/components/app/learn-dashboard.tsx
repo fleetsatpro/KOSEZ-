@@ -104,7 +104,7 @@ function NextActionLink({
       return (
         <Link
           to="/learn/labs"
-          search={{ lab: action.labKind, task: undefined }}
+          search={{ lab: action.labKind, task: action.targetId }}
           className={className}
         >
           {children}
@@ -112,7 +112,7 @@ function NextActionLink({
       );
     case "review":
       return (
-        <Link to="/learn/review" search={{ focus: undefined }} className={className}>
+        <Link to="/learn/review" search={{ focus: action.targetId }} className={className}>
           {children}
         </Link>
       );
