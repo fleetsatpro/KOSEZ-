@@ -19,9 +19,10 @@ function PronlabHub() {
     select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
   });
 
-  if (pathname !== "/pronlab") {
-    return <Outlet />;
-  }
+  return pathname === "/pronlab" ? <PronlabIndex /> : <Outlet />;
+}
+
+function PronlabIndex() {
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const assigned = useBlossom((s) => s.assignedSetIds);
   const syncOwnerUserId = useBlossom((s) => s.syncOwnerUserId);
