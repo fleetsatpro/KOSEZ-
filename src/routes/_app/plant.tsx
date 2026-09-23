@@ -48,6 +48,8 @@ function PlantPage() {
     { key: "social", label: "Lien", value: minerals.social },
   ] as const;
 
+  const lowest = mineralRows.reduce((a, b) => (a.value <= b.value ? a : b));
+
   return (
     <Page className="kosez-feature-page max-w-4xl">
       <Button variant="ghost" size="sm" asChild className="-ml-2">
@@ -63,7 +65,8 @@ function PlantPage() {
           {journey.stage.verb}, sans forcer.
         </h1>
         <p className="mt-3 text-sm leading-7 text-muted sm:text-base">
-          Chaque geste utile nourrit la plante. Pas de course — une croissance
+          Heard → grown. Chaque geste utile — une lecture, une prise de parole,
+          une mission — nourrit la plante. Pas de course : une croissance
           visible, mesurable, ancrée dans ce que vous osez vraiment dire.
         </p>
         <p className="mt-4 rounded-xl border border-border/60 bg-surface-2/40 px-4 py-3 text-sm leading-6 text-fg">
@@ -167,13 +170,19 @@ function PlantPage() {
         <Eyebrow>Minéraux · 14 jours</Eyebrow>
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
           Quatre nutriments. Le plus bas oriente le prochain geste utile — sans
-          culpabiliser.
+          culpabiliser. Aujourd&apos;hui, le sol demande un peu plus de{" "}
+          <span className="font-medium text-fg">{lowest.label.toLowerCase()}</span>.
         </p>
         <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {mineralRows.map((m) => (
             <div
               key={m.key}
-              className="rounded-xl border border-border/60 bg-surface-2/40 px-3 py-4 text-center"
+              className={cn(
+                "rounded-xl border px-3 py-4 text-center",
+                m.key === lowest.key
+                  ? "border-primary/40 bg-primary/5"
+                  : "border-border/60 bg-surface-2/40",
+              )}
             >
               <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-subtle">
                 {m.label}

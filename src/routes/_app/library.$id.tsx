@@ -1,10 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Volume2, BookMarked } from "lucide-react";
+import { ArrowLeft, Volume2, BookMarked, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
-import { LIBRARY, LIBRARY_GLOSS } from "@/lib/blossom/data";
+import { LIBRARY as LIBRARY_CORE, LIBRARY_GLOSS as GLOSS_CORE } from "@/lib/blossom/data";
+import { EXTRA_LIBRARY, EXTRA_LIBRARY_GLOSS } from "@/lib/blossom/library-extra";
 import { useBlossom } from "@/lib/blossom/store";
 import {
   clearCurriculumLessonContext,
@@ -13,16 +14,23 @@ import {
 import { CURRICULUM_UNITS } from "@/lib/blossom/learning-os";
 import { cn } from "@/lib/utils";
 
+const LIBRARY = [...LIBRARY_CORE, ...EXTRA_LIBRARY];
+const LIBRARY_GLOSS: Record<string, string> = {
+  ...GLOSS_CORE,
+  ...EXTRA_LIBRARY_GLOSS,
+};
+
 export const Route = createFileRoute("/_app/library/$id")({
   component: LibraryDocPage,
 });
 
 /**
- * Reading room — touch a word, keep it, hear the text.
- * Gloss from Léo · vocabulary feeds missions later.
+ * Reading room — touch a word, keep it, hear the text, then speak from it.
+ * Gloss from Léo · vocabulary feeds missions · CTA seeds free-topic OSEZ.
  */
 function LibraryDocPage() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
   const doc = LIBRARY.find((d) => d.id === id);
   const saveWord = useBlossom((s) => s.saveWord);
   const completeActivity = useBlossom((s) => s.completeActivity);
@@ -88,6 +96,7 @@ function LibraryDocPage() {
       window.removeEventListener("resize", checkBottom);
     };
   }, [docId, readingCompleted, recordReadingCompletion]);
+
   if (!doc) {
     return (
       <Page>
@@ -119,11 +128,21 @@ function LibraryDocPage() {
     window.speechSynthesis.speak(utter);
   }
 
+  function seedSpeakFromText() {
+    const topic = `${doc.title}. ${doc.blurb} Context from the reading: ${text.slice(0, 220)}…`;
+    try {
+      sessionStorage.setItem("kosez-speak-topic", topic);
+    } catch {
+      /* ignore */
+    }
+    toast("La room se compose à partir de ce texte.");
+    navigate({ to: "/osez/$id", params: { id: "topic" } });
+  }
+
   const tokens = text.split(/(\s+)/);
   const pickedGloss = picked
     ? (LIBRARY_GLOSS[picked] ?? "sens à préciser avec Léo")
     : null;
-
 
   return (
     <Page className="kosez-feature-page max-w-2xl">
@@ -150,7 +169,12 @@ function LibraryDocPage() {
           <h1 className="mt-2 font-display text-3xl tracking-tight sm:text-4xl">
             {doc.title}
           </h1>
-          <p className="mt-2 text-sm text-muted">{doc.minutes} min de lecture · {readingCompleted ? "lecture enregistrée" : "lisez jusqu’au bout pour enregistrer la lecture"}</p>
+          <p className="mt-2 text-sm text-muted">
+            {doc.minutes} min de lecture ·{" "}
+            {readingCompleted
+              ? "lecture enregistrée"
+              : "lisez jusqu’au bout pour enregistrer la lecture"}
+          </p>
         </div>
         <Button variant="secondary" onClick={speak}>
           <Volume2 className="size-4" />
@@ -159,7 +183,8 @@ function LibraryDocPage() {
       </div>
 
       <p className="mt-2 text-xs text-subtle">
-        Touchez un mot pour le garder. Il pourra entrer dans une mission.
+        Touchez un mot pour le garder. Il pourra entrer dans une mission — ou
+        dans la room qui suit.
       </p>
 
       <article className="mt-8 rounded-2xl border border-border/40 bg-surface/50 p-5 sm:p-8">
@@ -201,6 +226,27 @@ function LibraryDocPage() {
           </p>
         </Surface>
       )}
+
+      <Surface className="mt-4 !p-5 border border-primary/15 bg-primary/5">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <Mic className="size-4" strokeWidth={1.8} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <Eyebrow className="text-primary/80">Heard → Grown</Eyebrow>
+            <p className="mt-2 font-display text-xl tracking-tight">
+              Parler de ce texte
+            </p>
+            <p className="mt-1.5 text-sm leading-6 text-muted">
+              Une room se compose à partir de ce que vous venez de lire — pas un
+              script, une scène vivante ancrée ici.
+            </p>
+            <Button className="mt-4" onClick={seedSpeakFromText}>
+              Entrer dans la room
+            </Button>
+          </div>
+        </div>
+      </Surface>
 
       <Surface className="mt-4 !p-5">
         <div className="flex items-center gap-2">

@@ -4,32 +4,37 @@ import { cn } from "@/lib/utils";
 
 const KIND_META: Record<
   GrowthEvent["kind"],
-  { glyph: string; tone: string; title: string }
+  { glyph: string; tone: string; title: string; whisper: string }
 > = {
   root: {
     glyph: "◉",
     tone: "from-primary/25 via-primary/5 to-transparent",
     title: "Racine",
+    whisper: "Ce qui s'ancre sous la terre — invisible, nécessaire.",
   },
   stem: {
     glyph: "│",
     tone: "from-emerald-400/20 via-emerald-400/5 to-transparent",
     title: "Tige",
+    whisper: "La tige s'épaissit quand la parole tient.",
   },
   leaf: {
     glyph: "❧",
     tone: "from-lime-300/25 via-lime-300/5 to-transparent",
     title: "Feuille",
+    whisper: "Une feuille de plus — surface qui capte le réel.",
   },
   flower: {
     glyph: "❀",
     tone: "from-fuchsia-300/20 via-fuchsia-300/5 to-transparent",
     title: "Fleur",
+    whisper: "Quelque chose s'ouvre. Pas de forçage.",
   },
   mineral: {
     glyph: "·",
     tone: "from-white/10 via-transparent to-transparent",
     title: "Minéral",
+    whisper: "Le sol se souvient des nutriments.",
   },
 };
 
@@ -53,16 +58,19 @@ export function GrowthCeremony({
   useEffect(() => {
     if (!open || !event) return;
     setPhase("enter");
-    const hold = window.setTimeout(() => setPhase("hold"), 420);
+    const intensity = Math.min(1, Math.max(0.2, event.intensity));
+    const holdMs = 380 + Math.round(intensity * 180);
+    const totalMs = 3200 + Math.round(intensity * 1800);
+    const hold = window.setTimeout(() => setPhase("hold"), holdMs);
     const auto = window.setTimeout(() => {
       setPhase("exit");
-      window.setTimeout(onDismiss, 380);
-    }, 4200);
+      window.setTimeout(onDismiss, 360);
+    }, totalMs);
     return () => {
       window.clearTimeout(hold);
       window.clearTimeout(auto);
     };
-  }, [open, event?.id, onDismiss]);
+  }, [open, event?.id, event?.intensity, onDismiss]);
 
   const meta = event ? KIND_META[event.kind] : null;
 
@@ -139,8 +147,9 @@ export function GrowthCeremony({
           <h2 className="mt-2 font-display text-2xl tracking-tight text-fg">
             {event.label}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            La terre s'en souvient. Rien à forcer.
+          <p className="mt-2 text-sm leading-6 text-muted">{meta.whisper}</p>
+          <p className="mt-1 text-xs leading-5 text-subtle">
+            La terre s&apos;en souvient. Rien à forcer.
           </p>
 
           {deltas && deltas.length > 0 ? (
