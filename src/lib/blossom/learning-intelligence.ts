@@ -56,7 +56,7 @@ export type LearningIntelligence = {
     eyebrow: string;
     title: string;
     body: string;
-    kind: "pronlab" | "mission" | "library" | "review" | "labs";
+    kind: "pronlab" | "mission" | "library" | "review" | "labs" | "speak";
     labKind?: "grammar" | "listening" | "writing";
     targetId?: string;
     reasons: string[];
@@ -248,7 +248,7 @@ function domainSignal(
 }
 
 function resourceForDomain(domainId: LearningDomainId): {
-  kind: "pronlab" | "mission" | "library" | "labs";
+  kind: "pronlab" | "mission" | "library" | "labs" | "speak";
   targetId?: string;
   labKind?: "grammar" | "listening" | "writing";
 } | null {
@@ -271,7 +271,7 @@ function resourceForDomain(domainId: LearningDomainId): {
         case "review":
           continue;
         case "speak":
-          return { kind: "mission", targetId: undefined };
+          return { kind: "speak", targetId: resource.id };
       }
     }
   }
