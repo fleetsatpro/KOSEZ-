@@ -42,7 +42,7 @@ function LearningLabs() {
   const learnerLevel = useBlossom((s) => s.learner.level);
   const activeLevel: LabLevel = learnerLevel === "B1" ? "B1" : "A2";
   const search = Route.useSearch();
-  const [lab, setLab] = useState<Lab>(search.lab ?? "grammar");
+  const [lab, setLab] = useState<Lab>((search.lab as Lab | undefined) ?? "grammar");
   return <Page className="kosez-feature-page">
     <Link to="/learn" className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted hover:text-primary"><ArrowLeft className="size-3.5" /> Atelier</Link>
     <header className="mt-6 overflow-hidden rounded-[28px] bg-fg p-6 text-primary-foreground shadow-[var(--shadow-border)] sm:p-8">
