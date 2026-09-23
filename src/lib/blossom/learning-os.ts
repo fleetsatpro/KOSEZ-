@@ -244,6 +244,55 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
   },
 ];
 
+export function curriculumIntegrityIssues(): string[] {
+  const issues: string[] = [];
+  const unitIds = new Set<string>();
+  const lessonIds = new Set<string>();
+  const compatible: Record<LessonKind, Set<LearningDomainId>> = {
+    mission: new Set(["speaking", "interaction", "mediation"]),
+    speak: new Set(["speaking", "interaction"]),
+    pronlab: new Set(["pronunciation", "vocabulary"]),
+    library: new Set(["reading", "vocabulary"]),
+    review: new Set(["vocabulary", "pronunciation", "grammar"]),
+    grammar: new Set(["grammar"]),
+    listening: new Set(["listening"]),
+    writing: new Set(["writing"]),
+  };
+
+  for (const unit of CURRICULUM_UNITS) {
+    if (unitIds.has(unit.id)) issues.push(`duplicate-unit:${unit.id}`);
+    unitIds.add(unit.id);
+    for (const objectiveId of unit.objectives) {
+      const objective = CAN_DO_OBJECTIVES.find((item) => item.id === objectiveId);
+      if (!objective) issues.push(`missing-unit-objective:${unit.id}:${objectiveId}`);
+    }
+    for (const lesson of unit.lessons) {
+      if (lessonIds.has(lesson.id)) issues.push(`duplicate-lesson:${lesson.id}`);
+      lessonIds.add(lesson.id);
+      if (!lesson.objectiveIds.length) issues.push(`lesson-without-objective:${lesson.id}`);
+      for (const objectiveId of lesson.objectiveIds) {
+        const objective = CAN_DO_OBJECTIVES.find((item) => item.id === objectiveId);
+        if (!objective) {
+          issues.push(`missing-lesson-objective:${lesson.id}:${objectiveId}`);
+          continue;
+        }
+        if (objective.level !== unit.level) issues.push(`level-mismatch:${lesson.id}:${objectiveId}`);
+      }
+      const objectiveDomains = lesson.objectiveIds
+        .map((id) => CAN_DO_OBJECTIVES.find((item) => item.id === id)?.domain)
+        .filter((id): id is LearningDomainId => Boolean(id));
+      if (!objectiveDomains.some((domain) => compatible[lesson.kind].has(domain))) {
+        issues.push(`incompatible-objective:${lesson.id}:${lesson.kind}`);
+      }
+      if (["grammar", "listening", "writing", "library"].includes(lesson.kind) && !lesson.taskId) {
+        issues.push(`missing-task-binding:${lesson.id}`);
+      }
+    }
+  }
+
+  return issues;
+}
+
 export type SkillEvidence = {
   domain: LearningDomain;
   coverage: number;
