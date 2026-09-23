@@ -1041,7 +1041,7 @@ export async function writeAuditEvent(
     subjectUserId?: string | null;
     resourceType: string;
     resourceId?: string | null;
-    metadata?: Record<string, unknown>;
+    metadata?: JsonObject;
   },
 ) {
   const sql = await getSql();
