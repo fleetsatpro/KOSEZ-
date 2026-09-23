@@ -545,25 +545,33 @@ export async function requestCatalogueBooking(
            then blossom_booking_request.status
          else 'requested'
        end,
+       payment_status = case
+         when blossom_booking_request.status = 'confirmed'
+           then blossom_booking_request.payment_status
+         else 'unpaid'
+       end,
+       provider_reference = case
+         when blossom_booking_request.status = 'confirmed'
+           then blossom_booking_request.provider_reference
+         else null
+       end,
        updated_at = current_timestamp
      returning id, catalogue_item_id, status, payment_status, created_at, updated_at`,
     [randomUUID(), userId, catalogueItemId],
   );
-  if (rows[0]) return rows[0];
+  if (!rows[0]) throw new Error("booking-request-write-failed");
 
-  const current = await sql.query(
-    `select id, catalogue_item_id, status, payment_status, created_at, updated_at
-     from blossom_booking_request
-     where user_id = $1 and catalogue_item_id = $2`,
-    [userId, catalogueItemId],
-  );
-  if (!current[0]) throw new Error("booking-request-write-failed");
   await writeAuditEvent(userId, {
     action: "commerce.booking_requested",
     resourceType: "booking_request",
-    resourceId: String(current[0].id),
+    resourceId: String(rows[0].id),
+    metadata: {
+      catalogueItemId,
+      status: String(rows[0].status),
+      paymentStatus: String(rows[0].payment_status),
+    },
   });
-  return current[0];
+  return rows[0];
 }
 
 export async function requestWaitlist(userId: string, itemId: string) {
@@ -1256,17 +1264,29 @@ export async function updateAdminBooking(
   if (nextStatus === "requested" && currentStatus !== "requested") {
     throw new BlossomForbiddenError("Une demande déjà traitée ne revient pas en attente.");
   }
+  if (nextStatus === "requested" && nextPayment !== "unpaid") {
+    throw new BlossomForbiddenError("Une demande en attente doit rester impayée.");
+  }
   if (currentStatus === "cancelled" && nextStatus !== "cancelled") {
     throw new BlossomForbiddenError("Une demande annulée reste clôturée.");
   }
   if (nextPayment === "paid" && currentPayment === "refunded") {
     throw new BlossomForbiddenError("Un paiement remboursé ne peut pas être marqué payé ici.");
   }
+  if (nextPayment === "paid" && nextStatus === "cancelled") {
+    throw new BlossomForbiddenError("Une demande annulée ne peut pas rester marquée payée.");
+  }
   if (currentPayment === "refunded" && nextPayment !== "refunded") {
     throw new BlossomForbiddenError("Un paiement remboursé reste clôturé.");
   }
   if (currentPayment === "paid" && nextPayment === "unpaid") {
     throw new BlossomForbiddenError("Un paiement déjà marqué payé ne revient pas à impayé ici.");
+  }
+  if (currentPayment === "paid" && nextStatus === "cancelled" && nextPayment !== "refunded") {
+    throw new BlossomForbiddenError("Une annulation après paiement doit être remboursée dans la même transition.");
+  }
+  if (nextPayment === "paid" && nextStatus !== "confirmed") {
+    throw new BlossomForbiddenError("Un paiement ne peut être confirmé qu'après la réservation.");
   }
   if (nextPayment === "refunded" && currentPayment !== "paid") {
     throw new BlossomForbiddenError("Un remboursement exige un paiement marqué payé.");
@@ -1470,16 +1490,31 @@ export async function startTandemSession(userId: string, partnerUserId: string) 
   await sql.query(
     `insert into blossom_tandem_session
       (id, user_id, partner_user_id, status, started_at)
-     values ($1::uuid, $2, $3, 'active', current_timestamp)`,
+     values ($1::uuid, $2, $3, 'active', current_timestamp)
+     on conflict do nothing`,
     [sessionId, userId, partnerUserId],
   );
+
+  const durable = await sql.query(
+    `select id, user_id, partner_user_id
+     from blossom_tandem_session
+     where ((user_id = $1 and partner_user_id = $2) or (user_id = $2 and partner_user_id = $1))
+       and status = 'active'
+     order by created_at desc
+     limit 1`,
+    [userId, partnerUserId],
+  );
+  if (!durable[0]) throw new Error("tandem-session-start-failed");
+
+  const durableId = String(durable[0].id);
   await writeAuditEvent(userId, {
     subjectUserId: partnerUserId,
     action: "tandem.session.started",
     resourceType: "tandem_session",
-    resourceId: sessionId,
+    resourceId: durableId,
+    metadata: { createdByThisRequest: durableId === sessionId },
   });
-  return sessionId;
+  return durableId;
 }
 
 export async function logTandemPrompt(
@@ -1513,7 +1548,9 @@ export async function endTandemSession(
   const rows = await sql.query(
     `update blossom_tandem_session
      set status = $2, ended_at = coalesce(ended_at, current_timestamp), updated_at = current_timestamp
-     where id = $1::uuid and (user_id = $3 or partner_user_id = $3)
+     where id = $1::uuid
+       and (user_id = $3 or partner_user_id = $3)
+       and status = 'active'
      returning id, status, ended_at`,
     [sessionId, status, userId],
   );
