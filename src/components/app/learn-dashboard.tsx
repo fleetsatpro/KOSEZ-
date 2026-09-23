@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 import {
   ArrowRight,
@@ -71,6 +72,53 @@ const PILLARS = [
   },
 ] as const;
 
+function NextActionLink({
+  action,
+  className,
+  children,
+}: {
+  action: ReturnType<typeof buildLearningIntelligence>["next"];
+  className?: string;
+  children: ReactNode;
+}) {
+  switch (action.kind) {
+    case "pronlab":
+      return (
+        <Link to="/pronlab" className={className}>
+          {children}
+        </Link>
+      );
+    case "library":
+      return (
+        <Link to="/library" className={className}>
+          {children}
+        </Link>
+      );
+    case "mission":
+      return (
+        <Link to="/mission" search={{ missionId: undefined }} className={className}>
+          {children}
+        </Link>
+      );
+    case "labs":
+      return (
+        <Link
+          to="/learn/labs"
+          search={{ lab: action.labKind, task: undefined }}
+          className={className}
+        >
+          {children}
+        </Link>
+      );
+    case "review":
+      return (
+        <Link to="/learn/review" search={{ focus: undefined }} className={className}>
+          {children}
+        </Link>
+      );
+  }
+}
+
 export function LearnDashboard() {
   const enrolledIds = useBlossom((s) => s.enrolledIds);
   const bookingStatuses = useBlossom((s) => s.bookingStatuses);
@@ -104,16 +152,6 @@ export function LearnDashboard() {
     submissions,
   );
   const nextAction = intelligence.next;
-  const nextActionHref =
-    nextAction.kind === "pronlab"
-      ? "/pronlab"
-      : nextAction.kind === "library"
-        ? "/library"
-        : nextAction.kind === "mission"
-          ? "/mission"
-          : nextAction.kind === "labs"
-            ? "/learn/labs"
-            : "/learn/review";
 
   const sets = setsForLanguage(useBlossom((s) => s.languageId));
   const libraryOk = planAllows(plan, "library");
@@ -555,8 +593,8 @@ export function LearnDashboard() {
       </section>
 
       <section className="mt-10 grid gap-4 lg:grid-cols-[1.15fr_.85fr]">
-        <Link
-          to={nextActionHref}
+        <NextActionLink
+          action={nextAction}
           className="group relative overflow-hidden rounded-2xl bg-fg p-6 text-primary-foreground shadow-[var(--shadow-border)] sm:p-7"
         >
           <div className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full border border-primary-foreground/10" />
@@ -572,7 +610,7 @@ export function LearnDashboard() {
               Réviser maintenant <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
             </span>
           </div>
-        </Link>
+        </NextActionLink>
 
         <Surface>
           <Eyebrow>Profil vivant</Eyebrow>
