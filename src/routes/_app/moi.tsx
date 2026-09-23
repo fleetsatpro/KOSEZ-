@@ -20,6 +20,7 @@ import {
   planAllows,
   PLANS,
   PLANT_IMAGE,
+  setsForLanguage,
 } from "@/lib/blossom/data";
 import { countByType, resolveMemory } from "@/lib/blossom/engine";
 import {
@@ -434,8 +435,12 @@ function MoiPage() {
                   <span className={cn(active && "font-medium text-primary")}>
                     {lang.name}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-muted">
-                    {active ? "En cours" : lang.status}
+                  <span className="inline-flex items-center gap-2 text-muted">
+                    {setsForLanguage(lang.id).length > 0
+                      ? setsForLanguage(lang.id).length +
+                        (setsForLanguage(lang.id).length > 1 ? " sets" : " set")
+                      : lang.status}
+                    {active ? <span className="text-primary">· En cours</span> : null}
                     <ChevronRight className="size-3.5 opacity-40" />
                   </span>
                 </button>
