@@ -1575,7 +1575,163 @@ export const LIBRARY: LibraryDoc[] = [
     body: "Something you ordered is wrong. You explain the problem without blaming anyone, say what you expected, and ask what can be done. The useful language is practical: enough detail to solve the situation, no speech required.",
     comprehension: [{"prompt":"Quel est le bon ordre d'une réparation ?","choices":["Blâmer, partir, revenir.","Décrire le problème, expliquer l'impact, demander une solution.","Changer de sujet."],"answer":"Décrire le problème, expliquer l'impact, demander une solution.","explanation":"Le texte organise la communication autour de la résolution."},{"prompt":"Quel ton est recommandé ?","choices":["Accusateur","Clair et calme","Très long et défensif"],"answer":"Clair et calme","explanation":"Le but est d'obtenir une solution, pas de gagner un conflit."},{"prompt":"Quelle phrase aide à ouvrir la solution ?","choices":["Could you check it today?","You are wrong.","Forget it."],"answer":"Could you check it today?","explanation":"Elle transforme le problème en demande concrète."}],
     transferPrompt: "Choisissez un petit problème réel et formulez une demande de solution en anglais.",
+  },  },
+{
+    id: "lib-airport",
+    title: "A delayed flight",
+    blurb: "Check a gate, explain a delay, keep the exchange moving.",
+    language: "English",
+    level: "B1",
+    minutes: 5,
+    image: "/images/airport.jpg",
+    body: "The departure board changes just before you reach the gate. Your flight is delayed by forty minutes. You ask a staff member whether the boarding gate will stay the same, listen for the answer, and repeat the key detail to your travel partner. The useful skill is not knowing every airport word; it is recovering the one piece of information that changes your next action.",
+    comprehension: [
+      {
+        prompt: "What changes first?",
+        choices: ["The destination", "The departure timing", "The passenger's name"],
+        answer: "The departure timing",
+        explanation: "The flight is delayed by forty minutes."
+      },
+      {
+        prompt: "Why does the reader ask about the gate?",
+        choices: ["To buy food", "To know whether the next action changes", "To change the destination"],
+        answer: "To know whether the next action changes",
+        explanation: "The reader needs to know whether the gate remains the same."
+      },
+      {
+        prompt: "What happens after the answer?",
+        choices: ["The detail is repeated to a travel partner.", "The reader leaves the airport.", "The reader starts a new booking."],
+        answer: "The detail is repeated to a travel partner.",
+        explanation: "The final sentence shows the information being transmitted to someone else."
+      }
+    ],
+    transferPrompt: "Imagine a real delay. State the change, ask one useful question, then repeat the answer to someone else.",
   },
+  {
+    id: "lib-phone-call",
+    title: "A two-minute phone call",
+    blurb: "The line is imperfect. Ask, confirm, and leave with one clear next step.",
+    language: "English",
+    level: "B1",
+    minutes: 5,
+    image: "/images/cafe.jpg",
+    body: "You call a small office to change an appointment. The person answers quickly and gives you two possible times. You miss the first option, ask them to repeat it, then choose the second. Before hanging up, you repeat the date and time so both people leave with the same plan.",
+    comprehension: [
+      {
+        prompt: "What is the purpose of the call?",
+        choices: ["To cancel a flight", "To change an appointment", "To order lunch"],
+        answer: "To change an appointment",
+        explanation: "The call is specifically about moving an appointment."
+      },
+      {
+        prompt: "What does the caller do after missing an option?",
+        choices: ["Pretend to understand", "Ask for a repetition", "End the call"],
+        answer: "Ask for a repetition",
+        explanation: "Repair keeps the conversation functional."
+      },
+      {
+        prompt: "Why does the caller repeat the final details?",
+        choices: ["To fill silence", "To make sure both people have the same plan", "To sound formal"],
+        answer: "To make sure both people have the same plan",
+        explanation: "The repeated date and time confirm the shared understanding."
+      }
+    ],
+    transferPrompt: "Practise one confirmation sentence you could use on a real phone call: date + time + action.",
+  },
+  {
+    id: "lib-hotel",
+    title: "A small problem at the hotel",
+    blurb: "Describe a problem, explain the impact, ask for a realistic fix.",
+    language: "English",
+    level: "B1",
+    minutes: 5,
+    image: "/images/atelier.jpg",
+    body: "Your room is clean, but the key card stops working after dinner. You return to reception and explain the problem. The receptionist asks for your room number, checks the system, and offers a new card. You confirm that the new card works before returning upstairs.",
+    comprehension: [
+      {
+        prompt: "What is wrong with the room?",
+        choices: ["It is dirty", "The key card has stopped working", "There is no bed"],
+        answer: "The key card has stopped working",
+        explanation: "The problem is the access card, not the room itself."
+      },
+      {
+        prompt: "What information does reception need?",
+        choices: ["The room number", "The weather", "The guest's lunch order"],
+        answer: "The room number",
+        explanation: "The receptionist checks the system using the room number."
+      },
+      {
+        prompt: "What does the guest do before leaving reception?",
+        choices: ["Books another hotel", "Checks that the new card works", "Asks for a taxi"],
+        answer: "Checks that the new card works",
+        explanation: "The guest confirms the solution before returning upstairs."
+      }
+    ],
+    transferPrompt: "Choose a harmless real-life problem and describe it with: what happened + impact + requested fix.",
+  },
+  {
+    id: "lib-neighborhood",
+    title: "Showing someone your neighborhood",
+    blurb: "Describe what matters, not everything you can see.",
+    language: "English",
+    level: "A2",
+    minutes: 4,
+    image: "/images/reunion-coast.jpg",
+    body: "A friend is visiting your neighborhood for the first time. You show them the nearest market, a quiet place to sit, and the easiest route to the seafront. They ask which place you prefer. You answer with one reason and leave the rest for later.",
+    comprehension: [
+      {
+        prompt: "Which three things does the visitor get?",
+        choices: ["A market, a quiet place, and a route", "A hotel, an airport, and a bus", "Only a restaurant"],
+        answer: "A market, a quiet place, and a route",
+        explanation: "Those are the three practical points in the text."
+      },
+      {
+        prompt: "What does the friend ask at the end?",
+        choices: ["How much is lunch?", "Which place the speaker prefers", "When the airport opens"],
+        answer: "Which place the speaker prefers",
+        explanation: "The final question asks for a personal preference."
+      },
+      {
+        prompt: "What does the speaker avoid?",
+        choices: ["Giving any recommendation", "Explaining every possible detail", "Using a place name"],
+        answer: "Explaining every possible detail",
+        explanation: "The text models concise, useful guidance."
+      }
+    ],
+    transferPrompt: "Describe your own area in three useful points, then say which one you prefer.",
+  },
+  {
+    id: "lib-meeting",
+    title: "Before the meeting starts",
+    blurb: "Check one detail, make one small request, get the room ready.",
+    language: "English",
+    level: "B1",
+    minutes: 5,
+    image: "/images/atelier.jpg",
+    body: "Ten minutes before a meeting, you notice that the room is missing one chair and the screen is not connected. You ask a colleague to find a chair while you check the cable. When the connection still fails, you suggest using the shared document instead. The meeting starts on time because the group solves the problem rather than discussing it for too long.",
+    comprehension: [
+      {
+        prompt: "What is missing?",
+        choices: ["A chair and a working screen connection", "The meeting topic", "A calendar invitation"],
+        answer: "A chair and a working screen connection",
+        explanation: "Both practical problems are identified before the meeting."
+      },
+      {
+        prompt: "What does the group do when the cable still fails?",
+        choices: ["Cancel the meeting", "Use the shared document", "Wait for an hour"],
+        answer: "Use the shared document",
+        explanation: "They switch to a workable alternative."
+      },
+      {
+        prompt: "Why does the meeting start on time?",
+        choices: ["Nobody notices the problem", "The group chooses solutions quickly", "The room repairs itself"],
+        answer: "The group chooses solutions quickly",
+        explanation: "The final sentence directly connects the timing to practical problem-solving."
+      }
+    ],
+    transferPrompt: "Describe one small problem before a meeting and give a clear alternative.",
+  },
+
 ];
 
 export const LIBRARY_GLOSS: Record<string, string> = {
