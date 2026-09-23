@@ -22,6 +22,7 @@ import {
 } from "./domain.server";
 import { reportTandem } from "./safety.server";
 import { SYNC_OPERATIONS, type SyncMutation, type SyncResult } from "./sync-types";
+import { CURRICULUM_UNITS, type LessonKind } from "./learning-os";
 
 const SYNC_TIMEOUT_MS = 120_000;
 
@@ -29,6 +30,32 @@ function objectValue(value: unknown): JsonObject {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return value as JsonObject;
 }
+
+async function assertCurriculumEvidence(
+  userId: string,
+  lessonId: string,
+  metadata: Record<string, unknown>,
+) {
+  const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find((item) => item.id === lessonId);
+  if (!lesson) throw new Error("curriculum-lesson-unknown");
+  const supportId = stringValue(metadata.supportId);
+  if (!supportId) throw new Error("curriculum-evidence-missing-support");
+
+  const sql = await getSql();
+  const checks: Record<LessonKind, () => Promise<boolean>> = {
+    mission: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'MISSION_COMPLETED' and source_id = $2 limit 1", [userId, supportId]))[0]),
+    speak: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'SPEAK_COMPLETED' and source_id = $2 limit 1", [userId, supportId]))[0]),
+    pronlab: async () => Boolean((await sql.query("select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 limit 1", [userId, supportId]))[0]),
+    review: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'REVIEW_COMPLETED' and source_id = $2 limit 1", [userId, supportId]))[0]),
+    grammar: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'grammar' limit 1", [userId, supportId]))[0]),
+    listening: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'listening' limit 1", [userId, supportId]))[0]),
+    writing: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'writing' limit 1", [userId, supportId]))[0]),
+    library: async () => false,
+  };
+
+  if (!(await checks[lesson.kind]())) throw new Error("curriculum-evidence-without-support");
+}
+
 
 function jsonValue(value: unknown): JsonValue {
   try {
@@ -233,6 +260,13 @@ async function applyMutation(
   switch (mutation.operation) {
     case "activity.append": {
       const payload = activityPayloadSchema.parse(mutation.payload);
+      if (payload.eventType === "CURRICULUM_EVIDENCE_RECORDED") {
+        await assertCurriculumEvidence(
+          userId,
+          payload.sourceId ?? mutation.entityId,
+          objectValue(payload.metadata),
+        );
+      }
       await appendBlossomActivity(userId, {
         eventType: payload.eventType,
         sourceId: payload.sourceId ?? null,
