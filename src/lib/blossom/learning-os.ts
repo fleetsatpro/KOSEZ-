@@ -80,6 +80,7 @@ export type CurriculumLesson = {
   minutes: number;
   objectiveIds: string[];
   description: string;
+  taskId?: string;
 };
 
 export type CurriculumUnit = {
@@ -120,7 +121,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u2-l1", title: "What do you recommend?", kind: "speak", minutes: 6, objectiveIds: ["a2-interact-ask"], description: "Ouvrir puis garder deux tours de conversation." },
       { id: "u2-l2", title: "I'll have…", kind: "pronlab", minutes: 5, objectiveIds: ["a2-vocab-reuse"], description: "Transformer une structure apprise en réflexe utilisable." },
       { id: "u2-l3", title: "At the covered market", kind: "library", minutes: 4, objectiveIds: ["a2-vocab-reuse", "a2-read-short"], description: "Lire, écouter et récupérer les mots qui reviennent." },
-      { id: "u2-l4", title: "Questions qui servent", kind: "grammar", minutes: 5, objectiveIds: ["a2-grammar-question"], description: "Construire une question courte qui déclenche une information utile." },
+      { id: "u2-l4", title: "Questions qui servent", kind: "grammar", minutes: 5, taskId: "grammar-question-1", objectiveIds: ["a2-grammar-question"], description: "Construire une question courte qui déclenche une information utile." },
     ],
   },
   {
@@ -135,7 +136,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u3-l1", title: "Une réunion de deux minutes", kind: "speak", minutes: 7, objectiveIds: ["a2-speak-routine"], description: "Entrer dans une conversation professionnelle sans script long." },
       { id: "u3-l2", title: "Attraper le détail", kind: "review", minutes: 4, objectiveIds: ["a2-listen-key"], description: "Revoir heures, lieux, nombres et options dans des phrases courtes." },
       { id: "u3-l3", title: "Is it far from here?", kind: "mission", minutes: 4, objectiveIds: ["a2-grammar-question"], description: "Produire une question simple qui demande une information exploitable." },
-      { id: "u3-l4", title: "Attraper le détail", kind: "listening", minutes: 5, objectiveIds: ["a2-listen-key"], description: "Écouter une information concrète puis la restituer sans perdre le détail." },
+      { id: "u3-l4", title: "Attraper le détail", kind: "listening", minutes: 5, taskId: "listen-1", objectiveIds: ["a2-listen-key"], description: "Écouter une information concrète puis la restituer sans perdre le détail." },
     ],
   },
   {
@@ -150,7 +151,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u4-l1", title: "Yesterday en 60 secondes", kind: "speak", minutes: 6, objectiveIds: ["a2-speak-routine"], description: "Trois faits reliés, sans traduire phrase par phrase." },
       { id: "u4-l2", title: "Les mots qui reviennent", kind: "review", minutes: 5, objectiveIds: ["a2-vocab-reuse"], description: "Rappeler puis réutiliser des mots déjà rencontrés." },
       { id: "u4-l3", title: "Un message après le cours", kind: "library", minutes: 5, objectiveIds: ["a2-write-message"], description: "Observer comment une information pratique se formule à l'écrit." },
-      { id: "u4-l4", title: "Écrire pour agir", kind: "writing", minutes: 7, objectiveIds: ["a2-write-message"], description: "Écrire un message bref, clair et adapté à une situation réelle." },
+      { id: "u4-l4", title: "Écrire pour agir", kind: "writing", minutes: 7, taskId: "write-after-class", objectiveIds: ["a2-write-message"], description: "Écrire un message bref, clair et adapté à une situation réelle." },
     ],
   },
   {
@@ -191,8 +192,8 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     objectives: ["b1-speak-describe", "b1-speak-compare", "b1-write-explain", "b1-grammar-connectors"],
     lessons: [
       { id: "u7-l1", title: "Décrire une expérience", kind: "speak", minutes: 8, objectiveIds: ["b1-speak-describe"], description: "Organiser une description en donnant le contexte, le détail utile et une impression." },
-      { id: "u7-l2", title: "Comparer deux options", kind: "grammar", minutes: 6, objectiveIds: ["b1-speak-compare", "b1-grammar-connectors"], description: "Relier comparaison, justification et conséquence dans une phrase naturelle." },
-      { id: "u7-l3", title: "Une recommandation argumentée", kind: "writing", minutes: 8, objectiveIds: ["b1-write-explain", "b1-speak-compare"], description: "Écrire une recommandation courte qui donne un critère et une raison." },
+      { id: "u7-l2", title: "Comparer deux options", kind: "grammar", minutes: 6, taskId: "grammar-b1-1", objectiveIds: ["b1-speak-compare", "b1-grammar-connectors"], description: "Relier comparaison, justification et conséquence dans une phrase naturelle." },
+      { id: "u7-l3", title: "Une recommandation argumentée", kind: "writing", minutes: 8, taskId: "write-b1-1", objectiveIds: ["b1-write-explain", "b1-speak-compare"], description: "Écrire une recommandation courte qui donne un critère et une raison." },
       { id: "u7-l4", title: "Lire entre les lignes", kind: "library", minutes: 7, objectiveIds: ["b1-read-infer"], description: "Repérer le ton, les indices et les formulations qui portent une opinion." },
     ],
   },
@@ -205,7 +206,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     domainIds: ["listening", "reading", "mediation", "interaction"],
     objectives: ["b1-listen-detail", "b1-read-infer", "b1-mediate", "b1-interact-clarify"],
     lessons: [
-      { id: "u8-l1", title: "Attraper le détail caché", kind: "listening", minutes: 8, objectiveIds: ["b1-listen-detail"], description: "Distinguer l'information centrale d'un détail secondaire dans un échange rapide." },
+      { id: "u8-l1", title: "Attraper le détail caché", kind: "listening", minutes: 8, taskId: "listen-b1-1", objectiveIds: ["b1-listen-detail"], description: "Distinguer l'information centrale d'un détail secondaire dans un échange rapide." },
       { id: "u8-l2", title: "Comprendre une intention", kind: "library", minutes: 7, objectiveIds: ["b1-read-infer"], description: "Repérer une intention, une réserve ou une implication qui n'est pas formulée directement." },
       { id: "u8-l3", title: "Reformuler pour quelqu'un", kind: "mission", minutes: 7, objectiveIds: ["b1-mediate", "b1-interact-clarify"], description: "Transmettre l'essentiel sans recopier le message mot à mot." },
       { id: "u8-l4", title: "Clarifier une ambiguïté", kind: "speak", minutes: 6, objectiveIds: ["b1-interact-clarify"], description: "Demander une précision puis reformuler ce que vous avez compris." },
@@ -221,9 +222,9 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     objectives: ["b1-argue-opinion", "b1-write-position", "b1-acknowledge-counterpoint", "b1-grammar-nuance"],
     lessons: [
       { id: "u9-l1", title: "Donner son avis", kind: "speak", minutes: 8, objectiveIds: ["b1-argue-opinion"], description: "Prendre position avec une raison claire et un exemple concret." },
-      { id: "u9-l2", title: "Nuancer une affirmation", kind: "grammar", minutes: 7, objectiveIds: ["b1-grammar-nuance"], description: "Utiliser des connecteurs et modalisateurs pour éviter le tout-ou-rien." },
+      { id: "u9-l2", title: "Nuancer une affirmation", kind: "grammar", minutes: 7, taskId: "grammar-b1-6", objectiveIds: ["b1-grammar-nuance"], description: "Utiliser des connecteurs et modalisateurs pour éviter le tout-ou-rien." },
       { id: "u9-l3", title: "Répondre à un contre-argument", kind: "mission", minutes: 8, objectiveIds: ["b1-acknowledge-counterpoint", "b1-argue-opinion"], description: "Reconnaître un autre point de vue avant de défendre le sien." },
-      { id: "u9-l4", title: "Écrire une position", kind: "writing", minutes: 9, objectiveIds: ["b1-write-position", "b1-grammar-nuance"], description: "Construire un texte bref avec position, raison et ouverture." },
+      { id: "u9-l4", title: "Écrire une position", kind: "writing", minutes: 9, taskId: "write-b1-3", objectiveIds: ["b1-write-position", "b1-grammar-nuance"], description: "Construire un texte bref avec position, raison et ouverture." },
     ],
   },
   {
@@ -237,7 +238,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     lessons: [
       { id: "u10-l1", title: "Le plan change", kind: "mission", minutes: 8, objectiveIds: ["b1-solve-problem"], description: "Décrire le problème, proposer une solution et vérifier l'accord." },
       { id: "u10-l2", title: "Négocier une alternative", kind: "speak", minutes: 8, objectiveIds: ["b1-negotiate"], description: "Faire une contre-proposition sans fermer l'échange." },
-      { id: "u10-l3", title: "Écouter les contraintes", kind: "listening", minutes: 7, objectiveIds: ["b1-listen-constraints"], description: "Identifier une contrainte, une priorité et une option dans une conversation." },
+      { id: "u10-l3", title: "Écouter les contraintes", kind: "listening", minutes: 7, taskId: "listen-b1-3", objectiveIds: ["b1-listen-constraints"], description: "Identifier une contrainte, une priorité et une option dans une conversation." },
       { id: "u10-l4", title: "Transmettre une solution", kind: "speak", minutes: 7, objectiveIds: ["b1-mediate-solution"], description: "Expliquer à un tiers ce qui s'est passé et quelle solution a été retenue." },
     ],
   },
