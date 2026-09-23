@@ -508,6 +508,7 @@ export function TeacherStudio() {
           ) : null}
 
           {tab === "roster" ? (
+            <>
             <div className="mt-8 overflow-x-auto">
               <table className="w-full min-w-[42rem] text-left text-sm">
                 <thead>
@@ -548,6 +549,14 @@ export function TeacherStudio() {
                 <p className="text-sm text-muted">Sélectionnez un apprenant pour ouvrir son fil de preuves.</p>
               </Surface>
             )}
+            {selectedLearnerId ? (
+              <LearnerDetail learnerUserId={selectedLearnerId} role="teacher" />
+            ) : (
+              <Surface className="mt-5 border-dashed">
+                <p className="text-sm text-muted">Sélectionnez un apprenant pour ouvrir son fil de preuves.</p>
+              </Surface>
+            )}
+            </>
           ) : null}
 
           {tab === "lecture" ? (
