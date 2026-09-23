@@ -1,3 +1,9 @@
+-- Persist server-observed session duration so analytics never has to trust
+-- a client-reported "60 minutes" value.
+alter table blossom_tandem_session
+  add column if not exists duration_seconds integer
+  check (duration_seconds is null or duration_seconds >= 0);
+
 -- Phase 3 integrity hardening: collapse any duplicate active tandem pairs
 -- before adding the uniqueness guarantee. We preserve the older session rows as
 -- cancelled so their prompt/audit history is not silently deleted.
