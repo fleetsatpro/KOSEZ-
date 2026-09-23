@@ -40,6 +40,7 @@ function PracticeLink({
   children,
 }: {
   resource: CurriculumResource;
+  lessonId: string;
   className?: string;
   children: ReactNode;
 }) {
@@ -173,7 +174,7 @@ function CurriculumUnit() {
             const done = lessonDone(lesson, log);
             return (
               <div key={lesson.id} className="rounded-2xl bg-surface p-5 shadow-[var(--shadow-border)]">
-                <PracticeLink resource={resource} className="group block">
+                <PracticeLink lessonId={lesson.id} resource={resource} className="group block">
                   <div className="flex items-start gap-4">
                     <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                       <Icon className="size-5" />
@@ -204,6 +205,7 @@ function CurriculumUnit() {
                       : "Ouvrez la pratique liée : son propre module crée la trace lorsqu'elle est réellement réalisée."}
                   </p>
                   <PracticeLink
+                    lessonId={lesson.id}
                     resource={resource}
                     className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-border bg-surface-2 px-4 text-xs font-semibold text-fg transition hover:border-primary/25 hover:text-primary"
                   >
