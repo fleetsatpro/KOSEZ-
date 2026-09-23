@@ -245,7 +245,7 @@ function OsezPage() {
           </ol>
           <Link
             to="/mission"
-            search={{ missionId: undefined }}
+            search={{ missionId: undefined, lessonId: undefined }}
             className="mt-5 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.14em] text-primary hover:underline"
           >
             Mission Terrain
@@ -289,7 +289,7 @@ function OsezPage() {
 
       <Link
         to="/osez/$id"
-        params={{ id: "live" }}
+        params={{ id: "live" }} search={{ lessonId: undefined }}
         className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-primary/25 bg-primary/8 p-5 transition-transform hover:-translate-y-0.5"
       >
         <div className="flex items-start gap-3">
@@ -313,7 +313,7 @@ function OsezPage() {
             <Link
               key={scene.id}
               to="/osez/$id"
-              params={{ id: scene.place.archetype }}
+              params={{ id: scene.place.archetype }} search={{ lessonId: undefined }}
               className="group overflow-hidden rounded-2xl border border-border/50 bg-surface shadow-[var(--shadow-border)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5"
             >
               <div className="relative aspect-[16/10] overflow-hidden">
