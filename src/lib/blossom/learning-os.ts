@@ -43,6 +43,7 @@ export type CanDoObjective = {
 
 export const CAN_DO_OBJECTIVES: CanDoObjective[] = [
   { id: "a2-interact-ask", level: "A2", domain: "interaction", title: "Demander une recommandation", evidence: "Une interaction réelle ou simulée où la demande ouvre effectivement l'échange." },
+  { id: "a2-interact-information", level: "A2", domain: "interaction", title: "Demander une information concrète", evidence: "Formuler une question claire pour obtenir une information immédiatement exploitable." },
   { id: "a2-interact-repair", level: "A2", domain: "interaction", title: "Demander de répéter", evidence: "Utiliser une formule de réparation sans quitter la langue cible." },
   { id: "a2-speak-routine", level: "A2", domain: "speaking", title: "Décrire une routine", evidence: "Produire plusieurs phrases reliées sur une journée ou une activité familière." },
   { id: "a2-speak-preference", level: "A2", domain: "speaking", title: "Exprimer une préférence", evidence: "Donner un choix simple avec une raison compréhensible." },
@@ -131,11 +132,11 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     blurb: "Se présenter, demander une information, confirmer et faire une relance courte.",
     level: "A2",
     domainIds: ["speaking", "interaction", "listening", "grammar"],
-    objectives: ["a2-speak-routine", "a2-listen-key", "a2-grammar-question"],
+    objectives: ["a2-speak-routine", "a2-listen-key", "a2-interact-information"],
     lessons: [
       { id: "u3-l1", title: "Une réunion de deux minutes", kind: "speak", minutes: 7, objectiveIds: ["a2-speak-routine"], description: "Entrer dans une conversation professionnelle sans script long." },
-      { id: "u3-l2", title: "Attraper le détail", kind: "review", minutes: 4, objectiveIds: ["a2-listen-key"], description: "Revoir heures, lieux, nombres et options dans des phrases courtes." },
-      { id: "u3-l3", title: "Is it far from here?", kind: "mission", minutes: 4, objectiveIds: ["a2-grammar-question"], description: "Produire une question simple qui demande une information exploitable." },
+      { id: "u3-l2", title: "Attraper le détail", kind: "listening", minutes: 4, taskId: "listen-2", objectiveIds: ["a2-listen-key"], description: "Revoir heures, lieux, nombres et options dans des phrases courtes." },
+      { id: "u3-l3", title: "Is it far from here?", kind: "mission", minutes: 4, objectiveIds: ["a2-interact-information"], description: "Produire une question simple qui demande une information exploitable." },
       { id: "u3-l4", title: "Attraper le détail", kind: "listening", minutes: 5, taskId: "listen-1", objectiveIds: ["a2-listen-key"], description: "Écouter une information concrète puis la restituer sans perdre le détail." },
     ],
   },
@@ -163,7 +164,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     domainIds: ["listening", "interaction", "speaking", "mediation"],
     objectives: ["a2-listen-key", "a2-interact-repair", "a2-mediate-simple"],
     lessons: [
-      { id: "u5-l1", title: "Check-in", kind: "speak", minutes: 6, objectiveIds: ["a2-listen-key"], description: "Comprendre destination, bagage et porte d'embarquement." },
+      { id: "u5-l1", title: "Check-in", kind: "speak", minutes: 6, objectiveIds: ["a2-listen-key", "a2-interact-ask"], description: "Comprendre destination, bagage et porte d'embarquement puis poser une question utile." },
       { id: "u5-l2", title: "Réparer une information", kind: "mission", minutes: 4, objectiveIds: ["a2-interact-repair"], description: "Demander une répétition et reformuler ce que vous avez compris." },
       { id: "u5-l3", title: "Expliquer l'itinéraire", kind: "speak", minutes: 7, objectiveIds: ["a2-mediate-simple"], description: "Transmettre l'essentiel à quelqu'un qui n'a pas vu le message initial." },
     ],
@@ -250,7 +251,7 @@ export function curriculumIntegrityIssues(): string[] {
   const lessonIds = new Set<string>();
   const compatible: Record<LessonKind, Set<LearningDomainId>> = {
     mission: new Set(["speaking", "interaction", "mediation"]),
-    speak: new Set(["speaking", "interaction"]),
+    speak: new Set(["speaking", "interaction", "mediation"]),
     pronlab: new Set(["pronunciation", "vocabulary"]),
     library: new Set(["reading", "vocabulary"]),
     review: new Set(["vocabulary", "pronunciation", "grammar"]),
