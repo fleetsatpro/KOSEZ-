@@ -4,8 +4,11 @@ import {
   appendSpeechTurn,
   captureOnlyEvidence,
   emptySpeechSummary,
+  skippedEvidence,
+  speechAttemptNote,
   weaveSpeechIntoDebrief,
 } from "./speech-stt.ts";
+import { summarisePronlabItem, type PronlabAttempt } from "./engine.ts";
 
 describe("speech-stt honesty", () => {
   it("starts empty", () => {
@@ -52,5 +55,58 @@ describe("speech-stt honesty", () => {
       s,
     );
     assert.ok(d.speechNote.includes("rien n'est inventé") || d.speechNote.includes("capturée"));
+  });
+
+  it("skipped evidence has zero seconds", () => {
+    const e = skippedEvidence();
+    assert.equal(e.assessment, "skipped");
+    assert.equal(e.seconds, 0);
+  });
+
+  it("speechAttemptNote never invents a score", () => {
+    const note = speechAttemptNote(captureOnlyEvidence(4));
+    assert.ok(!note.match(/\d{2,3}\s*%/));
+    assert.ok(note.includes("capturée") || note.includes("inventé"));
+  });
+});
+
+describe("pronlab practice mastery without scores", () => {
+  it("does not master on a single short capture", () => {
+    const attempts: PronlabAttempt[] = [
+      {
+        id: "1",
+        itemId: "x",
+        score: 0,
+        tip: "",
+        createdAt: new Date().toISOString(),
+        seconds: 1,
+        metadata: { assessment: "capture-only" },
+      },
+    ];
+    assert.equal(summarisePronlabItem("x", attempts).mastered, false);
+  });
+
+  it("masters after two solid practice captures", () => {
+    const attempts: PronlabAttempt[] = [
+      {
+        id: "1",
+        itemId: "x",
+        score: 0,
+        tip: "",
+        createdAt: new Date().toISOString(),
+        seconds: 3,
+        metadata: { assessment: "capture-only" },
+      },
+      {
+        id: "2",
+        itemId: "x",
+        score: 0,
+        tip: "",
+        createdAt: new Date().toISOString(),
+        seconds: 4,
+        metadata: { assessment: "capture-only" },
+      },
+    ];
+    assert.equal(summarisePronlabItem("x", attempts).mastered, true);
   });
 });
