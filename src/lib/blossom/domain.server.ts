@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
+import type { JsonObject } from "./backend.server";
 
 import { getPublishedContent } from "./content.server";
 
@@ -19,6 +20,17 @@ export type BlossomAccessContext = {
   isChild: boolean;
   isAdmin: boolean;
 };
+
+async function assertAdmin(userId: string) {
+  const sql = await getSql();
+  const rows = await sql.query(
+    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    [userId],
+  );
+  if (!rows[0]) {
+    throw new BlossomForbiddenError("Admin access is not enabled for this account.");
+  }
+}
 
 export async function getBlossomAccessContext(userId: string): Promise<BlossomAccessContext> {
   const sql = await getSql();
@@ -650,7 +662,7 @@ export async function saveVocabulary(
   input: {
     word: string;
     gloss: string;
-    metadata?: Record<string, unknown>;
+    metadata?: JsonObject;
     mutationCreatedAt?: string;
   },
 ) {
@@ -1083,7 +1095,7 @@ export type BlossomNotification = {
   title: string;
   body: string;
   href: string | null;
-  metadata: Record<string, unknown>;
+  metadata: JsonObject;
   readAt: string | null;
   createdAt: string;
 };
@@ -1362,8 +1374,9 @@ function mapLearnerDetail(
       score: Number(row.score ?? 0),
       seconds: Number(row.seconds ?? 0),
       assessment:
-        row.metadata && typeof row.metadata === "object" && row.metadata.assessment
-          ? String(row.metadata.assessment)
+        row.metadata && typeof row.metadata === "object"
+          ? String((row.metadata as Record<string, unknown>).assessment ?? "")
+          : ""
           : "unknown",
       createdAt: new Date(String(row.created_at)).toISOString(),
     })),
