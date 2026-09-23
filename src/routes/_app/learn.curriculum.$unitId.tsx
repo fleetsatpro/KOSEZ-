@@ -70,7 +70,7 @@ function PracticeLink({
       );
     case "review":
       return (
-        <Link to="/learn/review" search={{ focus: undefined }} className={className}>
+        <Link to="/learn/review" className={className}>
           {children}
         </Link>
       );
