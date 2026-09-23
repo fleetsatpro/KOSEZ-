@@ -91,7 +91,6 @@ function GrammarLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
     }
     setIndex((v) => v + 1);
     setChoice(null);
-    setListenCount(0);
   }
   if (finished) {
     const accuracy = Math.round((correct / sessionTotal) * 100);
@@ -154,6 +153,7 @@ function ListeningLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
     }
     setIndex((v) => v + 1);
     setChoice(null);
+    setListenCount(0);
   }
   if (finished) {
     const accuracy = Math.round((correct / sessionTotal) * 100);
@@ -212,7 +212,30 @@ function WritingLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
   const initialPromptIndex = Math.max(0, prompts.findIndex((item) => item.id === taskId));
   const [promptIndex, setPromptIndex] = useState(initialPromptIndex === -1 ? 0 : initialPromptIndex), [draft, setDraft] = useState(""), [checks, setChecks] = useState<string[]>([]), [submitted, setSubmitted] = useState(false);
   const prompt = useMemo(() => prompts[promptIndex % prompts.length]!, [promptIndex, prompts]);
-  function submit() { if (!draft.trim()) return; saveLearningSubmission({ taskId: prompt.id, kind: "writing", content: draft.trim(), checks, result: { checkCount: checks.length, checkTotal: prompt.checks.length } }); completeActivity("WRITING_COMPLETED", dailyLabSource("writing", prompt.id), `Écrit · ${prompt.id} · ${checks.length}/${prompt.checks.length} auto-vérifications`); setSubmitted(true); }
+  const wordCount = draft.trim().split(/\s+/).filter(Boolean).length;
+  const minimumWords = level === "A1" ? 8 : level === "A2" ? 15 : 30;
+  const readyToSubmit = draft.trim().length > 0 && wordCount >= minimumWords;
+  function submit() {
+    if (!readyToSubmit) return;
+    saveLearningSubmission({
+      taskId: prompt.id,
+      kind: "writing",
+      content: draft.trim(),
+      checks,
+      result: {
+        checkCount: checks.length,
+        checkTotal: prompt.checks.length,
+        wordCount,
+        minimumWords,
+      },
+    });
+    completeActivity(
+      "WRITING_COMPLETED",
+      dailyLabSource("writing", prompt.id),
+      `Écrit · ${prompt.id} · ${wordCount} mots · ${checks.length}/${prompt.checks.length} auto-vérifications`,
+    );
+    setSubmitted(true);
+  }
   function next() {
     setPromptIndex((v) => (v + 1) % Math.max(1, prompts.length));
     setDraft("");
@@ -224,7 +247,7 @@ function WritingLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
     <p className="mt-3 text-sm leading-6 text-muted">{prompt.situation}</p><div className="mt-5 rounded-xl bg-surface-2/50 p-4"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-subtle">Consigne</p><p className="mt-2 text-sm leading-6">{prompt.task}</p></div>
     <textarea value={draft} onChange={(event) => setDraft(event.target.value)} disabled={submitted} placeholder="Écrivez votre propre version…" className="mt-5 min-h-36 w-full rounded-2xl border border-border bg-bg p-4 text-sm leading-7 outline-none transition focus:border-primary/30 focus:ring-2 focus:ring-primary/10" />
     <div className="mt-4 space-y-2">{prompt.checks.map((check) => { const checked = checks.includes(check.id); return <button key={check.id} type="button" disabled={submitted} onClick={() => setChecks((value) => checked ? value.filter((id) => id !== check.id) : [...value, check.id])} className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition ${checked ? "border-primary/25 bg-primary/8" : "border-border bg-surface-2/30 hover:bg-surface-2"}`}><span className={`flex size-5 items-center justify-center rounded-md border ${checked ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{checked ? <Check className="size-3.5" /> : null}</span>{check.label}</button>; })}</div>
-    {submitted ? <div className="mt-6 rounded-2xl border border-primary/15 bg-primary/5 p-5"><Eyebrow>Modèle · à observer, pas à copier</Eyebrow><p className="mt-3 font-display text-2xl leading-snug">{prompt.model}</p><p className="mt-2 text-sm leading-6 text-muted">K&apos;Osez ne prétend pas corriger automatiquement votre texte ici : vous avez créé une vraie trace de production.</p><Button variant="secondary" className="mt-5" onClick={next}>Un autre sujet <span aria-hidden>→</span></Button></div> : <Button className="mt-6" disabled={!draft.trim()} onClick={submit}>Enregistrer ma trace <Sparkles className="size-4" /></Button>}
+    {submitted ? <div className="mt-6 rounded-2xl border border-primary/15 bg-primary/5 p-5"><Eyebrow>Modèle · à observer, pas à copier</Eyebrow><p className="mt-3 font-display text-2xl leading-snug">{prompt.model}</p><p className="mt-2 text-sm leading-6 text-muted">K&apos;Osez ne prétend pas corriger automatiquement votre texte ici : vous avez créé une vraie trace de production.</p><Button variant="secondary" className="mt-5" onClick={next}>Un autre sujet <span aria-hidden>→</span></Button></div> : <div className="mt-6"><div className="flex items-center justify-between gap-3 text-xs text-subtle"><span>{wordCount} / {minimumWords} mots minimum</span><span>{checks.length} / {prompt.checks.length} auto-vérifications</span></div><Button className="mt-3" disabled={!readyToSubmit} onClick={submit}>{readyToSubmit ? "Enregistrer ma trace" : "Écrivez encore un peu"} <Sparkles className="size-4" /></Button></div>}
   </Surface>;
 }
 
