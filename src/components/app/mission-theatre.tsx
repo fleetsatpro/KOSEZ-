@@ -792,7 +792,7 @@ function PrepareStage({
                 <RecordControl
                   inverted
                   cta="Maintenir pour parler"
-                  onFinished={(seconds) => {
+                  onFinished={({ seconds }) => {
                     onWarmup(seconds ?? 0);
                     setShowWarmup(false);
                   }}
@@ -930,7 +930,7 @@ function ExecuteStage({
                   <RecordControl
                     inverted
                     cta="Maintenir pour parler"
-                    onFinished={(seconds) => onFinished(seconds ?? 0)}
+                    onFinished={({ seconds }) => onFinished(seconds ?? 0)}
                   />
                 </div>
               ) : (
