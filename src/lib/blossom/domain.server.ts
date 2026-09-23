@@ -549,7 +549,15 @@ export async function requestCatalogueBooking(
      returning id, catalogue_item_id, status, payment_status, created_at, updated_at`,
     [randomUUID(), userId, catalogueItemId],
   );
-  if (rows[0]) return rows[0];
+  if (rows[0]) {
+    await writeAuditEvent(userId, {
+      action: "commerce.booking_requested",
+      resourceType: "booking_request",
+      resourceId: String(rows[0].id),
+      metadata: { status: String(rows[0].status) },
+    });
+    return rows[0];
+  }
 
   const current = await sql.query(
     `select id, catalogue_item_id, status, payment_status, created_at, updated_at
@@ -961,6 +969,14 @@ export async function saveHomework(
     throw new BlossomForbiddenError("La fin d’un devoir est réservée à l’apprenant.");
   }
   const sql = await getSql();
+  let previousStatus: string | null = null;
+  if (input.id) {
+    const previous = await sql.query(
+      "select status from blossom_homework where id = $1::uuid and author_user_id = $2",
+      [input.id, actorUserId],
+    );
+    previousStatus = previous[0]?.status ? String(previous[0].status) : null;
+  }
   const rows = input.id
     ? await sql.query(
         "update blossom_homework set title = $2, body = $3, status = $4, updated_at = current_timestamp where id = $1::uuid and author_user_id = $5 returning id, author_user_id, learner_user_id, title, body, status, created_at, updated_at",
@@ -972,7 +988,7 @@ export async function saveHomework(
       );
 
   if (!rows[0]) throw new Error("homework-write-failed");
-  if (input.status === "sent") {
+  if (input.status === "sent" && previousStatus !== "sent") {
     await createNotification(input.learnerUserId, {
       kind: "homework",
       title: "Un nouveau devoir vous attend",
