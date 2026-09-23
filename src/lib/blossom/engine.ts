@@ -21,6 +21,7 @@ export type ActivityType =
   | "LISTENING_COMPLETED"
   | "WRITING_COMPLETED"
   | "DIAGNOSTIC_COMPLETED"
+  | "LIBRARY_COMPLETED"
   | "LESSON_COMPLETED";
 
 export type ActivityEvent = {
@@ -47,6 +48,7 @@ export const POINTS: Record<ActivityType, number> = {
   LISTENING_COMPLETED: 4,
   WRITING_COMPLETED: 4,
   DIAGNOSTIC_COMPLETED: 0,
+  LIBRARY_COMPLETED: 3,
   // Curriculum acknowledgement is intentionally lightweight: it records
   // practice without pretending that self-report is performance assessment.
   LESSON_COMPLETED: 1,
