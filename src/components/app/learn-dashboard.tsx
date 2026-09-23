@@ -96,7 +96,17 @@ function NextActionLink({
       );
     case "mission":
       return (
-        <Link to="/mission" search={{ missionId: undefined }} className={className}>
+        <Link to="/mission" search={{ missionId: action.targetId }} className={className}>
+          {children}
+        </Link>
+      );
+    case "speak":
+      return (
+        <Link
+          to={action.targetId ? "/osez/$id" : "/osez"}
+          params={action.targetId ? { id: action.targetId } : undefined}
+          className={className}
+        >
           {children}
         </Link>
       );
