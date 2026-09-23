@@ -550,7 +550,7 @@ export async function endSpeakSession(
          c.ended_at
        from closed c
        where c.status = 'completed'
-       on conflict (user_id, idempotency_key) do nothing
+       on conflict (user_id, idempotency_key) where idempotency_key is not null do nothing
        returning id
      )
      select
@@ -805,7 +805,7 @@ export async function recordPronlabAttempt(
   }
 
   const rows = await sql.query(
-    "insert into blossom_pronlab_attempt (id, user_id, item_id, idempotency_key, score, seconds, tip, metadata) values ($1::uuid, $2, $3, $4::uuid, $5, $6, $7, $8::jsonb) on conflict (user_id, idempotency_key) do update set idempotency_key = excluded.idempotency_key returning id, item_id, score, seconds, tip, metadata, created_at",
+    "insert into blossom_pronlab_attempt (id, user_id, item_id, idempotency_key, score, seconds, tip, metadata) values ($1::uuid, $2, $3, $4::uuid, $5, $6, $7, $8::jsonb) on conflict (user_id, idempotency_key) where idempotency_key is not null do update set idempotency_key = excluded.idempotency_key returning id, item_id, score, seconds, tip, metadata, created_at",
     [
       recordId,
       userId,
@@ -1796,7 +1796,7 @@ export async function endTandemSession(
          c.ended_at
        from closed c
        where c.status = 'completed'
-       on conflict (user_id, idempotency_key) do nothing
+       on conflict (user_id, idempotency_key) where idempotency_key is not null do nothing
        returning id
      )
      select
