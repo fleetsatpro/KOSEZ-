@@ -7,7 +7,6 @@ import {
 } from "@/lib/blossom/domain.api";
 import type { LearnerDetail } from "@/lib/blossom/domain.server";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Eyebrow, Surface } from "@/components/app/primitives";
 
 function relative(value: string) {
