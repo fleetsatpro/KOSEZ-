@@ -408,6 +408,15 @@ export type ObjectiveEvidence = {
 };
 
 function objectiveEventMatch(objective: CanDoObjective, event: ActivityEvent): "direct" | "support" | null {
+  const curriculumLessonId = event.metadata?.curriculumLessonId;
+  if (typeof curriculumLessonId === "string" && curriculumLessonId.trim()) {
+    const lesson = CURRICULUM_UNITS
+      .flatMap((unit) => unit.lessons)
+      .find((candidate) => candidate.id === curriculumLessonId);
+    if (!lesson) return null;
+    return lesson.objectiveIds.includes(objective.id) ? "direct" : null;
+  }
+
   const map: Record<string, { direct: ActivityType[]; support: ActivityType[] }> = {
     "a1-interact-greet": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED", "TANDEM_COMPLETED"], support: ["WRITING_COMPLETED"] },
     "a1-speak-intro": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED"], support: ["WRITING_COMPLETED", "TANDEM_COMPLETED"] },
