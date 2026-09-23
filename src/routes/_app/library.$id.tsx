@@ -39,6 +39,7 @@ function LibraryReader({ doc }: { doc: (typeof LIBRARY)[number] }) {
   const vocab = useBlossom((s) => s.vocabulary);
   const activityLog = useBlossom((s) => s.activityLog);
   const completeActivity = useBlossom((s) => s.completeActivity);
+  const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const [picked, setPicked] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [completed, setCompleted] = useState(false);
@@ -88,7 +89,23 @@ function LibraryReader({ doc }: { doc: (typeof LIBRARY)[number] }) {
       "library:" + doc.id,
       "Lecture comprise · " + score + "/" + comprehension.length,
     );
-    if (result.ok || result.reason === "already") setCompleted(true);
+    if (result.ok || result.reason === "already") {
+      saveLearningSubmission({
+        taskId: "library:" + doc.id,
+        kind: "reading",
+        content: String(score),
+        checks: comprehension.map((_, index) =>
+          answers[index] === comprehension[index]?.answer ? "correct" : "incorrect",
+        ),
+        result: {
+          correct: score >= Math.max(2, Math.ceil(comprehension.length * 0.66)),
+          checkCount: score,
+          checkTotal: comprehension.length,
+          libraryId: doc.id,
+        },
+      });
+      setCompleted(true);
+    }
   }
 
   return (
