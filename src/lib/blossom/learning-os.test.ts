@@ -30,12 +30,14 @@ test("skill profile distinguishes evidence coverage from unmeasured skills", () 
   assert.equal(profile.find((x) => x.domain.id === "writing")!.evidenceCount, 0);
 });
 
-test("curriculum has a connected A2 → B1 spine", () => {
-  assert.ok(CURRICULUM_UNITS.length >= 10);
-  assert.ok(CURRICULUM_UNITS.slice(0, 6).every((unit) => unit.level === "A2"));
-  assert.ok(CURRICULUM_UNITS.slice(6).every((unit) => unit.level === "B1"));
-  assert.ok(CURRICULUM_UNITS.every((unit) => unit.lessons.length >= 3));
-  assert.ok(CURRICULUM_UNITS.flatMap((unit) => unit.objectives).length >= 12);
+test("curriculum has a connected A1 → B1 spine", () => {
+  assert.equal(CURRICULUM_UNITS.length, 13);
+  assert.equal(CURRICULUM_UNITS.slice(0, 3).every((unit) => unit.level === "A1"), true);
+  assert.equal(CURRICULUM_UNITS.slice(3, 9).every((unit) => unit.level === "A2"), true);
+  assert.equal(CURRICULUM_UNITS.slice(9).every((unit) => unit.level === "B1"), true);
+  assert.ok(CURRICULUM_UNITS.every((unit) => unit.lessons.length >= 4));
+  assert.ok(CURRICULUM_UNITS.flatMap((unit) => unit.objectives).length >= 20);
+  assert.equal(new Set(CURRICULUM_UNITS.map((unit) => unit.number)).size, 13);
   assert.ok(curriculumUnitProgress(CURRICULUM_UNITS[0]!, [], [], []) >= 0);
   assert.ok(LEARNER.goal.includes("Parler"));
 });
@@ -50,8 +52,8 @@ test("curriculum includes direct practice labs", () => {
 
 
 test("curriculum completion requires evidence from the linked resource", () => {
-  const unit = CURRICULUM_UNITS[0]!;
-  const missionLesson = unit.lessons[0]!;
+  const unit = CURRICULUM_UNITS.find((item) => item.id === "a2-real-life-basics")!;
+  const missionLesson = unit.lessons.find((lesson) => lesson.id === "u1-l1")!;
   const log = [
     {
       id: "mission-1",
