@@ -53,6 +53,9 @@ export async function assertCurriculumEvidence(
     library: async () => false,
   };
 
+  if ((lesson.kind === "grammar" || lesson.kind === "listening" || lesson.kind === "writing") && lesson.taskId && supportId !== lesson.taskId) {
+    throw new Error("curriculum-evidence-wrong-task");
+  }
   if (!(await checks[lesson.kind]())) throw new Error("curriculum-evidence-without-support");
 }
 
