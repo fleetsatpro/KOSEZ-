@@ -246,6 +246,7 @@ function OsezPage() {
           </ol>
           <Link
             to="/mission"
+            search={{}}
             className="mt-5 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.14em] text-primary hover:underline"
           >
             Mission Terrain
