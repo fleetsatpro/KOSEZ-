@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { ArrowRight, BookOpenCheck, BrainCircuit, CircleCheck, Clock3, Sprout } from "lucide-react";
 import { Eyebrow, Page } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,14 @@ export const Route = createFileRoute("/_app/learn/curriculum")({
 });
 
 function Curriculum() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
+  });
+
+  if (pathname !== "/learn/curriculum") {
+    return <Outlet />;
+  }
+
   const log = useBlossom((s) => s.activityLog);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const vocabulary = useBlossom((s) => s.vocabulary);
