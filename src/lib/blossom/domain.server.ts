@@ -1197,8 +1197,17 @@ export async function updateAdminBooking(
   if (nextStatus === "requested" && currentStatus !== "requested") {
     throw new BlossomForbiddenError("Une demande déjà traitée ne revient pas en attente.");
   }
+  if (currentStatus === "cancelled" && nextStatus !== "cancelled") {
+    throw new BlossomForbiddenError("Une demande annulée reste clôturée.");
+  }
   if (nextPayment === "paid" && currentPayment === "refunded") {
     throw new BlossomForbiddenError("Un paiement remboursé ne peut pas être marqué payé ici.");
+  }
+  if (currentPayment === "refunded" && nextPayment !== "refunded") {
+    throw new BlossomForbiddenError("Un paiement remboursé reste clôturé.");
+  }
+  if (currentPayment === "paid" && nextPayment === "unpaid") {
+    throw new BlossomForbiddenError("Un paiement déjà marqué payé ne revient pas à impayé ici.");
   }
   if (nextPayment === "refunded" && currentPayment !== "paid") {
     throw new BlossomForbiddenError("Un remboursement exige un paiement marqué payé.");
