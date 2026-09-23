@@ -22,6 +22,13 @@ export const Route = createFileRoute("/_app/tandem/$id")({
 
 const HALF_SECONDS = 30 * 60;
 
+const TANDEM_ARC = [
+  { label: "Ouvrir", hint: "Commencez simple : répondre, relancer, installer le rythme." },
+  { label: "Approfondir", hint: "Ajoutez un exemple concret et laissez l'autre développer." },
+  { label: "Nuancer", hint: "Comparez, précisez ou dites ce qui vous fait changer d'avis." },
+  { label: "Conclure", hint: "Résumez une idée et laissez une dernière question." },
+] as const;
+
 type Candidate = NonNullable<
   Awaited<ReturnType<typeof getTandemSessionOnServer>>
 >;
@@ -104,6 +111,11 @@ function TandemSession() {
   );
 
   const prompt = prompts[promptIndex % prompts.length]!;
+  const arcIndex = Math.min(
+    TANDEM_ARC.length - 1,
+    Math.floor(((promptIndex % prompts.length) / Math.max(1, prompts.length)) * TANDEM_ARC.length),
+  );
+  const arcStage = TANDEM_ARC[arcIndex]!;
 
   useEffect(() => {
     if (!sessionId || phase !== "live" || !partner) return;
@@ -300,7 +312,18 @@ function TandemSession() {
         <p className="mt-6 max-w-2xl font-display text-3xl leading-snug tracking-tight sm:text-4xl">
           {prompt}
         </p>
-        <p className="mt-8 max-w-md text-sm leading-6 text-primary-foreground/55">
+        <div className="mt-8 w-full max-w-xl rounded-2xl border border-primary-foreground/15 bg-primary-foreground/5 p-4 text-left">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/50">
+              Arc · {arcIndex + 1}/4
+            </p>
+            <p className="text-xs font-semibold">{arcStage.label}</p>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-primary-foreground/65">
+            {arcStage.hint}
+          </p>
+        </div>
+        <p className="mt-4 max-w-md text-sm leading-6 text-primary-foreground/55">
           Parlez réellement avec votre partenaire. Les amorces sont là pour
           relancer, pas pour devenir un script.
         </p>
