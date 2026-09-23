@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { buildReviewQueue, type ReviewItem } from "@/lib/blossom/learning-os";
 import { buildReviewPlan, type ScheduledReviewItem } from "@/lib/blossom/review-scheduler";
 import { useBlossom } from "@/lib/blossom/store";
+import { takeCurriculumLessonContext } from "@/lib/blossom/curriculum-context";
 
 export const Route = createFileRoute("/_app/learn/review")({
   component: Review,
@@ -21,6 +22,7 @@ function kindIcon(kind: ReviewItem["kind"]) {
 }
 
 function Review() {
+  const [curriculumLessonId] = useState<string | null>(() => takeCurriculumLessonContext());
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const vocabulary = useBlossom((s) => s.vocabulary);
   const submissions = useBlossom((s) => s.learningSubmissions);
@@ -77,7 +79,16 @@ function Review() {
 
   function finish() {
     const day = new Date().toISOString().slice(0, 10);
-    completeActivity("REVIEW_COMPLETED", `review-${day}`, `Révision · ${reviewed} passages · ${plan.due.length} dues au départ`);
+    const reviewSourceId = `review-${day}`;
+    completeActivity("REVIEW_COMPLETED", reviewSourceId, `Révision · ${reviewed} passages · ${plan.due.length} dues au départ`);
+    if (curriculumLessonId) {
+      completeActivity(
+        "CURRICULUM_EVIDENCE_RECORDED",
+        curriculumLessonId,
+        `Preuve curriculum · révision · ${reviewSourceId}`,
+        { supportId: reviewSourceId },
+      );
+    }
     setDone(true);
   }
 
