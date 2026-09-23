@@ -629,12 +629,22 @@ export const useBlossom = create<AppState>()(
         const item = findPronlabItem(itemId);
         if (!item) return null;
         const before = summarisePronlabItem(itemId, get().pronlabAttempts);
-        const score = 0;
+        // Client-recorded evidence may preserve a server-produced transcript, but
+        // it must never promote itself into a phonetic score. Trusted scores are
+        // accepted only by the server-side scoring path.
+        const assessment =
+          evidenceMetadata?.assessment === "transcript"
+            ? "transcript"
+            : "capture-only";
         const metadata = {
           ...(evidenceMetadata ?? {}),
-          assessment: "capture-only",
-          provider: "speech-evidence",
+          assessment,
+          provider:
+            typeof evidenceMetadata?.provider === "string"
+              ? evidenceMetadata.provider
+              : "speech-evidence",
         };
+        const score = 0;
         const mutation = createMutation({
           operation: "pronlab.attempt",
           entityId: itemId,
