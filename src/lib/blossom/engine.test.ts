@@ -52,9 +52,9 @@ test("inactivity does not invent points", () => {
 
 test("pronlab mastery: three consecutive >= 75", () => {
   const attempts = [
-    { id: "1", itemId: "x", score: 76, tip: "", createdAt: "", seconds: 2 },
-    { id: "2", itemId: "x", score: 80, tip: "", createdAt: "", seconds: 2 },
-    { id: "3", itemId: "x", score: 84, tip: "", createdAt: "", seconds: 2 },
+    { id: "1", itemId: "x", score: 76, tip: "", createdAt: "", seconds: 2, metadata: { assessment: "phonetic-provider" } },
+    { id: "2", itemId: "x", score: 80, tip: "", createdAt: "", seconds: 2, metadata: { assessment: "phonetic-provider" } },
+    { id: "3", itemId: "x", score: 84, tip: "", createdAt: "", seconds: 2, metadata: { assessment: "phonetic-provider" } },
   ];
   const sum = summarisePronlabItem("x", attempts);
   assert.equal(sum.mastered, true);
@@ -64,7 +64,7 @@ test("pronlab mastery: three consecutive >= 75", () => {
 
 test("pronlab mastery: best >= 90", () => {
   const attempts = [
-    { id: "1", itemId: "x", score: 91, tip: "", createdAt: "", seconds: 2 },
+    { id: "1", itemId: "x", score: 91, tip: "", createdAt: "", seconds: 2, metadata: { assessment: "phonetic-provider" } },
   ];
   assert.equal(summarisePronlabItem("x", attempts).mastered, true);
 });
