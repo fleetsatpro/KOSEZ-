@@ -50,6 +50,23 @@ export function productionEnvProblems(env = process.env) {
     }
   }
 
+  const authSecret = envValue(env, "BETTER_AUTH_SECRET");
+  if (authSecret && authSecret.length < 32) {
+    problems.push("BETTER_AUTH_SECRET must be at least 32 characters.");
+  }
+
+  const grokIssuer = envValue(env, "GROK_AUTH_ISSUER");
+  if (grokIssuer) {
+    try {
+      const parsed = new URL(grokIssuer);
+      if (parsed.protocol !== "https:") {
+        problems.push("GROK_AUTH_ISSUER must use https in Vercel production.");
+      }
+    } catch {
+      problems.push("GROK_AUTH_ISSUER must be an absolute URL in Vercel production.");
+    }
+  }
+
   return problems;
 }
 
