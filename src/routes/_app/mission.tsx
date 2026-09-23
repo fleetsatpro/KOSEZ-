@@ -7,11 +7,15 @@ export const Route = createFileRoute("/_app/mission")({
       typeof search.missionId === "string" && search.missionId.trim()
         ? search.missionId.trim()
         : undefined,
+    lessonId:
+      typeof search.lessonId === "string" && search.lessonId.trim()
+        ? search.lessonId.trim()
+        : undefined,
   }),
   component: MissionRoute,
 });
 
 function MissionRoute() {
-  const { missionId } = Route.useSearch();
-  return <MissionTheatreExperience missionId={missionId} />;
+  const { missionId, lessonId } = Route.useSearch();
+  return <MissionTheatreExperience missionId={missionId} curriculumLessonId={lessonId} />;
 }
