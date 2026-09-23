@@ -162,7 +162,7 @@ if (isVercelProduction) {
   }
 
   try {
-    const parsed = new URL(explicitBaseURL);
+    const parsed = new URL(explicitBaseURL ?? "");
     if (parsed.protocol !== "https:") {
       throw new Error("must use https");
     }
