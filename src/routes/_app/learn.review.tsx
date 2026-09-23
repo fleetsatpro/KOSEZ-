@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Check, LibraryBig, Mic2, RotateCcw, Target } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Headphones, LibraryBig, Mic2, PenLine, RotateCcw, Target, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +23,21 @@ function kindIcon(kind: ReviewItem["kind"]) {
     case "pronunciation": return Mic2;
     case "vocabulary": return LibraryBig;
     case "mission": return Target;
+    case "grammar": return Wrench;
+    case "listening": return Headphones;
+    case "writing": return PenLine;
   }
+}
+
+function focusKind(focus: string | undefined): ReviewItem["kind"] | null {
+  if (!focus) return null;
+  const value = focus.toLowerCase();
+  if (value.includes("listening")) return "listening";
+  if (value.includes("vocab")) return "vocabulary";
+  if (value.includes("pron")) return "pronunciation";
+  if (value.includes("grammar")) return "grammar";
+  if (value.includes("write")) return "writing";
+  return null;
 }
 
 function Review() {
@@ -38,15 +52,28 @@ function Review() {
     [submissions, attempts, vocabulary],
   );
   const fallback = useMemo(() => buildReviewQueue(attempts, vocabulary), [attempts, vocabulary]);
+  const requestedKind = focusKind(focus);
+  const focusedDue = useMemo(
+    () => requestedKind
+      ? plan.due.filter((item) => item.kind === requestedKind)
+      : plan.due,
+    [plan.due, requestedKind],
+  );
   const initial = useMemo(
-    () => (plan.due.length ? plan.due : fallback.map((item) => ({
-      ...item,
-      dueAt: new Date().toISOString(),
-      intervalDays: 1,
-      sourceKey: item.id,
-      state: "due" as const,
-    }))),
-    [plan.due, fallback],
+    () => (
+      focusedDue.length
+        ? focusedDue
+        : !requestedKind && plan.due.length
+          ? plan.due
+          : fallback.map((item) => ({
+              ...item,
+              dueAt: new Date().toISOString(),
+              intervalDays: 1,
+              sourceKey: item.id,
+              state: "due" as const,
+            }))
+    ),
+    [fallback, focusedDue, plan.due.length, requestedKind],
   );
   const [queue, setQueue] = useState<ScheduledReviewItem[]>(() => initial);
   const [sessionTotal] = useState(() => Math.max(initial.length, 1));
@@ -157,7 +184,12 @@ function Review() {
         <div className="mt-4 flex flex-wrap gap-2">
           <Badge variant="outline">{plan.due.length} dues maintenant</Badge>
           {plan.upcoming.length > 0 ? <Badge variant="outline">{plan.upcoming.length} à venir</Badge> : null}
-          {focus ? <Badge className="border-primary/20 bg-primary/10 text-primary">Focus · {focus.replaceAll("-", " ")}</Badge> : null}
+          {focus ? (
+            <Badge className="border-primary/20 bg-primary/10 text-primary">
+              Focus · {focus.replaceAll("-", " ")}
+              {requestedKind ? " · " + requestedKind : ""}
+            </Badge>
+          ) : null}
         </div>
       </header>
 
@@ -215,12 +247,37 @@ function Review() {
         ) : null}
 
         <div className="mt-6 flex flex-wrap gap-2">
-          <Link
-            to={current.link === "pronlab" ? "/pronlab" : current.link === "library" ? "/library" : "/mission"}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
-          >
-            Ouvrir la source <ArrowRight className="size-3.5" />
-          </Link>
+          {current.link === "pronlab" ? (
+            <Link
+              to="/pronlab"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
+            >
+              Ouvrir Pron'Lab <ArrowRight className="size-3.5" />
+            </Link>
+          ) : current.link === "library" ? (
+            <Link
+              to="/library"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
+            >
+              Ouvrir la bibliothèque <ArrowRight className="size-3.5" />
+            </Link>
+          ) : current.link === "mission" ? (
+            <Link
+              to="/mission"
+              search={{ missionId: undefined }}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
+            >
+              Ouvrir une mission <ArrowRight className="size-3.5" />
+            </Link>
+          ) : (
+            <Link
+              to="/learn/labs"
+              search={{ lab: current.kind === "grammar" || current.kind === "listening" || current.kind === "writing" ? current.kind : undefined, task: current.sourceKey.split(":").slice(1).join(":") || undefined }}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
+            >
+              Ouvrir le lab <ArrowRight className="size-3.5" />
+            </Link>
+          )}
         </div>
       </Surface>
     </Page>
