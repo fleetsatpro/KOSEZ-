@@ -39,6 +39,7 @@ import {
 } from "@/lib/blossom/mission";
 import { useBlossom } from "@/lib/blossom/store";
 import { track } from "@/lib/analytics";
+import { takeCurriculumLessonContext } from "@/lib/blossom/curriculum-context";
 import { MissionHistory, ProgressRail } from "./mission-theatre-panels";
 import {
   ExecuteStage,
@@ -459,6 +460,7 @@ export function MissionTheatreExperience() {
   const recordMissionSupport = useBlossom((state) => state.recordMissionSupport);
   const saveMissionReflection = useBlossom((state) => state.saveMissionReflection);
   const completeMissionSession = useBlossom((state) => state.completeMissionSession);
+  const [curriculumLessonId] = useState<string | null>(() => takeCurriculumLessonContext());
   const reopenMissionSession = useBlossom((state) => state.reopenMissionSession);
 
   const todayMission = missionForLevel(learner.level);
@@ -572,6 +574,15 @@ export function MissionTheatreExperience() {
     if (!result.ok) {
       toast("Le bilan doit être enregistré avant de terminer.");
       return;
+    }
+
+    if (curriculumLessonId) {
+      useBlossom.getState().completeActivity(
+        "CURRICULUM_EVIDENCE_RECORDED",
+        curriculumLessonId,
+        `Preuve curriculum · Mission · ${todayMission.id}`,
+        { supportId: todayMission.id },
+      );
     }
 
     const after = journeySnapshot(useBlossom.getState().activityLog);
