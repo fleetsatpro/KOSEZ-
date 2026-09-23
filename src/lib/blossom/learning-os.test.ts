@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { INITIAL_PRONLAB_ATTEMPTS, LEARNER } from "./data.fixtures.ts";
-import { buildReviewQueue, buildSkillProfile, curriculumUnitProgress, lessonDone, CURRICULUM_UNITS } from "./learning-os.ts";
+import {
+  buildObjectiveEvidence,
+  buildReviewQueue,
+  buildSkillProfile,
+  curriculumUnitProgress,
+  lessonDone,
+  CURRICULUM_UNITS,
+  nextLearningAction,
+} from "./learning-os.ts";
 
 test("review queue prioritises persistent pronunciation friction", () => {
   const queue = buildReviewQueue(INITIAL_PRONLAB_ATTEMPTS, []);
@@ -65,4 +73,44 @@ test("curriculum completion requires evidence from the linked resource", () => {
     false,
   );
   assert.equal(missionLesson.kind, "mission");
+});
+
+
+test("every curriculum lesson id is unique and every unit gained deliberate depth", () => {
+  const lessons = CURRICULUM_UNITS.flatMap((unit) => unit.lessons);
+  assert.equal(new Set(lessons.map((lesson) => lesson.id)).size, lessons.length);
+  assert.ok(lessons.length >= 47);
+  assert.ok(CURRICULUM_UNITS.every((unit) => unit.lessons.length >= 4));
+});
+
+test("objective evidence distinguishes direct practice from supporting signals", () => {
+  const evidence = buildObjectiveEvidence([
+    {
+      id: "m1",
+      type: "MISSION_COMPLETED",
+      sourceId: "mission-visitor",
+      createdAt: "2026-09-22T10:00:00.000Z",
+    },
+    {
+      id: "s1",
+      type: "SPEAK_COMPLETED",
+      sourceId: "speak-cafe-room-1",
+      createdAt: "2026-09-22T11:00:00.000Z",
+    },
+    {
+      id: "r1",
+      type: "REVIEW_COMPLETED",
+      sourceId: "review-vocabulary-u4-recall:2026-09-23",
+      createdAt: "2026-09-23T09:00:00.000Z",
+    },
+  ]);
+  const ask = evidence.find((item) => item.objective.id === "a2-interact-ask")!;
+  assert.equal(ask.directCount, 2);
+  assert.equal(ask.supportingCount, 1);
+  assert.equal(ask.status, "à consolider");
+});
+
+test("blind-spot intelligence points at a matching practice family", () => {
+  const next = nextLearningAction([], [], []);
+  assert.ok(["mission", "labs", "library", "pronlab"].includes(next.kind));
 });
