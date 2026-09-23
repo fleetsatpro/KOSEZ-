@@ -44,6 +44,8 @@ function PronlabSetPage() {
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const assigned = useBlossom((s) => s.assignedSetIds);
   const record = useBlossom((s) => s.recordPronlabAttempt);
+  const completeActivity = useBlossom((s) => s.completeActivity);
+  const activityLog = useBlossom((s) => s.activityLog);
   const [index, setIndex] = useState(0);
   const [heard, setHeard] = useState(false);
   const [lastAttempt, setLastAttempt] = useState<PronlabAttempt | null>(null);
@@ -62,6 +64,11 @@ function PronlabSetPage() {
   const unlocked = isSetUnlocked(setDef.id, attempts, assigned);
   const item = setDef.items[index]!;
   const summary = summarisePronlabItem(item.id, attempts);
+  const setCompleted = activityLog.some(
+    (event) =>
+      event.type === "PRONLAB_COMPLETED" &&
+      event.sourceId === "pronlab-" + setDef.id,
+  );
   const history = attempts
     .filter((a) => a.itemId === item.id)
     .slice(-10)
@@ -262,7 +269,7 @@ function PronlabSetPage() {
               <Button variant="outline" onClick={() => setLastAttempt(null)}>
                 Réessayer
               </Button>
-              {index < setDef.items.length - 1 && (
+              {index < setDef.items.length - 1 ? (
                 <Button
                   onClick={() => {
                     setIndex((n) => n + 1);
@@ -271,6 +278,23 @@ function PronlabSetPage() {
                   }}
                 >
                   Item suivant
+                </Button>
+              ) : (
+                <Button
+                  disabled={setCompleted}
+                  onClick={() => {
+                    const result = completeActivity(
+                      "PRONLAB_COMPLETED",
+                      "pronlab-" + setDef.id,
+                      "Set terminé · " + setDef.items.length + " items parcourus",
+                      curriculumLessonId ? { curriculumLessonId } : undefined,
+                    );
+                    if (result.ok || result.reason === "already") {
+                      toast("Set Pron'Lab ancré dans le parcours.");
+                    }
+                  }}
+                >
+                  {setCompleted ? "Set ancré" : "Clore le set"}
                 </Button>
               )}
             </div>
