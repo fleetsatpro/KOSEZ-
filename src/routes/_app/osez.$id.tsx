@@ -184,7 +184,7 @@ function SpeakRoom() {
     mineralsBefore.current = useBlossom.getState().mineralSnapshot;
     const result = complete(
       "SPEAK_COMPLETED",
-      `speak-${room.id}`,
+      `speak-${room.place.archetype}-${room.id}`,
       undefined,
       {
         ...(authoritativeSeconds === null
