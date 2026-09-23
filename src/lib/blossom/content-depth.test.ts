@@ -9,6 +9,7 @@ import {
   MISSION_BANK,
   PRONLAB_SETS,
   TANDEM_PROMPTS,
+  setsForLanguage,
 } from "./data.ts";
 import {
   CAN_DO_OBJECTIVES,
@@ -50,6 +51,36 @@ test("every published event has a real preparation brief", () => {
     assert.ok(detail.prepare.length >= 1, event.id + " preparation is missing");
     assert.ok(detail.languageMove.length >= 10, event.id + " language move is missing");
   }
+});
+
+test("missions and readings meet a minimum richness floor", () => {
+  for (const mission of MISSION_BANK) {
+    assert.ok(
+      (mission.successSignals?.length ?? 0) >= 3,
+      mission.id + " mission needs at least three success signals",
+    );
+    assert.ok(
+      (mission.realWorldInstruction?.length ?? 0) >= 40,
+      mission.id + " mission is missing a real-world transfer instruction",
+    );
+  }
+
+  for (const document of LIBRARY) {
+    assert.ok(
+      (document.comprehension?.length ?? 0) >= 3,
+      document.id + " reading needs three comprehension checks",
+    );
+    assert.ok(
+      (document.transferPrompt?.length ?? 0) >= 30,
+      document.id + " reading is missing a transfer prompt",
+    );
+  }
+});
+
+test("advertised starter languages have real Pron'Lab tracks", () => {
+  assert.ok(setsForLanguage("pt").some((set) => set.id === "set-pt-starter"));
+  assert.ok(setsForLanguage("it").some((set) => set.id === "set-it-starter"));
+  assert.ok(setsForLanguage("de").some((set) => set.id === "set-de-starter"));
 });
 
 test("deep content ids are unique across their primary collections", () => {
