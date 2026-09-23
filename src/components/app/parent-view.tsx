@@ -160,7 +160,7 @@ export function ParentView() {
 
                 <div className="mt-7 grid gap-3 sm:grid-cols-3">
                   <Metric label="Activités · 7 jours" value={String(selected.activitiesThisWeek)} />
-                  <Metric label="Parole observée" value={`${selected.speakingMinutes} min`} />
+                  <Metric label="Temps de pratique" value={`${selected.practiceMinutes} min`} />
                   <Metric label="Dernière activité" value={relative(selected.lastActivity)} />
                 </div>
               </div>
