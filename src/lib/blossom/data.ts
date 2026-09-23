@@ -690,7 +690,6 @@ export const MISSION_BANK: Mission[] = [
     stretch: "Reconnaissez l'impact du problème sur l'autre personne.",
   },
   {
-  {
     id: "mission-a2-clarify",
     title: "Clarifier un détail",
     prompt: "Vous avez compris l'essentiel mais pas un détail. Demandez une précision, reformulez ce que vous avez compris, puis reprenez la conversation.",
