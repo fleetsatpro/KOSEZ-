@@ -36,6 +36,7 @@ function lessonIcon(kind: LessonKind): LucideIcon {
 
 function PracticeLink({
   resource,
+  lessonId,
   className,
   children,
 }: {
@@ -47,31 +48,31 @@ function PracticeLink({
   switch (resource.kind) {
     case "mission":
       return (
-        <Link to="/mission" search={{ missionId: resource.id }} className={className}>
+        <Link to="/mission" search={{ missionId: resource.id, lessonId }} className={className}>
           {children}
         </Link>
       );
     case "speak":
       return (
-        <Link to="/osez/$id" params={{ id: resource.id }} className={className}>
+        <Link to="/osez/$id" params={{ id: resource.id }} search={{ lessonId }} className={className}>
           {children}
         </Link>
       );
     case "pronlab":
       return (
-        <Link to="/pronlab/$setId" params={{ setId: resource.id }} className={className}>
+        <Link to="/pronlab/$setId" params={{ setId: resource.id }} search={{ lessonId }} className={className}>
           {children}
         </Link>
       );
     case "library":
       return (
-        <Link to="/library/$id" params={{ id: resource.id }} className={className}>
+        <Link to="/library/$id" params={{ id: resource.id }} search={{ lessonId }} className={className}>
           {children}
         </Link>
       );
     case "review":
       return (
-        <Link to="/learn/review" search={{ focus: resource.id }} className={className}>
+        <Link to="/learn/review" search={{ focus: resource.id, lessonId }} className={className}>
           {children}
         </Link>
       );
@@ -81,7 +82,7 @@ function PracticeLink({
       return (
         <Link
           to="/learn/labs"
-          search={{ lab: resource.kind, task: resource.id }}
+          search={{ lab: resource.kind, task: resource.id, lessonId }}
           className={className}
         >
           {children}
