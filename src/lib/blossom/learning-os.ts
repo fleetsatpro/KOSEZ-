@@ -167,7 +167,7 @@ export const CURRICULUM_RESOURCE_MAP: Record<string, CurriculumResource> = {
   "u9-l2": { kind: "grammar", id: "grammar-b1-6" },
   "u9-l3": { kind: "mission", id: "mission-counterpoint" },
   "u9-l4": { kind: "writing", id: "write-b1-3" },
-  "u9-l5": { kind: "mission", id: "mission-delay" },
+  "u9-l5": { kind: "mission", id: "mission-summary" },
   "u10-l1": { kind: "mission", id: "mission-plan-change" },
   "u10-l2": { kind: "speak", id: "office" },
   "u10-l3": { kind: "listening", id: "listen-b1-8" },
