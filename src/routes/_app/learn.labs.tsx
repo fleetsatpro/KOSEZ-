@@ -91,6 +91,7 @@ function GrammarLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
     }
     setIndex((v) => v + 1);
     setChoice(null);
+    setListenCount(0);
   }
   if (finished) {
     const accuracy = Math.round((correct / sessionTotal) * 100);
@@ -126,6 +127,7 @@ function ListeningLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
   const startIndex = initialIndex === -1 ? 0 : initialIndex;
   const sessionTotal = Math.max(1, tasks.length - startIndex);
   const [index, setIndex] = useState(startIndex), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [answeredCount, setAnsweredCount] = useState(0), [finished, setFinished] = useState(false);
+  const [listenCount, setListenCount] = useState(0);
   const task = tasks[index]!, answered = choice !== null;
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
@@ -170,7 +172,33 @@ function ListeningLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
   }
   return <Surface className="mt-6 p-5 sm:p-7">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><Eyebrow>Écoute · {index + 1}/{tasks.length}</Eyebrow><h2 className="mt-2 font-display text-3xl tracking-tight">{task.question}</h2></div><Badge variant="outline">{task.level} · voix synthétique</Badge></div>
-    <div className="mt-6 rounded-2xl border border-border bg-fg p-5 text-primary-foreground"><p className="text-xs text-primary-foreground/50">Deux écoutes maximum avant de répondre.</p><Button variant="secondary" className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => speakSyntheticEnglish(task.audioText)}><Headphones className="size-4" /> Écouter</Button><p className="mt-4 font-display text-lg text-primary-foreground/80">{task.audioText}</p><p className="mt-1 text-[11px] text-primary-foreground/45">La voix est générée par votre appareil. Les enregistrements humains seront ajoutés dans le pack audio éditorial.</p></div>
+    <div className="mt-6 rounded-2xl border border-border bg-fg p-5 text-primary-foreground"><p className="text-xs text-primary-foreground/50">Deux écoutes maximum avant de répondre.</p><Button
+        variant="secondary"
+        className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90"
+        disabled={listenCount >= 2 || answered}
+        onClick={() => {
+          speakSyntheticEnglish(task.audioText);
+          setListenCount((value) => value + 1);
+        }}
+      >
+        <Headphones className="size-4" />
+        {listenCount >= 2 ? "Écoutes utilisées" : "Écouter"} · {listenCount}/2
+      </Button>
+      <p className="mt-3 text-xs text-primary-foreground/45">
+        Le texte reste masqué pendant l'écoute. Après votre réponse, le script
+        pourra être consulté pour comparer ce que vous avez entendu.
+      </p>
+      {answered ? (
+        <details className="mt-4 rounded-xl border border-primary-foreground/10 bg-primary-foreground/5 p-3">
+          <summary className="cursor-pointer text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground/55">
+            Voir le script après la réponse
+          </summary>
+          <p className="mt-3 font-display text-lg text-primary-foreground/80">{task.audioText}</p>
+        </details>
+      ) : null}
+      <p className="mt-3 text-[11px] text-primary-foreground/45">
+        Voix générée par votre appareil · {2 - listenCount} écoute{2 - listenCount === 1 ? "" : "s"} restante{2 - listenCount === 1 ? "" : "s"}.
+      </p></div>
     <div className="mt-5 grid gap-2">{task.choices.map((item) => <button key={item} type="button" onClick={() => choose(item)} className={`rounded-xl border px-4 py-3 text-left text-sm transition ${choice === item ? item === task.answer ? "border-primary/35 bg-primary/10" : "border-destructive/25 bg-destructive/5" : "border-border bg-surface-2/35 hover:bg-surface-2"}`}>{item}</button>)}</div>
     {answered ? <p className="mt-5 rounded-xl bg-surface-2/50 p-4 text-sm leading-6 text-muted">{task.detail}</p> : null}
     <Button className="mt-6 w-full sm:w-auto" disabled={!answered} onClick={next}>{index === tasks.length - 1 ? "Terminer le laboratoire" : "Continuer"} <Sparkles className="size-4" /></Button>
