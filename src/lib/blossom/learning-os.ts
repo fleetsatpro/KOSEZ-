@@ -268,7 +268,7 @@ export function buildSkillProfile(
   const writing = count("WRITING_COMPLETED");
   const lessonIds = new Set(
     log
-      .filter((event) => event.type === "LESSON_COMPLETED" && event.sourceId)
+      .filter((event) => (event.type === "LESSON_COMPLETED" || event.type === "CURRICULUM_EVIDENCE_RECORDED") && event.sourceId)
       .map((event) => event.sourceId as string),
   );
   const lessonDomains = CURRICULUM_UNITS.flatMap((unit) =>
