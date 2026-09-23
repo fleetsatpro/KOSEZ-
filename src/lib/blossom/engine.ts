@@ -30,6 +30,7 @@ export type ActivityEvent = {
   createdAt: string;
   sourceId?: string;
   note?: string;
+  metadata?: Record<string, string | number | boolean>;
 };
 
 export const POINTS: Record<ActivityType, number> = {
