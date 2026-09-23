@@ -30,6 +30,7 @@ export type LearningEvidence = {
   createdAt: string;
   direct: boolean;
   label: string;
+  sourceId?: string;
   freshnessKnown: boolean;
 };
 
@@ -125,6 +126,7 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
       direct: false,
       label: "Pratique du parcours",
       freshnessKnown: true,
+      sourceId: event.sourceId,
     }));
   }
 
@@ -137,6 +139,7 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
     direct: entry.direct,
     label: entry.label,
     freshnessKnown: true,
+    sourceId: event.sourceId,
   }));
 }
 
@@ -165,6 +168,7 @@ function submissionEvidence(submission: LearningSubmission): LearningEvidence[] 
     direct: submission.kind !== "review",
     label: `Trace · ${kind}`,
     freshnessKnown: true,
+    sourceId: submission.taskId,
   }));
 }
 
@@ -176,6 +180,7 @@ function pronunciationEvidence(attempts: PronlabAttempt[]): LearningEvidence[] {
     direct: true,
     label: `Pron'Lab · ${attempt.itemId}`,
     freshnessKnown: true,
+    sourceId: attempt.itemId,
   }));
 }
 
@@ -189,6 +194,7 @@ function vocabularyEvidence(
     direct: false,
     label: "Mot sauvegardé",
     freshnessKnown: Boolean(word.updatedAt || word.firstSavedAt),
+    sourceId: "vocab:" + word.word,
   }));
 }
 
@@ -247,33 +253,27 @@ function domainSignal(
   };
 }
 
-function resourceForDomain(domainId: LearningDomainId): {
+function targetFromEvidence(item: LearningEvidence): {
   kind: "pronlab" | "mission" | "library" | "labs" | "speak";
   targetId?: string;
   labKind?: "grammar" | "listening" | "writing";
 } | null {
-  for (const unit of CURRICULUM_UNITS) {
-    for (const lesson of unit.lessons) {
-      const matches = lesson.objectiveIds.some(
-        (id) => CAN_DO_OBJECTIVES.find((objective) => objective.id === id)?.domain === domainId,
-      );
-      if (!matches) continue;
-      const resource = curriculumResource(lesson);
-      switch (resource.kind) {
-        case "pronlab":
-        case "mission":
-        case "library":
-          return { kind: resource.kind, targetId: resource.id };
-        case "grammar":
-        case "listening":
-        case "writing":
-          return { kind: "labs", targetId: resource.id, labKind: resource.kind };
-        case "review":
-          continue;
-        case "speak":
-          return { kind: "speak", targetId: resource.id };
-      }
+  const source = item.sourceId;
+  if (!source) return null;
+  if (item.kind === "mission") return { kind: "mission", targetId: source };
+  if (item.kind === "reading" && source.startsWith("library:")) {
+    return { kind: "library", targetId: source.slice("library:".length) };
+  }
+  if (["grammar", "listening", "writing"].includes(item.kind)) {
+    const parts = source.split(":");
+    const labKind = parts[1] as "grammar" | "listening" | "writing" | undefined;
+    if (labKind && parts[2]) {
+      return { kind: "labs", targetId: parts[2], labKind };
     }
+  }
+  if (item.kind === "speaking") {
+    const match = source.match(/^speak-([^-]+)-/);
+    return match ? { kind: "speak", targetId: match[1] } : { kind: "speak" };
   }
   return null;
 }
@@ -336,7 +336,12 @@ function recommendation(
 
   if (fading && (fading.recencyDays ?? 0) >= 15) {
     const label = LEARNING_DOMAINS.find((domain) => domain.id === fading.domainId)?.shortLabel ?? "compétence";
-    const target = resourceForDomain(fading.domainId);
+    const fadingEvidence = evidence
+      .filter((item) => item.domainId === fading.domainId && item.direct)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    const target = fadingEvidence
+      ? targetFromEvidence(fadingEvidence) ?? resourceForDomain(fading.domainId)
+      : resourceForDomain(fading.domainId);
     return {
       eyebrow: "SIGNAL · À RAVIVER",
       title: `Revenir à « ${label} »`,
@@ -385,7 +390,16 @@ function recommendation(
     eyebrow: "PROCHAINE ACTION",
     title: `Approfondir « ${label} »`,
     body: "Votre profil est assez nourri pour passer de l'exposition à une pratique plus ciblée.",
-    ...(freshest ? (resourceForDomain(freshest.domainId) ?? {
+    ...(freshest ? ((
+      evidence
+        .filter((item) => item.domainId === freshest.domainId && item.direct)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] &&
+      targetFromEvidence(
+        evidence
+          .filter((item) => item.domainId === freshest.domainId && item.direct)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]!,
+      )
+    ) ?? resourceForDomain(freshest.domainId) ?? {
       kind:
         freshest.domainId === "pronunciation"
           ? "pronlab"
