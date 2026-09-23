@@ -185,6 +185,7 @@ function SpeakRoom() {
             "CURRICULUM_EVIDENCE_RECORDED",
             curriculumLessonId,
             `Preuve curriculum · Speak · ${room.id}`,
+            { supportId: `speak-${room.id}` },
           );
         }
       }
