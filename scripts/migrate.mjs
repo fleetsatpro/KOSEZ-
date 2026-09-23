@@ -54,7 +54,19 @@ async function main() {
 
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
   const client = await pool.connect();
+  const lockKey = "kosez:migrations:v1";
+  let lockAcquired = false;
   try {
+    // Production deployments can overlap (for example, a redeploy can start
+    // while the previous build is still finalizing). Serialize the entire
+    // migration pass at the Postgres session level so two builders can never
+    // both observe the same migration as pending and execute its DDL together.
+    await client.query(
+      "SELECT pg_advisory_lock(hashtextextended($1, 0))",
+      [lockKey],
+    );
+    lockAcquired = true;
+
     await client.query(
       "CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())",
     );
@@ -85,6 +97,16 @@ async function main() {
     }
     console.log(count ? `[migrate] done — ${count} migration(s) applied.` : "[migrate] up to date.");
   } finally {
+    if (lockAcquired) {
+      try {
+        await client.query(
+          "SELECT pg_advisory_unlock(hashtextextended($1, 0))",
+          [lockKey],
+        );
+      } catch {
+        // If the database connection died, the advisory lock disappeared with it.
+      }
+    }
     client.release();
     await pool.end();
   }

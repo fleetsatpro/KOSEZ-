@@ -70,16 +70,27 @@ const env = (key: string): string | undefined => {
   return value ? value : undefined;
 };
 
+const isVercelProduction =
+  process.env.VERCEL === "1" && process.env.VERCEL_ENV === "production";
+
 // Explicit off-switch. The deployer sets `VITE_AUTH_ENABLED=true` when it
 // provisions auth; set it to "false" to force auth off everywhere (dev user).
 const authDisabled = env("VITE_AUTH_ENABLED") === "false";
 
-// Broker federation creds: the deployer injects a per-app client when deployed;
-// otherwise fall back to the shared live-preview client, which the broker accepts
-// for any `*.grok-sandbox.com` callback (see `./preview`).
-const grokIssuer = env("GROK_AUTH_ISSUER") ?? GROK_ISSUER_DEFAULT;
-const grokClientId = env("GROK_AUTH_CLIENT_ID") ?? PREVIEW_CLIENT_ID;
-const grokClientSecret = env("GROK_AUTH_CLIENT_SECRET") ?? PREVIEW_CLIENT_SECRET;
+const configuredGrokIssuer = env("GROK_AUTH_ISSUER");
+const configuredGrokClientId = env("GROK_AUTH_CLIENT_ID");
+const configuredGrokClientSecret = env("GROK_AUTH_CLIENT_SECRET");
+
+// Broker federation creds: the deployer injects a per-app client when deployed.
+// The baked sandbox client is available ONLY outside Vercel production; a
+// production deployment must never silently authenticate with preview credentials.
+const grokIssuer =
+  configuredGrokIssuer ?? (isVercelProduction ? "" : GROK_ISSUER_DEFAULT);
+const grokClientId =
+  configuredGrokClientId ?? (isVercelProduction ? "" : PREVIEW_CLIENT_ID);
+const grokClientSecret =
+  configuredGrokClientSecret ??
+  (isVercelProduction ? "" : PREVIEW_CLIENT_SECRET);
 
 /** True when federated sign-in is active (real auth is enforced). */
 export const authConfigured =
@@ -126,6 +137,53 @@ const trustedOrigins: string[] = explicitBaseURL
     ];
 
 const databaseUrl = env("DATABASE_URL");
+
+if (isVercelProduction) {
+  const required = [
+    ["DATABASE_URL", databaseUrl],
+    ["BETTER_AUTH_URL", explicitBaseURL],
+    ["BETTER_AUTH_SECRET", env("BETTER_AUTH_SECRET")],
+    ["GROK_AUTH_ISSUER", configuredGrokIssuer],
+    ["GROK_AUTH_CLIENT_ID", configuredGrokClientId],
+    ["GROK_AUTH_CLIENT_SECRET", configuredGrokClientSecret],
+  ] as const;
+
+  const missing = required.filter(([, value]) => !value).map(([key]) => key);
+  if (authDisabled) {
+    throw new Error(
+      "[auth] VITE_AUTH_ENABLED=false is not permitted in Vercel production; production auth must remain enabled.",
+    );
+  }
+  if (missing.length) {
+    throw new Error(
+      "[auth] Missing required Vercel production environment variables: " +
+        missing.join(", "),
+    );
+  }
+
+  const productionSecret = env("BETTER_AUTH_SECRET");
+  if (!productionSecret || productionSecret.length < 32) {
+    throw new Error("[auth] BETTER_AUTH_SECRET must be at least 32 characters in Vercel production.");
+  }
+
+  try {
+    const parsed = new URL(explicitBaseURL ?? "");
+    if (parsed.protocol !== "https:") {
+      throw new Error("must use https");
+    }
+  } catch {
+    throw new Error("[auth] BETTER_AUTH_URL must be an absolute HTTPS URL in Vercel production.");
+  }
+
+  try {
+    const parsed = new URL(configuredGrokIssuer ?? "");
+    if (parsed.protocol !== "https:") {
+      throw new Error("must use https");
+    }
+  } catch {
+    throw new Error("[auth] GROK_AUTH_ISSUER must be an absolute HTTPS URL in Vercel production.");
+  }
+}
 
 // Static broker OAuth endpoints (skip OIDC discovery on every sign-in / callback).
 // Discovery would cost an extra network hop to the broker before the popup can
