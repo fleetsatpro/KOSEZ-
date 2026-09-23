@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { INITIAL_PRONLAB_ATTEMPTS, LEARNER } from "./data.fixtures.ts";
-import { buildReviewQueue, buildSkillProfile, curriculumUnitProgress, CURRICULUM_UNITS } from "./learning-os.ts";
+import { buildReviewQueue, buildSkillProfile, curriculumUnitProgress, lessonDone, CURRICULUM_UNITS } from "./learning-os.ts";
 
 test("review queue prioritises persistent pronunciation friction", () => {
   const queue = buildReviewQueue(INITIAL_PRONLAB_ATTEMPTS, []);
@@ -54,8 +54,15 @@ test("curriculum completion requires evidence from the linked resource", () => {
   ];
   assert.ok(curriculumUnitProgress(unit, log, [], []) > 0);
   assert.equal(
-    curriculumUnitProgress(CURRICULUM_UNITS[6]!, log, [], []),
-    0,
+    lessonDone(missionLesson, [
+      {
+        id: "fake-lesson",
+        type: "LESSON_COMPLETED" as const,
+        sourceId: missionLesson.id,
+        createdAt: "2026-09-22T10:00:00.000Z",
+      },
+    ]),
+    false,
   );
   assert.equal(missionLesson.kind, "mission");
 });
