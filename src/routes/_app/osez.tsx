@@ -51,9 +51,10 @@ function OsezPage() {
     select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
   });
 
-  if (pathname !== "/osez") {
-    return <Outlet />;
-  }
+  return pathname === "/osez" ? <OsezHub /> : <Outlet />;
+}
+
+function OsezHub() {
   const navigate = useNavigate();
   const log = useBlossom((s) => s.activityLog);
   const plan = useBlossom((s) => s.plan);
