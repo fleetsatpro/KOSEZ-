@@ -6,7 +6,7 @@ import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { STAGES, nextStage } from "@/lib/blossom/engine";
-import { organismStatusLine } from "@/lib/blossom/organism";
+import { causalNextGesture, organismStatusLine } from "@/lib/blossom/organism";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +49,7 @@ function PlantPage() {
   ] as const;
 
   const lowest = mineralRows.reduce((a, b) => (a.value <= b.value ? a : b));
+  const causal = causalNextGesture(minerals);
 
   return (
     <Page className="kosez-feature-page max-w-4xl">
@@ -170,8 +171,18 @@ function PlantPage() {
         <Eyebrow>Minéraux · 14 jours</Eyebrow>
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
           Quatre nutriments. Le plus bas oriente le prochain geste utile — sans
-          culpabiliser. Aujourd&apos;hui, le sol demande un peu plus de{" "}
+          culpabiliser. Aujourd'hui, le sol demande un peu plus de{" "}
           <span className="font-medium text-fg">{lowest.label.toLowerCase()}</span>.
+        </p>
+        <p className="mt-3 max-w-xl text-sm leading-6 text-fg/90">
+          {causal.line}{" "}
+          <Link
+            to={causal.door as "/mission" | "/osez" | "/pronlab" | "/tandem"}
+            className="font-semibold text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary"
+          >
+            Ouvrir la porte
+          </Link>
+          .
         </p>
         <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {mineralRows.map((m) => (

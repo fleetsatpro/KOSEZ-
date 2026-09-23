@@ -111,25 +111,94 @@ export function organismStatusLine(minerals: MineralSnapshot): string {
     ["mission", minerals.mission],
     ["social", minerals.social],
   ];
-  const lowest = entries.sort((a, b) => a[1] - b[1])[0];
+  const sorted = [...entries].sort((a, b) => a[1] - b[1]);
+  const lowest = sorted[0];
+  const highest = sorted[sorted.length - 1];
   if (!lowest || lowest[1] >= 40) {
     if (minerals.mission >= 60 && minerals.parole >= 50) {
-      return "Racines profondes cette semaine.";
+      return "Racines profondes cette semaine — la tige peut s'élancer.";
+    }
+    if (highest && highest[1] >= 70) {
+      return `Le ${highest[0]} est fort. Un geste ailleurs équilibre le sol.`;
     }
     return "La terre est stable. Un geste suffit encore.";
   }
   switch (lowest[0]) {
     case "pron":
-      return "La canopée attend un son.";
+      return "La canopée attend un son — Pron'Lab, une minute.";
     case "parole":
-      return "Soif légère — un geste de parole suffit.";
+      return "Soif de parole — une room ou un Pulse suffit.";
     case "mission":
-      return "Les racines demandent une scène réelle.";
+      return "Les racines demandent une scène réelle aujourd'hui.";
     case "social":
-      return "Une présence partagée nourrirait le sol.";
+      return "Une présence partagée (tandem, café, atelier) nourrirait le sol.";
     default:
       return "Un geste utile vaut mieux qu'une longue séance.";
   }
+}
+
+/** Causal next-gesture hint for plant / home — lowest mineral maps to a door. */
+export function causalNextGesture(minerals: MineralSnapshot): {
+  mineral: keyof Omit<MineralSnapshot, "at">;
+  door: string;
+  line: string;
+} {
+  const entries: [keyof Omit<MineralSnapshot, "at">, number][] = [
+    ["pron", minerals.pron],
+    ["parole", minerals.parole],
+    ["mission", minerals.mission],
+    ["social", minerals.social],
+  ];
+  const lowest = [...entries].sort((a, b) => a[1] - b[1])[0]!;
+  switch (lowest[0]) {
+    case "pron":
+      return {
+        mineral: "pron",
+        door: "/pronlab",
+        line: "Un son répété jusqu'à tenue nourrit la canopée.",
+      };
+    case "parole":
+      return {
+        mineral: "parole",
+        door: "/osez",
+        line: "Une prise de parole ancrée épaissit la tige.",
+      };
+    case "mission":
+      return {
+        mineral: "mission",
+        door: "/mission",
+        line: "Un geste terrain enfonce une racine.",
+      };
+    case "social":
+      return {
+        mineral: "social",
+        door: "/tandem",
+        line: "Une présence partagée fait fleurir le sol.",
+      };
+  }
+}
+
+/** Causal labels — each activity writes a specific mark on the organism. */
+const ROOT_LABELS = [
+  "Un geste. Une racine.",
+  "Le sol s'ouvre sous vos pieds.",
+  "Une scène réelle s'ancre.",
+] as const;
+const STEM_LABELS = [
+  "La tige s'épaissit.",
+  "La parole tient un peu plus longtemps.",
+  "Un échange laisse une marque.",
+] as const;
+const LEAF_LABELS = [
+  "Une feuille s'ouvre.",
+  "Un son se détache du bruit.",
+  "La canopée gagne une nervure.",
+] as const;
+
+function pickLabel(pool: readonly string[], seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return pool[h % pool.length]!;
 }
 
 export function growthEventForActivity(
@@ -138,6 +207,7 @@ export function growthEventForActivity(
   at: string,
 ): GrowthEvent | null {
   const id = `ge-${type}-${sourceId ?? "x"}-${at}`;
+  const seed = `${type}|${sourceId ?? ""}|${at.slice(0, 13)}`;
   switch (type) {
     case "MISSION_COMPLETED":
     case "REAL_WORLD_BONUS":
@@ -146,8 +216,8 @@ export function growthEventForActivity(
         at,
         kind: "root",
         sourceId,
-        intensity: type === "REAL_WORLD_BONUS" ? 0.9 : 0.7,
-        label: "Un geste. Une racine.",
+        intensity: type === "REAL_WORLD_BONUS" ? 0.92 : 0.72,
+        label: pickLabel(ROOT_LABELS, seed),
       };
     case "SPEAK_COMPLETED":
     case "TANDEM_COMPLETED":
@@ -156,8 +226,8 @@ export function growthEventForActivity(
         at,
         kind: "stem",
         sourceId,
-        intensity: 0.65,
-        label: "La tige s'épaissit.",
+        intensity: type === "TANDEM_COMPLETED" ? 0.78 : 0.66,
+        label: pickLabel(STEM_LABELS, seed),
       };
     case "PRONLAB_MASTERY":
       return {
@@ -165,8 +235,8 @@ export function growthEventForActivity(
         at,
         kind: "leaf",
         sourceId,
-        intensity: 0.85,
-        label: "Une feuille s'ouvre.",
+        intensity: 0.88,
+        label: pickLabel(LEAF_LABELS, seed),
       };
     case "PRONLAB_COMPLETED":
       return {
@@ -174,8 +244,17 @@ export function growthEventForActivity(
         at,
         kind: "mineral",
         sourceId,
-        intensity: 0.4,
+        intensity: 0.42,
         label: "Le sol retient un son.",
+      };
+    case "LIBRARY_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "mineral",
+        sourceId,
+        intensity: 0.48,
+        label: "Une lecture nourrit le sol.",
       };
     case "LESSON_COMPLETED":
       return {
@@ -183,8 +262,19 @@ export function growthEventForActivity(
         at,
         kind: "root",
         sourceId,
-        intensity: 0.2,
+        intensity: 0.28,
         label: "Une pratique prend racine.",
+      };
+    case "CLASS_ATTENDED":
+    case "EVENT_ATTENDED":
+    case "IMMERSION_ATTENDED":
+      return {
+        id,
+        at,
+        kind: "flower",
+        sourceId,
+        intensity: 0.7,
+        label: "Une présence partagée fleurit.",
       };
     default:
       return {
