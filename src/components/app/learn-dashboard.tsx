@@ -296,7 +296,7 @@ export function LearnDashboard() {
           <Eyebrow>Mémoire · maintenant</Eyebrow>
           <p className="mt-3 font-display text-4xl tabular-nums text-primary">{intelligence.dueNow}</p>
           <p className="mt-1 text-xs text-muted">rappel{intelligence.dueNow === 1 ? "" : "s"} dû{intelligence.dueNow === 1 ? "" : "s"} aujourd'hui</p>
-          <Link to="/learn/review" search={{ focus: undefined }} search={{}} className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+          <Link to="/learn/review" search={{ focus: undefined }} className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
             Ouvrir la mémoire <ArrowRight className="size-3.5" />
           </Link>
         </article>
@@ -609,7 +609,7 @@ export function LearnDashboard() {
             <p className="mt-5 font-display text-xl tracking-tight">Parcours</p>
             <p className="mt-1 text-xs text-muted">{CURRICULUM_UNITS.length} unités A2</p>
           </Link>
-          <Link to="/learn/review" className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
+          <Link to="/learn/review" search={{ focus: undefined }} className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
             <RotateCcw className="size-4 text-primary" />
             <p className="mt-5 font-display text-xl tracking-tight">Révision</p>
             <p className="mt-1 text-xs text-muted">Mémoire en circulation</p>
