@@ -256,10 +256,13 @@ try {
       try {
         await gotoWithRetry(
           page,
-          new URL("/learn/curriculum/a2-food-and-service", url).href,
+          new URL("/learn/curriculum", url).href,
           { waitUntil: "domcontentloaded", timeout: timeoutMs },
         );
-        await page.waitForTimeout(750);
+        const unitEntry = page.locator('a[href="/learn/curriculum/a2-food-and-service"]');
+        await unitEntry.waitFor({ state: "visible", timeout: 10000 });
+        await unitEntry.click();
+        await page.waitForTimeout(500);
         const readingLessonLink = page.getByRole("link", { name: /At the covered market/i });
         await readingLessonLink.waitFor({ state: "visible", timeout: 10000 });
         await readingLessonLink.click();
@@ -275,10 +278,13 @@ try {
         }
         await gotoWithRetry(
           page,
-          new URL("/learn/curriculum/a2-food-and-service", url).href,
+          new URL("/learn/curriculum", url).href,
           { waitUntil: "domcontentloaded", timeout: timeoutMs },
         );
-        await page.waitForTimeout(350);
+        const unitEntryAfterEvidence = page.locator('a[href="/learn/curriculum/a2-food-and-service"]');
+        await unitEntryAfterEvidence.waitFor({ state: "visible", timeout: 10000 });
+        await unitEntryAfterEvidence.click();
+        await page.waitForTimeout(500);
         const curriculumCopy = await page.locator("body").innerText().catch(() => "");
         if (!curriculumCopy.includes("preuve enregistrée")) {
           errors.pageErrors.push("curriculum did not reflect the linked reading evidence");
