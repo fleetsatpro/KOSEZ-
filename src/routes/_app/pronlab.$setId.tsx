@@ -13,6 +13,12 @@ import { transcribeSpeakTurn } from "@/lib/blossom/speech.api";
 import { blobToBase64, captureOnlyEvidence } from "@/lib/blossom/speech-stt";
 
 export const Route = createFileRoute("/_app/pronlab/$setId")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    lessonId:
+      typeof search.lessonId === "string" && search.lessonId.trim()
+        ? search.lessonId.trim()
+        : undefined,
+  }),
   component: PronlabSetPage,
 });
 
@@ -33,6 +39,7 @@ function highlight(phrase: string, segment: string) {
 
 function PronlabSetPage() {
   const { setId } = Route.useParams();
+  const { lessonId: curriculumLessonId } = Route.useSearch();
   const setDef = findPronlabSet(setId);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const assigned = useBlossom((s) => s.assignedSetIds);
