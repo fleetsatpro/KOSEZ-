@@ -112,7 +112,7 @@ export type CurriculumResource =
   | { kind: "listening"; id: string }
   | { kind: "writing"; id: string };
 
-const CURRICULUM_RESOURCE_MAP: Record<string, CurriculumResource> = {
+export const CURRICULUM_RESOURCE_MAP: Record<string, CurriculumResource> = {
   "a1-l1-hello": { kind: "mission", id: "mission-introduce" },
   "a1-l2-basic-listening": { kind: "listening", id: "listen-1" },
   "a1-l3-simple-writing": { kind: "writing", id: "write-a1-1" },
