@@ -175,7 +175,7 @@ function PlantPage() {
 
           <div className="mt-auto pt-6">
             <Button asChild className="w-full sm:w-auto">
-              <Link to="/mission" search={{ missionId: undefined }}>
+              <Link to="/mission" search={{ missionId: undefined, lessonId: undefined }}>
                 Nourrir la plante
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
@@ -211,7 +211,7 @@ function PlantPage() {
             </div>
             <Button asChild className="shrink-0">
               {mineralGuidance.to === "/mission" ? (
-                <Link to="/mission" search={{ missionId: undefined }}>
+                <Link to="/mission" search={{ missionId: undefined, lessonId: undefined }}>
                   {mineralGuidance.cta}
                   <ArrowRight className="size-4" />
                 </Link>
