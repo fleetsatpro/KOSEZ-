@@ -72,7 +72,13 @@ function OsezPage() {
     [learner.level, learner.firstName, learner.interests, memoryOn],
   );
 
-  const roomsDone = rooms.filter((r) => hasSource(log, `speak-${r.id}`)).length;
+  const roomsDone = rooms.filter((room) =>
+    log.some(
+      (event) =>
+        event.type === "SPEAK_COMPLETED" &&
+        event.sourceId?.includes(`speak-${room.place.archetype}-${room.id}`),
+    ),
+  ).length;
 
   function launchTopic(raw?: string) {
     const t = (raw ?? topic).trim();
