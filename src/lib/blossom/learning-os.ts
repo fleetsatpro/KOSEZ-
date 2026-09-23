@@ -755,7 +755,10 @@ export function historyRows(
     at: event.createdAt,
     kind: "activité" as const,
     title: activityLabel(event.type),
-    detail: event.note ?? event.sourceId ?? "—",
+    detail:
+      event.type === "IMMERSION_ATTENDED" && event.metadata?.reflection
+        ? String(event.metadata.reflection)
+        : event.note ?? event.sourceId ?? "—",
     tone: event.type.includes("PRON") ? "pronunciation" : event.type.includes("MISSION") ? "mission" : "default",
   }));
 
