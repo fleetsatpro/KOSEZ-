@@ -702,6 +702,13 @@ export async function setTandemStatus(
       resourceType: "tandem_connection",
       resourceId: String(accepted[0].id),
     });
+    await createNotification(input.partnerUserId, {
+      kind: "tandem",
+      title: "Votre demande tandem a été acceptée",
+      body: "Votre connexion est réciproque. Une session structurée peut maintenant commencer.",
+      href: "/tandem",
+      metadata: { partnerUserId: userId },
+    });
     return accepted[0];
   }
 
@@ -723,6 +730,15 @@ export async function setTandemStatus(
     resourceType: "tandem_connection",
     resourceId: String(rows[0].id),
   });
+  if (input.status === "pending") {
+    await createNotification(input.partnerUserId, {
+      kind: "tandem",
+      title: "Une demande tandem vous attend",
+      body: "Un apprenant souhaite ouvrir un échange structuré avec vous.",
+      href: "/tandem",
+      metadata: { partnerUserId: userId },
+    });
+  }
   return rows[0];
 }
 
@@ -899,6 +915,15 @@ export async function saveHomework(
       );
 
   if (!rows[0]) throw new Error("homework-write-failed");
+  if (input.status === "sent") {
+    await createNotification(input.learnerUserId, {
+      kind: "homework",
+      title: "Un nouveau devoir vous attend",
+      body: input.title,
+      href: "/moi",
+      metadata: { homeworkId: String(rows[0].id) },
+    });
+  }
   return rows[0];
 }
 
