@@ -309,6 +309,69 @@ export type SkillEvidence = {
   signal: string;
 };
 
+export type ObjectiveEvidence = {
+  objective: CanDoObjective;
+  directCount: number;
+  supportingCount: number;
+  lastSeenAt: string | null;
+  status: "à découvrir" | "en pratique" | "à consolider" | "ancré";
+};
+
+function objectiveEventMatch(objective: CanDoObjective, event: ActivityEvent): "direct" | "support" | null {
+  const map: Record<string, { direct: ActivityType[]; support: ActivityType[] }> = {
+    "a2-interact-ask": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED", "TANDEM_COMPLETED"], support: ["REVIEW_COMPLETED"] },
+    "a2-interact-repair": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED", "TANDEM_COMPLETED"], support: ["REVIEW_COMPLETED"] },
+    "a2-speak-routine": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED"], support: ["TANDEM_COMPLETED"] },
+    "a2-speak-preference": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED"], support: ["WRITING_COMPLETED"] },
+    "a2-listen-key": { direct: ["LISTENING_COMPLETED"], support: ["SPEAK_COMPLETED", "TANDEM_COMPLETED"] },
+    "a2-read-short": { direct: ["LIBRARY_COMPLETED"], support: [] },
+    "a2-write-message": { direct: ["WRITING_COMPLETED", "HOMEWORK_COMPLETED"], support: [] },
+    "a2-pron-th": { direct: ["PRONLAB_COMPLETED", "PRONLAB_MASTERY"], support: [] },
+    "a2-vocab-reuse": { direct: ["REVIEW_COMPLETED"], support: ["MISSION_COMPLETED", "LIBRARY_COMPLETED"] },
+    "a2-grammar-question": { direct: ["GRAMMAR_COMPLETED"], support: ["SPEAK_COMPLETED"] },
+    "a2-mediate-simple": { direct: ["MISSION_COMPLETED", "TANDEM_COMPLETED"], support: ["SPEAK_COMPLETED"] },
+    "b1-speak-describe": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED"], support: ["TANDEM_COMPLETED"] },
+    "b1-speak-compare": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED", "WRITING_COMPLETED"], support: ["TANDEM_COMPLETED"] },
+    "b1-write-explain": { direct: ["WRITING_COMPLETED"], support: ["HOMEWORK_COMPLETED"] },
+    "b1-grammar-connectors": { direct: ["GRAMMAR_COMPLETED", "WRITING_COMPLETED"], support: ["SPEAK_COMPLETED"] },
+    "b1-listen-detail": { direct: ["LISTENING_COMPLETED"], support: ["TANDEM_COMPLETED", "SPEAK_COMPLETED"] },
+    "b1-read-infer": { direct: ["LIBRARY_COMPLETED"], support: ["REVIEW_COMPLETED"] },
+    "b1-mediate": { direct: ["MISSION_COMPLETED", "TANDEM_COMPLETED"], support: ["WRITING_COMPLETED"] },
+    "b1-interact-clarify": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED", "TANDEM_COMPLETED"], support: ["REVIEW_COMPLETED"] },
+    "b1-argue-opinion": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED", "WRITING_COMPLETED"], support: ["TANDEM_COMPLETED"] },
+    "b1-write-position": { direct: ["WRITING_COMPLETED"], support: ["HOMEWORK_COMPLETED"] },
+    "b1-acknowledge-counterpoint": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED", "TANDEM_COMPLETED"], support: ["WRITING_COMPLETED"] },
+    "b1-grammar-nuance": { direct: ["GRAMMAR_COMPLETED", "WRITING_COMPLETED"], support: ["SPEAK_COMPLETED"] },
+    "b1-solve-problem": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED", "TANDEM_COMPLETED"], support: ["WRITING_COMPLETED"] },
+    "b1-negotiate": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED", "TANDEM_COMPLETED"], support: ["WRITING_COMPLETED"] },
+    "b1-listen-constraints": { direct: ["LISTENING_COMPLETED"], support: ["TANDEM_COMPLETED", "SPEAK_COMPLETED"] },
+    "b1-mediate-solution": { direct: ["MISSION_COMPLETED", "TANDEM_COMPLETED", "WRITING_COMPLETED"], support: ["SPEAK_COMPLETED"] },
+  };
+
+  const config = map[objective.id];
+  if (!config) return null;
+  if (config.direct.includes(event.type)) return "direct";
+  if (config.support.includes(event.type)) return "support";
+  return null;
+}
+
+export function buildObjectiveEvidence(log: ActivityEvent[]): ObjectiveEvidence[] {
+  return CAN_DO_OBJECTIVES.map((objective) => {
+    const matched = log
+      .map((event) => ({ event, kind: objectiveEventMatch(objective, event) }))
+      .filter((item): item is { event: ActivityEvent; kind: "direct" | "support" } => item.kind !== null);
+    const directCount = matched.filter((item) => item.kind === "direct").length;
+    const supportingCount = matched.filter((item) => item.kind === "support").length;
+    const lastSeenAt = matched[0]?.event.createdAt ?? null;
+    const status =
+      directCount >= 3 ? "ancré"
+      : directCount >= 1 && supportingCount >= 2 ? "à consolider"
+      : directCount >= 1 || supportingCount >= 1 ? "en pratique"
+      : "à découvrir";
+    return { objective, directCount, supportingCount, lastSeenAt, status };
+  });
+}
+
 const cap = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
 export function buildSkillProfile(
