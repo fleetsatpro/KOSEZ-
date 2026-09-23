@@ -170,8 +170,9 @@ function TandemSession() {
     const activePartner = partner;
     if (!activePartner || !sessionId || closing) return;
     setClosing(true);
+    let closure;
     try {
-      await endTandemSessionOnServer({
+      closure = await endTandemSessionOnServer({
         data: { sessionId, status: "completed" },
       });
     } catch {
@@ -179,11 +180,15 @@ function TandemSession() {
       toast("La session n’a pas pu être clôturée côté serveur.");
       return;
     }
+    const durationMinutes = Math.min(
+      60,
+      Math.max(0, Math.round(closure.durationSeconds / 60)),
+    );
     complete(
       "TANDEM_COMPLETED",
       `tandem-session-${sessionId}`,
       undefined,
-      { minutes: 60, sessionId },
+      { minutes: durationMinutes, durationSeconds: closure.durationSeconds, sessionId },
     );
     toast("Session terminée. Votre participation est enregistrée.");
     navigate({ to: "/tandem" });
