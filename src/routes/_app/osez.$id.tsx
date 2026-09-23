@@ -312,6 +312,7 @@ function SpeakRoom() {
               onClick={async () => {
                 if (closing) return;
                 setClosing(true);
+                let timerAvailable = true;
                 try {
                   const session = await startSpeakSessionOnServer({
                     data: { roomId: room.id },
@@ -321,6 +322,7 @@ function SpeakRoom() {
                 } catch {
                   // Practice can continue offline or during a transient outage,
                   // but the resulting activity must remain uncertified for time.
+                  timerAvailable = false;
                   setSpeakSessionId(null);
                   setServerTimerAvailable(false);
                   toast("La room s'ouvre, mais le temps ne sera pas certifié par le serveur.");
@@ -331,7 +333,7 @@ function SpeakRoom() {
                   roomId: room.id,
                   seed: room.seed,
                   source,
-                  serverTimerAvailable: Boolean(speakSessionId),
+                  serverTimerAvailable: timerAvailable,
                 });
                 setStarted(true);
               }}
