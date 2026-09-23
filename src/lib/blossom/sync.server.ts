@@ -31,7 +31,7 @@ function objectValue(value: unknown): JsonObject {
   return value as JsonObject;
 }
 
-async function assertCurriculumEvidence(
+export async function assertCurriculumEvidence(
   userId: string,
   lessonId: string,
   metadata: Record<string, unknown>,
