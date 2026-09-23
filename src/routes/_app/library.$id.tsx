@@ -6,7 +6,10 @@ import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { LIBRARY, LIBRARY_GLOSS } from "@/lib/blossom/data";
 import { useBlossom } from "@/lib/blossom/store";
-import { takeCurriculumLessonContext } from "@/lib/blossom/curriculum-context";
+import {
+  clearCurriculumLessonContext,
+  readCurriculumLessonContext,
+} from "@/lib/blossom/curriculum-context";
 import { CURRICULUM_UNITS } from "@/lib/blossom/learning-os";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +26,10 @@ function LibraryDocPage() {
   const doc = LIBRARY.find((d) => d.id === id);
   const saveWord = useBlossom((s) => s.saveWord);
   const completeActivity = useBlossom((s) => s.completeActivity);
-  const [curriculumLessonId] = useState<string | null>(() => takeCurriculumLessonContext());
+  const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
+  useEffect(() => {
+    if (curriculumLessonId) clearCurriculumLessonContext();
+  }, [curriculumLessonId]);
   const readingEndRef = useRef<HTMLDivElement | null>(null);
   const [readingCompleted, setReadingCompleted] = useState(false);
   const vocab = useBlossom((s) => s.vocabulary);
