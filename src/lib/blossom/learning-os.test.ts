@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { INITIAL_PRONLAB_ATTEMPTS, LEARNER } from "./data.fixtures.ts";
-import { buildReviewQueue, buildSkillProfile, curriculumUnitProgress, CURRICULUM_UNITS } from "./learning-os.ts";
+import { buildReviewQueue, buildSkillProfile, curriculumUnitProgress, CURRICULUM_UNITS, lessonDone } from "./learning-os.ts";
 
 test("review queue prioritises persistent pronunciation friction", () => {
   const queue = buildReviewQueue(INITIAL_PRONLAB_ATTEMPTS, []);
@@ -46,7 +46,14 @@ test("curriculum completion is explicit and unit-specific", () => {
   const log = [
     { id: "evidence-1", type: "CURRICULUM_EVIDENCE_RECORDED" as const, sourceId: unit.lessons[0]!.id, createdAt: "2026-09-22T10:00:00.000Z" },
   ];
-  assert.equal(unit.lessons.filter((lesson) => lessonDone(lesson, log)).length, 1);
+  assert.equal(lessonDone(unit.lessons[0]!, log), true);
+  assert.equal(lessonDone(unit.lessons[1]!, log), false);
   assert.ok(curriculumUnitProgress(unit, log, [], []) > 0);
+  assert.equal(
+    lessonDone(unit.lessons[0]!, [
+      { id: "self-report", type: "LESSON_COMPLETED" as const, sourceId: unit.lessons[0]!.id, createdAt: "2026-09-22T10:00:00.000Z" },
+    ]),
+    false,
+  );
   assert.ok(curriculumUnitProgress(CURRICULUM_UNITS[6]!, log, [], []) < 50);
 });
