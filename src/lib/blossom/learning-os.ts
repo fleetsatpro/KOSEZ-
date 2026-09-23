@@ -520,7 +520,7 @@ export function buildSkillProfile(
 
 export type ReviewItem = {
   id: string;
-  kind: "pronunciation" | "vocabulary" | "mission" | "grammar" | "listening" | "writing";
+  kind: "pronunciation" | "vocabulary" | "reading" | "mission" | "grammar" | "listening" | "writing";
   title: string;
   prompt: string;
   answer: string;
