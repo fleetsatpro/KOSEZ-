@@ -70,7 +70,22 @@ function GrammarLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
     if (index >= tasks.length - 1) { saveLearningSubmission({ taskId: task.id, kind: "grammar", content: choice ?? "", checks: [choice === task.answer ? "correct" : "incorrect"], result: { correct: choice === task.answer, target: task.target } }); completeActivity("GRAMMAR_COMPLETED", dailyLabSource("grammar", task.id), `Grammaire · ${correct + (choice === task.answer ? 1 : 0)}/${tasks.length}`); setFinished(true); return; }
     setIndex((v) => v + 1); setChoice(null);
   }
-  if (finished) return <LabComplete title="Grammaire terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. Cette trace mesure une séance de pratique, pas un niveau CEFR.`} />;
+  if (finished) {
+    const accuracy = Math.round((correct / Math.max(1, tasks.length)) * 100);
+    const target = tasks[0]?.target ?? "la structure ciblée";
+    return (
+      <LabComplete
+        title="Grammaire terminée"
+        detail={
+          accuracy >= 80
+            ? accuracy + "% · " + target + ". Votre prochaine étape est de réutiliser cette structure dans une phrase personnelle."
+            : accuracy + "% · " + target + ". Revenez sur l'explication puis produisez une phrase réelle avec la structure."
+        }
+        nextLabel="Réutiliser dans OSEZ"
+        nextTo="/osez"
+      />
+    );
+  }
   return <Surface className="mt-6 overflow-hidden p-0">
     <div className="flex items-center justify-between border-b border-border px-5 py-4"><div><Eyebrow>Grammaire · {index + 1}/{tasks.length}</Eyebrow><p className="mt-1 text-xs text-muted">{task.target}</p></div><Badge variant="outline">{task.level}</Badge></div>
     <div className="p-5 sm:p-7"><h2 className="max-w-3xl font-display text-3xl tracking-tight sm:text-4xl">{task.prompt}</h2>
@@ -94,7 +109,21 @@ function ListeningLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
     if (index >= tasks.length - 1) { saveLearningSubmission({ taskId: task.id, kind: "listening", content: choice ?? "", checks: [choice === task.answer ? "correct" : "incorrect"], result: { correct: choice === task.answer, level: task.level } }); completeActivity("LISTENING_COMPLETED", dailyLabSource("listening", task.id), `Écoute · ${correct + (choice === task.answer ? 1 : 0)}/${tasks.length}`); setFinished(true); return; }
     setIndex((v) => v + 1); setChoice(null);
   }
-  if (finished) return <LabComplete title="Écoute terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. Vous avez travaillé des détails concrets : heure, lieu, prix et option.`} />;
+  if (finished) {
+    const accuracy = Math.round((correct / Math.max(1, tasks.length)) * 100);
+    return (
+      <LabComplete
+        title="Écoute terminée"
+        detail={
+          accuracy >= 80
+            ? accuracy + "% · Vous avez isolé les détails utiles. Transférez maintenant cette écoute dans une interaction réelle."
+            : accuracy + "% · Réécoutez les éléments clés et repérez ce qui change réellement la prochaine action."
+        }
+        nextLabel="Mettre dehors"
+        nextTo="/mission"
+      />
+    );
+  }
   return <Surface className="mt-6 p-5 sm:p-7">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><Eyebrow>Écoute · {index + 1}/{tasks.length}</Eyebrow><h2 className="mt-2 font-display text-3xl tracking-tight">{task.question}</h2></div><Badge variant="outline">{task.level} · voix synthétique</Badge></div>
     <div className="mt-6 rounded-2xl border border-border bg-fg p-5 text-primary-foreground"><p className="text-xs text-primary-foreground/50">Deux écoutes maximum avant de répondre.</p><Button variant="secondary" className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => speakSyntheticEnglish(task.audioText)}><Headphones className="size-4" /> Écouter</Button><p className="mt-4 font-display text-lg text-primary-foreground/80">{task.audioText}</p><p className="mt-1 text-[11px] text-primary-foreground/45">La voix est générée par votre appareil. Les enregistrements humains seront ajoutés dans le pack audio éditorial.</p></div>
@@ -222,6 +251,37 @@ function DiagnosticLab() {
   );
 }
 
-function LabComplete({ title, detail }: { title: string; detail: string }) {
-  return <Surface className="mt-6 border border-primary/20 bg-primary/5 p-6 sm:p-8"><Check className="size-6 text-primary" /><Eyebrow className="mt-5">TRACE CRÉÉE</Eyebrow><h2 className="mt-2 font-display text-3xl tracking-tight">{title}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{detail}</p><div className="mt-6 flex flex-wrap gap-2"><Button asChild><Link to="/learn">Retour à Atelier</Link></Button><Button variant="secondary" asChild><Link to="/learn/review" search={{ focus: undefined }}>Réviser</Link></Button></div></Surface>;
+function LabComplete({
+  title,
+  detail,
+  nextLabel = "Retour à Atelier",
+  nextTo = "/learn",
+}: {
+  title: string;
+  detail: string;
+  nextLabel?: string;
+  nextTo?: "/learn" | "/osez" | "/mission";
+}) {
+  return (
+    <Surface className="mt-6 border border-primary/20 bg-primary/5 p-6 sm:p-8">
+      <Check className="size-6 text-primary" />
+      <Eyebrow className="mt-5">TRACE CRÉÉE</Eyebrow>
+      <h2 className="mt-2 font-display text-3xl tracking-tight">{title}</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{detail}</p>
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Button asChild>
+          {nextTo === "/mission" ? (
+            <Link to="/mission" search={{ missionId: undefined }}>{nextLabel}</Link>
+          ) : nextTo === "/osez" ? (
+            <Link to="/osez">{nextLabel}</Link>
+          ) : (
+            <Link to="/learn">{nextLabel}</Link>
+          )}
+        </Button>
+        <Button variant="secondary" asChild>
+          <Link to="/learn/review" search={{ focus: undefined }}>Réviser</Link>
+        </Button>
+      </div>
+    </Surface>
+  );
 }
