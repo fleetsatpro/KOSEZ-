@@ -448,7 +448,7 @@ function GrowthCeremony({
   );
 }
 
-export function MissionTheatreExperience({ missionId }: { missionId?: string }) {
+export function MissionTheatreExperience({ missionId, curriculumLessonId }: { missionId?: string; curriculumLessonId?: string }) {
   const navigate = useNavigate();
   const log = useBlossom((state) => state.activityLog);
   const attempts = useBlossom((state) => state.pronlabAttempts);
