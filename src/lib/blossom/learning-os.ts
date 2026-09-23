@@ -120,7 +120,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     lessons: [
       { id: "u2-l1", title: "What do you recommend?", kind: "speak", minutes: 6, objectiveIds: ["a2-interact-ask"], description: "Ouvrir puis garder deux tours de conversation." },
       { id: "u2-l2", title: "I'll have…", kind: "pronlab", minutes: 5, objectiveIds: ["a2-vocab-reuse"], description: "Transformer une structure apprise en réflexe utilisable." },
-      { id: "u2-l3", title: "At the covered market", kind: "library", minutes: 4, objectiveIds: ["a2-vocab-reuse", "a2-read-short"], description: "Lire, écouter et récupérer les mots qui reviennent." },
+      { id: "u2-l3", title: "At the covered market", kind: "library", minutes: 4, taskId: "lib-market", objectiveIds: ["a2-vocab-reuse", "a2-read-short"], description: "Lire, écouter et récupérer les mots qui reviennent." },
       { id: "u2-l4", title: "Questions qui servent", kind: "grammar", minutes: 5, taskId: "grammar-question-1", objectiveIds: ["a2-grammar-question"], description: "Construire une question courte qui déclenche une information utile." },
     ],
   },
@@ -150,7 +150,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     lessons: [
       { id: "u4-l1", title: "Yesterday en 60 secondes", kind: "speak", minutes: 6, objectiveIds: ["a2-speak-routine"], description: "Trois faits reliés, sans traduire phrase par phrase." },
       { id: "u4-l2", title: "Les mots qui reviennent", kind: "review", minutes: 5, objectiveIds: ["a2-vocab-reuse"], description: "Rappeler puis réutiliser des mots déjà rencontrés." },
-      { id: "u4-l3", title: "Un message après le cours", kind: "library", minutes: 5, objectiveIds: ["a2-write-message"], description: "Observer comment une information pratique se formule à l'écrit." },
+      { id: "u4-l3", title: "Un message après le cours", kind: "library", minutes: 5, taskId: "lib-workday", objectiveIds: ["a2-read-short", "a2-write-message"], description: "Observer comment une information pratique se formule à l'écrit." },
       { id: "u4-l4", title: "Écrire pour agir", kind: "writing", minutes: 7, taskId: "write-after-class", objectiveIds: ["a2-write-message"], description: "Écrire un message bref, clair et adapté à une situation réelle." },
     ],
   },
@@ -194,7 +194,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
       { id: "u7-l1", title: "Décrire une expérience", kind: "speak", minutes: 8, objectiveIds: ["b1-speak-describe"], description: "Organiser une description en donnant le contexte, le détail utile et une impression." },
       { id: "u7-l2", title: "Comparer deux options", kind: "grammar", minutes: 6, taskId: "grammar-b1-1", objectiveIds: ["b1-speak-compare", "b1-grammar-connectors"], description: "Relier comparaison, justification et conséquence dans une phrase naturelle." },
       { id: "u7-l3", title: "Une recommandation argumentée", kind: "writing", minutes: 8, taskId: "write-b1-1", objectiveIds: ["b1-write-explain", "b1-speak-compare"], description: "Écrire une recommandation courte qui donne un critère et une raison." },
-      { id: "u7-l4", title: "Lire entre les lignes", kind: "library", minutes: 7, objectiveIds: ["b1-read-infer"], description: "Repérer le ton, les indices et les formulations qui portent une opinion." },
+      { id: "u7-l4", title: "Lire entre les lignes", kind: "library", minutes: 7, taskId: "lib-guest", objectiveIds: ["b1-read-infer"], description: "Repérer le ton, les indices et les formulations qui portent une opinion." },
     ],
   },
   {
@@ -207,7 +207,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     objectives: ["b1-listen-detail", "b1-read-infer", "b1-mediate", "b1-interact-clarify"],
     lessons: [
       { id: "u8-l1", title: "Attraper le détail caché", kind: "listening", minutes: 8, taskId: "listen-b1-1", objectiveIds: ["b1-listen-detail"], description: "Distinguer l'information centrale d'un détail secondaire dans un échange rapide." },
-      { id: "u8-l2", title: "Comprendre une intention", kind: "library", minutes: 7, objectiveIds: ["b1-read-infer"], description: "Repérer une intention, une réserve ou une implication qui n'est pas formulée directement." },
+      { id: "u8-l2", title: "Comprendre une intention", kind: "library", minutes: 7, taskId: "lib-repair", objectiveIds: ["b1-read-infer"], description: "Repérer une intention, une réserve ou une implication qui n'est pas formulée directement." },
       { id: "u8-l3", title: "Reformuler pour quelqu'un", kind: "mission", minutes: 7, objectiveIds: ["b1-mediate", "b1-interact-clarify"], description: "Transmettre l'essentiel sans recopier le message mot à mot." },
       { id: "u8-l4", title: "Clarifier une ambiguïté", kind: "speak", minutes: 6, objectiveIds: ["b1-interact-clarify"], description: "Demander une précision puis reformuler ce que vous avez compris." },
     ],
