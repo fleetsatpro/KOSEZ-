@@ -54,6 +54,16 @@ jobs:
           cat /tmp/kosez-dev.log
           exit 1
 
+      - name: Auth invariants
+        run: npm run check:auth -- --dev-url http://127.0.0.1:8080
+
+      - name: Stop auth-on dev server before learner smoke
+        run: |
+          if [ -f /tmp/kosez-dev.pid ]; then
+            kill "$(cat /tmp/kosez-dev.pid)" || true
+            rm -f /tmp/kosez-dev.pid
+          fi
+
       - name: Start auth-disabled learner smoke server
         env:
           VITE_AUTH_ENABLED: "false"
@@ -69,9 +79,6 @@ jobs:
           done
           cat /tmp/kosez-smoke.log
           exit 1
-
-      - name: Auth invariants
-        run: npm run check:auth -- --dev-url http://127.0.0.1:8080
 
       - name: Install Chromium for browser smoke
         run: npx playwright install chromium
