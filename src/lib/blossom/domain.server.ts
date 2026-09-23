@@ -1732,22 +1732,80 @@ export async function endTandemSession(
   status: "completed" | "cancelled",
 ) {
   const sql = await getSql();
+  const activityId = randomUUID();
+  const partnerActivityId = randomUUID();
   const rows = await sql.query(
-    `update blossom_tandem_session
-     set status = $2,
-         ended_at = coalesce(ended_at, current_timestamp),
-         duration_seconds = greatest(
-           0,
-           floor(extract(epoch from (current_timestamp - started_at)))
-         )::integer,
-         updated_at = current_timestamp
-     where id = $1::uuid
-       and (user_id = $3 or partner_user_id = $3)
-       and status = 'active'
-     returning id, status, ended_at, duration_seconds`,
-    [sessionId, status, userId],
+    `with closed as (
+       update blossom_tandem_session
+       set status = $2,
+           ended_at = coalesce(ended_at, current_timestamp),
+           duration_seconds = least(
+             3600,
+             greatest(
+               0,
+               floor(extract(epoch from (current_timestamp - started_at)))
+             )
+           )::integer,
+           updated_at = current_timestamp
+       where id = $1::uuid
+         and (user_id = $3 or partner_user_id = $3)
+         and status = 'active'
+       returning id, user_id, partner_user_id, status, ended_at, duration_seconds
+     ),
+     activity as (
+       insert into blossom_activity_event (
+         id, user_id, idempotency_key, event_type, source_id, payload, occurred_at
+       )
+       select
+         $4::uuid,
+         c.user_id,
+         c.id,
+         'TANDEM_COMPLETED',
+         concat('tandem-session:', c.id::text),
+         jsonb_build_object(
+           'metadata',
+           jsonb_build_object(
+             'serverAuthoritativeMinutes', true,
+             'minutes', floor(c.duration_seconds / 60.0)::integer,
+             'durationSeconds', c.duration_seconds,
+             'sessionId', c.id::text
+           )
+         ),
+         c.ended_at
+       from closed c
+       where c.status = 'completed'
+       union all
+       select
+         $5::uuid,
+         c.partner_user_id,
+         c.id,
+         'TANDEM_COMPLETED',
+         concat('tandem-session:', c.id::text),
+         jsonb_build_object(
+           'metadata',
+           jsonb_build_object(
+             'serverAuthoritativeMinutes', true,
+             'minutes', floor(c.duration_seconds / 60.0)::integer,
+             'durationSeconds', c.duration_seconds,
+             'sessionId', c.id::text
+           )
+         ),
+         c.ended_at
+       from closed c
+       where c.status = 'completed'
+       on conflict (user_id, idempotency_key) do nothing
+       returning id
+     )
+     select
+       c.id,
+       c.status,
+       c.ended_at,
+       c.duration_seconds
+     from closed c`,
+    [sessionId, status, userId, activityId, partnerActivityId],
   );
   if (!rows[0]) throw new BlossomForbiddenError("Cette session tandem n'est pas disponible.");
+
   await writeAuditEvent(userId, {
     action: `tandem.session.${status}`,
     resourceType: "tandem_session",
