@@ -6,6 +6,7 @@ import {
   generateRoomCatalog,
   reshuffleRoom,
 } from "./speak-engine.ts";
+import { BEAT_LIBRARY, EVENT_ANCHORS, PLACES, PRESSURES } from "./speak-world.ts";
 
 describe("speak-engine swarm", () => {
   it("generates a living room with turns, cast, and protocol", () => {
@@ -133,4 +134,14 @@ it("does not branch without usable transcript evidence", () => {
   });
   assert.deepEqual(adaptLivingRoomAfterTranscript(room, 1, ""), room);
   assert.deepEqual(adaptLivingRoomAfterTranscript(room, 1, "ok"), room);
+});
+
+
+it("world substrate has enough authored variety for sustained composition", () => {
+  assert.ok(PLACES.length >= 18);
+  assert.ok(EVENT_ANCHORS.length >= 11);
+  assert.ok(PRESSURES.length >= 8);
+  assert.ok(BEAT_LIBRARY.open.length >= 3);
+  assert.ok(BEAT_LIBRARY.challenge.length >= 2);
+  assert.ok(new Set(PLACES.map((place) => place.archetype)).size >= 10);
 });
