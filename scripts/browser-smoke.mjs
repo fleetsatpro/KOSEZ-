@@ -270,8 +270,12 @@ try {
         if (!page.url().includes("/library/lib-market")) {
           errors.pageErrors.push("curriculum library lesson did not route to the bound document");
         }
-        await page.evaluate(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "instant" }));
-        await page.waitForTimeout(350);
+        const readingEnd = page.locator('[data-reading-end="true"]');
+        await readingEnd.scrollIntoViewIfNeeded();
+        await page.getByText("lecture enregistrée", { exact: false }).waitFor({
+          state: "visible",
+          timeout: 10000,
+        });
         const readingCopy = await page.locator("body").innerText().catch(() => "");
         if (!readingCopy.includes("lecture enregistrée")) {
           errors.pageErrors.push("library reading completion evidence did not appear after reaching the text end");
