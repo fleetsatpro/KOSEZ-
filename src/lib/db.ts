@@ -8,7 +8,17 @@ export type DbSource = "neon" | "pglite";
 const rawDatabaseUrl =
   typeof process !== "undefined" ? process.env.DATABASE_URL : undefined;
 const databaseUrl =
-  rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
+  rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl.trim() : undefined;
+const isVercelProduction =
+  typeof process !== "undefined" &&
+  process.env.VERCEL === "1" &&
+  process.env.VERCEL_ENV === "production";
+
+if (isVercelProduction && !databaseUrl) {
+  throw new Error(
+    "[db] DATABASE_URL is required for Vercel production — refusing to use ephemeral PGLite.",
+  );
+}
 
 /**
  * Active backend: real **Neon** when `DATABASE_URL` is set (deployed / configured
