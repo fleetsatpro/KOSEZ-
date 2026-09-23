@@ -3,17 +3,9 @@ import { ArrowRight, Check, Leaf } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   LEARNER_MEMORY,
-  missionForLevel,
-  B1_TODAY_MISSION,
-  TODAY_MISSION,
-  UPCOMING_MISSIONS,
   planAllows,
   PLANT_IMAGE,
 } from "@/lib/blossom/data";
-import {
-  EXTRA_MISSIONS,
-  selectMissionForLevel,
-} from "@/lib/blossom/mission-bank";
 import {
   hasSource,
   nextStage,
@@ -24,7 +16,9 @@ import {
   courageDaysFromLog,
   courageRibbon,
   organismStatusLine,
+  causalNextGesture,
 } from "@/lib/blossom/organism";
+import { todayMissionForLevel } from "@/lib/blossom/mission-today";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { todayLabel } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -41,19 +35,9 @@ export function HomeDashboard() {
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const journey = useJourney();
 
-  const missionBank = [
-    TODAY_MISSION,
-    B1_TODAY_MISSION,
-    ...UPCOMING_MISSIONS,
-    ...EXTRA_MISSIONS,
-  ];
-  const todayMission = selectMissionForLevel(
-    learner.level,
-    missionBank,
-    missionForLevel(learner.level),
-    { rotate: true },
-  );
+  const todayMission = todayMissionForLevel(learner.level);
   const missionDone = hasSource(log, todayMission.id);
+  const nextGesture = causalNextGesture(minerals);
   const memoryOn = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
   const mission = personaliseMission(todayMission, memory, memoryOn);
@@ -218,6 +202,20 @@ export function HomeDashboard() {
         className="border-t border-border/60 bg-bg px-5 py-6 lg:px-12"
         aria-label="Portes secondaires"
       >
+        <div className="mx-auto mb-4 max-w-2xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center sm:text-left">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
+            Prochain geste causal
+          </p>
+          <p className="mt-1 text-sm text-fg/90">{nextGesture.line}</p>
+          <Link
+            to={nextGesture.door as "/osez" | "/pronlab" | "/mission" | "/tandem"}
+            className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+          >
+            Ouvrir
+            <span className="text-subtle">· {nextGesture.mineral}</span>
+            <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
         <ul className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm">
           <li>
             <Link
