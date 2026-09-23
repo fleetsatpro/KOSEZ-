@@ -195,6 +195,7 @@ function PronlabSetPage() {
                       "CURRICULUM_EVIDENCE_RECORDED",
                       curriculumLessonId,
                       `Preuve curriculum · Pron'Lab · ${item.id}`,
+                      { supportId: item.id },
                     );
                   }
                 }
