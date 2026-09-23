@@ -609,67 +609,93 @@ export async function getOrganizationWorkspace(
   userId: string,
 ): Promise<OrganizationWorkspace | null> {
   const sql = await getSql();
-  const rows = await sql.query(
+
+  // A user may legitimately belong to multiple organisations. This workspace
+  // surface currently represents one organisation, so select a deterministic
+  // primary membership and never join members from sibling tenants.
+  const orgRows = await sql.query(
     `select
       o.id,
       o.name,
       o.metadata,
-      m.user_id,
-      m.role,
-      m.status,
-      coalesce(p.display_name, m.user_id) as display_name
-    from blossom_organization o
-    join blossom_organization_member me
-      on me.organization_id = o.id
-     and me.user_id = $1
-     and me.status = 'active'
-     and me.role in ('owner','admin','teacher')
-    join blossom_organization_member m
-      on m.organization_id = o.id
-     and m.status = 'active'
-    left join blossom_profile p on p.user_id = m.user_id
-    order by m.role, display_name`,
+      me.role,
+      me.created_at
+     from blossom_organization o
+     join blossom_organization_member me
+       on me.organization_id = o.id
+      and me.user_id = $1
+      and me.status = 'active'
+      and me.role in ('owner','admin','teacher')
+     order by
+       case me.role
+         when 'owner' then 0
+         when 'admin' then 1
+         else 2
+       end,
+       me.created_at asc,
+       o.id asc
+     limit 1`,
     [userId],
   );
-  if (!rows[0]) return null;
+  if (!orgRows[0]) return null;
 
-  const organizationId = String(rows[0].id);
-  const statsRows = await sql.query(
-    `select
-       count(*) filter (where role = 'learner')::integer as learners,
-       count(*) filter (where role <> 'learner')::integer as staff,
-       count(distinct m.user_id) filter (
-         where m.role = 'learner'
-           and a.occurred_at >= current_timestamp - interval '7 days'
-       )::integer as active_learners_this_week,
-       coalesce(sum(
-         case
-           when m.role = 'learner'
-            and a.occurred_at >= current_timestamp - interval '7 days'
-            and a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
-            and a.payload->'metadata'->>'serverAuthoritativeMinutes' = 'true'
-           and coalesce(a.payload->'metadata'->>'minutes', '') ~ '^[0-9]+$'
-           then coalesce(
-             (a.payload->'metadata'->>'minutes')::integer,
-             (a.payload->>'minutes')::integer
-           )
-           else 0
-         end
-       ), 0)::integer as practice_minutes
-     from blossom_organization_member m
-     left join blossom_activity_event a on a.user_id = m.user_id
-     where m.organization_id = $1 and m.status = 'active'`,
-    [organizationId],
-  );
+  const organizationId = String(orgRows[0].id);
+  const [rows, statsRows] = await Promise.all([
+    sql.query(
+      `select
+        m.user_id,
+        m.role,
+        m.status,
+        coalesce(p.display_name, m.user_id) as display_name
+       from blossom_organization_member m
+       left join blossom_profile p on p.user_id = m.user_id
+       where m.organization_id = $1
+         and m.status = 'active'
+       order by
+         case m.role
+           when 'owner' then 0
+           when 'admin' then 1
+           when 'teacher' then 2
+           else 3
+         end,
+         display_name asc`,
+      [organizationId],
+    ),
+    sql.query(
+      `select
+         count(*) filter (where role = 'learner')::integer as learners,
+         count(*) filter (where role <> 'learner')::integer as staff,
+         count(distinct m.user_id) filter (
+           where m.role = 'learner'
+             and a.occurred_at >= current_timestamp - interval '7 days'
+         )::integer as active_learners_this_week,
+         coalesce(sum(
+           case
+             when m.role = 'learner'
+              and a.occurred_at >= current_timestamp - interval '7 days'
+              and a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
+              and a.payload->'metadata'->>'serverAuthoritativeMinutes' = 'true'
+              and coalesce(a.payload->'metadata'->>'minutes', '') ~ '^[0-9]+$'
+             then (a.payload->'metadata'->>'minutes')::integer
+             else 0
+           end
+         ), 0)::integer as practice_minutes
+       from blossom_organization_member m
+       left join blossom_activity_event a on a.user_id = m.user_id
+       where m.organization_id = $1 and m.status = 'active'`,
+      [organizationId],
+    ),
+  ]);
+
   const stats = statsRows[0] ?? {};
   const metadata =
-    rows[0].metadata && typeof rows[0].metadata === "object"
-      ? (rows[0].metadata as Record<string, unknown>)
+    orgRows[0].metadata && typeof orgRows[0].metadata === "object"
+      ? (orgRows[0].metadata as Record<string, unknown>)
       : {};
 
   return {
     id: organizationId,
-    name: String(rows[0].name),
+    name: String(orgRows[0].name),
     city: typeof metadata.city === "string" ? metadata.city : null,
     members: rows.map((row) => ({
       id: String(row.user_id),
