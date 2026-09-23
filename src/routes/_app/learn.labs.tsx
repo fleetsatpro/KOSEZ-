@@ -378,7 +378,7 @@ function LabComplete({
       <div className="mt-6 flex flex-wrap gap-2">
         <Button asChild>
           {nextTo === "/mission" ? (
-            <Link to="/mission" search={{ missionId: undefined }}>{nextLabel}</Link>
+            <Link to="/mission" search={{ missionId: undefined, lessonId: undefined }}>{nextLabel}</Link>
           ) : nextTo === "/osez" ? (
             <Link to="/osez">{nextLabel}</Link>
           ) : (
@@ -386,7 +386,7 @@ function LabComplete({
           )}
         </Button>
         <Button variant="secondary" asChild>
-          <Link to="/learn/review" search={{ focus: undefined }}>Réviser</Link>
+          <Link to="/learn/review" search={{ focus: undefined, lessonId: undefined }}>Réviser</Link>
         </Button>
       </div>
     </Surface>
