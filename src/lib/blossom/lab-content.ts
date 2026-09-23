@@ -1,4 +1,4 @@
-export type LabLevel = "A2" | "B1";
+export type LabLevel = "A1" | "A2" | "B1";
 
 export type GrammarTask = {
   id: string;
@@ -11,6 +11,10 @@ export type GrammarTask = {
 };
 
 export const GRAMMAR_TASKS: GrammarTask[] = [
+  { id: "grammar-a1-1", prompt: "Quelle phrase permet de se présenter ?", choices: ["My name is Léa.", "Name my is Léa.", "Is my Léa name."], answer: "My name is Léa.", explanation: "My name is + prénom est une structure de base pour se présenter.", target: "Se présenter", level: "A1" },
+  { id: "grammar-a1-2", prompt: "Complétez : “I ___ from Kenya.”", choices: ["am", "is", "are"], answer: "am", explanation: "Avec I, le présent de be est am.", target: "Be avec I", level: "A1" },
+  { id: "grammar-a1-3", prompt: "Quelle question demande un lieu ?", choices: ["Where are you?", "Where you are?", "You are where?"], answer: "Where are you?", explanation: "Where + be + sujet forme la question de base sur le lieu.", target: "Question en Where", level: "A1" },
+
   { id: "grammar-question-1", prompt: "Quelle phrase demande naturellement une recommandation ?", choices: ["What you recommend?", "What do you recommend?", "What are you recommend?"], answer: "What do you recommend?", explanation: "Au présent simple, do porte la structure interrogative.", target: "Question au présent simple", level: "A2" },
   { id: "grammar-question-2", prompt: "Complétez : “I ___ the fish.”", choices: ["will have", "am have", "have to"], answer: "will have", explanation: "I'll have sert à annoncer une commande ou un choix au moment de décider.", target: "I'll have…", level: "A2" },
   { id: "grammar-question-3", prompt: "Quelle formule demande poliment de répéter ?", choices: ["Could you repeat that?", "Could you to repeat that?", "Could repeat you that?"], answer: "Could you repeat that?", explanation: "Après could, on garde la base verbale.", target: "Modal + base verbale", level: "A2" },
@@ -43,6 +47,10 @@ export type ListeningTask = {
 };
 
 export const LISTENING_TASKS: ListeningTask[] = [
+  { id: "listen-a1-1", audioText: "Hello, my name is Sam.", question: "Comment s'appelle la personne ?", choices: ["Sam", "Tom", "Maya"], answer: "Sam", detail: "Le prénom est donné immédiatement après my name is.", level: "A1" },
+  { id: "listen-a1-2", audioText: "The café is on the left.", question: "Où est le café ?", choices: ["À droite", "À gauche", "Derrière"], answer: "À gauche", detail: "On the left donne la direction utile.", level: "A1" },
+  { id: "listen-a1-3", audioText: "I need one ticket to Saint-Pierre, please.", question: "Combien de billets sont demandés ?", choices: ["One", "Two", "Three"], answer: "One", detail: "One ticket indique une seule place.", level: "A1" },
+
   { id: "listen-1", audioText: "Boarding starts at seven forty at gate twelve.", question: "À quelle porte commence l'embarquement ?", choices: ["Gate 10", "Gate 12", "Gate 20"], answer: "Gate 12", detail: "Le numéro utile arrive en fin de phrase.", level: "A2" },
   { id: "listen-2", audioText: "The restaurant opens at seven, but the kitchen closes at nine.", question: "Quelle information est vraie ?", choices: ["The kitchen opens at nine.", "The restaurant opens at seven.", "The restaurant closes at seven."], answer: "The restaurant opens at seven.", detail: "Le premier repère temporel décrit l'ouverture.", level: "A2" },
   { id: "listen-3", audioText: "These pods are four euros for three.", question: "Combien coûtent trois gousses ?", choices: ["3 euros", "4 euros", "13 euros"], answer: "4 euros", detail: "Le prix indiqué correspond au lot de trois.", level: "A2" },
@@ -74,6 +82,10 @@ export type WritingPrompt = {
 };
 
 export const WRITING_PROMPTS: WritingPrompt[] = [
+  { id: "write-a1-1", title: "Se présenter simplement", situation: "Vous rencontrez quelqu'un pour la première fois.", task: "Écrivez 2 à 3 phrases pour donner votre nom, votre ville et une chose que vous aimez.", model: "Hi, I'm Sam. I live in Nairobi. I like music.", checks: [{ id: "a1-name", label: "J'ai donné mon nom." }, { id: "a1-place", label: "J'ai indiqué où je vis." }, { id: "a1-interest", label: "J'ai ajouté une préférence." }], level: "A1" },
+  { id: "write-a1-2", title: "Un message pratique", situation: "Vous devez confirmer un rendez-vous très simple.", task: "Écrivez 2 à 3 phrases avec l'heure et le lieu.", model: "Hi. See you at three at the café. See you then.", checks: [{ id: "a1-time", label: "J'ai donné l'heure." }, { id: "a1-place", label: "J'ai donné le lieu." }, { id: "a1-close", label: "J'ai terminé simplement." }], level: "A1" },
+  { id: "write-a1-3", title: "Demander une information", situation: "Vous écrivez à quelqu'un pour demander où se trouve un lieu.", task: "Écrivez 2 à 3 phrases avec une salutation et une question claire.", model: "Hi. Where is the library? Is it near the café?", checks: [{ id: "a1-greet", label: "J'ai salué." }, { id: "a1-question", label: "J'ai posé une question claire." }, { id: "a1-followup", label: "J'ai ajouté une petite relance." }], level: "A1" },
+
   { id: "write-after-class", title: "Un message après le cours", situation: "Vous écrivez à un collègue anglophone pour confirmer l'heure du déjeuner.", task: "Écrivez 2 à 4 phrases en anglais. Confirmez l'heure, proposez un lieu et terminez poliment.", model: "Hi Noah, lunch at 12:30 at the café? See you there!", checks: [{ id: "check-info", label: "J'ai donné une information claire." }, { id: "check-place", label: "J'ai proposé ou confirmé un lieu." }, { id: "check-close", label: "J'ai terminé avec une formule naturelle." }], level: "A2" },
   { id: "write-recommendation", title: "Une recommandation simple", situation: "Un ami vous demande quoi manger à Saint-Pierre.", task: "Écrivez une recommandation courte avec un plat et une raison.", model: "I'd recommend the catch of the day. It's fresh and simple.", checks: [{ id: "check-choice", label: "J'ai recommandé quelque chose de précis." }, { id: "check-reason", label: "J'ai donné une raison compréhensible." }, { id: "check-natural", label: "Ma phrase reste courte et naturelle." }], level: "A2" },
   { id: "write-b1-1", title: "Recommander entre deux options", situation: "Deux amis hésitent entre deux activités pour le week-end.", task: "Écrivez 5 à 7 phrases en expliquant laquelle vous recommandez, selon quel critère, et reconnaissez au moins une limite de votre choix.", model: "I'd recommend the coastal walk because it is more flexible for a short afternoon. The market is livelier, but it takes longer to reach, so the walk seems more practical today.", checks: [{ id: "b1-choice", label: "J'ai comparé au moins deux options." }, { id: "b1-reason", label: "J'ai donné un critère et une raison." }, { id: "b1-counterpoint", label: "J'ai reconnu une limite ou un avantage de l'autre option." }, { id: "b1-connector", label: "J'ai relié mes idées avec un connecteur." }], level: "B1" },
