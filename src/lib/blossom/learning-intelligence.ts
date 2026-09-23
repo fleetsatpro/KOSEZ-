@@ -144,15 +144,19 @@ function submissionEvidence(submission: LearningSubmission): LearningEvidence[] 
     grammar: ["grammar"],
     listening: ["listening"],
     writing: ["writing"],
+    reading: ["reading", "vocabulary"],
     review: ["vocabulary", "pronunciation", "grammar"],
   };
-  const kind: LearningEvidenceKind = submission.kind === "writing"
-    ? "writing"
-    : submission.kind === "listening"
-      ? "listening"
-      : submission.kind === "grammar"
-        ? "grammar"
-        : "review";
+  const kind: LearningEvidenceKind =
+    submission.kind === "writing"
+      ? "writing"
+      : submission.kind === "listening"
+        ? "listening"
+        : submission.kind === "grammar"
+          ? "grammar"
+          : submission.kind === "reading"
+            ? "reading"
+            : "review";
   return domains[submission.kind].map((domainId) => ({
     domainId,
     kind,
