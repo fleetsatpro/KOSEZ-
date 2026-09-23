@@ -1,7 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { isBootstrapAdminEmail } from "@/lib/auth/admin-bootstrap";
-import { BlossomForbiddenError } from "./domain.server";
+
+class AdminForbiddenError extends Error {
+  readonly status = 403;
+  constructor(message = "Forbidden") {
+    super(message);
+    this.name = "BlossomForbiddenError";
+  }
+}
 
 export type PlatformRole = "admin" | "teacher" | "org_staff";
 
@@ -17,7 +24,7 @@ async function assertAdmin(userId: string) {
     [userId],
   );
   if (!rows[0]) {
-    throw new BlossomForbiddenError("Admin access is not enabled for this account.");
+    throw new AdminForbiddenError("Admin access is not enabled for this account.");
   }
 }
 
@@ -104,14 +111,15 @@ export async function listPlatformUsers(
     [Math.min(200, Math.max(1, limit))],
   );
 
-  // Also surface Better Auth users that may not have a profile yet.
-  const authUsers = await sql.query(
-    `select id, name, email, "updatedAt" as updated_at
-     from "user"
-     order by "updatedAt" desc nulls last
-     limit $1`,
-    [Math.min(200, Math.max(1, limit))],
-  ).catch(() => [] as Array<Record<string, unknown>>);
+  const authUsers = await sql
+    .query(
+      `select id, name, email, "updatedAt" as updated_at
+       from "user"
+       order by "updatedAt" desc nulls last
+       limit $1`,
+      [Math.min(200, Math.max(1, limit))],
+    )
+    .catch(() => [] as Array<Record<string, unknown>>);
 
   const byId = new Map<string, AdminUserRow>();
   for (const row of rows) {
@@ -150,9 +158,7 @@ export async function listPlatformUsers(
     });
   }
 
-  // Refresh role flags for auth-only users
   for (const user of byId.values()) {
-    if (user.isAdmin && user.isTeacher) continue;
     const flags = await sql.query(
       `select
         exists(select 1 from blossom_platform_admin where user_id = $1 and status = 'active')
@@ -182,10 +188,10 @@ export async function setUserPlatformRole(
 ): Promise<{ ok: true }> {
   await assertAdmin(actorUserId);
   if (!targetUserId.trim()) {
-    throw new BlossomForbiddenError("Invalid user id.");
+    throw new AdminForbiddenError("Invalid user id.");
   }
   if (actorUserId === targetUserId && role === "admin" && !active) {
-    throw new BlossomForbiddenError("You cannot revoke your own admin role.");
+    throw new AdminForbiddenError("You cannot revoke your own admin role.");
   }
 
   const sql = await getSql();
