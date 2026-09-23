@@ -9,6 +9,12 @@ import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/library/$id")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    lessonId:
+      typeof search.lessonId === "string" && search.lessonId.trim()
+        ? search.lessonId.trim()
+        : undefined,
+  }),
   component: LibraryDocPage,
 });
 
@@ -18,6 +24,7 @@ export const Route = createFileRoute("/_app/library/$id")({
  */
 function LibraryDocPage() {
   const { id } = Route.useParams();
+  const { lessonId: curriculumLessonId } = Route.useSearch();
   const doc = LIBRARY.find((d) => d.id === id);
 
   if (!doc) {
@@ -31,10 +38,16 @@ function LibraryDocPage() {
     );
   }
 
-  return <LibraryReader doc={doc} />;
+  return <LibraryReader doc={doc} curriculumLessonId={curriculumLessonId} />;
 }
 
-function LibraryReader({ doc }: { doc: (typeof LIBRARY)[number] }) {
+function LibraryReader({
+  doc,
+  curriculumLessonId,
+}: {
+  doc: (typeof LIBRARY)[number];
+  curriculumLessonId?: string;
+}) {
   const saveWord = useBlossom((s) => s.saveWord);
   const vocab = useBlossom((s) => s.vocabulary);
   const activityLog = useBlossom((s) => s.activityLog);
@@ -88,6 +101,7 @@ function LibraryReader({ doc }: { doc: (typeof LIBRARY)[number] }) {
       "LIBRARY_COMPLETED",
       "library:" + doc.id,
       "Lecture comprise · " + score + "/" + comprehension.length,
+      curriculumLessonId ? { curriculumLessonId } : undefined,
     );
     if (result.ok || result.reason === "already") {
       saveLearningSubmission({
