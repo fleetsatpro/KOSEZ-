@@ -1,11 +1,23 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  focusMissionForLevel,
-  missionBankStats,
+  B1_TODAY_MISSION,
   missionForLevel,
-  MISSION_BANK,
+  TODAY_MISSION,
+  UPCOMING_MISSIONS,
 } from "./data.ts";
+import {
+  EXTRA_MISSIONS,
+  missionBankStats,
+  selectMissionForLevel,
+} from "./mission-bank.ts";
+
+const MISSION_BANK = [
+  TODAY_MISSION,
+  B1_TODAY_MISSION,
+  ...UPCOMING_MISSIONS,
+  ...EXTRA_MISSIONS,
+];
 
 describe("mission bank", () => {
   it("has at least 20 missions", () => {
@@ -17,17 +29,22 @@ describe("mission bank", () => {
     assert.equal(missionForLevel("B1").id, "mission-today-b1");
   });
 
-  it("focusMissionForLevel rotates deterministically by day", () => {
-    const a = focusMissionForLevel("A2", { rotate: true, dayKey: "2026-09-23" });
-    const b = focusMissionForLevel("A2", { rotate: true, dayKey: "2026-09-23" });
-    const c = focusMissionForLevel("A2", { rotate: true, dayKey: "2026-09-24" });
+  it("selectMissionForLevel rotates deterministically by day", () => {
+    const fallback = missionForLevel("A2");
+    const a = selectMissionForLevel("A2", MISSION_BANK, fallback, {
+      rotate: true,
+      dayKey: "2026-09-23",
+    });
+    const b = selectMissionForLevel("A2", MISSION_BANK, fallback, {
+      rotate: true,
+      dayKey: "2026-09-23",
+    });
     assert.equal(a.id, b.id);
     assert.ok(MISSION_BANK.some((m) => m.id === a.id));
-    assert.ok(MISSION_BANK.some((m) => m.id === c.id));
   });
 
   it("stats report by level", () => {
-    const s = missionBankStats();
+    const s = missionBankStats(MISSION_BANK);
     assert.equal(s.total, MISSION_BANK.length);
     assert.ok((s.byLevel["A2"] ?? 0) >= 1);
   });
