@@ -10,7 +10,7 @@ import {
   planAllows,
 } from "@/lib/blossom/data";
 import { getTandemCandidatesOnServer } from "@/lib/blossom/domain.api";
-import { tandemMatchScore } from "@/lib/blossom/engine";
+import { tandemMatchBreakdown } from "@/lib/blossom/engine";
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
@@ -65,7 +65,7 @@ function TandemPage() {
       candidates
         .map((candidate) => ({
           candidate,
-          score: tandemMatchScore(me, {
+          ...tandemMatchBreakdown(me, {
             id: candidate.id,
             name: candidate.name,
             city: candidate.city ?? "La Réunion",
@@ -338,6 +338,8 @@ function PartnerCard({
   row: {
     candidate: Candidate;
     score: number;
+    reasons: string[];
+    checks: Array<{ label: string; state: "strong" | "partial" | "unknown" }>;
     status: string;
   };
   incoming?: boolean;
@@ -347,7 +349,7 @@ function PartnerCard({
     status: "suggested" | "pending" | "accepted" | "paused" | "blocked",
   ) => void;
 }) {
-  const { candidate, score, status } = row;
+  const { candidate, score, reasons, checks, status } = row;
   const displayWants = languageLabel(candidate.wants);
   const statusText =
     status === "accepted"
@@ -392,14 +394,35 @@ function PartnerCard({
           <p className="mt-3 text-sm leading-6">{candidate.goal}</p>
 
           {status !== "accepted" && (
-            <div className="mt-4">
-              <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.14em] text-subtle">
-                <span>Compatibilité indicative</span>
-                <span className="tabular-nums">{score}</span>
+            <div className="mt-5 rounded-2xl border border-border bg-surface-2/40 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">
+                  Affinité indicative
+                </p>
+                <span className="font-display text-xl tabular-nums text-primary">{score}</span>
               </div>
-              <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-surface-2">
-                <div className="h-full rounded-full bg-primary/70" style={{ width: `${Math.min(100, score)}%` }} />
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface">
+                <div className="h-full rounded-full bg-primary/70" style={{ width: Math.min(100, score) + "%" }} />
               </div>
+              {reasons.length ? (
+                <ul className="mt-3 space-y-1.5">
+                  {reasons.map((reason) => (
+                    <li key={reason} className="text-xs leading-5 text-muted">{reason}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <details className="mt-3">
+                <summary className="cursor-pointer text-[10px] font-semibold uppercase tracking-[0.14em] text-subtle">
+                  Voir les critères
+                </summary>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {checks.map((check) => (
+                    <span key={check.label} className="rounded-lg bg-surface p-2 text-[10px] leading-4 text-muted">
+                      {check.label} · {check.state}
+                    </span>
+                  ))}
+                </div>
+              </details>
             </div>
           )}
 
