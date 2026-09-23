@@ -188,7 +188,11 @@ type AppState = {
   joinEvent: (id: string) => void;
   leaveEvent: (id: string) => void;
   enroll: (id: string) => void;
-  recordPronlabAttempt: (itemId: string, seconds: number) => PronlabAttempt | null;
+  recordPronlabAttempt: (
+    itemId: string,
+    seconds: number,
+    metadata?: Record<string, unknown>,
+  ) => PronlabAttempt | null;
   setTandemStatus: (partnerId: string, status: TandemStatus) => void;
   setTandemOpen: (value: boolean) => void;
   reportTandem: (partnerId: string) => { count: number; escalated: boolean };
@@ -621,15 +625,15 @@ export const useBlossom = create<AppState>()(
         });
         track("booking_requested");
       },
-      recordPronlabAttempt: (itemId, seconds) => {
+      recordPronlabAttempt: (itemId, seconds, evidenceMetadata) => {
         const item = findPronlabItem(itemId);
         if (!item) return null;
-        const prior = get().pronlabAttempts.filter((a) => a.itemId === itemId);
         const before = summarisePronlabItem(itemId, get().pronlabAttempts);
         const score = 0;
         const metadata = {
+          ...(evidenceMetadata ?? {}),
           assessment: "capture-only",
-          provider: "unavailable",
+          provider: "speech-evidence",
         };
         const mutation = createMutation({
           operation: "pronlab.attempt",

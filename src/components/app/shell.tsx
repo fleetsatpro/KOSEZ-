@@ -26,6 +26,7 @@ import { ChildHome } from "@/components/app/child-home";
 import { AdminStudio } from "@/components/app/admin-studio";
 import { Wordmark } from "@/components/app/primitives";
 import { UserButton } from "@/lib/auth/gates";
+import { NotificationCenter } from "@/components/app/notification-center";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { cn } from "@/lib/utils";
@@ -379,10 +380,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             </nav>
           )}
 
-          <div className="mb-4 rounded-2xl border border-border bg-bg/70 px-4 py-3 shadow-[var(--shadow-border)]">
-            <SyncStatus />
-            <div className="mt-3 border-t border-border pt-3">
-              <UserButton />
+          <div className="mb-4 space-y-2 rounded-2xl">
+            <NotificationCenter />
+            <div className="rounded-2xl border border-border bg-bg/70 px-4 py-3 shadow-[var(--shadow-border)]">
+              <SyncStatus />
+              <div className="mt-3 border-t border-border pt-3">
+                <UserButton />
+              </div>
             </div>
           </div>
 
@@ -415,22 +419,25 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className={cn("min-h-dvh", !hideChrome && "lg:pl-[246px]")}>
         {!hideChrome && (
-          <nav className="border-b border-border/60 bg-bg/80 px-4 py-2 backdrop-blur-md lg:hidden" aria-label="Navigation secondaire">
-            <div className="mx-auto flex max-w-full gap-1 overflow-x-auto pb-0.5">
-              {contextNav.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={cn(
-                    "shrink-0 rounded-full border border-transparent px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-subtle transition",
-                    (pathname === item.to || pathname.startsWith(`${item.to}/`)) && "border-primary/20 bg-primary/8 text-primary",
-                  )}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-          </nav>
+          <div className="flex items-center gap-2 border-b border-border/60 bg-bg/80 px-3 py-2 backdrop-blur-md lg:hidden">
+            <nav className="min-w-0 flex-1" aria-label="Navigation secondaire">
+              <div className="mx-auto flex max-w-full gap-1 overflow-x-auto pb-0.5">
+                {contextNav.map((item) => (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={cn(
+                      "shrink-0 rounded-full border border-transparent px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-subtle transition",
+                      (pathname === item.to || pathname.startsWith(`${item.to}/`)) && "border-primary/20 bg-primary/8 text-primary",
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </nav>
+            <NotificationCenter compact />
+          </div>
           )}
         {children}
       </div>

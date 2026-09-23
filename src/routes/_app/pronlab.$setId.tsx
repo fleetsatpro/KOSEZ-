@@ -9,6 +9,8 @@ import { findPronlabSet } from "@/lib/blossom/data";
 import { summarisePronlabItem, type PronlabAttempt } from "@/lib/blossom/engine";
 import { isSetUnlocked, useBlossom } from "@/lib/blossom/store";
 import { toast } from "sonner";
+import { transcribeSpeakTurn } from "@/lib/blossom/speech.api";
+import { blobToBase64, captureOnlyEvidence } from "@/lib/blossom/speech-stt";
 
 export const Route = createFileRoute("/_app/pronlab/$setId")({
   component: PronlabSetPage,
@@ -154,11 +156,38 @@ function PronlabSetPage() {
         {lastAttempt === null ? (
           <RecordControl
             cta={heard ? "Maintenir pour dire" : "Écoutez, ou tentez"}
-            onFinished={(seconds) => {
-              const attempt = record(item.id, seconds ?? 2);
+            onFinished={async ({ seconds, blob, mimeType }) => {
+              let evidence = captureOnlyEvidence(seconds);
+              if (blob) {
+                try {
+                  const audioBase64 = await blobToBase64(blob);
+                  if (audioBase64) {
+                    evidence = await transcribeSpeakTurn({
+                      data: {
+                        audioBase64,
+                        mimeType,
+                        seconds,
+                        fileName: `kosez-pronlab-${item.id}.webm`,
+                      },
+                    });
+                  }
+                } catch {
+                  evidence = captureOnlyEvidence(seconds);
+                }
+              }
+              const attempt = record(item.id, seconds, {
+                assessment: evidence.assessment,
+                provider: evidence.providerId ?? "speech-evidence",
+                language: evidence.language ?? "",
+                transcript: evidence.transcript ?? "",
+              });
               if (attempt) {
                 setLastAttempt(attempt);
-                toast("Prise enregistrée. L’analyse viendra avec un vrai moteur phonétique.");
+                toast(
+                  evidence.assessment === "transcript"
+                    ? "Prise transcrite. Aucune note phonétique n’est inventée."
+                    : "Prise enregistrée. K’Osez n’invente pas de note sans moteur phonétique.",
+                );
               }
             }}
           />

@@ -10,7 +10,7 @@ export function RecordControl({
   cta = "Maintenir pour parler",
   inverted = false,
 }: {
-  onFinished: (seconds?: number) => void;
+  onFinished: (result: { seconds: number; blob: Blob | null; mimeType: string }) => void;
   cta?: string;
   inverted?: boolean;
 }) {
@@ -21,6 +21,7 @@ export function RecordControl({
   const processTimer = useRef<number | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
+  const chunks = useRef<Blob[]>([]);
   const secondsRef = useRef(0);
   const holding = useRef(false);
 
@@ -42,11 +43,21 @@ export function RecordControl({
 
   function finish(secondsValue: number) {
     clearTimers();
+    const activeRecorder = recorder.current;
+    const mimeType = activeRecorder?.mimeType || chunks.current[0]?.type || "audio/webm";
+    const audioBlob =
+      chunks.current.length > 0
+        ? new Blob(chunks.current, { type: mimeType })
+        : null;
+    chunks.current = [];
     stream.current?.getTracks().forEach((track) => track.stop());
     stream.current = null;
     recorder.current = null;
     setPhase("processing");
-    processTimer.current = window.setTimeout(() => onFinished(secondsValue), 650);
+    processTimer.current = window.setTimeout(
+      () => onFinished({ seconds: Math.max(0, Math.round(secondsValue)), blob: audioBlob, mimeType }),
+      650,
+    );
   }
 
   function fallbackWithoutMic() {
@@ -57,7 +68,10 @@ export function RecordControl({
     recorder.current = null;
     setSeconds(0);
     setPhase("processing");
-    processTimer.current = window.setTimeout(() => onFinished(0), 350);
+    processTimer.current = window.setTimeout(
+      () => onFinished({ seconds: 0, blob: null, mimeType: "audio/webm" }),
+      350,
+    );
   }
 
   async function begin() {
@@ -82,6 +96,10 @@ export function RecordControl({
 
       stream.current = nextStream;
       recorder.current = new MediaRecorder(nextStream);
+      chunks.current = [];
+      recorder.current.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.current.push(event.data);
+      };
       recorder.current.start();
       secondsRef.current = 0;
       setSeconds(0);

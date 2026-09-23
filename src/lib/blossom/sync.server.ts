@@ -292,7 +292,7 @@ async function applyMutation(
         score: payload.score,
         seconds: payload.seconds,
         tip: payload.tip ?? null,
-        metadata: payload.metadata ?? {},
+        metadata: objectValue(payload.metadata),
         idempotencyKey: mutation.mutationId,
       });
       return { mutationId: mutation.mutationId, status: "applied" };
@@ -302,7 +302,7 @@ async function applyMutation(
       await saveVocabulary(userId, {
         word: payload.word,
         gloss: payload.gloss,
-        metadata: payload.metadata ?? {},
+        metadata: objectValue(payload.metadata),
         mutationCreatedAt: mutation.createdAt,
       });
       return { mutationId: mutation.mutationId, status: "applied" };
@@ -320,7 +320,7 @@ async function applyMutation(
       await setTandemStatus(userId, {
         partnerUserId: mutation.entityId,
         status: payload.status,
-        metadata: payload.metadata ?? {},
+        metadata: objectValue(payload.metadata),
       });
       return { mutationId: mutation.mutationId, status: "applied" };
     }

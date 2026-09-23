@@ -11,6 +11,7 @@ import {
 } from "@/lib/blossom/domain.api";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { AdminContentStudio } from "./admin-content-studio";
+import { AdminBookingQueue } from "./admin-booking-queue";
 import { useBlossom } from "@/lib/blossom/store";
 
 type AdminWorkspace = Awaited<ReturnType<typeof getAdminWorkspaceOnServer>>;
@@ -222,6 +223,8 @@ export function AdminStudio() {
       <section className="mt-5">
         <AdminContentStudio />
       </section>
+
+      <AdminBookingQueue />
 
       <section className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
         <Surface>

@@ -18,6 +18,15 @@ import {
   saveHomework,
   saveVocabulary,
   setTandemStatus,
+  getNotifications,
+  markNotificationRead,
+  getAdminBookingQueue,
+  updateAdminBooking,
+  getTeacherLearnerDetail,
+  getGuardianLearnerDetail,
+  startTandemSession,
+  logTandemPrompt,
+  endTandemSession,
 } from "./domain.server";
 import type { JsonObject } from "./backend.server";
 
@@ -73,6 +82,76 @@ export const getGuardianWorkspaceOnServer = createServerFn({ method: "GET" })
 export const getOrganizationWorkspaceOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => getOrganizationWorkspace(context.userId));
+
+export const getNotificationsOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ limit: z.number().int().min(1).max(100).optional() }).optional())
+  .handler(async ({ context, data }) => getNotifications(context.userId, data?.limit ?? 30));
+
+export const markNotificationReadOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ notificationId: z.string().uuid() }))
+  .handler(async ({ context, data }) => markNotificationRead(context.userId, data.notificationId));
+
+export const getAdminBookingQueueOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getAdminBookingQueue(context.userId));
+
+export const updateAdminBookingOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      bookingId: z.string().uuid(),
+      status: z.enum(["requested", "confirmed", "cancelled"]).optional(),
+      paymentStatus: z.enum(["unpaid", "paid", "refunded"]).optional(),
+      providerReference: z.string().trim().max(200).nullable().optional(),
+    }),
+  )
+  .handler(async ({ context, data }) => updateAdminBooking(context.userId, data));
+
+export const getTeacherLearnerDetailOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ learnerUserId: z.string().trim().min(1).max(200) }))
+  .handler(async ({ context, data }) =>
+    getTeacherLearnerDetail(context.userId, data.learnerUserId),
+  );
+
+export const getGuardianLearnerDetailOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ learnerUserId: z.string().trim().min(1).max(200) }))
+  .handler(async ({ context, data }) =>
+    getGuardianLearnerDetail(context.userId, data.learnerUserId),
+  );
+
+export const startTandemSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ partnerUserId: z.string().trim().min(1).max(200) }))
+  .handler(async ({ context, data }) =>
+    startTandemSession(context.userId, data.partnerUserId),
+  );
+
+export const logTandemPromptOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      sessionId: z.string().uuid(),
+      language: z.string().trim().min(1).max(80),
+      prompt: z.string().trim().min(1).max(500),
+    }),
+  )
+  .handler(async ({ context, data }) => logTandemPrompt(context.userId, data));
+
+export const endTandemSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      sessionId: z.string().uuid(),
+      status: z.enum(["completed", "cancelled"]),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    endTandemSession(context.userId, data.sessionId, data.status),
+  );
 
 
 function parseJsonObject(value: string | undefined): JsonObject {

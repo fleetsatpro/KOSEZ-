@@ -112,22 +112,22 @@ export function OrgStudio() {
         </Button>
       </div>
 
-      <div className="mt-7 grid gap-4 sm:grid-cols-3">
+      <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Surface>
           <p className="text-xs uppercase tracking-[0.16em] text-muted">Membres actifs</p>
           <p className="mt-2 font-display text-4xl tabular-nums">{workspace.members.length}</p>
         </Surface>
         <Surface>
           <p className="text-xs uppercase tracking-[0.16em] text-muted">Apprenants</p>
-          <p className="mt-2 font-display text-4xl tabular-nums">
-            {workspace.members.filter((member) => member.role === "learner").length}
-          </p>
+          <p className="mt-2 font-display text-4xl tabular-nums">{workspace.stats.learners}</p>
         </Surface>
         <Surface>
-          <p className="text-xs uppercase tracking-[0.16em] text-muted">Équipe</p>
-          <p className="mt-2 font-display text-4xl tabular-nums">
-            {workspace.members.filter((member) => member.role !== "learner").length}
-          </p>
+          <p className="text-xs uppercase tracking-[0.16em] text-muted">Actifs · 7 jours</p>
+          <p className="mt-2 font-display text-4xl tabular-nums text-primary">{workspace.stats.activeLearnersThisWeek}</p>
+        </Surface>
+        <Surface>
+          <p className="text-xs uppercase tracking-[0.16em] text-muted">Parole · 7 jours</p>
+          <p className="mt-2 font-display text-4xl tabular-nums">{workspace.stats.speakingMinutesThisWeek}<span className="ml-1 text-sm text-muted">min</span></p>
         </Surface>
       </div>
 

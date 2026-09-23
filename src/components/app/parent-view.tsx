@@ -5,6 +5,7 @@ import { Eyebrow, Initials, Page, Surface } from "./primitives";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { getGuardianWorkspaceOnServer } from "@/lib/blossom/domain.api";
 import { useBlossom } from "@/lib/blossom/store";
+import { LearnerDetail } from "./learner-detail";
 
 type GuardianRow = Awaited<ReturnType<typeof getGuardianWorkspaceOnServer>>[number];
 
@@ -142,6 +143,7 @@ export function ParentView() {
           </div>
 
           {selected ? (
+            <>
             <section className="mt-6">
               <div className="rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-border)]">
                 <div className="flex items-start gap-4">
@@ -172,6 +174,8 @@ export function ParentView() {
                 </p>
               </Surface>
             </section>
+            <LearnerDetail learnerUserId={selected.id} role="guardian" />
+            </>
           ) : null}
         </>
       )}

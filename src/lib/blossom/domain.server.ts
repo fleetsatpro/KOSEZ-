@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
+import type { JsonObject } from "./backend.server";
 
 import { getPublishedContent } from "./content.server";
 
@@ -19,6 +20,17 @@ export type BlossomAccessContext = {
   isChild: boolean;
   isAdmin: boolean;
 };
+
+async function assertAdmin(userId: string) {
+  const sql = await getSql();
+  const rows = await sql.query(
+    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    [userId],
+  );
+  if (!rows[0]) {
+    throw new BlossomForbiddenError("Admin access is not enabled for this account.");
+  }
+}
 
 export async function getBlossomAccessContext(userId: string): Promise<BlossomAccessContext> {
   const sql = await getSql();
@@ -426,6 +438,12 @@ export type OrganizationWorkspace = {
     role: string;
     status: string;
   }>;
+  stats: {
+    learners: number;
+    staff: number;
+    activeLearnersThisWeek: number;
+    speakingMinutesThisWeek: number;
+  };
 };
 
 export async function getOrganizationWorkspace(
@@ -456,13 +474,41 @@ export async function getOrganizationWorkspace(
   );
   if (!rows[0]) return null;
 
+  const organizationId = String(rows[0].id);
+  const statsRows = await sql.query(
+    `select
+       count(*) filter (where role = 'learner')::integer as learners,
+       count(*) filter (where role <> 'learner')::integer as staff,
+       count(distinct m.user_id) filter (
+         where m.role = 'learner'
+           and a.occurred_at >= current_timestamp - interval '7 days'
+       )::integer as active_learners_this_week,
+       coalesce(sum(
+         case
+           when m.role = 'learner'
+            and a.occurred_at >= current_timestamp - interval '7 days'
+            and a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
+            and coalesce(a.payload->'metadata'->>'minutes', a.payload->>'minutes','') ~ '^[0-9]+$'
+           then coalesce(
+             (a.payload->'metadata'->>'minutes')::integer,
+             (a.payload->>'minutes')::integer
+           )
+           else 0
+         end
+       ), 0)::integer as speaking_minutes
+     from blossom_organization_member m
+     left join blossom_activity_event a on a.user_id = m.user_id
+     where m.organization_id = $1 and m.status = 'active'`,
+    [organizationId],
+  );
+  const stats = statsRows[0] ?? {};
   const metadata =
     rows[0].metadata && typeof rows[0].metadata === "object"
       ? (rows[0].metadata as Record<string, unknown>)
       : {};
 
   return {
-    id: String(rows[0].id),
+    id: organizationId,
     name: String(rows[0].name),
     city: typeof metadata.city === "string" ? metadata.city : null,
     members: rows.map((row) => ({
@@ -471,6 +517,12 @@ export async function getOrganizationWorkspace(
       role: String(row.role),
       status: String(row.status),
     })),
+    stats: {
+      learners: Number(stats.learners ?? 0),
+      staff: Number(stats.staff ?? 0),
+      activeLearnersThisWeek: Number(stats.active_learners_this_week ?? 0),
+      speakingMinutesThisWeek: Number(stats.speaking_minutes ?? 0),
+    },
   };
 }
 
@@ -568,10 +620,15 @@ export async function recordPronlabAttempt(
   const recordId = input.idempotencyKey ?? randomUUID();
   const metadata = input.metadata ?? {};
   const safeScore = 0;
+  const assessment =
+    metadata.assessment === "transcript" ? "transcript" : "capture-only";
   const safeMetadata = {
     ...metadata,
-    assessment: "capture-only",
-    provider: "unavailable",
+    assessment,
+    provider:
+      typeof metadata.provider === "string"
+        ? metadata.provider
+        : "speech-evidence",
   };
 
   if (input.idempotencyKey) {
@@ -605,7 +662,7 @@ export async function saveVocabulary(
   input: {
     word: string;
     gloss: string;
-    metadata?: Record<string, unknown>;
+    metadata?: JsonObject;
     mutationCreatedAt?: string;
   },
 ) {
@@ -636,7 +693,7 @@ export async function setTandemStatus(
   input: {
     partnerUserId: string;
     status: "suggested" | "pending" | "accepted" | "blocked" | "paused";
-    metadata?: Record<string, unknown>;
+    metadata?: JsonObject;
   },
 ) {
   assertFeaturePlan(await getServerPlan(userId), "tandem");
@@ -702,6 +759,13 @@ export async function setTandemStatus(
       resourceType: "tandem_connection",
       resourceId: String(accepted[0].id),
     });
+    await createNotification(input.partnerUserId, {
+      kind: "tandem",
+      title: "Votre demande tandem a été acceptée",
+      body: "Votre connexion est réciproque. Une session structurée peut maintenant commencer.",
+      href: "/tandem",
+      metadata: { partnerUserId: userId },
+    });
     return accepted[0];
   }
 
@@ -723,6 +787,15 @@ export async function setTandemStatus(
     resourceType: "tandem_connection",
     resourceId: String(rows[0].id),
   });
+  if (input.status === "pending") {
+    await createNotification(input.partnerUserId, {
+      kind: "tandem",
+      title: "Une demande tandem vous attend",
+      body: "Un apprenant souhaite ouvrir un échange structuré avec vous.",
+      href: "/tandem",
+      metadata: { partnerUserId: userId },
+    });
+  }
   return rows[0];
 }
 
@@ -899,6 +972,15 @@ export async function saveHomework(
       );
 
   if (!rows[0]) throw new Error("homework-write-failed");
+  if (input.status === "sent") {
+    await createNotification(input.learnerUserId, {
+      kind: "homework",
+      title: "Un nouveau devoir vous attend",
+      body: input.title,
+      href: "/moi",
+      metadata: { homeworkId: String(rows[0].id) },
+    });
+  }
   return rows[0];
 }
 
@@ -959,7 +1041,7 @@ export async function writeAuditEvent(
     subjectUserId?: string | null;
     resourceType: string;
     resourceId?: string | null;
-    metadata?: Record<string, unknown>;
+    metadata?: JsonObject;
   },
 ) {
   const sql = await getSql();
@@ -1004,4 +1086,442 @@ export async function saveLearningSubmission(
   );
   if (!rows[0]) throw new Error("learning-submission-write-failed");
   return rows[0];
+}
+
+
+export type BlossomNotification = {
+  id: string;
+  kind: "homework" | "booking" | "event" | "tandem" | "learning" | "system";
+  title: string;
+  body: string;
+  href: string | null;
+  metadata: JsonObject;
+  readAt: string | null;
+  createdAt: string;
+};
+
+async function createNotification(
+  userId: string,
+  input: {
+    kind: BlossomNotification["kind"];
+    title: string;
+    body: string;
+    href?: string | null;
+    metadata?: Record<string, unknown>;
+  },
+) {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `insert into blossom_notification (id, user_id, kind, title, body, href, metadata)
+     values ($1::uuid, $2, $3, $4, $5, $6, $7::jsonb)
+     returning id, kind, title, body, href, metadata, read_at, created_at`,
+    [
+      randomUUID(),
+      userId,
+      input.kind,
+      input.title,
+      input.body,
+      input.href ?? null,
+      JSON.stringify(input.metadata ?? {}),
+    ],
+  );
+  return rows[0] ?? null;
+}
+
+export async function getNotifications(
+  userId: string,
+  limit = 30,
+): Promise<BlossomNotification[]> {
+  const sql = await getSql();
+  const bounded = Math.min(100, Math.max(1, Math.round(limit)));
+  const rows = await sql.query(
+    `select id, kind, title, body, href, metadata, read_at, created_at
+     from blossom_notification
+     where user_id = $1
+     order by created_at desc
+     limit ${bounded}`,
+    [userId],
+  );
+  return rows.map((row) => ({
+    id: String(row.id),
+    kind: String(row.kind) as BlossomNotification["kind"],
+    title: String(row.title),
+    body: String(row.body),
+    href: row.href ? String(row.href) : null,
+    metadata:
+      row.metadata && typeof row.metadata === "object"
+        ? (row.metadata as JsonObject)
+        : {},
+    readAt: row.read_at ? new Date(String(row.read_at)).toISOString() : null,
+    createdAt: new Date(String(row.created_at)).toISOString(),
+  }));
+}
+
+export async function markNotificationRead(userId: string, notificationId: string) {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `update blossom_notification
+     set read_at = coalesce(read_at, current_timestamp)
+     where id = $1::uuid and user_id = $2
+     returning id, read_at`,
+    [notificationId, userId],
+  );
+  if (!rows[0]) throw new BlossomForbiddenError("Cette notification n'est pas disponible.");
+  return {
+    id: String(rows[0].id),
+    readAt: new Date(String(rows[0].read_at)).toISOString(),
+  };
+}
+
+export type AdminBookingRow = {
+  id: string;
+  learnerUserId: string;
+  learnerName: string;
+  catalogueItemId: string;
+  catalogueTitle: string;
+  status: "requested" | "confirmed" | "cancelled";
+  paymentStatus: "unpaid" | "paid" | "refunded";
+  providerReference: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function getAdminBookingQueue(userId: string): Promise<AdminBookingRow[]> {
+  await assertAdmin(userId);
+  const sql = await getSql();
+  const { catalogue } = await getPublishedContent();
+  const titleMap = new Map(catalogue.map((item) => [item.id, item.title]));
+  const rows = await sql.query(
+    `select
+       b.id,
+       b.user_id,
+       coalesce(nullif(p.display_name, ''), b.user_id) as learner_name,
+       b.catalogue_item_id,
+       b.status,
+       b.payment_status,
+       b.provider_reference,
+       b.created_at,
+       b.updated_at
+     from blossom_booking_request b
+     left join blossom_profile p on p.user_id = b.user_id
+     order by b.updated_at desc
+     limit 50`,
+  );
+  return rows.map((row) => ({
+    id: String(row.id),
+    learnerUserId: String(row.user_id),
+    learnerName: String(row.learner_name),
+    catalogueItemId: String(row.catalogue_item_id),
+    catalogueTitle: titleMap.get(String(row.catalogue_item_id)) ?? String(row.catalogue_item_id),
+    status: String(row.status) as AdminBookingRow["status"],
+    paymentStatus: String(row.payment_status) as AdminBookingRow["paymentStatus"],
+    providerReference: row.provider_reference ? String(row.provider_reference) : null,
+    createdAt: new Date(String(row.created_at)).toISOString(),
+    updatedAt: new Date(String(row.updated_at)).toISOString(),
+  }));
+}
+
+export type AdminBookingUpdateResult = {
+  bookingId: string;
+  status: AdminBookingRow["status"];
+  paymentStatus: AdminBookingRow["paymentStatus"];
+  providerReference: string | null;
+};
+
+export async function updateAdminBooking(
+  userId: string,
+  input: {
+    bookingId: string;
+    status?: "requested" | "confirmed" | "cancelled";
+    paymentStatus?: "unpaid" | "paid" | "refunded";
+    providerReference?: string | null;
+  },
+): Promise<AdminBookingUpdateResult> {
+  await assertAdmin(userId);
+  const sql = await getSql();
+  const currentRows = await sql.query(
+    `select id, user_id, status, payment_status, provider_reference
+     from blossom_booking_request
+     where id = $1::uuid limit 1`,
+    [input.bookingId],
+  );
+  const current = currentRows[0];
+  if (!current) throw new BlossomForbiddenError("Cette demande n'existe plus.");
+
+  const currentStatus = String(current.status) as AdminBookingRow["status"];
+  const currentPayment = String(current.payment_status) as AdminBookingRow["paymentStatus"];
+  const nextStatus = input.status ?? currentStatus;
+  const nextPayment = input.paymentStatus ?? currentPayment;
+
+  if (nextStatus === "requested" && currentStatus !== "requested") {
+    throw new BlossomForbiddenError("Une demande déjà traitée ne revient pas en attente.");
+  }
+  if (currentStatus === "cancelled" && nextStatus !== "cancelled") {
+    throw new BlossomForbiddenError("Une demande annulée reste clôturée.");
+  }
+  if (nextPayment === "paid" && currentPayment === "refunded") {
+    throw new BlossomForbiddenError("Un paiement remboursé ne peut pas être marqué payé ici.");
+  }
+  if (currentPayment === "refunded" && nextPayment !== "refunded") {
+    throw new BlossomForbiddenError("Un paiement remboursé reste clôturé.");
+  }
+  if (currentPayment === "paid" && nextPayment === "unpaid") {
+    throw new BlossomForbiddenError("Un paiement déjà marqué payé ne revient pas à impayé ici.");
+  }
+  if (nextPayment === "refunded" && currentPayment !== "paid") {
+    throw new BlossomForbiddenError("Un remboursement exige un paiement marqué payé.");
+  }
+
+  const providerReference =
+    input.providerReference === undefined
+      ? current.provider_reference ? String(current.provider_reference) : null
+      : input.providerReference;
+
+  const rows = await sql.query(
+    `update blossom_booking_request
+     set status = $2, payment_status = $3, provider_reference = $4, updated_at = current_timestamp
+     where id = $1::uuid
+     returning id, user_id, catalogue_item_id, status, payment_status, provider_reference, created_at, updated_at`,
+    [input.bookingId, nextStatus, nextPayment, providerReference],
+  );
+  if (!rows[0]) throw new Error("booking-update-failed");
+
+  const learnerId = String(rows[0].user_id);
+
+  if (nextStatus !== currentStatus) {
+    await writeAuditEvent(userId, {
+      subjectUserId: learnerId,
+      action: `commerce.booking.${nextStatus}`,
+      resourceType: "booking_request",
+      resourceId: input.bookingId,
+      metadata: { previousStatus: currentStatus, nextStatus },
+    });
+    if (nextStatus === "confirmed") {
+      await createNotification(learnerId, {
+        kind: "booking",
+        title: "Votre réservation est confirmée",
+        body: "K’Osez a confirmé votre demande. Consultez votre espace pour la suite.",
+        href: "/moi",
+        metadata: { bookingId: input.bookingId },
+      });
+    } else if (nextStatus === "cancelled") {
+      await createNotification(learnerId, {
+        kind: "booking",
+        title: "Votre réservation a été annulée",
+        body: "La demande n’est plus active. K’Osez reste disponible pour vous proposer une autre porte.",
+        href: "/explore",
+        metadata: { bookingId: input.bookingId },
+      });
+    }
+  }
+
+  if (nextPayment !== currentPayment) {
+    await writeAuditEvent(userId, {
+      subjectUserId: learnerId,
+      action: `commerce.payment.${nextPayment}`,
+      resourceType: "booking_request",
+      resourceId: input.bookingId,
+      metadata: { previousPaymentStatus: currentPayment, nextPaymentStatus: nextPayment },
+    });
+    await createNotification(learnerId, {
+      kind: "booking",
+      title: nextPayment === "paid" ? "Paiement enregistré" : "Paiement remboursé",
+      body:
+        nextPayment === "paid"
+          ? "Le paiement associé à votre réservation est marqué comme payé par K’Osez."
+          : "Le paiement associé à votre réservation est marqué comme remboursé.",
+      href: "/moi",
+      metadata: { bookingId: input.bookingId, paymentStatus: nextPayment },
+    });
+  }
+
+  return {
+    bookingId: String(rows[0].id),
+    status: String(rows[0].status) as AdminBookingRow["status"],
+    paymentStatus: String(rows[0].payment_status) as AdminBookingRow["paymentStatus"],
+    providerReference: rows[0].provider_reference
+      ? String(rows[0].provider_reference)
+      : null,
+  };
+}
+
+export type LearnerDetail = {
+  id: string;
+  name: string;
+  targetLanguage: string;
+  level: string | null;
+  goal: string;
+  activity: Array<{ id: string; type: string; sourceId: string | null; note: string | null; occurredAt: string }>;
+  pronlab: Array<{ id: string; itemId: string; score: number; seconds: number; assessment: string; createdAt: string }>;
+  homework: Array<{ id: string; title: string; body: string; status: string; createdAt: string; updatedAt: string }>;
+  notes: Array<{ id: string; tags: string[]; text: string; createdAt: string }>;
+};
+
+function mapLearnerDetail(
+  profile: Record<string, unknown> | undefined,
+  activityRows: Record<string, unknown>[],
+  pronlabRows: Record<string, unknown>[],
+  homeworkRows: Record<string, unknown>[],
+  noteRows: Record<string, unknown>[],
+): LearnerDetail | null {
+  if (!profile) return null;
+  const preferences =
+    profile.preferences && typeof profile.preferences === "object"
+      ? (profile.preferences as Record<string, unknown>)
+      : {};
+  return {
+    id: String(profile.user_id),
+    name: String(profile.display_name ?? profile.user_id),
+    targetLanguage: String(profile.target_language ?? "en"),
+    level: profile.level ? String(profile.level) : null,
+    goal: typeof preferences.goal === "string" ? preferences.goal : "",
+    activity: activityRows.map((row) => ({
+      id: String(row.id),
+      type: String(row.event_type),
+      sourceId: row.source_id ? String(row.source_id) : null,
+      note: row.note ? String(row.note) : null,
+      occurredAt: new Date(String(row.occurred_at)).toISOString(),
+    })),
+    pronlab: pronlabRows.map((row) => ({
+      id: String(row.id),
+      itemId: String(row.item_id),
+      score: Number(row.score ?? 0),
+      seconds: Number(row.seconds ?? 0),
+      assessment:
+        row.metadata && typeof row.metadata === "object"
+          ? String((row.metadata as Record<string, unknown>).assessment ?? "unknown")
+          : "unknown",
+      createdAt: new Date(String(row.created_at)).toISOString(),
+    })),
+    homework: homeworkRows.map((row) => ({
+      id: String(row.id),
+      title: String(row.title),
+      body: String(row.body),
+      status: String(row.status),
+      createdAt: new Date(String(row.created_at)).toISOString(),
+      updatedAt: new Date(String(row.updated_at)).toISOString(),
+    })),
+    notes: noteRows.map((row) => ({
+      id: String(row.id),
+      tags: Array.isArray(row.tags)
+        ? row.tags.map(String)
+        : row.tags && typeof row.tags === "object"
+          ? Object.values(row.tags as Record<string, unknown>).map(String)
+          : [],
+      text: String(row.note),
+      createdAt: new Date(String(row.created_at)).toISOString(),
+    })),
+  };
+}
+
+export async function getTeacherLearnerDetail(
+  teacherUserId: string,
+  learnerUserId: string,
+): Promise<LearnerDetail | null> {
+  await assertLearnerAccess(teacherUserId, learnerUserId, "teacher");
+  const sql = await getSql();
+  const [profile, activity, pronlab, homework, notes] = await Promise.all([
+    sql.query(`select user_id, display_name, target_language, level, preferences from blossom_profile where user_id = $1 limit 1`, [learnerUserId]),
+    sql.query(`select id, event_type, source_id, note, occurred_at from blossom_activity_event where user_id = $1 order by occurred_at desc limit 24`, [learnerUserId]),
+    sql.query(`select id, item_id, score, seconds, metadata, created_at from blossom_pronlab_attempt where user_id = $1 order by created_at desc limit 12`, [learnerUserId]),
+    sql.query(`select id, title, body, status, created_at, updated_at from blossom_homework where learner_user_id = $1 order by updated_at desc limit 10`, [learnerUserId]),
+    sql.query(`select id, tags, note, created_at from blossom_teacher_note where learner_user_id = $1 and teacher_user_id = $2 order by created_at desc limit 10`, [learnerUserId, teacherUserId]),
+  ]);
+  return mapLearnerDetail(profile[0], activity, pronlab, homework, notes);
+}
+
+export async function getGuardianLearnerDetail(
+  guardianUserId: string,
+  learnerUserId: string,
+): Promise<LearnerDetail | null> {
+  await assertLearnerAccess(guardianUserId, learnerUserId, "guardian");
+  const sql = await getSql();
+  const [profile, activity, homework] = await Promise.all([
+    sql.query(`select user_id, display_name, target_language, level, preferences from blossom_profile where user_id = $1 limit 1`, [learnerUserId]),
+    sql.query(`select id, event_type, source_id, note, occurred_at from blossom_activity_event where user_id = $1 order by occurred_at desc limit 20`, [learnerUserId]),
+    sql.query(`select id, title, body, status, created_at, updated_at from blossom_homework where learner_user_id = $1 order by updated_at desc limit 10`, [learnerUserId]),
+  ]);
+  return mapLearnerDetail(profile[0], activity, [], homework, []);
+}
+
+export async function startTandemSession(userId: string, partnerUserId: string) {
+  assertFeaturePlan(await getServerPlan(userId), "tandem");
+  if (userId === partnerUserId) throw new BlossomForbiddenError("Une session tandem exige deux apprenants.");
+  const sql = await getSql();
+  const access = await sql.query(
+    `select
+      exists(select 1 from blossom_tandem_connection where user_id = $1 and partner_user_id = $2 and status = 'accepted') as mine,
+      exists(select 1 from blossom_tandem_connection where user_id = $2 and partner_user_id = $1 and status = 'accepted') as theirs`,
+    [userId, partnerUserId],
+  );
+  if (!access[0]?.mine || !access[0]?.theirs) {
+    throw new BlossomForbiddenError("La connexion tandem n'est pas réciproque.");
+  }
+  const active = await sql.query(
+    `select id from blossom_tandem_session
+     where ((user_id = $1 and partner_user_id = $2) or (user_id = $2 and partner_user_id = $1))
+       and status = 'active'
+     order by created_at desc limit 1`,
+    [userId, partnerUserId],
+  );
+  if (active[0]) return String(active[0].id);
+
+  const sessionId = randomUUID();
+  await sql.query(
+    `insert into blossom_tandem_session
+      (id, user_id, partner_user_id, status, started_at)
+     values ($1::uuid, $2, $3, 'active', current_timestamp)`,
+    [sessionId, userId, partnerUserId],
+  );
+  await writeAuditEvent(userId, {
+    subjectUserId: partnerUserId,
+    action: "tandem.session.started",
+    resourceType: "tandem_session",
+    resourceId: sessionId,
+  });
+  return sessionId;
+}
+
+export async function logTandemPrompt(
+  userId: string,
+  input: { sessionId: string; language: string; prompt: string },
+) {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `select user_id, partner_user_id, status from blossom_tandem_session
+     where id = $1::uuid and (user_id = $2 or partner_user_id = $2) limit 1`,
+    [input.sessionId, userId],
+  );
+  if (!rows[0] || String(rows[0].status) !== "active") {
+    throw new BlossomForbiddenError("Cette session tandem n'est plus active.");
+  }
+  const row = await sql.query(
+    `insert into blossom_tandem_prompt_log (id, session_id, user_id, language, prompt)
+     values ($1::uuid, $2::uuid, $3, $4, $5)
+     returning id`,
+    [randomUUID(), input.sessionId, userId, input.language, input.prompt.slice(0, 500)],
+  );
+  return row[0] ? String(row[0].id) : null;
+}
+
+export async function endTandemSession(
+  userId: string,
+  sessionId: string,
+  status: "completed" | "cancelled",
+) {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `update blossom_tandem_session
+     set status = $2, ended_at = coalesce(ended_at, current_timestamp), updated_at = current_timestamp
+     where id = $1::uuid and (user_id = $3 or partner_user_id = $3)
+     returning id, status, ended_at`,
+    [sessionId, status, userId],
+  );
+  if (!rows[0]) throw new BlossomForbiddenError("Cette session tandem n'est pas disponible.");
+  await writeAuditEvent(userId, {
+    action: `tandem.session.${status}`,
+    resourceType: "tandem_session",
+    resourceId: sessionId,
+  });
+  return { id: String(rows[0].id), status: String(rows[0].status), endedAt: new Date(String(rows[0].ended_at)).toISOString() };
 }
