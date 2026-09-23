@@ -90,6 +90,7 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
     LISTENING_COMPLETED: { kind: "listening", domains: ["listening"], direct: true, label: "Lab d'écoute" },
     GRAMMAR_COMPLETED: { kind: "grammar", domains: ["grammar"], direct: true, label: "Lab de grammaire" },
     WRITING_COMPLETED: { kind: "writing", domains: ["writing"], direct: true, label: "Lab d'écriture" },
+    LIBRARY_COMPLETED: { kind: "library", domains: ["reading"], direct: true, label: "Lecture terminée" },
     TANDEM_COMPLETED: { kind: "tandem", domains: ["interaction", "speaking", "mediation"], direct: true, label: "Tandem" },
     REVIEW_COMPLETED: { kind: "review", domains: ["vocabulary", "pronunciation", "grammar"], direct: false, label: "Révision" },
     CLASS_ATTENDED: { kind: "mission", domains: ["speaking", "listening"], direct: false, label: "Cours" },
