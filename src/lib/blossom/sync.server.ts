@@ -246,7 +246,7 @@ async function applyMutation(
         payload: {
           ...sanitized.payload,
           metadata: sanitized.metadata,
-        },
+        } as JsonObject,
         idempotencyKey: mutation.mutationId,
         occurredAt: payload.occurredAt,
       });
