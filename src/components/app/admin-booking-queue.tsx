@@ -8,7 +8,6 @@ import type { AdminBookingRow } from "@/lib/blossom/domain.server";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow, Surface } from "@/components/app/primitives";
-import { Input } from "@/components/ui/input";
 
 export function AdminBookingQueue() {
   const [rows, setRows] = useState<AdminBookingRow[]>([]);
@@ -75,7 +74,7 @@ export function AdminBookingQueue() {
         </div>
         <div className="relative w-full sm:w-72">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-subtle" />
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Chercher un apprenant ou produit…" className="pl-9" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Chercher un apprenant ou produit…" className="h-10 w-full rounded-xl border border-border bg-bg pl-9 pr-3 text-sm outline-none focus:border-primary/50" />
         </div>
       </div>
 
