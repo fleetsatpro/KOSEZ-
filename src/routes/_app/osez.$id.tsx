@@ -10,6 +10,15 @@ import { LEARNER_MEMORY, planAllows } from "@/lib/blossom/data";
 import type { LivingRoom } from "@/lib/blossom/speak-engine";
 import { reshuffleRoom } from "@/lib/blossom/speak-engine";
 import { buildSpeakRoom } from "@/lib/blossom/speak-llm";
+import { transcribeSpeakTurn } from "@/lib/blossom/speech.api";
+import {
+  appendSpeechTurn,
+  blobToBase64,
+  captureOnlyEvidence,
+  emptySpeechSummary,
+  weaveSpeechIntoDebrief,
+  type SessionSpeechSummary,
+} from "@/lib/blossom/speech-stt";
 import { useBlossom } from "@/lib/blossom/store";
 import { track } from "@/lib/analytics";
 import { toast } from "sonner";
@@ -41,6 +50,7 @@ function SpeakRoom() {
   const [ceremonyOpen, setCeremonyOpen] = useState(false);
   const [yourTurns, setYourTurns] = useState(0);
   const [showRescue, setShowRescue] = useState(false);
+  const [speechSummary, setSpeechSummary] = useState<SessionSpeechSummary>(() => emptySpeechSummary());
   const mineralsBefore = useRef(minerals);
 
   useEffect(() => {
@@ -53,6 +63,7 @@ function SpeakRoom() {
       setElapsed(0);
       setYourTurns(0);
       setShowRescue(false);
+      setSpeechSummary(emptySpeechSummary());
 
       let topic: string | undefined;
       if (id === "topic") {
@@ -153,7 +164,12 @@ function SpeakRoom() {
       "SPEAK_COMPLETED",
       `speak-${room.id}`,
       undefined,
-      { minutes: speakingMinutes },
+      {
+        minutes: speakingMinutes,
+        spokenSeconds: speechSummary.spokenSeconds,
+        transcriptCount: speechSummary.transcriptCount,
+        captureOnlyCount: speechSummary.captureOnlyCount,
+      },
     );
     if (result.ok) {
       toast("Session close. La tige s'épaissit.");
@@ -175,6 +191,7 @@ function SpeakRoom() {
   const current = room.turns[turn];
   const totalTurns = room.turns.length;
   const progressPct = Math.min(100, Math.round((turn / Math.max(1, totalTurns)) * 100));
+  const debrief = weaveSpeechIntoDebrief(room.debrief, speechSummary);
 
   if (!started) {
     return (
@@ -289,15 +306,19 @@ function SpeakRoom() {
           <div className="mt-8 space-y-3">
             <Surface className="border border-primary/15 bg-primary/5">
               <Eyebrow>Repère de la scène</Eyebrow>
-              <p className="mt-2 text-sm leading-7">{room.debrief.strength}</p>
+              <p className="mt-2 text-sm leading-7">{debrief.strength}</p>
             </Surface>
             <Surface>
               <Eyebrow>À essayer ensuite</Eyebrow>
-              <p className="mt-2 text-sm leading-7">{room.debrief.improvement}</p>
+              <p className="mt-2 text-sm leading-7">{debrief.improvement}</p>
             </Surface>
             <Surface>
               <Eyebrow>Phrase modèle</Eyebrow>
-              <p className="mt-2 font-display text-xl leading-snug tracking-tight">{room.debrief.model}</p>
+              <p className="mt-2 font-display text-xl leading-snug tracking-tight">{debrief.model}</p>
+            </Surface>
+            <Surface className="border border-primary/15 bg-primary/5">
+              <Eyebrow>Votre parole</Eyebrow>
+              <p className="mt-2 text-sm leading-7">{debrief.speechNote}</p>
             </Surface>
             <Surface>
               <Eyebrow>Contexte</Eyebrow>
@@ -410,7 +431,32 @@ function SpeakRoom() {
             <RecordControl
               inverted
               cta="Maintenir pour répondre"
-              onFinished={() => {
+              onFinished={async ({ seconds, blob, mimeType }) => {
+                let evidence = captureOnlyEvidence(seconds);
+                if (blob) {
+                  try {
+                    const audioBase64 = await blobToBase64(blob);
+                    if (audioBase64) {
+                      evidence = await transcribeSpeakTurn({
+                        data: {
+                          audioBase64,
+                          mimeType,
+                          seconds,
+                          fileName: `kosez-${room.id}.webm`,
+                        },
+                      });
+                    }
+                  } catch {
+                    evidence = captureOnlyEvidence(seconds);
+                  }
+                }
+                setSpeechSummary((summary) => appendSpeechTurn(summary, evidence));
+                track("speak_turn_evidence", {
+                  roomId: room.id,
+                  assessment: evidence.assessment,
+                  seconds: evidence.seconds,
+                  hasTranscript: Boolean(evidence.transcript),
+                });
                 setYourTurns((n) => n + 1);
                 setShowRescue(false);
                 setTurn((n) => n + 1);
