@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, speakSyntheticEnglish, type LabLevel } from "@/lib/blossom/lab-content";
+import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure, speakSyntheticEnglish, type LabLevel } from "@/lib/blossom/lab-content";
 import { DIAGNOSTIC_QUESTIONS, diagnosticLevel, diagnosticScore, diagnosticSummary } from "@/lib/blossom/learning-labs";
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
@@ -139,25 +139,115 @@ function WritingLab({ level }: { level: LabLevel }) {
     const all = WRITING_PROMPTS.filter((item) => item.level === level);
     return linkedTaskId ? all.filter((item) => item.id === linkedTaskId) : all;
   }, [level, linkedTaskId]);
-  const [promptIndex, setPromptIndex] = useState(0), [draft, setDraft] = useState(""), [checks, setChecks] = useState<string[]>([]), [submitted, setSubmitted] = useState(false);
-  const prompt = useMemo(() => prompts[promptIndex % prompts.length]!, [promptIndex, prompts]);
+  const [promptIndex, setPromptIndex] = useState(0);
+  const [draft, setDraft] = useState("");
+  const [evaluation, setEvaluation] = useState<ReturnType<typeof evaluateWritingStructure> | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const prompt = useMemo(() => prompts[promptIndex % Math.max(prompts.length, 1)]!, [promptIndex, prompts]);
+
   function submit() {
     if (!draft.trim()) return;
-    saveLearningSubmission({ taskId: prompt.id, kind: "writing", content: draft.trim(), checks, result: { checkCount: checks.length, checkTotal: prompt.checks.length } });
-    completeActivity("WRITING_COMPLETED", dailyLabSource("writing", prompt.id), `Écrit · ${prompt.id} · ${checks.length}/${prompt.checks.length} points de contrôle personnels`);
+    const result = evaluateWritingStructure(prompt, draft);
+    saveLearningSubmission({
+      taskId: prompt.id,
+      kind: "writing",
+      content: draft.trim(),
+      checks: result.passed,
+      result: {
+        checkCount: result.passed.length,
+        checkTotal: result.total,
+        structureScore: result.score,
+        method: result.method,
+      },
+    });
+    completeActivity(
+      "WRITING_COMPLETED",
+      dailyLabSource("writing", prompt.id),
+      `Écrit · ${prompt.id} · structure ${result.passed.length}/${result.total}`,
+    );
     if (curriculumLessonId && linkedLessonKind(curriculumLessonId) === "writing") {
-      completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · écrit · ${prompt.id}`);
+      completeActivity(
+        "CURRICULUM_EVIDENCE_RECORDED",
+        curriculumLessonId,
+        `Preuve curriculum · écrit · ${prompt.id}`,
+        { supportId: prompt.id },
+      );
     }
+    setEvaluation(result);
     setSubmitted(true);
   }
-  function next() { setPromptIndex((v) => (v + 1) % WRITING_PROMPTS.length); setDraft(""); setChecks([]); setSubmitted(false); }
-  return <Surface className="mt-6 p-5 sm:p-7">
-    <div className="flex items-start justify-between gap-3"><div><Eyebrow>Écrit · pratique guidée</Eyebrow><h2 className="mt-2 font-display text-3xl tracking-tight">{prompt.title}</h2></div><PenLine className="size-5 text-primary" /></div>
-    <p className="mt-3 text-sm leading-6 text-muted">{prompt.situation}</p><div className="mt-5 rounded-xl bg-surface-2/50 p-4"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-subtle">Consigne</p><p className="mt-2 text-sm leading-6">{prompt.task}</p></div>
-    <textarea value={draft} onChange={(event) => setDraft(event.target.value)} disabled={submitted} placeholder="Écrivez votre propre version…" className="mt-5 min-h-36 w-full rounded-2xl border border-border bg-bg p-4 text-sm leading-7 outline-none transition focus:border-primary/30 focus:ring-2 focus:ring-primary/10" />
-    <div className="mt-4 space-y-2">{prompt.checks.map((check) => { const checked = checks.includes(check.id); return <button key={check.id} type="button" disabled={submitted} onClick={() => setChecks((value) => checked ? value.filter((id) => id !== check.id) : [...value, check.id])} className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition ${checked ? "border-primary/25 bg-primary/8" : "border-border bg-surface-2/30 hover:bg-surface-2"}`}><span className={`flex size-5 items-center justify-center rounded-md border ${checked ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{checked ? <Check className="size-3.5" /> : null}</span>{check.label}</button>; })}</div>
-    {submitted ? <div className="mt-6 rounded-2xl border border-primary/15 bg-primary/5 p-5"><Eyebrow>Modèle · à observer, pas à copier</Eyebrow><p className="mt-3 font-display text-2xl leading-snug">{prompt.model}</p><p className="mt-2 text-sm leading-6 text-muted">K&apos;Osez ne prétend pas corriger automatiquement votre texte ici : vous avez créé une vraie trace de production.</p><Button variant="secondary" className="mt-5" onClick={next}>Un autre sujet <span aria-hidden>→</span></Button></div> : <Button className="mt-6" disabled={!draft.trim()} onClick={submit}>Enregistrer ma trace <Sparkles className="size-4" /></Button>}
-  </Surface>;
+
+  function next() {
+    setPromptIndex((value) => (value + 1) % Math.max(WRITING_PROMPTS.length, 1));
+    setDraft("");
+    setEvaluation(null);
+    setSubmitted(false);
+  }
+
+  return (
+    <Surface className="mt-6 p-5 sm:p-7">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Eyebrow>Écrit · pratique guidée</Eyebrow>
+          <h2 className="mt-2 font-display text-3xl tracking-tight">{prompt.title}</h2>
+        </div>
+        <PenLine className="size-5 text-primary" />
+      </div>
+      <p className="mt-3 text-sm leading-6 text-muted">{prompt.situation}</p>
+      <div className="mt-5 rounded-xl bg-surface-2/50 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-subtle">Consigne</p>
+        <p className="mt-2 text-sm leading-6">{prompt.task}</p>
+      </div>
+      <textarea
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        disabled={submitted}
+        placeholder="Écrivez votre propre version…"
+        className="mt-5 min-h-36 w-full rounded-2xl border border-border bg-bg p-4 text-sm leading-7 outline-none transition focus:border-primary/30 focus:ring-2 focus:ring-primary/10"
+      />
+      <div className="mt-4 rounded-2xl border border-border bg-surface-2/35 p-4">
+        <p className="text-xs leading-5 text-muted">
+          K’Osez vérifie uniquement des signaux structurels simples. Cela ne corrige pas votre anglais et ne produit pas une note de niveau.
+        </p>
+      </div>
+      {submitted && evaluation ? (
+        <div className="mt-4 space-y-2">
+          <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-subtle">Structure détectée</span>
+            <span className="font-display text-xl tabular-nums text-primary">{evaluation.score}%</span>
+          </div>
+          {prompt.checks.map((check) => {
+            const passed = evaluation.passed.includes(check.id);
+            return (
+              <div
+                key={check.id}
+                className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${passed ? "border-primary/25 bg-primary/8" : "border-border bg-surface-2/30"}`}
+              >
+                <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border ${passed ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>
+                  {passed ? <Check className="size-3.5" /> : null}
+                </span>
+                <span>{check.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+      {submitted ? (
+        <div className="mt-6 rounded-2xl border border-primary/15 bg-primary/5 p-5">
+          <Eyebrow>Modèle · à observer, pas à copier</Eyebrow>
+          <p className="mt-3 font-display text-2xl leading-snug">{prompt.model}</p>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Le résultat ci-dessus mesure uniquement la présence de structures attendues ; il ne prétend pas juger la grammaire globale, le vocabulaire ou la qualité stylistique.
+          </p>
+          <Button variant="secondary" className="mt-5" onClick={next}>Un autre sujet <span aria-hidden>→</span></Button>
+        </div>
+      ) : (
+        <Button className="mt-6" disabled={!draft.trim()} onClick={submit}>
+          Enregistrer ma trace <Sparkles className="size-4" />
+        </Button>
+      )}
+    </Surface>
+  );
 }
 
 function linkedLessonKind(lessonId: string): string | null {
