@@ -532,13 +532,65 @@ export function nextLearningAction(
     };
   }
 
-  if (weak.coverage === 0 && weak.domain.id === "writing") {
-    return {
-      eyebrow: "À AJOUTER · ÉCRIT",
-      title: "Une première trace écrite",
-      body: "Votre profil contient encore un angle mort en production écrite. Une courte tâche suffit pour créer une première preuve.",
-      kind: "library",
+  if (weak.coverage === 0) {
+    const byDomain: Partial<Record<LearningDomainId, { kind: ReviewItem["link"]; eyebrow: string; title: string; body: string }>> = {
+      writing: {
+        kind: "labs",
+        eyebrow: "À AJOUTER · ÉCRIT",
+        title: "Créer une première preuve écrite",
+        body: "Votre profil n'a encore aucune trace directe en production écrite. Une tâche courte du Lab peut créer cette preuve.",
+      },
+      listening: {
+        kind: "labs",
+        eyebrow: "À AJOUTER · ÉCOUTE",
+        title: "Capturer un détail",
+        body: "L'écoute reste aveugle. Une micro-tâche ciblée donnera un premier signal direct.",
+      },
+      reading: {
+        kind: "library",
+        eyebrow: "À AJOUTER · LECTURE",
+        title: "Comprendre un texte",
+        body: "La lecture manque encore de preuve directe. Une lecture comprise vaut mieux que quelques mots sauvegardés.",
+      },
+      grammar: {
+        kind: "labs",
+        eyebrow: "À AJOUTER · GRAMMAIRE",
+        title: "Isoler une structure",
+        body: "La grammaire est encore indirecte. Un exercice ciblé permettra de mesurer la structure au lieu de l'inférer.",
+      },
+      pronunciation: {
+        kind: "pronlab",
+        eyebrow: "À AJOUTER · PHONOLOGIE",
+        title: "Stabiliser un son",
+        body: "Pron'Lab est la voie la plus directe pour créer une preuve phonologique exploitable.",
+      },
+      interaction: {
+        kind: "mission",
+        eyebrow: "À AJOUTER · INTERACTION",
+        title: "Entrer dans un échange",
+        body: "Une mission située donnera une trace directe de votre capacité à ouvrir et maintenir l'interaction.",
+      },
+      mediation: {
+        kind: "mission",
+        eyebrow: "À AJOUTER · MÉDIATION",
+        title: "Transmettre une information",
+        body: "La médiation manque encore de signal direct. Une tâche de transmission créera une preuve plus pertinente.",
+      },
+      speaking: {
+        kind: "mission",
+        eyebrow: "À AJOUTER · PAROLE",
+        title: "Parler dans une situation",
+        body: "Une mission de terrain ajoutera une preuve directe de production orale.",
+      },
+      vocabulary: {
+        kind: "library",
+        eyebrow: "À AJOUTER · LEXIQUE",
+        title: "Faire entrer des mots dans la mémoire",
+        body: "Un mot sauvegardé puis rappelé vaut davantage qu'une simple exposition.",
+      },
     };
+    const next = byDomain[weak.domain.id];
+    if (next) return next;
   }
 
   return {
