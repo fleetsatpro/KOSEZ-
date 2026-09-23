@@ -156,31 +156,6 @@ function CurriculumUnit() {
                       ? "Cette étape possède maintenant une preuve issue de l’activité reliée."
                       : "Ouvrez l’activité et terminez-la pour créer la preuve. Une simple déclaration ne complète plus l’étape."}
                   </p>
-                </div>              </div>
-                      <h3 className="mt-2 font-display text-2xl tracking-tight">{lesson.title}</h3>
-                      <p className="mt-2 text-sm leading-6 text-muted">{lesson.description}</p>
-                    </div>
-                    <ArrowRight className="mt-2 size-4 shrink-0 text-subtle transition group-hover:translate-x-0.5 group-hover:text-primary" />
-                  </div>
-                </Link>
-                <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-xs leading-5 text-subtle">
-                    {done
-                      ? "Votre confirmation reste une trace de parcours ; une activité évaluée apportera une preuve plus forte."
-                      : "Après la pratique, vous pouvez enregistrer honnêtement que cette étape a été réalisée."}
-                  </p>
-                  <Button
-                    size="sm"
-                    variant={done ? "ghost" : "secondary"}
-                    disabled={done}
-                    onClick={() => completeActivity(
-                      "LESSON_COMPLETED",
-                      lesson.id,
-                      `Parcours · unité ${unit.number} · ${lesson.title}`,
-                    )}
-                  >
-                    {done ? "Enregistrée" : "J’ai réalisé cette pratique"}
-                  </Button>
                 </div>
               </div>
             );
