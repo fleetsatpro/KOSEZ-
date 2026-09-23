@@ -76,7 +76,7 @@ export type TeacherWorkspaceLearner = {
   level: string | null;
   lastActivity: string | null;
   activitiesThisWeek: number;
-  speakingMinutes: number;
+  practiceMinutes: number;
   pronlabAttempts: number;
   pronlabBest: number;
 };
@@ -103,7 +103,7 @@ export async function getTeacherWorkspace(userId: string): Promise<TeacherWorksp
           )
           else 0
         end
-      ), 0)::integer as speaking_minutes,
+      ), 0)::integer as practice_minutes,
       coalesce(pr.attempts, 0)::integer as pronlab_attempts,
       coalesce(pr.best_score, 0)::integer as pronlab_best
     from blossom_teacher_link tl
@@ -130,7 +130,7 @@ export async function getTeacherWorkspace(userId: string): Promise<TeacherWorksp
       ? new Date(String(row.last_activity)).toISOString()
       : null,
     activitiesThisWeek: Number(row.activities_this_week ?? 0),
-    speakingMinutes: Number(row.speaking_minutes ?? 0),
+    practiceMinutes: Number(row.practice_minutes ?? 0),
     pronlabAttempts: Number(row.pronlab_attempts ?? 0),
     pronlabBest: Number(row.pronlab_best ?? 0),
   }));
@@ -142,7 +142,7 @@ export type GuardianWorkspaceLearner = {
   level: string | null;
   lastActivity: string | null;
   activitiesThisWeek: number;
-  speakingMinutes: number;
+  practiceMinutes: number;
 };
 
 export async function getGuardianWorkspace(userId: string): Promise<GuardianWorkspaceLearner[]> {
@@ -167,7 +167,7 @@ export async function getGuardianWorkspace(userId: string): Promise<GuardianWork
           )
           else 0
         end
-      ), 0)::integer as speaking_minutes
+      ), 0)::integer as practice_minutes
     from blossom_guardian_link gl
     left join blossom_profile p on p.user_id = gl.learner_user_id
     left join blossom_activity_event a on a.user_id = gl.learner_user_id
@@ -184,7 +184,7 @@ export async function getGuardianWorkspace(userId: string): Promise<GuardianWork
       ? new Date(String(row.last_activity)).toISOString()
       : null,
     activitiesThisWeek: Number(row.activities_this_week ?? 0),
-    speakingMinutes: Number(row.speaking_minutes ?? 0),
+    practiceMinutes: Number(row.practice_minutes ?? 0),
   }));
 }
 
@@ -598,7 +598,7 @@ export type OrganizationWorkspace = {
     learners: number;
     staff: number;
     activeLearnersThisWeek: number;
-    speakingMinutesThisWeek: number;
+    practiceMinutesThisWeek: number;
   };
 };
 
@@ -652,7 +652,7 @@ export async function getOrganizationWorkspace(
            )
            else 0
          end
-       ), 0)::integer as speaking_minutes
+       ), 0)::integer as practice_minutes
      from blossom_organization_member m
      left join blossom_activity_event a on a.user_id = m.user_id
      where m.organization_id = $1 and m.status = 'active'`,
@@ -678,7 +678,7 @@ export async function getOrganizationWorkspace(
       learners: Number(stats.learners ?? 0),
       staff: Number(stats.staff ?? 0),
       activeLearnersThisWeek: Number(stats.active_learners_this_week ?? 0),
-      speakingMinutesThisWeek: Number(stats.speaking_minutes ?? 0),
+      practiceMinutesThisWeek: Number(stats.practice_minutes ?? 0),
     },
   };
 }
