@@ -22,6 +22,7 @@ import {
 } from "./domain.server";
 import { reportTandem } from "./safety.server";
 import { SYNC_OPERATIONS, type SyncMutation, type SyncResult } from "./sync-types";
+import { sanitizeSyncedActivity } from "./activity-integrity";
 
 const SYNC_TIMEOUT_MS = 120_000;
 
@@ -233,30 +234,18 @@ async function applyMutation(
   switch (mutation.operation) {
     case "activity.append": {
       const payload = activityPayloadSchema.parse(mutation.payload);
-      const privilegedMinuteEvent =
-        payload.eventType === "SPEAK_COMPLETED" ||
-        payload.eventType === "TANDEM_COMPLETED";
-      const safeEventPayload = { ...objectValue(payload.payload) };
-      const safeMetadata = { ...objectValue(payload.metadata) };
-
-      if (privilegedMinuteEvent) {
-        // These fields are reserved for server-timed completion events.
-        // Offline clients may still sync the activity itself for local
-        // continuity, but cannot mint analytics credit.
-        delete safeEventPayload.minutes;
-        delete safeEventPayload.durationSeconds;
-        delete safeEventPayload.serverAuthoritativeMinutes;
-        delete safeMetadata.minutes;
-        delete safeMetadata.durationSeconds;
-        delete safeMetadata.serverAuthoritativeMinutes;
-      }
+      const sanitized = sanitizeSyncedActivity(
+        payload.eventType,
+        objectValue(payload.payload),
+        objectValue(payload.metadata),
+      );
 
       await appendBlossomActivity(userId, {
         eventType: payload.eventType,
         sourceId: payload.sourceId ?? null,
         payload: {
-          ...safeEventPayload,
-          metadata: safeMetadata,
+          ...sanitized.payload,
+          metadata: sanitized.metadata,
         },
         idempotencyKey: mutation.mutationId,
         occurredAt: payload.occurredAt,
