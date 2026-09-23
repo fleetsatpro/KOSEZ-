@@ -2,7 +2,7 @@ import type { ActivityEvent, ActivityType, PronlabAttempt } from "./engine.ts";
 import type { LearningSubmission } from "./store.ts";
 import { summarisePronlabItem } from "./engine.ts";
 import { PRONLAB_SETS } from "./data.ts";
-import type { ScheduledReviewItem, ReviewPlan } from "./review-scheduler.ts";
+import type { ReviewPlan } from "./review-scheduler.ts";
 import {
   CAN_DO_OBJECTIVES,
   CURRICULUM_UNITS,
