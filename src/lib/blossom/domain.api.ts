@@ -3,6 +3,12 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getAdminSafetySummary, updateAdminSafetyReport } from "./safety.server";
 import {
+  ensureBootstrapAdmin,
+  listPlatformUsers,
+  setUserPlatformRole,
+} from "./admin-roles.server";
+import { getSql } from "@/lib/db";
+import {
   addTeacherNote,
   completeChallenge,
   getAdminWorkspace,
@@ -32,6 +38,17 @@ import type { JsonObject } from "./backend.server";
 
 const metadataJson = z.string().trim().max(20000).optional();
 
+async function resolveUserEmail(userId: string): Promise<string | null> {
+  const sql = await getSql();
+  try {
+    const rows = await sql.query(`select email from "user" where id = $1 limit 1`, [userId]);
+    const email = rows[0]?.email;
+    return typeof email === "string" ? email : null;
+  } catch {
+    return null;
+  }
+}
+
 export const getAdminWorkspaceOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => getAdminWorkspace(context.userId));
@@ -54,7 +71,48 @@ export const getAdminSafetySummaryOnServer = createServerFn({ method: "GET" })
 
 export const getBlossomWorkspaceAccess = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .handler(async ({ context }) => getBlossomAccessContext(context.userId));
+  .handler(async ({ context }) => {
+    const email = await resolveUserEmail(context.userId);
+    await ensureBootstrapAdmin(context.userId, email);
+    const access = await getBlossomAccessContext(context.userId);
+
+    // Merge role_grant flags (table may be empty on older DBs before migrate)
+    try {
+      const sql = await getSql();
+      const grants = await sql.query(
+        `select role from blossom_role_grant
+         where user_id = $1 and status = 'active'`,
+        [context.userId],
+      );
+      for (const g of grants) {
+        const role = String(g.role);
+        if (role === "admin") access.isAdmin = true;
+        if (role === "teacher") access.isTeacher = true;
+        if (role === "org_staff") access.isOrgStaff = true;
+      }
+    } catch {
+      /* role_grant migration not applied yet */
+    }
+    return access;
+  });
+
+export const listPlatformUsersOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ limit: z.number().int().min(1).max(200).optional() }).optional())
+  .handler(async ({ context, data }) => listPlatformUsers(context.userId, data?.limit ?? 80));
+
+export const setUserPlatformRoleOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      targetUserId: z.string().trim().min(1).max(200),
+      role: z.enum(["admin", "teacher", "org_staff"]),
+      active: z.boolean(),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    setUserPlatformRole(context.userId, data.targetUserId, data.role, data.active),
+  );
 
 export const getConnectPeersOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -152,7 +210,6 @@ export const endTandemSessionOnServer = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) =>
     endTandemSession(context.userId, data.sessionId, data.status),
   );
-
 
 function parseJsonObject(value: string | undefined): JsonObject {
   if (!value) return {};
