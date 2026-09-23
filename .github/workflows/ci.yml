@@ -43,7 +43,7 @@ jobs:
         env:
           KOSEZ_VITE_CACHE_DIR: /tmp/kosez-vite-auth-on
         run: |
-          npm run dev -- --force > /tmp/kosez-dev.log 2>&1 &
+          npm run dev -- > /tmp/kosez-dev.log 2>&1 &
           echo $! > /tmp/kosez-dev.pid
           for attempt in {1..30}; do
             if curl -fsS http://127.0.0.1:8080/__app-env > /tmp/kosez-env.json; then
@@ -59,7 +59,7 @@ jobs:
           VITE_AUTH_ENABLED: "false"
           KOSEZ_VITE_CACHE_DIR: /tmp/kosez-vite-smoke
         run: |
-          npm run dev -- --force --port 8081 > /tmp/kosez-smoke.log 2>&1 &
+          npm run dev -- --port 8081 > /tmp/kosez-smoke.log 2>&1 &
           echo $! > /tmp/kosez-smoke.pid
           for attempt in {1..30}; do
             if curl -fsS http://127.0.0.1:8081/__app-env > /tmp/kosez-smoke-env.json; then
