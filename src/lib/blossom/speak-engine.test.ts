@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  adaptLivingRoomAfterTranscript,
   generateLivingRoom,
   generateRoomCatalog,
   reshuffleRoom,
@@ -97,4 +98,35 @@ it("gives B1 rooms a genuine stretch beat", () => {
     ),
   );
   assert.ok(room.turns.some((turn) => Boolean(turn.stretch)));
+});
+
+
+it("changes the next AI turn when a real transcript supplies a response signal", () => {
+  const room = generateLivingRoom({
+    archetype: "office",
+    level: "B1",
+    entropy: "response-aware",
+    now: new Date("2026-09-22T12:00:00Z"),
+  });
+  const nextAi = room.turns.find((turn) => turn.speaker === "ai" && turn.line)?.line;
+  const adapted = adaptLivingRoomAfterTranscript(
+    room,
+    3,
+    "I would prefer the later option because I have a meeting first.",
+  );
+  const adaptedAi = adapted.turns.find((turn) => turn.speaker === "ai" && turn.line)?.line;
+  assert.ok(nextAi);
+  assert.ok(adaptedAi);
+  assert.notEqual(adaptedAi, nextAi);
+});
+
+it("does not branch without usable transcript evidence", () => {
+  const room = generateLivingRoom({
+    archetype: "cafe",
+    level: "A2",
+    entropy: "response-empty",
+    now: new Date("2026-09-22T12:00:00Z"),
+  });
+  assert.deepEqual(adaptLivingRoomAfterTranscript(room, 1, ""), room);
+  assert.deepEqual(adaptLivingRoomAfterTranscript(room, 1, "ok"), room);
 });
