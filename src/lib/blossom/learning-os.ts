@@ -458,12 +458,24 @@ export function buildObjectiveEvidence(log: ActivityEvent[]): ObjectiveEvidence[
     const directCount = matched.filter((item) => item.kind === "direct").length;
     const supportingCount = matched.filter((item) => item.kind === "support").length;
     const lastSeenAt = matched[0]?.event.createdAt ?? null;
+    const directSources = new Set(
+      matched
+        .filter((item) => item.kind === "direct" && item.event.sourceId)
+        .map((item) => item.event.sourceId as string),
+    );
     const status =
-      directCount >= 3 ? "ancré"
+      (directCount >= 3 && directSources.size >= 2) ? "ancré"
       : directCount >= 1 && supportingCount >= 2 ? "à consolider"
       : directCount >= 1 || supportingCount >= 1 ? "en pratique"
       : "à découvrir";
-    return { objective, directCount, supportingCount, lastSeenAt, status };
+    return {
+      objective,
+      directCount,
+      directSourceCount: directSources.size,
+      supportingCount,
+      lastSeenAt,
+      status,
+    };
   });
 }
 
