@@ -143,3 +143,29 @@ test("every curriculum lesson resolves to a real learning resource", () => {
     }
   }
 });
+
+
+test("objective mastery needs repeated direct evidence across distinct contexts", () => {
+  const base = (sourceId: string, id: string) => ({
+    id,
+    type: "SPEAK_COMPLETED" as const,
+    sourceId,
+    createdAt: "2026-09-22T10:00:00.000Z",
+  });
+  const same = buildObjectiveEvidence([
+    base("speak-cafe-room-1", "s1"),
+    base("speak-cafe-room-1", "s2"),
+    base("speak-cafe-room-1", "s3"),
+  ]).find((item) => item.objective.id === "a2-interact-ask")!;
+  assert.equal(same.directCount, 3);
+  assert.equal(same.directSourceCount, 1);
+  assert.equal(same.status, "en pratique");
+
+  const varied = buildObjectiveEvidence([
+    base("speak-cafe-room-1", "s4"),
+    base("speak-market-room-2", "s5"),
+    base("speak-office-room-3", "s6"),
+  ]).find((item) => item.objective.id === "a2-interact-ask")!;
+  assert.equal(varied.directSourceCount, 3);
+  assert.equal(varied.status, "ancré");
+});
