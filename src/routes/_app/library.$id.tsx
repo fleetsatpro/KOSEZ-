@@ -51,7 +51,7 @@ useEffect(() => {
       }
       setReadingCompleted(true);
       observer.disconnect();
-    }, { threshold: 0.95 });
+    }, { threshold: 0.1 });
     observer.observe(end);
     return () => observer.disconnect();
   }, [completeActivity, curriculumLessonId, docId, readingCompleted]);
@@ -156,7 +156,7 @@ useEffect(() => {
           })}
         </p>
       </article>
-      <div ref={readingEndRef} aria-hidden className="h-1" />
+      <div ref={readingEndRef} data-reading-end="true" aria-hidden className="h-1" />
 
       {picked && pickedGloss && (
         <Surface className="mt-6 !p-5 border border-primary/20 bg-primary/5">
