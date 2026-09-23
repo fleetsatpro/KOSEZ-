@@ -208,7 +208,14 @@ try {
       url,
       { waitUntil: "domcontentloaded", timeout: timeoutMs },
     );
-    await page.waitForTimeout(500);
+    if (expectedAuth === "disabled") {
+      await page.locator('[data-smoke="blossom-home"]').waitFor({
+        state: "visible",
+        timeout: 10000,
+      });
+    } else {
+      await page.waitForTimeout(500);
+    }
 
     const title = await page.title();
     const hasCanvas = (await page.locator("canvas").count()) > 0;
