@@ -564,7 +564,7 @@ export function MissionTheatreExperience({ missionId, curriculumLessonId }: { mi
 
   function finishSession() {
     const before = journeySnapshot(useBlossom.getState().activityLog);
-    const result = completeMissionSession(todayMission.id);
+    const result = completeMissionSession(todayMission.id, curriculumLessonId);
     if (result.reason === "already") {
       navigate({ to: "/" });
       return;
