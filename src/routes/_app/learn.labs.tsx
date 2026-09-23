@@ -8,6 +8,8 @@ import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, speakSyntheticEnglish,
 import { DIAGNOSTIC_QUESTIONS, diagnosticLevel, diagnosticScore, diagnosticSummary } from "@/lib/blossom/learning-labs";
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
+import { CURRICULUM_UNITS } from "@/lib/blossom/learning-os";
+import { takeCurriculumLessonContext } from "@/lib/blossom/curriculum-context";
 
 export const Route = createFileRoute("/_app/learn/labs")({ component: LearningLabs });
 
@@ -42,6 +44,7 @@ function LearningLabs() {
 }
 
 function GrammarLab({ level }: { level: LabLevel }) {
+  const [curriculumLessonId] = useState<string | null>(() => takeCurriculumLessonContext());
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const tasks = useMemo(() => GRAMMAR_TASKS.filter((item) => item.level === level), [level]);
@@ -50,7 +53,12 @@ function GrammarLab({ level }: { level: LabLevel }) {
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
     if (!answered) return;
-    if (index >= tasks.length - 1) { saveLearningSubmission({ taskId: task.id, kind: "grammar", content: choice ?? "", checks: [choice === task.answer ? "correct" : "incorrect"], result: { correct: choice === task.answer, target: task.target } }); completeActivity("GRAMMAR_COMPLETED", dailyLabSource("grammar", task.id), `Grammaire · ${correct + (choice === task.answer ? 1 : 0)}/${tasks.length}`); setFinished(true); return; }
+    if (index >= tasks.length - 1) { saveLearningSubmission({ taskId: task.id, kind: "grammar", content: choice ?? "", checks: [choice === task.answer ? "correct" : "incorrect"], result: { correct: choice === task.answer, target: task.target } });
+      completeActivity("GRAMMAR_COMPLETED", dailyLabSource("grammar", task.id), `Grammaire · ${correct + (choice === task.answer ? 1 : 0)}/${tasks.length}`);
+      if (curriculumLessonId && linkedLessonKind(curriculumLessonId) === "grammar") {
+        completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · grammaire · ${task.id}`);
+      }
+      setFinished(true); return; }
     setIndex((v) => v + 1); setChoice(null);
   }
   if (finished) return <LabComplete title="Grammaire terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. Cette trace mesure une séance de pratique, pas un niveau CEFR.`} />;
@@ -65,6 +73,7 @@ function GrammarLab({ level }: { level: LabLevel }) {
 }
 
 function ListeningLab({ level }: { level: LabLevel }) {
+  const [curriculumLessonId] = useState<string | null>(() => takeCurriculumLessonContext());
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const tasks = useMemo(() => LISTENING_TASKS.filter((item) => item.level === level), [level]);
@@ -73,7 +82,12 @@ function ListeningLab({ level }: { level: LabLevel }) {
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
     if (!answered) return;
-    if (index >= tasks.length - 1) { saveLearningSubmission({ taskId: task.id, kind: "listening", content: choice ?? "", checks: [choice === task.answer ? "correct" : "incorrect"], result: { correct: choice === task.answer, level: task.level } }); completeActivity("LISTENING_COMPLETED", dailyLabSource("listening", task.id), `Écoute · ${correct + (choice === task.answer ? 1 : 0)}/${tasks.length}`); setFinished(true); return; }
+    if (index >= tasks.length - 1) { saveLearningSubmission({ taskId: task.id, kind: "listening", content: choice ?? "", checks: [choice === task.answer ? "correct" : "incorrect"], result: { correct: choice === task.answer, level: task.level } });
+      completeActivity("LISTENING_COMPLETED", dailyLabSource("listening", task.id), `Écoute · ${correct + (choice === task.answer ? 1 : 0)}/${tasks.length}`);
+      if (curriculumLessonId && linkedLessonKind(curriculumLessonId) === "listening") {
+        completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · écoute · ${task.id}`);
+      }
+      setFinished(true); return; }
     setIndex((v) => v + 1); setChoice(null);
   }
   if (finished) return <LabComplete title="Écoute terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. Vous avez travaillé des détails concrets : heure, lieu, prix et option.`} />;
@@ -87,12 +101,21 @@ function ListeningLab({ level }: { level: LabLevel }) {
 }
 
 function WritingLab({ level }: { level: LabLevel }) {
+  const [curriculumLessonId] = useState<string | null>(() => takeCurriculumLessonContext());
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const prompts = useMemo(() => WRITING_PROMPTS.filter((item) => item.level === level), [level]);
   const [promptIndex, setPromptIndex] = useState(0), [draft, setDraft] = useState(""), [checks, setChecks] = useState<string[]>([]), [submitted, setSubmitted] = useState(false);
   const prompt = useMemo(() => prompts[promptIndex % prompts.length]!, [promptIndex, prompts]);
-  function submit() { if (!draft.trim()) return; saveLearningSubmission({ taskId: prompt.id, kind: "writing", content: draft.trim(), checks, result: { checkCount: checks.length, checkTotal: prompt.checks.length } }); completeActivity("WRITING_COMPLETED", dailyLabSource("writing", prompt.id), `Écrit · ${prompt.id} · ${checks.length}/${prompt.checks.length} auto-vérifications`); setSubmitted(true); }
+  function submit() {
+    if (!draft.trim()) return;
+    saveLearningSubmission({ taskId: prompt.id, kind: "writing", content: draft.trim(), checks, result: { checkCount: checks.length, checkTotal: prompt.checks.length } });
+    completeActivity("WRITING_COMPLETED", dailyLabSource("writing", prompt.id), `Écrit · ${prompt.id} · ${checks.length}/${prompt.checks.length} auto-vérifications`);
+    if (curriculumLessonId && linkedLessonKind(curriculumLessonId) === "writing") {
+      completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · écrit · ${prompt.id}`);
+    }
+    setSubmitted(true);
+  }
   function next() { setPromptIndex((v) => (v + 1) % WRITING_PROMPTS.length); setDraft(""); setChecks([]); setSubmitted(false); }
   return <Surface className="mt-6 p-5 sm:p-7">
     <div className="flex items-start justify-between gap-3"><div><Eyebrow>Écrit · pratique guidée</Eyebrow><h2 className="mt-2 font-display text-3xl tracking-tight">{prompt.title}</h2></div><PenLine className="size-5 text-primary" /></div>
@@ -101,6 +124,14 @@ function WritingLab({ level }: { level: LabLevel }) {
     <div className="mt-4 space-y-2">{prompt.checks.map((check) => { const checked = checks.includes(check.id); return <button key={check.id} type="button" disabled={submitted} onClick={() => setChecks((value) => checked ? value.filter((id) => id !== check.id) : [...value, check.id])} className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition ${checked ? "border-primary/25 bg-primary/8" : "border-border bg-surface-2/30 hover:bg-surface-2"}`}><span className={`flex size-5 items-center justify-center rounded-md border ${checked ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{checked ? <Check className="size-3.5" /> : null}</span>{check.label}</button>; })}</div>
     {submitted ? <div className="mt-6 rounded-2xl border border-primary/15 bg-primary/5 p-5"><Eyebrow>Modèle · à observer, pas à copier</Eyebrow><p className="mt-3 font-display text-2xl leading-snug">{prompt.model}</p><p className="mt-2 text-sm leading-6 text-muted">K&apos;Osez ne prétend pas corriger automatiquement votre texte ici : vous avez créé une vraie trace de production.</p><Button variant="secondary" className="mt-5" onClick={next}>Un autre sujet <span aria-hidden>→</span></Button></div> : <Button className="mt-6" disabled={!draft.trim()} onClick={submit}>Enregistrer ma trace <Sparkles className="size-4" /></Button>}
   </Surface>;
+}
+
+function linkedLessonKind(lessonId: string): string | null {
+  for (const unit of CURRICULUM_UNITS) {
+    const lesson = unit.lessons.find((item) => item.id === lessonId);
+    if (lesson) return lesson.kind;
+  }
+  return null;
 }
 
 function DiagnosticLab() {
