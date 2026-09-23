@@ -67,8 +67,25 @@ function GrammarLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
     if (!answered) return;
-    if (index >= tasks.length - 1) { saveLearningSubmission({ taskId: task.id, kind: "grammar", content: choice ?? "", checks: [choice === task.answer ? "correct" : "incorrect"], result: { correct: choice === task.answer, target: task.target } }); completeActivity("GRAMMAR_COMPLETED", dailyLabSource("grammar", task.id), `Grammaire · ${correct + (choice === task.answer ? 1 : 0)}/${tasks.length}`); setFinished(true); return; }
-    setIndex((v) => v + 1); setChoice(null);
+    const isCorrect = choice === task.answer;
+    saveLearningSubmission({
+      taskId: task.id,
+      kind: "grammar",
+      content: choice ?? "",
+      checks: [isCorrect ? "correct" : "incorrect"],
+      result: { correct: isCorrect, target: task.target },
+    });
+    completeActivity(
+      "GRAMMAR_COMPLETED",
+      dailyLabSource("grammar", task.id),
+      `Grammaire · ${correct + (isCorrect ? 1 : 0)}/${index + 1}`,
+    );
+    if (index >= tasks.length - 1) {
+      setFinished(true);
+      return;
+    }
+    setIndex((v) => v + 1);
+    setChoice(null);
   }
   if (finished) {
     const accuracy = Math.round((correct / Math.max(1, tasks.length)) * 100);
@@ -106,8 +123,25 @@ function ListeningLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
     if (!answered) return;
-    if (index >= tasks.length - 1) { saveLearningSubmission({ taskId: task.id, kind: "listening", content: choice ?? "", checks: [choice === task.answer ? "correct" : "incorrect"], result: { correct: choice === task.answer, level: task.level } }); completeActivity("LISTENING_COMPLETED", dailyLabSource("listening", task.id), `Écoute · ${correct + (choice === task.answer ? 1 : 0)}/${tasks.length}`); setFinished(true); return; }
-    setIndex((v) => v + 1); setChoice(null);
+    const isCorrect = choice === task.answer;
+    saveLearningSubmission({
+      taskId: task.id,
+      kind: "listening",
+      content: choice ?? "",
+      checks: [isCorrect ? "correct" : "incorrect"],
+      result: { correct: isCorrect, level: task.level },
+    });
+    completeActivity(
+      "LISTENING_COMPLETED",
+      dailyLabSource("listening", task.id),
+      `Écoute · ${correct + (isCorrect ? 1 : 0)}/${index + 1}`,
+    );
+    if (index >= tasks.length - 1) {
+      setFinished(true);
+      return;
+    }
+    setIndex((v) => v + 1);
+    setChoice(null);
   }
   if (finished) {
     const accuracy = Math.round((correct / Math.max(1, tasks.length)) * 100);
