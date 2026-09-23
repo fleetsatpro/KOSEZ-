@@ -1,29 +1,41 @@
 /**
- * Shared daily mission selection — Home Focus and Mission Theatre
- * use the same Réunion-anchored bank rotation.
+ * Single source of truth for "today's Focus" mission selection.
+ * Home, Welcome, Mission Theatre, Plant door all share this.
+ * Deterministic daily rotation via mission-bank + learner level.
  */
 import {
   B1_TODAY_MISSION,
+  missionForLevel,
   TODAY_MISSION,
   UPCOMING_MISSIONS,
-  missionForLevel,
   type Mission,
 } from "./data.ts";
 import { EXTRA_MISSIONS, selectMissionForLevel } from "./mission-bank.ts";
 
-const BANK: Mission[] = [
+const CORE_BANK: Mission[] = [
   TODAY_MISSION,
   B1_TODAY_MISSION,
   ...UPCOMING_MISSIONS,
   ...EXTRA_MISSIONS,
 ];
 
-export function todayMissionForLevel(level: string): Mission {
-  return selectMissionForLevel(level, BANK, missionForLevel(level), {
-    rotate: true,
-  });
+/** Full bank used for daily Focus rotation. */
+export function fullMissionBank(): Mission[] {
+  return CORE_BANK;
 }
 
-export function missionBankAll(): Mission[] {
-  return BANK;
+/**
+ * Today's mission for a learner level.
+ * Always rotates by UTC day + band so Home / Theatre / Welcome stay in lockstep.
+ */
+export function todayMissionForLevel(
+  level: string,
+  options?: { dayKey?: string },
+): Mission {
+  return selectMissionForLevel(
+    level,
+    CORE_BANK,
+    missionForLevel(level),
+    { rotate: true, dayKey: options?.dayKey },
+  );
 }
