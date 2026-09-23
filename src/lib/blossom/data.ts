@@ -670,6 +670,70 @@ export type EventItem = {
   host: string;
 };
 
+export type EventDetail = {
+  purpose: string;
+  flow: string[];
+  prepare: string[];
+  languageMove: string;
+};
+
+export const EVENT_DETAILS: Record<string, EventDetail> = {
+  "evt-cafe": {
+    purpose: "Parler de sa semaine sans transformer la rencontre en exercice de classe.",
+    flow: ["5 min · arrivée et mise en relation", "35 min · conversation guidée", "15 min · relances et réparations", "5 min · une phrase à réutiliser"],
+    prepare: ["Une anecdote récente", "Une question que vous aimeriez réellement poser"],
+    languageMove: "Poser une question en retour après avoir répondu.",
+  },
+  "evt-pronlab": {
+    purpose: "Travailler un contraste sonore puis le remettre immédiatement dans une phrase utile.",
+    flow: ["10 min · échauffement", "20 min · contraste ciblé", "20 min · phrases et mini-dialogues", "10 min · transfert"],
+    prepare: ["Écouter une phrase-modèle avant de venir", "Apporter un mot ou un son qui résiste encore"],
+    languageMove: "Passer du son isolé à une formulation naturelle.",
+  },
+  "evt-marche": {
+    purpose: "Commander, demander un prix et récupérer une information dans un environnement animé.",
+    flow: ["10 min · repérage", "20 min · commandes", "15 min · questions", "15 min · retour et trace"],
+    prepare: ["Une commande que vous pourriez réellement faire", "Une formule de réparation"],
+    languageMove: "Could you say that again? sans quitter l'échange.",
+  },
+  "evt-cote": {
+    purpose: "Décrire un lieu réel avec peu de mots mais des détails choisis.",
+    flow: ["10 min · marche silencieuse", "20 min · observations", "20 min · descriptions croisées", "10 min · récit court"],
+    prepare: ["Choisir un lieu que vous connaissez", "Repérer trois détails sensoriels"],
+    languageMove: "What stood out was … pour passer de l'objet à l'impression.",
+  },
+  "evt-office-clinic": {
+    purpose: "Rendre une conversation professionnelle plus claire, plus courte et plus coopérative.",
+    flow: ["15 min · situation", "20 min · demande", "15 min · changement de plan", "10 min · reformulation"],
+    prepare: ["Un petit problème de travail", "Une alternative réaliste"],
+    languageMove: "The plan has changed. Could we … instead?",
+  },
+  "evt-phone-practice": {
+    purpose: "Tenir deux minutes au téléphone malgré les mots manqués.",
+    flow: ["10 min · formules", "20 min · appels simulés", "15 min · réparations", "15 min · confirmations"],
+    prepare: ["Une date", "Une heure", "Une demande simple"],
+    languageMove: "So you mean …? pour confirmer l'information utile.",
+  },
+  "evt-writing-table": {
+    purpose: "Transformer une vraie intention en message court et adapté au destinataire.",
+    flow: ["10 min · intention", "20 min · premier jet", "20 min · simplification", "15 min · version finale"],
+    prepare: ["Apporter un message que vous pourriez réellement envoyer", "Retirer toute information non essentielle"],
+    languageMove: "Exprimer fait + action attendue + prochaine étape.",
+  },
+  "evt-b1-circle": {
+    purpose: "Répondre à un point de vue différent sans perdre sa propre position.",
+    flow: ["10 min · sujet", "20 min · positions", "20 min · contrepoints", "10 min · nuance"],
+    prepare: ["Un sujet léger", "Une raison qui soutient votre préférence"],
+    languageMove: "I see your point, but …",
+  },
+  "evt-coast-story": {
+    purpose: "Raconter un moment réel à partir d'un lieu, d'un détail et d'une impression.",
+    flow: ["15 min · marche", "15 min · collecte de détails", "20 min · récit", "10 min · retours"],
+    prepare: ["Une histoire courte", "Un détail que vous avez remarqué récemment"],
+    languageMove: "What stood out was … / The thing I remember most is …",
+  },
+};
+
 export const EVENTS: EventItem[] = [
   {
     id: "evt-cafe",
