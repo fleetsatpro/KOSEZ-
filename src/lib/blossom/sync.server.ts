@@ -233,12 +233,30 @@ async function applyMutation(
   switch (mutation.operation) {
     case "activity.append": {
       const payload = activityPayloadSchema.parse(mutation.payload);
+      const privilegedMinuteEvent =
+        payload.eventType === "SPEAK_COMPLETED" ||
+        payload.eventType === "TANDEM_COMPLETED";
+      const safeEventPayload = { ...objectValue(payload.payload) };
+      const safeMetadata = { ...objectValue(payload.metadata) };
+
+      if (privilegedMinuteEvent) {
+        // These fields are reserved for server-timed completion events.
+        // Offline clients may still sync the activity itself for local
+        // continuity, but cannot mint analytics credit.
+        delete safeEventPayload.minutes;
+        delete safeEventPayload.durationSeconds;
+        delete safeEventPayload.serverAuthoritativeMinutes;
+        delete safeMetadata.minutes;
+        delete safeMetadata.durationSeconds;
+        delete safeMetadata.serverAuthoritativeMinutes;
+      }
+
       await appendBlossomActivity(userId, {
         eventType: payload.eventType,
         sourceId: payload.sourceId ?? null,
         payload: {
-          ...objectValue(payload.payload),
-          metadata: objectValue(payload.metadata),
+          ...safeEventPayload,
+          metadata: safeMetadata,
         },
         idempotencyKey: mutation.mutationId,
         occurredAt: payload.occurredAt,
