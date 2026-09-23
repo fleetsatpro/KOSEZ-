@@ -493,10 +493,6 @@ export function lessonDone(
   lesson: CurriculumLesson,
   log: ActivityEvent[],
 ): boolean {
-  if (log.some((event) => event.type === "LESSON_COMPLETED" && event.sourceId === lesson.id)) {
-    return true;
-  }
-
   const resource = curriculumResource(lesson);
   if (resource.kind === "library") {
     return log.some(
