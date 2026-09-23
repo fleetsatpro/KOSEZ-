@@ -269,7 +269,7 @@ export function buildSkillProfile(
   const writing = count("WRITING_COMPLETED");
   const lessonIds = new Set(
     log
-      .filter((event) => (event.type === "LESSON_COMPLETED" || event.type === "CURRICULUM_EVIDENCE_RECORDED") && event.sourceId)
+      .filter((event) => event.type === "CURRICULUM_EVIDENCE_RECORDED" && event.sourceId)
       .map((event) => event.sourceId as string),
   );
   const lessonDomains = CURRICULUM_UNITS.flatMap((unit) =>
@@ -412,8 +412,6 @@ export function nextLearningAction(
 export function curriculumUnitProgress(
   unit: CurriculumUnit,
   log: ActivityEvent[],
-  attempts: PronlabAttempt[],
-  vocabulary: Array<{ word: string; gloss: string }>,
 ): number {
   const lessonCoverage = unit.lessons.length
     ? (unit.lessons.filter((lesson) => lessonDone(lesson, log)).length / unit.lessons.length) * 100
