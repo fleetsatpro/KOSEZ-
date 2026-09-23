@@ -12,6 +12,7 @@ import {
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { AdminContentStudio } from "./admin-content-studio";
 import { AdminBookingQueue } from "./admin-booking-queue";
+import { AdminRoleStudio } from "./admin-role-studio";
 import { useBlossom } from "@/lib/blossom/store";
 
 type AdminWorkspace = Awaited<ReturnType<typeof getAdminWorkspaceOnServer>>;
@@ -115,6 +116,8 @@ export function AdminStudio() {
         <Metric icon={Users} label="Parents" value={workspace.guardians} />
         <Metric icon={Building2} label="Organisations" value={workspace.activeOrganizations} />
       </section>
+
+      <AdminRoleStudio />
 
       <section className="mt-5">
         <Surface>
