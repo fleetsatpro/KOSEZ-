@@ -44,6 +44,7 @@ function TandemSession() {
   const [left, setLeft] = useState(HALF_SECONDS);
   const [promptIndex, setPromptIndex] = useState(0);
   const [phase, setPhase] = useState<"live" | "transition" | "complete">("live");
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -118,16 +119,19 @@ function TandemSession() {
   }, [half, partner, phase, prompt, promptIndex, sessionId]);
 
   async function leaveSession() {
-    if (sessionId) {
-      try {
+    if (closing) return;
+    setClosing(true);
+    try {
+      if (sessionId) {
         await endTandemSessionOnServer({
           data: { sessionId, status: "cancelled" },
         });
-      } catch {
-        toast("La sortie est locale ; la fermeture serveur n’a pas été confirmée.");
       }
+      navigate({ to: "/tandem" });
+    } catch {
+      setClosing(false);
+      toast("La sortie locale n’est pas confirmée tant que la fermeture serveur n’a pas été enregistrée.");
     }
-    navigate({ to: "/tandem" });
   }
 
   if (loading) {
@@ -164,12 +168,14 @@ function TandemSession() {
 
   async function finish() {
     const activePartner = partner;
-    if (!activePartner || !sessionId) return;
+    if (!activePartner || !sessionId || closing) return;
+    setClosing(true);
     try {
       await endTandemSessionOnServer({
         data: { sessionId, status: "completed" },
       });
     } catch {
+      setClosing(false);
       toast("La session n’a pas pu être clôturée côté serveur.");
       return;
     }
@@ -242,7 +248,7 @@ function TandemSession() {
             </p>
           </Surface>
 
-          <Button className="mt-8 w-full" size="lg" onClick={() => void finish()}>
+          <Button className="mt-8 w-full" size="lg" disabled={closing} onClick={() => void finish()}>
             Clore la session
             <ArrowRight className="size-4" />
           </Button>
@@ -308,17 +314,24 @@ function TandemSession() {
           <Button
             variant="outline"
             className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
-            onClick={() => {
+            onClick={async () => {
+              if (closing) return;
               reportTandem(id);
-              if (sessionId) {
-                void endTandemSessionOnServer({
-                  data: { sessionId, status: "cancelled" },
-                });
+              setClosing(true);
+              try {
+                if (sessionId) {
+                  await endTandemSessionOnServer({
+                    data: { sessionId, status: "cancelled" },
+                  });
+                }
+                toast(
+                  "Signalement transmis au circuit de sécurité. Le profil est masqué pour vous.",
+                );
+                navigate({ to: "/tandem" });
+              } catch {
+                setClosing(false);
+                toast("Le signalement local est conservé, mais la fermeture serveur n’est pas confirmée.");
               }
-              toast(
-                "Signalement transmis au circuit de sécurité. Le profil est masqué pour vous.",
-              );
-              navigate({ to: "/tandem" });
             }}
           >
             <Flag className="size-3.5" />
