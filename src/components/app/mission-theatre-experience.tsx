@@ -10,7 +10,7 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BlossomPlant } from "@/components/app/plant";
-import { Eyebrow, Page, Surface, Wordmark } from "@/components/app/primitives";
+import { Eyebrow, Wordmark } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { LEARNER_MEMORY, planAllows } from "@/lib/blossom/data";
 import {
@@ -52,18 +52,6 @@ type GrowthSnapshot = {
   after: ReturnType<typeof journeySnapshot>;
   evaluation: ReturnType<typeof evaluateMission>;
 };
-
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReduced(media.matches);
-    update();
-    media.addEventListener?.("change", update);
-    return () => media.removeEventListener?.("change", update);
-  }, []);
-  return reduced;
-}
 
 function CinematicTop({ step, language }: { step: MissionStep; language: string }) {
   return (
@@ -113,12 +101,15 @@ export function MissionTheatreExperience() {
   const history = summariseMissionHistory(session?.runs ?? []);
   const recommendedChallenge = nextMissionChallenge(previousEvaluation?.outcome);
   const already = hasSource(log, todayMission.id);
-  const journey = journeySnapshot(log);
-  const reducedMotion = useReducedMotion();
   const memoryOn = planAllows(plan, "memory");
   const memory = resolveMemory(useBlossom.getState().pronlabAttempts, LEARNER_MEMORY);
   const personalised = personaliseMission(todayMission, memory, memoryOn);
-  const objective = missionObjective(todayMission, run?.challenge ?? recommendedChallenge);
+  const objective = missionObjective(
+    todayMission,
+    memory,
+    memoryOn,
+    previousEvaluation?.outcome,
+  );
 
   const [step, setStep] = useState<MissionStep>(() => missionStepFromRun(run));
   const [mode, setMode] = useState<MissionMode>(run?.mode ?? "real-world");
