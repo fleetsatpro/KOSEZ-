@@ -98,6 +98,7 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
     HOMEWORK_COMPLETED: { kind: "writing", domains: ["writing"], direct: true, label: "Devoir" },
     IMMERSION_ATTENDED: { kind: "mission", domains: ["speaking", "listening", "interaction"], direct: false, label: "Immersion" },
     DIAGNOSTIC_COMPLETED: { kind: "review", domains: ["speaking", "listening", "writing", "grammar", "interaction"], direct: false, label: "Repère" },
+    LIBRARY_COMPLETED: { kind: "reading", domains: ["reading", "vocabulary"], direct: true, label: "Lecture comprise" },
   };
 
   if (event.type === "LESSON_COMPLETED") {
