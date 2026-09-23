@@ -736,6 +736,7 @@ export function activityLabel(type: ActivityType): string {
     IMMERSION_ATTENDED: "Immersion suivie",
     REVIEW_COMPLETED: "Révision terminée",
     DIAGNOSTIC_COMPLETED: "Repère indicatif enregistré",
+    LIBRARY_COMPLETED: "Lecture comprise",
   };
   return labels[type] ?? "Activité";
 }
