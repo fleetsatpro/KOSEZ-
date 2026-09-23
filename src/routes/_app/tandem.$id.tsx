@@ -102,6 +102,8 @@ function TandemSession() {
     [half],
   );
 
+  const prompt = prompts[promptIndex % prompts.length]!;
+
   useEffect(() => {
     if (!sessionId || phase !== "live" || !partner) return;
     const language = half === "target" ? partner.wants : partner.speaks;
@@ -158,7 +160,6 @@ function TandemSession() {
     );
   }
 
-  const prompt = prompts[promptIndex % prompts.length]!;
   const progress = ((HALF_SECONDS - left) / HALF_SECONDS) * 100;
 
   async function finish() {
