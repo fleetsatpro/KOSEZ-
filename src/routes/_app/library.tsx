@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, BookMarked, Check, Clock, Search } from "lucide-react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
@@ -23,6 +23,7 @@ function LibraryPage() {
   const [query, setQuery] = useState("");
   const [level, setLevel] = useState<"all" | "A2" | "B1">("all");
   const [status, setStatus] = useState<"all" | "unread" | "read">("all");
+  const navigate = useNavigate();
 
   const completedIds = useMemo(
     () =>
@@ -171,10 +172,30 @@ function LibraryPage() {
           <p className="mt-3 text-sm leading-6 text-fg">
             {vocab.map((v) => v.word).join(" · ")}
           </p>
-          <p className="mt-2 text-xs text-subtle">
-            {vocab.length} mot{vocab.length > 1 ? "s" : ""} — prêts pour une
-            mission ou un Speak.
-          </p>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-subtle">
+              {vocab.length} mot{vocab.length > 1 ? "s" : ""} — prêts pour une
+              mission ou un Speak.
+            </p>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                try {
+                  sessionStorage.setItem(
+                    "kosez-speak-topic",
+                    ("Réutiliser : " + vocab.slice(0, 5).map((item) => item.word).join(", ")).slice(0, 120),
+                  );
+                } catch {
+                  /* session storage can be unavailable in privacy modes */
+                }
+                navigate({ to: "/osez/$id", params: { id: "topic" } });
+              }}
+            >
+              Les faire vivre à l'oral
+              <ArrowRight className="size-3.5" />
+            </Button>
+          </div>
         </Surface>
       )}
 
