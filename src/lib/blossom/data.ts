@@ -1570,6 +1570,8 @@ export const PRONLAB_SETS: PronlabSetDef[] = [
       { id: "de-4", phrase: "Können Sie das bitte wiederholen?", hint: "Demander de répéter fait partie de la conversation.", ipa: "/ˈkœnən ziː das ˈbɪtə ˌviːdɐˈhoːlən/", kind: "sentence", focus: "repair", level: "A2", strength: "Vous réparez sans vous excuser longuement.", tip: "Wiederholen porte le poids final.", model: "Können Sie das bitte wiederholen?", problemSegment: "wiederholen" },
     ],
   },
+];
+
 export const PRONLAB_SET: PronlabItem[] = PRONLAB_SETS[0]!.items;
 
 export function allPronlabItems(): PronlabItem[] {
