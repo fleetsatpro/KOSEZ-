@@ -1734,8 +1734,8 @@ export const LIBRARY: LibraryDoc[] = [
     body: "Something you ordered is wrong. You explain the problem without blaming anyone, say what you expected, and ask what can be done. The useful language is practical: enough detail to solve the situation, no speech required.",
     comprehension: [{"prompt":"Quel est le bon ordre d'une réparation ?","choices":["Blâmer, partir, revenir.","Décrire le problème, expliquer l'impact, demander une solution.","Changer de sujet."],"answer":"Décrire le problème, expliquer l'impact, demander une solution.","explanation":"Le texte organise la communication autour de la résolution."},{"prompt":"Quel ton est recommandé ?","choices":["Accusateur","Clair et calme","Très long et défensif"],"answer":"Clair et calme","explanation":"Le but est d'obtenir une solution, pas de gagner un conflit."},{"prompt":"Quelle phrase aide à ouvrir la solution ?","choices":["Could you check it today?","You are wrong.","Forget it."],"answer":"Could you check it today?","explanation":"Elle transforme le problème en demande concrète."}],
     transferPrompt: "Choisissez un petit problème réel et formulez une demande de solution en anglais.",
-  },  },
-{
+  },
+  {
     id: "lib-airport",
     title: "A delayed flight",
     blurb: "Check a gate, explain a delay, keep the exchange moving.",
