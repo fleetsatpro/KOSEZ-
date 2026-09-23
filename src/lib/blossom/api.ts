@@ -9,6 +9,7 @@ import {
   type JsonValue,
   upsertBlossomProfile,
 } from "./backend.server";
+import { assertCurriculumEvidence } from "./sync.server";
 
 const jsonObject = z.string().trim().max(20000).optional();
 
@@ -65,9 +66,19 @@ export const recordBlossomActivity = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ context, data }) => {
+    const payload = parseJsonObject(data.payloadJson);
+    if (data.eventType === "CURRICULUM_EVIDENCE_RECORDED") {
+      await assertCurriculumEvidence(
+        context.userId,
+        data.sourceId ?? "",
+        payload.metadata && typeof payload.metadata === "object" && !Array.isArray(payload.metadata)
+          ? payload.metadata
+          : {},
+      );
+    }
     await appendBlossomActivity(context.userId, {
       ...data,
-      payload: parseJsonObject(data.payloadJson),
+      payload,
     });
     return { ok: true as const };
   });

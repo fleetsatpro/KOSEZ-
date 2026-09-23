@@ -23,6 +23,10 @@ import { useBlossom } from "@/lib/blossom/store";
 import { track } from "@/lib/analytics";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  clearCurriculumLessonContext,
+  readCurriculumLessonContext,
+} from "@/lib/blossom/curriculum-context";
 
 export const Route = createFileRoute("/_app/osez/$id")({
   component: SpeakRoom,
@@ -52,6 +56,10 @@ function SpeakRoom() {
   const [showRescue, setShowRescue] = useState(false);
   const [speechSummary, setSpeechSummary] = useState<SessionSpeechSummary>(() => emptySpeechSummary());
   const mineralsBefore = useRef(minerals);
+  const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
+  useEffect(() => {
+    if (curriculumLessonId) clearCurriculumLessonContext();
+  }, [curriculumLessonId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -172,6 +180,21 @@ function SpeakRoom() {
       },
     );
     if (result.ok) {
+      if (curriculumLessonId) {
+        const linked = useBlossom.getState().activityLog.some(
+          (event) =>
+            event.type === "CURRICULUM_EVIDENCE_RECORDED" &&
+            event.sourceId === curriculumLessonId,
+        );
+        if (!linked) {
+          useBlossom.getState().completeActivity(
+            "CURRICULUM_EVIDENCE_RECORDED",
+            curriculumLessonId,
+            `Preuve curriculum · Speak · ${room.id}`,
+            { supportId: `speak-${room.id}` },
+          );
+        }
+      }
       toast("Session close. La tige s'épaissit.");
       setCeremonyOpen(true);
     } else {

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { ArrowRight, BookOpenCheck, BrainCircuit, CircleCheck, Clock3, Sprout } from "lucide-react";
 import { Eyebrow, Page } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,15 @@ export const Route = createFileRoute("/_app/learn/curriculum")({
 });
 
 function Curriculum() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
+  });
+
+  return pathname === "/learn/curriculum" ? <CurriculumIndex /> : <Outlet />;
+}
+
+function CurriculumIndex() {
+
   const log = useBlossom((s) => s.activityLog);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const vocabulary = useBlossom((s) => s.vocabulary);
@@ -46,7 +55,7 @@ function Curriculum() {
 
       <section className="mt-8 grid gap-4">
         {CURRICULUM_UNITS.map((unit) => {
-          const progress = curriculumUnitProgress(unit, log, attempts, vocabulary);
+          const progress = curriculumUnitProgress(unit, log);
           const domainLabels = unit.domainIds
             .map((id) => profile.find((item) => item.domain.id === id)?.domain.shortLabel)
             .filter(Boolean)

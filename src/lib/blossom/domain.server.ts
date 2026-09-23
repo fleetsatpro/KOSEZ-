@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
+import { IMMERSION, PRONLAB_SETS } from "./data";
 import type { JsonObject } from "./backend.server";
 
 import { getPublishedContent } from "./content.server";
@@ -248,7 +249,7 @@ export async function getAdminWorkspace(userId: string): Promise<AdminWorkspace>
       sql.query("select count(*)::integer as count from blossom_profile where user_id is not null"),
       sql.query("select count(distinct teacher_user_id)::integer as count from blossom_teacher_link where status = 'active'"),
       sql.query("select count(distinct guardian_user_id)::integer as count from blossom_guardian_link where status = 'active'"),
-      sql.query("select count(*)::integer as count from blossom_organization"),
+      sql.query("select count(distinct organization_id)::integer as count from blossom_organization_member where status = 'active'"),
       sql.query("select count(*)::integer as count from blossom_event_registration where status = 'joined'"),
       sql.query(
         "select count(*) filter (where status = 'requested')::integer as requested, count(*) filter (where status = 'confirmed')::integer as confirmed, count(*) filter (where status = 'cancelled')::integer as cancelled, count(*) filter (where payment_status = 'paid')::integer as paid, count(*) filter (where payment_status = 'unpaid')::integer as unpaid from blossom_booking_request",
@@ -535,6 +536,12 @@ export async function requestCatalogueBooking(
     throw new Error("unknown-catalogue-item");
   }
   const sql = await getSql();
+  const existing = await sql.query(
+    "select id, status from blossom_booking_request where user_id = $1 and catalogue_item_id = $2",
+    [userId, catalogueItemId],
+  );
+  const previousStatus = existing[0]?.status ? String(existing[0].status) : null;
+
   const rows = await sql.query(
     `insert into blossom_booking_request (id, user_id, catalogue_item_id, status)
      values ($1::uuid, $2, $3, 'requested')
@@ -549,7 +556,18 @@ export async function requestCatalogueBooking(
      returning id, catalogue_item_id, status, payment_status, created_at, updated_at`,
     [randomUUID(), userId, catalogueItemId],
   );
-  if (rows[0]) return rows[0];
+  if (rows[0]) {
+    const nextStatus = String(rows[0].status);
+    if (previousStatus !== nextStatus) {
+      await writeAuditEvent(userId, {
+        action: "commerce.booking_requested",
+        resourceType: "booking_request",
+        resourceId: String(rows[0].id),
+        metadata: { previousStatus, nextStatus },
+      });
+    }
+    return rows[0];
+  }
 
   const current = await sql.query(
     `select id, catalogue_item_id, status, payment_status, created_at, updated_at
@@ -616,6 +634,11 @@ export async function recordPronlabAttempt(
   userId: string,
   input: PronlabAttemptInput,
 ) {
+  const knownItem = PRONLAB_SETS.flatMap((set) => set.items).find((item) => item.id === input.itemId);
+  if (!knownItem) {
+    throw new BlossomForbiddenError("Cet exercice Pron'Lab n'existe pas.");
+  }
+
   const sql = await getSql();
   const recordId = input.idempotencyKey ?? randomUUID();
   const metadata = input.metadata ?? {};
@@ -887,6 +910,9 @@ export async function registerEvent(
 }
 
 export async function completeChallenge(userId: string, challengeId: string) {
+  if (!IMMERSION.challenges.includes(challengeId)) {
+    throw new BlossomForbiddenError("Ce défi d'immersion n'existe pas.");
+  }
   const sql = await getSql();
   const rows = await sql.query(
     "insert into blossom_challenge_completion (user_id, challenge_id) values ($1, $2) on conflict (user_id, challenge_id) do nothing returning user_id, challenge_id, completed_at",
@@ -961,6 +987,14 @@ export async function saveHomework(
     throw new BlossomForbiddenError("La fin d’un devoir est réservée à l’apprenant.");
   }
   const sql = await getSql();
+  let previousStatus: string | null = null;
+  if (input.id) {
+    const previous = await sql.query(
+      "select status from blossom_homework where id = $1::uuid and author_user_id = $2",
+      [input.id, actorUserId],
+    );
+    previousStatus = previous[0]?.status ? String(previous[0].status) : null;
+  }
   const rows = input.id
     ? await sql.query(
         "update blossom_homework set title = $2, body = $3, status = $4, updated_at = current_timestamp where id = $1::uuid and author_user_id = $5 returning id, author_user_id, learner_user_id, title, body, status, created_at, updated_at",
@@ -972,7 +1006,7 @@ export async function saveHomework(
       );
 
   if (!rows[0]) throw new Error("homework-write-failed");
-  if (input.status === "sent") {
+  if (input.status === "sent" && previousStatus !== "sent") {
     await createNotification(input.learnerUserId, {
       kind: "homework",
       title: "Un nouveau devoir vous attend",

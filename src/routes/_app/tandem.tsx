@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Clock, Heart, MapPin, Pause, RefreshCw, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -25,6 +25,14 @@ function languageLabel(id: string) {
 }
 
 function TandemPage() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
+  });
+
+  return pathname === "/tandem" ? <TandemHub /> : <Outlet />;
+}
+
+function TandemHub() {
   const learner = useBlossom((s) => s.learner);
   const languageId = useBlossom((s) => s.languageId);
   const statusMap = useBlossom((s) => s.tandemStatus);

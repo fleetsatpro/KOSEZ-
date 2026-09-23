@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   ArrowRight,
@@ -47,6 +47,14 @@ const TOPIC_SUGGESTIONS = [
 ];
 
 function OsezPage() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
+  });
+
+  return pathname === "/osez" ? <OsezHub /> : <Outlet />;
+}
+
+function OsezHub() {
   const navigate = useNavigate();
   const log = useBlossom((s) => s.activityLog);
   const plan = useBlossom((s) => s.plan);

@@ -40,8 +40,10 @@ jobs:
         run: npm run typecheck
 
       - name: Start auth-on dev server
+        env:
+          KOSEZ_VITE_CACHE_DIR: /tmp/kosez-vite-auth-on
         run: |
-          npm run dev -- --force > /tmp/kosez-dev.log 2>&1 &
+          npm run dev -- > /tmp/kosez-dev.log 2>&1 &
           echo $! > /tmp/kosez-dev.pid
           for attempt in {1..30}; do
             if curl -fsS http://127.0.0.1:8080/__app-env > /tmp/kosez-env.json; then
@@ -52,21 +54,36 @@ jobs:
           cat /tmp/kosez-dev.log
           exit 1
 
-      - name: Start auth-disabled learner smoke server
+      - name: Auth invariants
+        run: npm run check:auth -- --dev-url http://127.0.0.1:8080
+
+      - name: Stop auth-on dev server before learner smoke
         run: |
-          VITE_AUTH_ENABLED=false npm run dev -- --force --port 8081 > /tmp/kosez-smoke.log 2>&1 &
-          echo $! > /tmp/kosez-smoke.pid
+          if [ -f /tmp/kosez-dev.pid ]; then
+            kill "$(cat /tmp/kosez-dev.pid)" || true
+            rm -f /tmp/kosez-dev.pid
+          fi
+
+      - name: Build learner smoke preview
+        env:
+          VITE_AUTH_ENABLED: "false"
+        run: |
+          npm run build:dev > /tmp/kosez-smoke-build.log 2>&1
+          tail -n 80 /tmp/kosez-smoke-build.log
+
+      - name: Start auth-disabled learner smoke preview
+        env:
+          VITE_AUTH_ENABLED: "false"
+        run: |
+          npm run preview:restart
           for attempt in {1..30}; do
-            if curl -fsS http://127.0.0.1:8081/__app-env > /tmp/kosez-smoke-env.json; then
+            if curl -fsS http://127.0.0.1:8081/ > /tmp/kosez-smoke-home.html; then
               exit 0
             fi
             sleep 1
           done
-          cat /tmp/kosez-smoke.log
+          cat .grok/preview.log
           exit 1
-
-      - name: Auth invariants
-        run: npm run check:auth -- --dev-url http://127.0.0.1:8080
 
       - name: Install Chromium for browser smoke
         run: npx playwright install chromium
@@ -82,9 +99,7 @@ jobs:
           if [ -f /tmp/kosez-dev.pid ]; then
             kill "$(cat /tmp/kosez-dev.pid)" || true
           fi
-          if [ -f /tmp/kosez-smoke.pid ]; then
-            kill "$(cat /tmp/kosez-smoke.pid)" || true
-          fi
+          npm run preview:stop || true
 
       - name: Upload browser smoke evidence
         if: always()

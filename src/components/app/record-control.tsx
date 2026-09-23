@@ -223,7 +223,7 @@ export function RecordControl({
           {phase === "idle" && "Maintenez le bouton. Relâchez quand vous avez terminé."}
           {phase === "requesting" && "Votre navigateur va demander l'autorisation d'utiliser le micro."}
           {phase === "recording" && "Continuez naturellement. Rien ne vous oblige à remplir le silence."}
-          {phase === "processing" && "La durée de parole est enregistrée, pas le contenu audio."}
+          {phase === "processing" && "Votre prise peut être transmise à un moteur de transcription configuré. K’Osez ne fabrique pas de note phonétique."}
           {phase === "error" && (errorMessage ?? "Une erreur est survenue.")}
         </p>
       </div>

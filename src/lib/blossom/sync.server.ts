@@ -22,6 +22,8 @@ import {
 } from "./domain.server";
 import { reportTandem } from "./safety.server";
 import { SYNC_OPERATIONS, type SyncMutation, type SyncResult } from "./sync-types";
+import { CURRICULUM_UNITS, type LessonKind } from "./learning-os";
+import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure } from "./lab-content";
 
 const SYNC_TIMEOUT_MS = 120_000;
 
@@ -29,6 +31,39 @@ function objectValue(value: unknown): JsonObject {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return value as JsonObject;
 }
+
+export async function assertCurriculumEvidence(
+  userId: string,
+  lessonId: string,
+  metadata: Record<string, unknown>,
+) {
+  const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find((item) => item.id === lessonId);
+  if (!lesson) throw new Error("curriculum-lesson-unknown");
+  const supportId = stringValue(metadata.supportId);
+  if (!supportId) throw new Error("curriculum-evidence-missing-support");
+
+  const sql = await getSql();
+  const checks: Record<LessonKind, () => Promise<boolean>> = {
+    mission: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'MISSION_COMPLETED' and source_id = $2 limit 1", [userId, supportId]))[0]),
+    speak: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'SPEAK_COMPLETED' and source_id = $2 limit 1", [userId, supportId]))[0]),
+    pronlab: async () => Boolean((await sql.query("select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 limit 1", [userId, supportId]))[0]),
+    review: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'REVIEW_COMPLETED' and source_id = $2 limit 1", [userId, supportId]))[0]),
+    grammar: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'grammar' limit 1", [userId, supportId]))[0]),
+    listening: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'listening' limit 1", [userId, supportId]))[0]),
+    writing: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'writing' limit 1", [userId, supportId]))[0]),
+    library: async () => Boolean((await sql.query(
+      "select 1 from blossom_activity_event where user_id = $1 and event_type = 'LIBRARY_COMPLETED' and source_id = $2 limit 1",
+      [userId, supportId],
+    ))[0]),
+  };
+
+  if (lesson.taskId && supportId !== lesson.taskId) {
+    throw new Error("curriculum-evidence-wrong-task");
+  }
+
+  if (!(await checks[lesson.kind]())) throw new Error("curriculum-evidence-without-support");
+}
+
 
 function jsonValue(value: unknown): JsonValue {
   try {
@@ -156,6 +191,57 @@ const submissionPayloadSchema = z.object({
   result: z.record(z.string(), z.unknown()).optional(),
 });
 
+function validateLearningSubmission(payload: z.infer<typeof submissionPayloadSchema>) {
+  if (payload.kind === "grammar") {
+    const task = GRAMMAR_TASKS.find((item) => item.id === payload.taskId);
+    if (!task) throw new Error("unknown-grammar-task");
+    const correct = payload.content === task.answer;
+    const expectedChecks = [correct ? "correct" : "incorrect"];
+    if (JSON.stringify(payload.checks ?? []) !== JSON.stringify(expectedChecks)) {
+      throw new Error("forged-grammar-checks");
+    }
+    return {
+      checks: expectedChecks,
+      result: { ...objectValue(payload.result), correct, target: task.target },
+    };
+  }
+  if (payload.kind === "listening") {
+    const task = LISTENING_TASKS.find((item) => item.id === payload.taskId);
+    if (!task) throw new Error("unknown-listening-task");
+    const correct = payload.content === task.answer;
+    const expectedChecks = [correct ? "correct" : "incorrect"];
+    if (JSON.stringify(payload.checks ?? []) !== JSON.stringify(expectedChecks)) {
+      throw new Error("forged-listening-checks");
+    }
+    return {
+      checks: expectedChecks,
+      result: { ...objectValue(payload.result), correct, level: task.level },
+    };
+  }
+  if (payload.kind === "writing") {
+    const prompt = WRITING_PROMPTS.find((item) => item.id === payload.taskId);
+    if (!prompt) throw new Error("unknown-writing-task");
+    const evaluation = evaluateWritingStructure(prompt, payload.content);
+    if (JSON.stringify(payload.checks ?? []) !== JSON.stringify(evaluation.passed)) {
+      throw new Error("forged-writing-checks");
+    }
+    return {
+      checks: evaluation.passed,
+      result: {
+        ...objectValue(payload.result),
+        checkCount: evaluation.passed.length,
+        checkTotal: evaluation.total,
+        structureScore: evaluation.score,
+        method: evaluation.method,
+      },
+    };
+  }
+  return {
+    checks: payload.checks ?? [],
+    result: payload.result ?? {},
+  };
+}
+
 const profilePayloadSchema = z.object({
   displayName: z.string().trim().max(120).nullable().optional(),
   targetLanguage: z.string().trim().min(2).max(16),
@@ -233,6 +319,13 @@ async function applyMutation(
   switch (mutation.operation) {
     case "activity.append": {
       const payload = activityPayloadSchema.parse(mutation.payload);
+      if (payload.eventType === "CURRICULUM_EVIDENCE_RECORDED") {
+        await assertCurriculumEvidence(
+          userId,
+          payload.sourceId ?? mutation.entityId,
+          objectValue(payload.metadata),
+        );
+      }
       await appendBlossomActivity(userId, {
         eventType: payload.eventType,
         sourceId: payload.sourceId ?? null,
@@ -336,13 +429,14 @@ async function applyMutation(
     }
     case "learning.submission": {
       const payload = submissionPayloadSchema.parse(mutation.payload);
+      const validated = validateLearningSubmission(payload);
       await saveLearningSubmission(userId, {
         id: mutation.mutationId,
         taskId: payload.taskId,
         kind: payload.kind,
         content: payload.content,
-        checks: payload.checks ?? [],
-        result: payload.result ?? {},
+        checks: validated.checks,
+        result: validated.result,
       });
       return { mutationId: mutation.mutationId, status: "applied" };
     }

@@ -1,13 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, GraduationCap, Headphones, PenLine, RotateCcw, Sparkles, Target } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, speakSyntheticEnglish, type LabLevel } from "@/lib/blossom/lab-content";
+import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure, speakSyntheticEnglish, type LabLevel } from "@/lib/blossom/lab-content";
 import { DIAGNOSTIC_QUESTIONS, diagnosticLevel, diagnosticScore, diagnosticSummary } from "@/lib/blossom/learning-labs";
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
+import { CURRICULUM_UNITS } from "@/lib/blossom/learning-os";
+import {
+  clearCurriculumLessonContext,
+  readCurriculumLessonContext,
+} from "@/lib/blossom/curriculum-context";
 
 export const Route = createFileRoute("/_app/learn/labs")({ component: LearningLabs });
 
@@ -42,16 +47,40 @@ function LearningLabs() {
 }
 
 function GrammarLab({ level }: { level: LabLevel }) {
+  const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
+  useEffect(() => {
+    if (curriculumLessonId) clearCurriculumLessonContext();
+  }, [curriculumLessonId]);
+  const linkedTaskId = linkedLessonTask(curriculumLessonId, "grammar");
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
-  const tasks = useMemo(() => GRAMMAR_TASKS.filter((item) => item.level === level), [level]);
+  const tasks = useMemo(() => {
+    const all = GRAMMAR_TASKS.filter((item) => item.level === level);
+    return linkedTaskId ? all.filter((item) => item.id === linkedTaskId) : all;
+  }, [level, linkedTaskId]);
   const [index, setIndex] = useState(0), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
   const task = tasks[index]!, answered = choice !== null;
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
     if (!answered) return;
-    if (index >= tasks.length - 1) { saveLearningSubmission({ taskId: task.id, kind: "grammar", content: choice ?? "", checks: [choice === task.answer ? "correct" : "incorrect"], result: { correct: choice === task.answer, target: task.target } }); completeActivity("GRAMMAR_COMPLETED", dailyLabSource("grammar", task.id), `Grammaire · ${correct + (choice === task.answer ? 1 : 0)}/${tasks.length}`); setFinished(true); return; }
-    setIndex((v) => v + 1); setChoice(null);
+    const isCorrect = choice === task.answer;
+    saveLearningSubmission({
+      taskId: task.id,
+      kind: "grammar",
+      content: choice ?? "",
+      checks: [isCorrect ? "correct" : "incorrect"],
+      result: { correct: isCorrect, target: task.target, position: index + 1, level: task.level },
+    });
+    if (index >= tasks.length - 1) {
+      completeActivity("GRAMMAR_COMPLETED", dailyLabSource("grammar", task.id), `Grammaire · ${correct + (isCorrect ? 1 : 0)}/${tasks.length}`);
+      if (curriculumLessonId && linkedLessonKind(curriculumLessonId) === "grammar") {
+        completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · grammaire · ${task.id}`, { supportId: task.id });
+      }
+      setFinished(true);
+      return;
+    }
+    setIndex((v) => v + 1);
+    setChoice(null);
   }
   if (finished) return <LabComplete title="Grammaire terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. Cette trace mesure une séance de pratique, pas un niveau CEFR.`} />;
   return <Surface className="mt-6 overflow-hidden p-0">
@@ -65,21 +94,45 @@ function GrammarLab({ level }: { level: LabLevel }) {
 }
 
 function ListeningLab({ level }: { level: LabLevel }) {
+  const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
+  useEffect(() => {
+    if (curriculumLessonId) clearCurriculumLessonContext();
+  }, [curriculumLessonId]);
+  const linkedTaskId = linkedLessonTask(curriculumLessonId, "listening");
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
-  const tasks = useMemo(() => LISTENING_TASKS.filter((item) => item.level === level), [level]);
+  const tasks = useMemo(() => {
+    const all = LISTENING_TASKS.filter((item) => item.level === level);
+    return linkedTaskId ? all.filter((item) => item.id === linkedTaskId) : all;
+  }, [level, linkedTaskId]);
   const [index, setIndex] = useState(0), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
   const task = tasks[index]!, answered = choice !== null;
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
     if (!answered) return;
-    if (index >= tasks.length - 1) { saveLearningSubmission({ taskId: task.id, kind: "listening", content: choice ?? "", checks: [choice === task.answer ? "correct" : "incorrect"], result: { correct: choice === task.answer, level: task.level } }); completeActivity("LISTENING_COMPLETED", dailyLabSource("listening", task.id), `Écoute · ${correct + (choice === task.answer ? 1 : 0)}/${tasks.length}`); setFinished(true); return; }
-    setIndex((v) => v + 1); setChoice(null);
+    const isCorrect = choice === task.answer;
+    saveLearningSubmission({
+      taskId: task.id,
+      kind: "listening",
+      content: choice ?? "",
+      checks: [isCorrect ? "correct" : "incorrect"],
+      result: { correct: isCorrect, level: task.level, position: index + 1 },
+    });
+    if (index >= tasks.length - 1) {
+      completeActivity("LISTENING_COMPLETED", dailyLabSource("listening", task.id), `Écoute · ${correct + (isCorrect ? 1 : 0)}/${tasks.length}`);
+      if (curriculumLessonId && linkedLessonKind(curriculumLessonId) === "listening") {
+        completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · écoute · ${task.id}`, { supportId: task.id });
+      }
+      setFinished(true);
+      return;
+    }
+    setIndex((v) => v + 1);
+    setChoice(null);
   }
   if (finished) return <LabComplete title="Écoute terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. Vous avez travaillé des détails concrets : heure, lieu, prix et option.`} />;
   return <Surface className="mt-6 p-5 sm:p-7">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><Eyebrow>Écoute · {index + 1}/{tasks.length}</Eyebrow><h2 className="mt-2 font-display text-3xl tracking-tight">{task.question}</h2></div><Badge variant="outline">{task.level} · voix synthétique</Badge></div>
-    <div className="mt-6 rounded-2xl border border-border bg-fg p-5 text-primary-foreground"><p className="text-xs text-primary-foreground/50">Deux écoutes maximum avant de répondre.</p><Button variant="secondary" className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => speakSyntheticEnglish(task.audioText)}><Headphones className="size-4" /> Écouter</Button><p className="mt-4 font-display text-lg text-primary-foreground/80">{task.audioText}</p><p className="mt-1 text-[11px] text-primary-foreground/45">La voix est générée par votre appareil. Les enregistrements humains seront ajoutés dans le pack audio éditorial.</p></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><Eyebrow>Écoute · {index + 1}/{tasks.length}</Eyebrow><h2 className="mt-2 font-display text-3xl tracking-tight">{task.question}</h2></div><Badge variant="outline">{task.level} · voix synthétique · texte après réponse</Badge></div>
+    <div className="mt-6 rounded-2xl border border-border bg-fg p-5 text-primary-foreground"><p className="text-xs text-primary-foreground/50">Deux écoutes maximum avant de répondre.</p><Button variant="secondary" className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => speakSyntheticEnglish(task.audioText)}><Headphones className="size-4" /> Écouter</Button>{answered ? <p className="mt-4 font-display text-lg text-primary-foreground/80">{task.audioText}</p> : null}<p className="mt-1 text-[11px] text-primary-foreground/45">La voix est générée par votre appareil. Les enregistrements humains seront ajoutés dans le pack audio éditorial.</p></div>
     <div className="mt-5 grid gap-2">{task.choices.map((item) => <button key={item} type="button" onClick={() => choose(item)} className={`rounded-xl border px-4 py-3 text-left text-sm transition ${choice === item ? item === task.answer ? "border-primary/35 bg-primary/10" : "border-destructive/25 bg-destructive/5" : "border-border bg-surface-2/35 hover:bg-surface-2"}`}>{item}</button>)}</div>
     {answered ? <p className="mt-5 rounded-xl bg-surface-2/50 p-4 text-sm leading-6 text-muted">{task.detail}</p> : null}
     <Button className="mt-6 w-full sm:w-auto" disabled={!answered} onClick={next}>{index === tasks.length - 1 ? "Terminer le laboratoire" : "Continuer"} <Sparkles className="size-4" /></Button>
@@ -87,20 +140,140 @@ function ListeningLab({ level }: { level: LabLevel }) {
 }
 
 function WritingLab({ level }: { level: LabLevel }) {
+  const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
+  useEffect(() => {
+    if (curriculumLessonId) clearCurriculumLessonContext();
+  }, [curriculumLessonId]);
+  const linkedTaskId = linkedLessonTask(curriculumLessonId, "writing");
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
-  const prompts = useMemo(() => WRITING_PROMPTS.filter((item) => item.level === level), [level]);
-  const [promptIndex, setPromptIndex] = useState(0), [draft, setDraft] = useState(""), [checks, setChecks] = useState<string[]>([]), [submitted, setSubmitted] = useState(false);
-  const prompt = useMemo(() => prompts[promptIndex % prompts.length]!, [promptIndex, prompts]);
-  function submit() { if (!draft.trim()) return; saveLearningSubmission({ taskId: prompt.id, kind: "writing", content: draft.trim(), checks, result: { checkCount: checks.length, checkTotal: prompt.checks.length } }); completeActivity("WRITING_COMPLETED", dailyLabSource("writing", prompt.id), `Écrit · ${prompt.id} · ${checks.length}/${prompt.checks.length} auto-vérifications`); setSubmitted(true); }
-  function next() { setPromptIndex((v) => (v + 1) % WRITING_PROMPTS.length); setDraft(""); setChecks([]); setSubmitted(false); }
-  return <Surface className="mt-6 p-5 sm:p-7">
-    <div className="flex items-start justify-between gap-3"><div><Eyebrow>Écrit · pratique guidée</Eyebrow><h2 className="mt-2 font-display text-3xl tracking-tight">{prompt.title}</h2></div><PenLine className="size-5 text-primary" /></div>
-    <p className="mt-3 text-sm leading-6 text-muted">{prompt.situation}</p><div className="mt-5 rounded-xl bg-surface-2/50 p-4"><p className="text-xs font-semibold uppercase tracking-[0.14em] text-subtle">Consigne</p><p className="mt-2 text-sm leading-6">{prompt.task}</p></div>
-    <textarea value={draft} onChange={(event) => setDraft(event.target.value)} disabled={submitted} placeholder="Écrivez votre propre version…" className="mt-5 min-h-36 w-full rounded-2xl border border-border bg-bg p-4 text-sm leading-7 outline-none transition focus:border-primary/30 focus:ring-2 focus:ring-primary/10" />
-    <div className="mt-4 space-y-2">{prompt.checks.map((check) => { const checked = checks.includes(check.id); return <button key={check.id} type="button" disabled={submitted} onClick={() => setChecks((value) => checked ? value.filter((id) => id !== check.id) : [...value, check.id])} className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm transition ${checked ? "border-primary/25 bg-primary/8" : "border-border bg-surface-2/30 hover:bg-surface-2"}`}><span className={`flex size-5 items-center justify-center rounded-md border ${checked ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{checked ? <Check className="size-3.5" /> : null}</span>{check.label}</button>; })}</div>
-    {submitted ? <div className="mt-6 rounded-2xl border border-primary/15 bg-primary/5 p-5"><Eyebrow>Modèle · à observer, pas à copier</Eyebrow><p className="mt-3 font-display text-2xl leading-snug">{prompt.model}</p><p className="mt-2 text-sm leading-6 text-muted">K&apos;Osez ne prétend pas corriger automatiquement votre texte ici : vous avez créé une vraie trace de production.</p><Button variant="secondary" className="mt-5" onClick={next}>Un autre sujet <span aria-hidden>→</span></Button></div> : <Button className="mt-6" disabled={!draft.trim()} onClick={submit}>Enregistrer ma trace <Sparkles className="size-4" /></Button>}
-  </Surface>;
+  const prompts = useMemo(() => {
+    const all = WRITING_PROMPTS.filter((item) => item.level === level);
+    return linkedTaskId ? all.filter((item) => item.id === linkedTaskId) : all;
+  }, [level, linkedTaskId]);
+  const [promptIndex, setPromptIndex] = useState(0);
+  const [draft, setDraft] = useState("");
+  const [evaluation, setEvaluation] = useState<ReturnType<typeof evaluateWritingStructure> | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const prompt = useMemo(() => prompts[promptIndex % Math.max(prompts.length, 1)]!, [promptIndex, prompts]);
+
+  function submit() {
+    if (!draft.trim()) return;
+    const result = evaluateWritingStructure(prompt, draft);
+    saveLearningSubmission({
+      taskId: prompt.id,
+      kind: "writing",
+      content: draft.trim(),
+      checks: result.passed,
+      result: {
+        checkCount: result.passed.length,
+        checkTotal: result.total,
+        structureScore: result.score,
+        method: result.method,
+      },
+    });
+    completeActivity(
+      "WRITING_COMPLETED",
+      dailyLabSource("writing", prompt.id),
+      `Écrit · ${prompt.id} · structure ${result.passed.length}/${result.total}`,
+    );
+    if (curriculumLessonId && linkedLessonKind(curriculumLessonId) === "writing") {
+      completeActivity(
+        "CURRICULUM_EVIDENCE_RECORDED",
+        curriculumLessonId,
+        `Preuve curriculum · écrit · ${prompt.id}`,
+        { supportId: prompt.id },
+      );
+    }
+    setEvaluation(result);
+    setSubmitted(true);
+  }
+
+  function next() {
+    setPromptIndex((value) => (value + 1) % Math.max(WRITING_PROMPTS.length, 1));
+    setDraft("");
+    setEvaluation(null);
+    setSubmitted(false);
+  }
+
+  return (
+    <Surface className="mt-6 p-5 sm:p-7">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Eyebrow>Écrit · pratique guidée</Eyebrow>
+          <h2 className="mt-2 font-display text-3xl tracking-tight">{prompt.title}</h2>
+        </div>
+        <PenLine className="size-5 text-primary" />
+      </div>
+      <p className="mt-3 text-sm leading-6 text-muted">{prompt.situation}</p>
+      <div className="mt-5 rounded-xl bg-surface-2/50 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-subtle">Consigne</p>
+        <p className="mt-2 text-sm leading-6">{prompt.task}</p>
+      </div>
+      <textarea
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        disabled={submitted}
+        placeholder="Écrivez votre propre version…"
+        className="mt-5 min-h-36 w-full rounded-2xl border border-border bg-bg p-4 text-sm leading-7 outline-none transition focus:border-primary/30 focus:ring-2 focus:ring-primary/10"
+      />
+      <div className="mt-4 rounded-2xl border border-border bg-surface-2/35 p-4">
+        <p className="text-xs leading-5 text-muted">
+          K’Osez vérifie uniquement des signaux structurels simples. Cela ne corrige pas votre anglais et ne produit pas une note de niveau.
+        </p>
+      </div>
+      {submitted && evaluation ? (
+        <div className="mt-4 space-y-2">
+          <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-subtle">Structure détectée</span>
+            <span className="font-display text-xl tabular-nums text-primary">{evaluation.score}%</span>
+          </div>
+          {prompt.checks.map((check) => {
+            const passed = evaluation.passed.includes(check.id);
+            return (
+              <div
+                key={check.id}
+                className={`flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${passed ? "border-primary/25 bg-primary/8" : "border-border bg-surface-2/30"}`}
+              >
+                <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border ${passed ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>
+                  {passed ? <Check className="size-3.5" /> : null}
+                </span>
+                <span>{check.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+      {submitted ? (
+        <div className="mt-6 rounded-2xl border border-primary/15 bg-primary/5 p-5">
+          <Eyebrow>Modèle · à observer, pas à copier</Eyebrow>
+          <p className="mt-3 font-display text-2xl leading-snug">{prompt.model}</p>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Le résultat ci-dessus mesure uniquement la présence de structures attendues ; il ne prétend pas juger la grammaire globale, le vocabulaire ou la qualité stylistique.
+          </p>
+          <Button variant="secondary" className="mt-5" onClick={next}>Un autre sujet <span aria-hidden>→</span></Button>
+        </div>
+      ) : (
+        <Button className="mt-6" disabled={!draft.trim()} onClick={submit}>
+          Enregistrer ma trace <Sparkles className="size-4" />
+        </Button>
+      )}
+    </Surface>
+  );
+}
+
+function linkedLessonKind(lessonId: string): string | null {
+  for (const unit of CURRICULUM_UNITS) {
+    const lesson = unit.lessons.find((item) => item.id === lessonId);
+    if (lesson) return lesson.kind;
+  }
+  return null;
+}
+
+function linkedLessonTask(lessonId: string | null, kind: "grammar" | "listening" | "writing"): string | null {
+  if (!lessonId) return null;
+  const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find((item) => item.id === lessonId);
+  return lesson?.kind === kind ? lesson.taskId ?? null : null;
 }
 
 function DiagnosticLab() {

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, Headphones, LibraryBig, MessageCircle, Mic2, PenLine, RotateCcw, Target, type LucideIcon } from "lucide-react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -7,12 +8,12 @@ import { Button } from "@/components/ui/button";
 import {
   CAN_DO_OBJECTIVES,
   CURRICULUM_UNITS,
-  buildSkillProfile,
   curriculumUnitProgress,
   type LessonKind,
   lessonDone,
 } from "@/lib/blossom/learning-os";
 import { useBlossom } from "@/lib/blossom/store";
+import { setCurriculumLessonContext } from "@/lib/blossom/curriculum-context";
 
 export const Route = createFileRoute("/_app/learn/curriculum/$unitId")({
   component: CurriculumUnit,
@@ -44,14 +45,43 @@ function lessonLink(kind: LessonKind): "/mission" | "/osez" | "/pronlab" | "/lib
   }
 }
 
+function CurriculumLessonLink({
+  lesson,
+  className,
+  children,
+}: {
+  lesson: { id: string; kind: LessonKind; taskId?: string };
+  className?: string;
+  children: ReactNode;
+}) {
+  if (lesson.kind === "library" && lesson.taskId) {
+    return (
+      <Link
+        to="/library/$id"
+        params={{ id: lesson.taskId }}
+        className={className}
+        onClick={() => setCurriculumLessonContext(lesson.id)}
+      >
+        {children}
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      to={lessonLink(lesson.kind)}
+      className={className}
+      onClick={() => setCurriculumLessonContext(lesson.id)}
+    >
+      {children}
+    </Link>
+  );
+}
+
 function CurriculumUnit() {
   const { unitId } = Route.useParams();
   const unit = CURRICULUM_UNITS.find((item) => item.id === unitId);
   const log = useBlossom((s) => s.activityLog);
-  const attempts = useBlossom((s) => s.pronlabAttempts);
-  const vocabulary = useBlossom((s) => s.vocabulary);
-  const completeActivity = useBlossom((s) => s.completeActivity);
-  const profile = buildSkillProfile(log, attempts, vocabulary);
 
   if (!unit) {
     return (
@@ -67,7 +97,7 @@ function CurriculumUnit() {
     );
   }
 
-  const progress = curriculumUnitProgress(unit, log, attempts, vocabulary);
+  const progress = curriculumUnitProgress(unit, log);
 
   return (
     <Page className="kosez-feature-page">
@@ -82,7 +112,7 @@ function CurriculumUnit() {
       <header className="mt-6 rounded-[28px] bg-surface p-6 shadow-[var(--shadow-border)] sm:p-8">
         <div className="flex flex-wrap items-center gap-2">
           <Eyebrow>UNITÉ {String(unit.number).padStart(2, "0")} · {unit.level}</Eyebrow>
-          <Badge variant="outline">{progress}% preuve couverte</Badge>
+          <Badge variant="outline">{progress}% étapes exécutées</Badge>
         </div>
         <h1 className="mt-3 max-w-4xl font-display text-[clamp(2.5rem,6vw,5rem)] leading-[0.92] tracking-[-0.05em]">
           {unit.title}
@@ -96,7 +126,11 @@ function CurriculumUnit() {
           <Eyebrow>Objectifs communicatifs</Eyebrow>
           <div className="mt-5 space-y-3">
             {CAN_DO_OBJECTIVES.filter((objective) => unit.objectives.includes(objective.id)).map((objective) => {
-              const coverage = profile.find((item) => item.domain.id === objective.domain)?.coverage ?? 0;
+              const linkedLessons = unit.lessons.filter((lesson) => lesson.objectiveIds.includes(objective.id));
+              const completedLessons = linkedLessons.filter((lesson) => lessonDone(lesson, log)).length;
+              const localCoverage = linkedLessons.length
+                ? Math.round((completedLessons / linkedLessons.length) * 100)
+                : 0;
               return (
                 <div key={objective.id} className="rounded-xl border border-border bg-surface-2/45 p-4">
                   <div className="flex items-start gap-3">
@@ -109,8 +143,14 @@ function CurriculumUnit() {
                     </div>
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-3 text-[11px]">
-                    <span className="text-subtle">Signal du domaine</span>
-                    <span className="tabular-nums text-primary">{coverage}%</span>
+                    <span className="text-subtle">Preuve dans cette unité</span>
+                    <span className="tabular-nums text-primary">{completedLessons}/{linkedLessons.length}</span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
+                    <div
+                      className="h-full rounded-full bg-primary transition-[width]"
+                      style={{ width: String(localCoverage) + "%" }}
+                    />
                   </div>
                 </div>
               );
@@ -125,11 +165,10 @@ function CurriculumUnit() {
           </div>
           {unit.lessons.map((lesson, index) => {
             const Icon = lessonIcon(lesson.kind);
-            const href = lessonLink(lesson.kind);
             const done = lessonDone(lesson, log);
             return (
               <div key={lesson.id} className="rounded-2xl bg-surface p-5 shadow-[var(--shadow-border)]">
-                <Link to={href} className="group block">
+                <CurriculumLessonLink lesson={lesson} className="group block">
                   <div className="flex items-start gap-4">
                     <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                       <Icon className="size-5" />
@@ -138,32 +177,20 @@ function CurriculumUnit() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">0{index + 1} · {lesson.kind}</span>
                         <span className="text-xs tabular-nums text-muted">{lesson.minutes} min</span>
-                        {done ? <Badge className="border-primary/20 bg-primary/10 text-primary">trace enregistrée</Badge> : null}
+                        {done ? <Badge className="border-primary/20 bg-primary/10 text-primary">preuve enregistrée</Badge> : null}
                       </div>
                       <h3 className="mt-2 font-display text-2xl tracking-tight">{lesson.title}</h3>
                       <p className="mt-2 text-sm leading-6 text-muted">{lesson.description}</p>
                     </div>
                     <ArrowRight className="mt-2 size-4 shrink-0 text-subtle transition group-hover:translate-x-0.5 group-hover:text-primary" />
                   </div>
-                </Link>
-                <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+                </CurriculumLessonLink>
+                <div className="mt-4 border-t border-border pt-4">
                   <p className="text-xs leading-5 text-subtle">
                     {done
-                      ? "Votre confirmation reste une trace de parcours ; une activité évaluée apportera une preuve plus forte."
-                      : "Après la pratique, vous pouvez enregistrer honnêtement que cette étape a été réalisée."}
+                      ? "Cette étape possède maintenant une preuve issue de l’activité reliée."
+                      : "Ouvrez l’activité et terminez-la pour créer la preuve. Une simple déclaration ne complète plus l’étape."}
                   </p>
-                  <Button
-                    size="sm"
-                    variant={done ? "ghost" : "secondary"}
-                    disabled={done}
-                    onClick={() => completeActivity(
-                      "LESSON_COMPLETED",
-                      lesson.id,
-                      `Parcours · unité ${unit.number} · ${lesson.title}`,
-                    )}
-                  >
-                    {done ? "Enregistrée" : "J’ai réalisé cette pratique"}
-                  </Button>
                 </div>
               </div>
             );

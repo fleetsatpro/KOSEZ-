@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { LearnDashboard } from "@/components/app/learn-dashboard";
 
 export const Route = createFileRoute("/_app/learn")({
@@ -6,5 +6,13 @@ export const Route = createFileRoute("/_app/learn")({
 });
 
 function LearnPage() {
-  return <LearnDashboard />;
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
+  });
+
+  if (pathname === "/learn") {
+    return <LearnDashboard />;
+  }
+
+  return <Outlet />;
 }

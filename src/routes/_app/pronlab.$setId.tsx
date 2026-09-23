@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Volume2 } from "lucide-react";
 import { RecordControl } from "@/components/app/record-control";
 import { Eyebrow, Page, Sparkline, DualWave, Surface } from "@/components/app/primitives";
@@ -9,6 +9,10 @@ import { findPronlabSet } from "@/lib/blossom/data";
 import { summarisePronlabItem, type PronlabAttempt } from "@/lib/blossom/engine";
 import { isSetUnlocked, useBlossom } from "@/lib/blossom/store";
 import { toast } from "sonner";
+import {
+  clearCurriculumLessonContext,
+  readCurriculumLessonContext,
+} from "@/lib/blossom/curriculum-context";
 import { transcribeSpeakTurn } from "@/lib/blossom/speech.api";
 import { blobToBase64, captureOnlyEvidence } from "@/lib/blossom/speech-stt";
 
@@ -39,6 +43,10 @@ function PronlabSetPage() {
   const record = useBlossom((s) => s.recordPronlabAttempt);
   const [index, setIndex] = useState(0);
   const [heard, setHeard] = useState(false);
+  const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
+  useEffect(() => {
+    if (curriculumLessonId) clearCurriculumLessonContext();
+  }, [curriculumLessonId]);
   const [lastAttempt, setLastAttempt] = useState<PronlabAttempt | null>(null);
 
   if (!setDef) {
@@ -182,6 +190,21 @@ function PronlabSetPage() {
                 transcript: evidence.transcript ?? "",
               });
               if (attempt) {
+                if (curriculumLessonId) {
+                  const linked = useBlossom.getState().activityLog.some(
+                    (event) =>
+                      event.type === "CURRICULUM_EVIDENCE_RECORDED" &&
+                      event.sourceId === curriculumLessonId,
+                  );
+                  if (!linked) {
+                    useBlossom.getState().completeActivity(
+                      "CURRICULUM_EVIDENCE_RECORDED",
+                      curriculumLessonId,
+                      `Preuve curriculum · Pron'Lab · ${item.id}`,
+                      { supportId: item.id },
+                    );
+                  }
+                }
                 setLastAttempt(attempt);
                 toast(
                   evidence.assessment === "transcript"

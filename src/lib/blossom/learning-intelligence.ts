@@ -20,7 +20,8 @@ export type LearningEvidenceKind =
   | "vocabulary"
   | "review"
   | "tandem"
-  | "lesson";
+  | "lesson"
+  | "library";
 
 export type LearningEvidence = {
   domainId: LearningDomainId;
@@ -90,6 +91,7 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
     LISTENING_COMPLETED: { kind: "listening", domains: ["listening"], direct: true, label: "Lab d'écoute" },
     GRAMMAR_COMPLETED: { kind: "grammar", domains: ["grammar"], direct: true, label: "Lab de grammaire" },
     WRITING_COMPLETED: { kind: "writing", domains: ["writing"], direct: true, label: "Lab d'écriture" },
+    LIBRARY_COMPLETED: { kind: "library", domains: ["reading"], direct: true, label: "Lecture terminée" },
     TANDEM_COMPLETED: { kind: "tandem", domains: ["interaction", "speaking", "mediation"], direct: true, label: "Tandem" },
     REVIEW_COMPLETED: { kind: "review", domains: ["vocabulary", "pronunciation", "grammar"], direct: false, label: "Révision" },
     CLASS_ATTENDED: { kind: "mission", domains: ["speaking", "listening"], direct: false, label: "Cours" },
@@ -100,7 +102,11 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
     DIAGNOSTIC_COMPLETED: { kind: "review", domains: ["speaking", "listening", "writing", "grammar", "interaction"], direct: false, label: "Repère" },
   };
 
-  if (event.type === "LESSON_COMPLETED") {
+  if (event.type === "LESSON_COMPLETED" ) {
+    return [];
+  }
+
+  if (event.type === "CURRICULUM_EVIDENCE_RECORDED") {
     const lesson = CURRICULUM_UNITS
       .flatMap((unit) => unit.lessons)
       .find((candidate) => candidate.id === event.sourceId);
@@ -117,8 +123,8 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
       domainId,
       kind: "lesson" as const,
       createdAt: event.createdAt,
-      direct: false,
-      label: "Pratique du parcours",
+      direct: event.type === "CURRICULUM_EVIDENCE_RECORDED",
+      label: event.type === "CURRICULUM_EVIDENCE_RECORDED" ? "Preuve reliée au parcours" : "Ancienne confirmation de parcours",
       freshnessKnown: true,
     }));
   }

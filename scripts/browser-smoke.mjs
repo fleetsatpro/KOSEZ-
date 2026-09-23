@@ -208,7 +208,14 @@ try {
       url,
       { waitUntil: "domcontentloaded", timeout: timeoutMs },
     );
-    await page.waitForTimeout(500);
+    if (expectedAuth === "disabled") {
+      await page.locator('[data-smoke="blossom-home"]').waitFor({
+        state: "visible",
+        timeout: 10000,
+      });
+    } else {
+      await page.waitForTimeout(500);
+    }
 
     const title = await page.title();
     const hasCanvas = (await page.locator("canvas").count()) > 0;
@@ -252,6 +259,59 @@ try {
         `learner smoke unexpectedly shows auth gate: ${presentForbiddenText.join(", ")}`,
       );
     }
+    if (vp.name === "desktop" && expectedAuth === "disabled") {
+      try {
+        await gotoWithRetry(
+          page,
+          new URL("/learn/curriculum", url).href,
+          { waitUntil: "domcontentloaded", timeout: timeoutMs },
+        );
+        const unitEntry = page.locator('a[href="/learn/curriculum/a2-food-and-service"]');
+        await unitEntry.waitFor({ state: "visible", timeout: 10000 });
+        await unitEntry.click();
+        await page.waitForTimeout(500);
+        const readingLessonLink = page.getByRole("link", { name: /At the covered market/i });
+        await readingLessonLink.waitFor({ state: "visible", timeout: 10000 });
+        await readingLessonLink.click();
+        await page.waitForTimeout(250);
+        if (!page.url().includes("/library/lib-market")) {
+          errors.pageErrors.push("curriculum library lesson did not route to the bound document");
+        }
+        const readingEnd = page.locator('[data-reading-end="true"]');
+        await readingEnd.scrollIntoViewIfNeeded();
+        await page.getByText("lecture enregistrée", { exact: false }).waitFor({
+          state: "visible",
+          timeout: 10000,
+        });
+        const readingCopy = await page.locator("body").innerText().catch(() => "");
+        if (!readingCopy.includes("lecture enregistrée")) {
+          errors.pageErrors.push("library reading completion evidence did not appear after reaching the text end");
+        }
+        await gotoWithRetry(
+          page,
+          new URL("/learn/curriculum", url).href,
+          { waitUntil: "domcontentloaded", timeout: timeoutMs },
+        );
+        const unitEntryAfterEvidence = page.locator('a[href="/learn/curriculum/a2-food-and-service"]');
+        await unitEntryAfterEvidence.waitFor({ state: "visible", timeout: 10000 });
+        await unitEntryAfterEvidence.click();
+        await page.waitForTimeout(500);
+        const curriculumCopy = await page.locator("body").innerText().catch(() => "");
+        if (!curriculumCopy.includes("preuve enregistrée")) {
+          errors.pageErrors.push("curriculum did not reflect the linked reading evidence");
+        }
+      } catch (error) {
+        const journeyUrl = page.url();
+        const journeyBody = await page.locator("body").innerText().catch(() => "");
+        const journeyLinks = await page.locator("a").allTextContents().catch(() => []);
+        errors.pageErrors.push(
+          `curriculum evidence journey failed: ${String(error?.message || error)} · url=${journeyUrl} · body=${normalizeBodyText(journeyBody).slice(0, 900)} · links=${journeyLinks.slice(0, 40).join(" | ")}`,
+        );
+      }
+      await gotoWithRetry(page, url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+      await page.waitForTimeout(250);
+    }
+
     await page.screenshot({ path: vp.screenshot, fullPage: false });
     await page.close();
 

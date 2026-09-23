@@ -66,6 +66,73 @@ export const WRITING_PROMPTS: WritingPrompt[] = [
   { id: "write-b1-4", title: "Reformuler pour un tiers", situation: "Un collègue n'a pas lu un message important sur un changement d'horaire.", task: "Écrivez 5 à 7 phrases en transmettant l'essentiel sans recopier le message d'origine.", model: "The meeting has moved to Friday afternoon. The room is the same, but we should arrive ten minutes earlier because the building closes at six.", checks: [{ id: "b1-essential", label: "J'ai gardé les informations essentielles." }, { id: "b1-rephrase", label: "J'ai reformulé plutôt que copié." }, { id: "b1-detail", label: "J'ai gardé les détails utiles." }], level: "B1" },
 ];
 
+export type WritingEvaluation = {
+  passed: string[];
+  failed: string[];
+  total: number;
+  score: number;
+  method: "deterministic-structure-v1";
+};
+
+function includesAny(text: string, terms: string[]): boolean {
+  return terms.some((term) => text.includes(term));
+}
+
+function wordCount(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function sentenceCount(text: string): number {
+  return text.split(/[.!?]+/).map((part) => part.trim()).filter(Boolean).length;
+}
+
+export function evaluateWritingStructure(
+  prompt: WritingPrompt,
+  draft: string,
+): WritingEvaluation {
+  const text = draft.trim();
+  const lower = text.toLowerCase();
+  const words = wordCount(text);
+  const sentences = sentenceCount(text);
+  const reasonSignals = (lower.match(/\bbecause\b|\bsince\b|\bso\b|\btherefore\b|\bwhich means\b|\bdue to\b/g) ?? []).length;
+  const connectorSignals = includesAny(lower, [
+    "because", "although", "however", "but", "so", "therefore",
+    "while", "instead", "on the other hand", "as a result",
+  ]);
+  const rules: Record<string, boolean> = {
+    "check-info": words >= 5,
+    "check-place": includesAny(lower, ["cafe", "café", "restaurant", "market", "at ", "in ", "near ", "place"]),
+    "check-close": includesAny(lower, ["see you", "thanks", "thank you", "best", "regards", "soon"]),
+    "check-choice": includesAny(lower, ["recommend", "suggest", "choose", "prefer", "would"]),
+    "check-reason": reasonSignals >= 1,
+    "check-natural": words >= 6 && words <= 40,
+    "b1-choice": includesAny(lower, [" or ", "both", "between", "first", "second", "option", "instead", "whereas", "but"]),
+    "b1-reason": reasonSignals >= 1,
+    "b1-counterpoint": includesAny(lower, ["but", "however", "although", "while", "even though", "on the other hand"]),
+    "b1-connector": connectorSignals,
+    "b1-problem": includesAny(lower, ["problem", "not working", "broken", "fault", "issue", "can't", "cannot", "doesn't", "not available"]),
+    "b1-impact": includesAny(lower, ["difficult", "hard", "means", "impact", "unable", "can't", "cannot", "so", "therefore"]),
+    "b1-solution": includesAny(lower, ["could", "can ", "would", "check", "fix", "replace", "another", "solution", "suggest", "if "]),
+    "b1-tone": includesAny(lower, ["please", "could", "would", "thank", "thanks", "sorry", "hope"]),
+    "b1-position": includesAny(lower, ["i think", "i believe", "in my view", "i would", "i prefer", "personally", "i'd "]),
+    "b1-reasons": reasonSignals >= 2 || sentences >= 4,
+    "b1-nuance": includesAny(lower, ["however", "but", "although", "might", "could", "may ", "perhaps", "some", "often", "usually"]),
+    "b1-proposal": includesAny(lower, ["suggest", "propose", "recommend", "would", "could", "try", "start"]),
+    "b1-essential": words >= 25 && sentences >= 3,
+    "b1-rephrase": lower !== prompt.model.toLowerCase() && words >= 20,
+    "b1-detail": words >= 25,
+  };
+  const passed = prompt.checks.filter((check) => rules[check.id] === true).map((check) => check.id);
+  const failed = prompt.checks.filter((check) => !rules[check.id]).map((check) => check.id);
+  return {
+    passed,
+    failed,
+    total: prompt.checks.length,
+    score: prompt.checks.length ? Math.round((passed.length / prompt.checks.length) * 100) : 0,
+    method: "deterministic-structure-v1",
+  };
+}
+
 export function speakSyntheticEnglish(text: string): void {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
   const utterance = new SpeechSynthesisUtterance(text);

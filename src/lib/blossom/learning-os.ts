@@ -43,6 +43,7 @@ export type CanDoObjective = {
 
 export const CAN_DO_OBJECTIVES: CanDoObjective[] = [
   { id: "a2-interact-ask", level: "A2", domain: "interaction", title: "Demander une recommandation", evidence: "Une interaction réelle ou simulée où la demande ouvre effectivement l'échange." },
+  { id: "a2-interact-information", level: "A2", domain: "interaction", title: "Demander une information concrète", evidence: "Formuler une question claire pour obtenir une information immédiatement exploitable." },
   { id: "a2-interact-repair", level: "A2", domain: "interaction", title: "Demander de répéter", evidence: "Utiliser une formule de réparation sans quitter la langue cible." },
   { id: "a2-speak-routine", level: "A2", domain: "speaking", title: "Décrire une routine", evidence: "Produire plusieurs phrases reliées sur une journée ou une activité familière." },
   { id: "a2-speak-preference", level: "A2", domain: "speaking", title: "Exprimer une préférence", evidence: "Donner un choix simple avec une raison compréhensible." },
@@ -80,6 +81,7 @@ export type CurriculumLesson = {
   minutes: number;
   objectiveIds: string[];
   description: string;
+  taskId?: string;
 };
 
 export type CurriculumUnit = {
@@ -119,8 +121,8 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     lessons: [
       { id: "u2-l1", title: "What do you recommend?", kind: "speak", minutes: 6, objectiveIds: ["a2-interact-ask"], description: "Ouvrir puis garder deux tours de conversation." },
       { id: "u2-l2", title: "I'll have…", kind: "pronlab", minutes: 5, objectiveIds: ["a2-vocab-reuse"], description: "Transformer une structure apprise en réflexe utilisable." },
-      { id: "u2-l3", title: "At the covered market", kind: "library", minutes: 4, objectiveIds: ["a2-vocab-reuse", "a2-read-short"], description: "Lire, écouter et récupérer les mots qui reviennent." },
-      { id: "u2-l4", title: "Questions qui servent", kind: "grammar", minutes: 5, objectiveIds: ["a2-grammar-question"], description: "Construire une question courte qui déclenche une information utile." },
+      { id: "u2-l3", title: "At the covered market", kind: "library", minutes: 4, taskId: "lib-market", objectiveIds: ["a2-vocab-reuse", "a2-read-short"], description: "Lire, écouter et récupérer les mots qui reviennent." },
+      { id: "u2-l4", title: "Questions qui servent", kind: "grammar", minutes: 5, taskId: "grammar-question-1", objectiveIds: ["a2-grammar-question"], description: "Construire une question courte qui déclenche une information utile." },
     ],
   },
   {
@@ -130,12 +132,12 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     blurb: "Se présenter, demander une information, confirmer et faire une relance courte.",
     level: "A2",
     domainIds: ["speaking", "interaction", "listening", "grammar"],
-    objectives: ["a2-speak-routine", "a2-listen-key", "a2-grammar-question"],
+    objectives: ["a2-speak-routine", "a2-listen-key", "a2-interact-information"],
     lessons: [
       { id: "u3-l1", title: "Une réunion de deux minutes", kind: "speak", minutes: 7, objectiveIds: ["a2-speak-routine"], description: "Entrer dans une conversation professionnelle sans script long." },
-      { id: "u3-l2", title: "Attraper le détail", kind: "review", minutes: 4, objectiveIds: ["a2-listen-key"], description: "Revoir heures, lieux, nombres et options dans des phrases courtes." },
-      { id: "u3-l3", title: "Is it far from here?", kind: "mission", minutes: 4, objectiveIds: ["a2-grammar-question"], description: "Produire une question simple qui demande une information exploitable." },
-      { id: "u3-l4", title: "Attraper le détail", kind: "listening", minutes: 5, objectiveIds: ["a2-listen-key"], description: "Écouter une information concrète puis la restituer sans perdre le détail." },
+      { id: "u3-l2", title: "Attraper le détail", kind: "listening", minutes: 4, taskId: "listen-2", objectiveIds: ["a2-listen-key"], description: "Revoir heures, lieux, nombres et options dans des phrases courtes." },
+      { id: "u3-l3", title: "Is it far from here?", kind: "mission", minutes: 4, objectiveIds: ["a2-interact-information"], description: "Produire une question simple qui demande une information exploitable." },
+      { id: "u3-l4", title: "Attraper le détail", kind: "listening", minutes: 5, taskId: "listen-1", objectiveIds: ["a2-listen-key"], description: "Écouter une information concrète puis la restituer sans perdre le détail." },
     ],
   },
   {
@@ -149,8 +151,8 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     lessons: [
       { id: "u4-l1", title: "Yesterday en 60 secondes", kind: "speak", minutes: 6, objectiveIds: ["a2-speak-routine"], description: "Trois faits reliés, sans traduire phrase par phrase." },
       { id: "u4-l2", title: "Les mots qui reviennent", kind: "review", minutes: 5, objectiveIds: ["a2-vocab-reuse"], description: "Rappeler puis réutiliser des mots déjà rencontrés." },
-      { id: "u4-l3", title: "Un message après le cours", kind: "library", minutes: 5, objectiveIds: ["a2-write-message"], description: "Observer comment une information pratique se formule à l'écrit." },
-      { id: "u4-l4", title: "Écrire pour agir", kind: "writing", minutes: 7, objectiveIds: ["a2-write-message"], description: "Écrire un message bref, clair et adapté à une situation réelle." },
+      { id: "u4-l3", title: "Un message après le cours", kind: "library", minutes: 5, taskId: "lib-workday", objectiveIds: ["a2-read-short", "a2-write-message"], description: "Observer comment une information pratique se formule à l'écrit." },
+      { id: "u4-l4", title: "Écrire pour agir", kind: "writing", minutes: 7, taskId: "write-after-class", objectiveIds: ["a2-write-message"], description: "Écrire un message bref, clair et adapté à une situation réelle." },
     ],
   },
   {
@@ -162,7 +164,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     domainIds: ["listening", "interaction", "speaking", "mediation"],
     objectives: ["a2-listen-key", "a2-interact-repair", "a2-mediate-simple"],
     lessons: [
-      { id: "u5-l1", title: "Check-in", kind: "speak", minutes: 6, objectiveIds: ["a2-listen-key"], description: "Comprendre destination, bagage et porte d'embarquement." },
+      { id: "u5-l1", title: "Check-in", kind: "speak", minutes: 6, objectiveIds: ["a2-listen-key", "a2-interact-ask"], description: "Comprendre destination, bagage et porte d'embarquement puis poser une question utile." },
       { id: "u5-l2", title: "Réparer une information", kind: "mission", minutes: 4, objectiveIds: ["a2-interact-repair"], description: "Demander une répétition et reformuler ce que vous avez compris." },
       { id: "u5-l3", title: "Expliquer l'itinéraire", kind: "speak", minutes: 7, objectiveIds: ["a2-mediate-simple"], description: "Transmettre l'essentiel à quelqu'un qui n'a pas vu le message initial." },
     ],
@@ -191,9 +193,9 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     objectives: ["b1-speak-describe", "b1-speak-compare", "b1-write-explain", "b1-grammar-connectors"],
     lessons: [
       { id: "u7-l1", title: "Décrire une expérience", kind: "speak", minutes: 8, objectiveIds: ["b1-speak-describe"], description: "Organiser une description en donnant le contexte, le détail utile et une impression." },
-      { id: "u7-l2", title: "Comparer deux options", kind: "grammar", minutes: 6, objectiveIds: ["b1-speak-compare", "b1-grammar-connectors"], description: "Relier comparaison, justification et conséquence dans une phrase naturelle." },
-      { id: "u7-l3", title: "Une recommandation argumentée", kind: "writing", minutes: 8, objectiveIds: ["b1-write-explain", "b1-speak-compare"], description: "Écrire une recommandation courte qui donne un critère et une raison." },
-      { id: "u7-l4", title: "Lire entre les lignes", kind: "library", minutes: 7, objectiveIds: ["b1-read-infer"], description: "Repérer le ton, les indices et les formulations qui portent une opinion." },
+      { id: "u7-l2", title: "Comparer deux options", kind: "grammar", minutes: 6, taskId: "grammar-b1-1", objectiveIds: ["b1-speak-compare", "b1-grammar-connectors"], description: "Relier comparaison, justification et conséquence dans une phrase naturelle." },
+      { id: "u7-l3", title: "Une recommandation argumentée", kind: "writing", minutes: 8, taskId: "write-b1-1", objectiveIds: ["b1-write-explain", "b1-speak-compare"], description: "Écrire une recommandation courte qui donne un critère et une raison." },
+      { id: "u7-l4", title: "Lire entre les lignes", kind: "library", minutes: 7, taskId: "lib-guest", objectiveIds: ["b1-read-infer"], description: "Repérer le ton, les indices et les formulations qui portent une opinion." },
     ],
   },
   {
@@ -205,8 +207,8 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     domainIds: ["listening", "reading", "mediation", "interaction"],
     objectives: ["b1-listen-detail", "b1-read-infer", "b1-mediate", "b1-interact-clarify"],
     lessons: [
-      { id: "u8-l1", title: "Attraper le détail caché", kind: "listening", minutes: 8, objectiveIds: ["b1-listen-detail"], description: "Distinguer l'information centrale d'un détail secondaire dans un échange rapide." },
-      { id: "u8-l2", title: "Comprendre une intention", kind: "library", minutes: 7, objectiveIds: ["b1-read-infer"], description: "Repérer une intention, une réserve ou une implication qui n'est pas formulée directement." },
+      { id: "u8-l1", title: "Attraper le détail caché", kind: "listening", minutes: 8, taskId: "listen-b1-1", objectiveIds: ["b1-listen-detail"], description: "Distinguer l'information centrale d'un détail secondaire dans un échange rapide." },
+      { id: "u8-l2", title: "Comprendre une intention", kind: "library", minutes: 7, taskId: "lib-repair", objectiveIds: ["b1-read-infer"], description: "Repérer une intention, une réserve ou une implication qui n'est pas formulée directement." },
       { id: "u8-l3", title: "Reformuler pour quelqu'un", kind: "mission", minutes: 7, objectiveIds: ["b1-mediate", "b1-interact-clarify"], description: "Transmettre l'essentiel sans recopier le message mot à mot." },
       { id: "u8-l4", title: "Clarifier une ambiguïté", kind: "speak", minutes: 6, objectiveIds: ["b1-interact-clarify"], description: "Demander une précision puis reformuler ce que vous avez compris." },
     ],
@@ -221,9 +223,9 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     objectives: ["b1-argue-opinion", "b1-write-position", "b1-acknowledge-counterpoint", "b1-grammar-nuance"],
     lessons: [
       { id: "u9-l1", title: "Donner son avis", kind: "speak", minutes: 8, objectiveIds: ["b1-argue-opinion"], description: "Prendre position avec une raison claire et un exemple concret." },
-      { id: "u9-l2", title: "Nuancer une affirmation", kind: "grammar", minutes: 7, objectiveIds: ["b1-grammar-nuance"], description: "Utiliser des connecteurs et modalisateurs pour éviter le tout-ou-rien." },
+      { id: "u9-l2", title: "Nuancer une affirmation", kind: "grammar", minutes: 7, taskId: "grammar-b1-6", objectiveIds: ["b1-grammar-nuance"], description: "Utiliser des connecteurs et modalisateurs pour éviter le tout-ou-rien." },
       { id: "u9-l3", title: "Répondre à un contre-argument", kind: "mission", minutes: 8, objectiveIds: ["b1-acknowledge-counterpoint", "b1-argue-opinion"], description: "Reconnaître un autre point de vue avant de défendre le sien." },
-      { id: "u9-l4", title: "Écrire une position", kind: "writing", minutes: 9, objectiveIds: ["b1-write-position", "b1-grammar-nuance"], description: "Construire un texte bref avec position, raison et ouverture." },
+      { id: "u9-l4", title: "Écrire une position", kind: "writing", minutes: 9, taskId: "write-b1-3", objectiveIds: ["b1-write-position", "b1-grammar-nuance"], description: "Construire un texte bref avec position, raison et ouverture." },
     ],
   },
   {
@@ -237,11 +239,60 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     lessons: [
       { id: "u10-l1", title: "Le plan change", kind: "mission", minutes: 8, objectiveIds: ["b1-solve-problem"], description: "Décrire le problème, proposer une solution et vérifier l'accord." },
       { id: "u10-l2", title: "Négocier une alternative", kind: "speak", minutes: 8, objectiveIds: ["b1-negotiate"], description: "Faire une contre-proposition sans fermer l'échange." },
-      { id: "u10-l3", title: "Écouter les contraintes", kind: "listening", minutes: 7, objectiveIds: ["b1-listen-constraints"], description: "Identifier une contrainte, une priorité et une option dans une conversation." },
+      { id: "u10-l3", title: "Écouter les contraintes", kind: "listening", minutes: 7, taskId: "listen-b1-3", objectiveIds: ["b1-listen-constraints"], description: "Identifier une contrainte, une priorité et une option dans une conversation." },
       { id: "u10-l4", title: "Transmettre une solution", kind: "speak", minutes: 7, objectiveIds: ["b1-mediate-solution"], description: "Expliquer à un tiers ce qui s'est passé et quelle solution a été retenue." },
     ],
   },
 ];
+
+export function curriculumIntegrityIssues(): string[] {
+  const issues: string[] = [];
+  const unitIds = new Set<string>();
+  const lessonIds = new Set<string>();
+  const compatible: Record<LessonKind, Set<LearningDomainId>> = {
+    mission: new Set(["speaking", "interaction", "mediation"]),
+    speak: new Set(["speaking", "interaction", "mediation"]),
+    pronlab: new Set(["pronunciation", "vocabulary"]),
+    library: new Set(["reading", "vocabulary"]),
+    review: new Set(["vocabulary", "pronunciation", "grammar"]),
+    grammar: new Set(["grammar"]),
+    listening: new Set(["listening"]),
+    writing: new Set(["writing"]),
+  };
+
+  for (const unit of CURRICULUM_UNITS) {
+    if (unitIds.has(unit.id)) issues.push(`duplicate-unit:${unit.id}`);
+    unitIds.add(unit.id);
+    for (const objectiveId of unit.objectives) {
+      const objective = CAN_DO_OBJECTIVES.find((item) => item.id === objectiveId);
+      if (!objective) issues.push(`missing-unit-objective:${unit.id}:${objectiveId}`);
+    }
+    for (const lesson of unit.lessons) {
+      if (lessonIds.has(lesson.id)) issues.push(`duplicate-lesson:${lesson.id}`);
+      lessonIds.add(lesson.id);
+      if (!lesson.objectiveIds.length) issues.push(`lesson-without-objective:${lesson.id}`);
+      for (const objectiveId of lesson.objectiveIds) {
+        const objective = CAN_DO_OBJECTIVES.find((item) => item.id === objectiveId);
+        if (!objective) {
+          issues.push(`missing-lesson-objective:${lesson.id}:${objectiveId}`);
+          continue;
+        }
+        if (objective.level !== unit.level) issues.push(`level-mismatch:${lesson.id}:${objectiveId}`);
+      }
+      const objectiveDomains = lesson.objectiveIds
+        .map((id) => CAN_DO_OBJECTIVES.find((item) => item.id === id)?.domain)
+        .filter((id): id is LearningDomainId => Boolean(id));
+      if (!objectiveDomains.some((domain) => compatible[lesson.kind].has(domain))) {
+        issues.push(`incompatible-objective:${lesson.id}:${lesson.kind}`);
+      }
+      if (["grammar", "listening", "writing", "library"].includes(lesson.kind) && !lesson.taskId) {
+        issues.push(`missing-task-binding:${lesson.id}`);
+      }
+    }
+  }
+
+  return issues;
+}
 
 export type SkillEvidence = {
   domain: LearningDomain;
@@ -266,9 +317,10 @@ export function buildSkillProfile(
   const grammar = count("GRAMMAR_COMPLETED");
   const listening = count("LISTENING_COMPLETED");
   const writing = count("WRITING_COMPLETED");
+  const library = count("LIBRARY_COMPLETED");
   const lessonIds = new Set(
     log
-      .filter((event) => event.type === "LESSON_COMPLETED" && event.sourceId)
+      .filter((event) => event.type === "CURRICULUM_EVIDENCE_RECORDED" && event.sourceId)
       .map((event) => event.sourceId as string),
   );
   const lessonDomains = CURRICULUM_UNITS.flatMap((unit) =>
@@ -290,7 +342,7 @@ export function buildSkillProfile(
     speaking: { coverage: missions * 10 + speak * 9 + tandem * 8, evidence: missions + speak + tandem, signal: missions ? "Les missions apportent une preuve située." : "Une première prise de parole donnera un signal utile." },
     interaction: { coverage: missions * 12 + tandem * 10 + speak * 7, evidence: missions + tandem + speak, signal: missions ? "Les gestes réels montrent déjà comment vous entrez dans l'échange." : "Le système attend encore une situation d'interaction." },
     listening: { coverage: speak * 4 + tandem * 5 + reviews * 5 + listening * 18, evidence: speak + tandem + reviews + listening, signal: listening ? "Le lab d'écoute commence à documenter la compréhension de détails concrets." : "Pas assez de données d'écoute pour conclure." },
-    reading: { coverage: vocabulary.length * 3 + lessonEvidence("reading") * 3, evidence: vocabulary.length + lessonEvidence("reading"), signal: vocabulary.length ? "Le vocabulaire sauvé indique une première exposition écrite." : lessonEvidence("reading") ? "Le parcours contient des pratiques de lecture déclarées ; une trace de compréhension directe renforcera cette branche." : "La bibliothèque peut commencer cette branche." },
+    reading: { coverage: vocabulary.length * 3 + library * 14 + lessonEvidence("reading") * 3, evidence: vocabulary.length + library + lessonEvidence("reading"), signal: library ? "Des lectures ont été parcourues jusqu'au bout ; une tâche de compréhension renforcera encore la preuve." : vocabulary.length ? "Le vocabulaire sauvé indique une première exposition écrite." : lessonEvidence("reading") ? "Le parcours contient des pratiques de lecture déclarées ; une trace de compréhension directe renforcera cette branche." : "La bibliothèque peut commencer cette branche." },
     writing: { coverage: writing * 22 + lessonEvidence("writing") * 3, evidence: writing + lessonEvidence("writing"), signal: writing ? "Une production écrite est maintenant enregistrée comme trace de travail." : lessonEvidence("writing") ? "Le parcours contient des pratiques écrites déclarées ; une production reste à créer pour renforcer la preuve." : "Aucune production écrite enregistrée pour l'instant." },
     pronunciation: { coverage: masteredPron * 16 + attempts.length * 2, evidence: attempts.length, signal: attempts.length ? "Pron'Lab apporte une trace directe des sons travaillés." : "Un passage Pron'Lab donnera une première mesure." },
     vocabulary: { coverage: vocabulary.length * 8 + reviews * 6, evidence: vocabulary.length + reviews, signal: vocabulary.length ? "Les mots sauvés peuvent maintenant entrer dans le rappel espacé." : "Le vocabulaire n'est pas encore enregistré comme mémoire active." },
@@ -411,50 +463,30 @@ export function nextLearningAction(
 export function curriculumUnitProgress(
   unit: CurriculumUnit,
   log: ActivityEvent[],
-  attempts: PronlabAttempt[],
-  vocabulary: Array<{ word: string; gloss: string }>,
 ): number {
-  const objectives = new Set(unit.objectives);
-  const profile = buildSkillProfile(log, attempts, vocabulary);
-  const objectiveCoverage = CAN_DO_OBJECTIVES
-    .filter((objective) => objectives.has(objective.id))
-    .map((objective) => profile.find((entry) => entry.domain.id === objective.domain)?.coverage ?? 0);
-  const evidenceCoverage = objectiveCoverage.length
-    ? objectiveCoverage.reduce((sum, value) => sum + value, 0) / objectiveCoverage.length
-    : 0;
   const lessonCoverage = unit.lessons.length
     ? (unit.lessons.filter((lesson) => lessonDone(lesson, log)).length / unit.lessons.length) * 100
     : 0;
 
-  // A unit belongs to its own practice sequence. Other activity can support
-  // competence, but cannot silently complete this particular unit.
-  return cap(lessonCoverage * 0.7 + evidenceCoverage * 0.3);
+  // Unit progress is execution progress, not a global competence score.
+  // Evidence from another unit may improve the learner profile, but it cannot
+  // complete this unit.
+  return cap(lessonCoverage);
 }
 
 export function lessonDone(
   lesson: CurriculumLesson,
   log: ActivityEvent[],
 ): boolean {
-  if (log.some((event) => event.type === "LESSON_COMPLETED" && event.sourceId === lesson.id)) {
-    return true;
-  }
-
-  // Preserve compatibility with traces that already used a dedicated source
-  // id while giving the curriculum a canonical completion event.
-  const sourceByKind: Record<LessonKind, ActivityType | null> = {
-    mission: "MISSION_COMPLETED",
-    speak: "SPEAK_COMPLETED",
-    pronlab: "PRONLAB_COMPLETED",
-    library: null,
-    review: "REVIEW_COMPLETED",
-    grammar: "GRAMMAR_COMPLETED",
-    listening: "LISTENING_COMPLETED",
-    writing: "WRITING_COMPLETED",
-  };
-  const activityType = sourceByKind[lesson.kind];
-  return activityType
-    ? log.some((event) => event.type === activityType && event.sourceId === lesson.id)
-    : false;
+  // Curriculum completion is now attributed only after the learner completes
+  // the activity through a linked execution context. Self-report no longer
+  // counts, and generic activity in another part of the product cannot
+  // silently complete this lesson.
+  return log.some(
+    (event) =>
+      event.type === "CURRICULUM_EVIDENCE_RECORDED" &&
+      event.sourceId === lesson.id,
+  );
 }
 
 export function unitDoneCount(
@@ -518,6 +550,9 @@ export function activityLabel(type: ActivityType): string {
     IMMERSION_ATTENDED: "Immersion suivie",
     REVIEW_COMPLETED: "Révision terminée",
     DIAGNOSTIC_COMPLETED: "Repère indicatif enregistré",
+    LESSON_COMPLETED: "Ancienne confirmation de parcours",
+    CURRICULUM_EVIDENCE_RECORDED: "Preuve reliée au parcours",
+    LIBRARY_COMPLETED: "Lecture terminée",
   };
   return labels[type] ?? "Activité";
 }

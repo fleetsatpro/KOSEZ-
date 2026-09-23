@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { diagnosticLevel, diagnosticScore } from "./learning-labs.ts";
-import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS } from "./lab-content.ts";
+import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure } from "./lab-content.ts";
 
 test("placement bands are deterministic and explicitly indicative", () => {
   assert.equal(diagnosticLevel(2), "A1");
@@ -36,4 +36,20 @@ test("B1 labs are populated and distinguishable from A2 content", () => {
   assert.ok(writingB1.length >= 3);
   assert.notEqual(grammarB1[0]?.id, grammarA2[0]?.id);
   assert.notEqual(writingB1[0]?.id, WRITING_PROMPTS.find((prompt) => prompt.level === "A2")?.id);
+});
+
+
+test("writing structure checks are deterministic", () => {
+  const prompt = WRITING_PROMPTS.find((item) => item.id === "write-b1-1")!;
+  const strong = evaluateWritingStructure(
+    prompt,
+    "I'd recommend the coastal walk because it is more flexible for a short afternoon. The market is livelier, but it takes longer to reach, so the walk seems more practical today. However, the market could be better if we wanted a longer visit. I'd choose the walk.",
+  );
+  assert.equal(strong.method, "deterministic-structure-v1");
+  assert.equal(strong.total, prompt.checks.length);
+  assert.ok(strong.passed.length >= 3);
+
+  const weak = evaluateWritingStructure(prompt, "I choose the walk.");
+  assert.ok(weak.failed.length > 0);
+  assert.ok(weak.score < strong.score);
 });

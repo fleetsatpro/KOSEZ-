@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BookMarked, Clock } from "lucide-react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,14 @@ export const Route = createFileRoute("/_app/library")({
  * Three texts this week · touch a word · it feeds missions later.
  */
 function LibraryPage() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
+  });
+
+  return pathname === "/library" ? <LibraryIndex /> : <Outlet />;
+}
+
+function LibraryIndex() {
   const vocab = useBlossom((s) => s.vocabulary);
   const plan = useBlossom((s) => s.plan);
   const libraryOk = planAllows(plan, "library");
