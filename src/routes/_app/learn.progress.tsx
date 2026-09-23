@@ -101,7 +101,7 @@ function ProgressPage() {
           {intelligence.next.kind === "review" ? (
             <Link
               to="/learn/review"
-              search={{ focus: intelligence.next.targetId }}
+              search={{ focus: intelligence.next.targetId, lessonId: undefined }}
               className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
             >
               Agir maintenant <ArrowRight className="size-3.5" />
@@ -109,7 +109,7 @@ function ProgressPage() {
           ) : intelligence.next.kind === "labs" ? (
             <Link
               to="/learn/labs"
-              search={{ lab: intelligence.next.labKind, task: intelligence.next.targetId }}
+              search={{ lab: intelligence.next.labKind, task: intelligence.next.targetId, lessonId: undefined }}
               className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
             >
               Agir maintenant <ArrowRight className="size-3.5" />
@@ -117,7 +117,7 @@ function ProgressPage() {
           ) : intelligence.next.kind === "mission" ? (
             <Link
               to="/mission"
-              search={{ missionId: intelligence.next.targetId }}
+              search={{ missionId: intelligence.next.targetId, lessonId: undefined }}
               className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
             >
               Agir maintenant <ArrowRight className="size-3.5" />
