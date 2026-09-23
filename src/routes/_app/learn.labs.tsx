@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { z } from "zod";
 import { ArrowLeft, ArrowRight, Check, GraduationCap, Headphones, PenLine, RotateCcw, Sparkles, Target } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
