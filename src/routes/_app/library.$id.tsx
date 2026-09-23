@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Volume2, BookMarked } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { LIBRARY, LIBRARY_GLOSS } from "@/lib/blossom/data";
 import { useBlossom } from "@/lib/blossom/store";
+import { takeCurriculumLessonContext } from "@/lib/blossom/curriculum-context";
+import { CURRICULUM_UNITS } from "@/lib/blossom/learning-os";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/library/$id")({
@@ -20,6 +22,10 @@ function LibraryDocPage() {
   const { id } = Route.useParams();
   const doc = LIBRARY.find((d) => d.id === id);
   const saveWord = useBlossom((s) => s.saveWord);
+  const completeActivity = useBlossom((s) => s.completeActivity);
+  const [curriculumLessonId] = useState<string | null>(() => takeCurriculumLessonContext());
+  const readingEndRef = useRef<HTMLDivElement | null>(null);
+  const [readingCompleted, setReadingCompleted] = useState(false);
   const vocab = useBlossom((s) => s.vocabulary);
   const [picked, setPicked] = useState<string | null>(null);
 
@@ -58,6 +64,32 @@ function LibraryDocPage() {
   const pickedGloss = picked
     ? (LIBRARY_GLOSS[picked] ?? "sens à préciser avec Léo")
     : null;
+  useEffect(() => {
+    const end = readingEndRef.current;
+    if (!end || readingCompleted) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return;
+      const sourceId = `library:${doc.id}:${new Date().toISOString().slice(0, 10)}`;
+      completeActivity("LIBRARY_COMPLETED", sourceId, `Lecture · ${doc.id}`);
+      if (curriculumLessonId) {
+        const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find((item) => item.id === curriculumLessonId);
+        if (lesson?.kind === "library" && lesson.taskId === doc.id) {
+          completeActivity(
+            "CURRICULUM_EVIDENCE_RECORDED",
+            curriculumLessonId,
+            `Preuve curriculum · lecture · ${doc.id}`,
+            { supportId: sourceId },
+          );
+        }
+      }
+      setReadingCompleted(true);
+      observer.disconnect();
+    }, { threshold: 0.95 });
+    observer.observe(end);
+    return () => observer.disconnect();
+  }, [completeActivity, curriculumLessonId, doc.id, readingCompleted]);
+
+
 
   return (
     <Page className="kosez-feature-page max-w-2xl">
@@ -84,7 +116,7 @@ function LibraryDocPage() {
           <h1 className="mt-2 font-display text-3xl tracking-tight sm:text-4xl">
             {doc.title}
           </h1>
-          <p className="mt-2 text-sm text-muted">{doc.minutes} min de lecture</p>
+          <p className="mt-2 text-sm text-muted">{doc.minutes} min de lecture · {readingCompleted ? "lecture enregistrée" : "lisez jusqu’au bout pour enregistrer la lecture"}</p>
         </div>
         <Button variant="secondary" onClick={speak}>
           <Volume2 className="size-4" />
@@ -122,6 +154,7 @@ function LibraryDocPage() {
           })}
         </p>
       </article>
+      <div ref={readingEndRef} aria-hidden className="h-1" />
 
       {picked && pickedGloss && (
         <Surface className="mt-6 !p-5 border border-primary/20 bg-primary/5">
