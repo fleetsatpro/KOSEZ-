@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Volume2, BookMarked } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
@@ -30,32 +30,58 @@ function LibraryDocPage() {
   const [picked, setPicked] = useState<string | null>(null);
   const docId = doc?.id ?? null;
 
-useEffect(() => {
-    const end = readingEndRef.current;
-    if (!docId) return;
-    if (!end || readingCompleted) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry?.isIntersecting) return;
-      const sourceId = `library:${docId}:${new Date().toISOString().slice(0, 10)}`;
-      completeActivity("LIBRARY_COMPLETED", sourceId, `Lecture · ${docId}`);
-      if (curriculumLessonId) {
-        const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find((item) => item.id === curriculumLessonId);
-        if (lesson?.kind === "library" && lesson.taskId === docId) {
-          completeActivity(
-            "CURRICULUM_EVIDENCE_RECORDED",
-            curriculumLessonId,
-            `Preuve curriculum · lecture · ${docId}`,
-            { supportId: sourceId },
-          );
-        }
+  const recordReadingCompletion = useCallback(() => {
+    if (!docId || readingCompleted) return;
+    const sourceId = `library:${docId}:${new Date().toISOString().slice(0, 10)}`;
+    completeActivity("LIBRARY_COMPLETED", sourceId, `Lecture · ${docId}`);
+    if (curriculumLessonId) {
+      const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find(
+        (item) => item.id === curriculumLessonId,
+      );
+      if (lesson?.kind === "library" && lesson.taskId === docId) {
+        completeActivity(
+          "CURRICULUM_EVIDENCE_RECORDED",
+          curriculumLessonId,
+          `Preuve curriculum · lecture · ${docId}`,
+          { supportId: sourceId },
+        );
       }
-      setReadingCompleted(true);
-      observer.disconnect();
-    }, { threshold: 0.1 });
-    observer.observe(end);
-    return () => observer.disconnect();
+    }
+    setReadingCompleted(true);
   }, [completeActivity, curriculumLessonId, docId, readingCompleted]);
 
+  useEffect(() => {
+    const end = readingEndRef.current;
+    if (!docId || !end || readingCompleted) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) recordReadingCompletion();
+      },
+      { threshold: 0.1, rootMargin: "0px 0px 64px 0px" },
+    );
+    observer.observe(end);
+
+    const checkBottom = () => {
+      const scrollHeight = Math.max(
+        document.documentElement.scrollHeight,
+        document.body.scrollHeight,
+      );
+      const distanceFromBottom =
+        scrollHeight - (window.scrollY + window.innerHeight);
+      if (distanceFromBottom <= 48) recordReadingCompletion();
+    };
+
+    window.addEventListener("scroll", checkBottom, { passive: true });
+    window.addEventListener("resize", checkBottom);
+    checkBottom();
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", checkBottom);
+      window.removeEventListener("resize", checkBottom);
+    };
+  }, [docId, readingCompleted, recordReadingCompletion]);
   if (!doc) {
     return (
       <Page>
