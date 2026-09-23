@@ -7,6 +7,7 @@ import {
   CAN_DO_OBJECTIVES,
   CURRICULUM_UNITS,
   LEARNING_DOMAINS,
+  curriculumResource,
   type LearningDomainId,
 } from "./learning-os.ts";
 
@@ -246,6 +247,37 @@ function domainSignal(
   };
 }
 
+function resourceForDomain(domainId: LearningDomainId): {
+  kind: "pronlab" | "mission" | "library" | "labs";
+  targetId?: string;
+  labKind?: "grammar" | "listening" | "writing";
+} | null {
+  for (const unit of CURRICULUM_UNITS) {
+    for (const lesson of unit.lessons) {
+      const matches = lesson.objectiveIds.some(
+        (id) => CAN_DO_OBJECTIVES.find((objective) => objective.id === id)?.domain === domainId,
+      );
+      if (!matches) continue;
+      const resource = curriculumResource(lesson);
+      switch (resource.kind) {
+        case "pronlab":
+        case "mission":
+        case "library":
+          return { kind: resource.kind, targetId: resource.id };
+        case "grammar":
+        case "listening":
+        case "writing":
+          return { kind: "labs", targetId: resource.id, labKind: resource.kind };
+        case "review":
+          continue;
+        case "speak":
+          return { kind: "mission", targetId: undefined };
+      }
+    }
+  }
+  return null;
+}
+
 function recommendation(
   domains: DomainIntelligence[],
   evidence: LearningEvidence[],
@@ -304,11 +336,12 @@ function recommendation(
 
   if (fading && (fading.recencyDays ?? 0) >= 15) {
     const label = LEARNING_DOMAINS.find((domain) => domain.id === fading.domainId)?.shortLabel ?? "compétence";
+    const target = resourceForDomain(fading.domainId);
     return {
       eyebrow: "SIGNAL · À RAVIVER",
       title: `Revenir à « ${label} »`,
       body: "Cette branche a des traces, mais elles commencent à dater.",
-      kind:
+      kind: target?.kind ?? (
         fading.domainId === "pronunciation"
           ? "pronlab"
           : fading.domainId === "reading"
@@ -317,15 +350,10 @@ function recommendation(
                 fading.domainId === "interaction" ||
                 fading.domainId === "mediation"
               ? "mission"
-              : "labs",
-      labKind:
-        fading.domainId === "grammar"
-          ? "grammar"
-          : fading.domainId === "listening"
-            ? "listening"
-            : fading.domainId === "writing"
-              ? "writing"
-              : undefined,
+              : "labs"
+      ),
+      targetId: target?.targetId,
+      labKind: target?.labKind,
       reasons: [
         `Dernière preuve il y a ${fading.recencyDays} jours.`,
         "Raviver une compétence évite que la progression repose uniquement sur les nouveautés.",
@@ -357,24 +385,28 @@ function recommendation(
     eyebrow: "PROCHAINE ACTION",
     title: `Approfondir « ${label} »`,
     body: "Votre profil est assez nourri pour passer de l'exposition à une pratique plus ciblée.",
-    kind:
-      freshest?.domainId === "pronunciation"
-        ? "pronlab"
-        : freshest?.domainId === "reading"
-          ? "library"
-          : freshest?.domainId === "speaking" ||
-              freshest?.domainId === "interaction" ||
-              freshest?.domainId === "mediation"
-            ? "mission"
-            : "labs",
-    labKind:
-      freshest?.domainId === "grammar"
-        ? "grammar"
-        : freshest?.domainId === "listening"
-          ? "listening"
-          : freshest?.domainId === "writing"
-            ? "writing"
-            : undefined,
+    ...(freshest ? (resourceForDomain(freshest.domainId) ?? {
+      kind:
+        freshest.domainId === "pronunciation"
+          ? "pronlab"
+          : freshest.domainId === "reading"
+            ? "library"
+            : freshest.domainId === "speaking" ||
+                freshest.domainId === "interaction" ||
+                freshest.domainId === "mediation"
+              ? "mission"
+              : "labs",
+        labKind:
+          freshest.domainId === "grammar"
+            ? "grammar"
+            : freshest.domainId === "listening"
+              ? "listening"
+              : freshest.domainId === "writing"
+                ? "writing"
+                : undefined,
+      }) : {
+      kind: "labs" as const,
+    }),
     reasons: [
       domains.filter((domain) => domain.evidenceCount > 0).length +
         "/" +
