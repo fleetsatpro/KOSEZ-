@@ -10,13 +10,12 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BlossomPlant } from "@/components/app/plant";
-import { Eyebrow, Page, Surface, Wordmark } from "@/components/app/primitives";
+import { Eyebrow, Page, Wordmark } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   LEARNER_MEMORY,
   missionForId,
-  missionForLevel,
   missionsForLevel,
   planAllows,
 } from "@/lib/blossom/data";
@@ -474,7 +473,6 @@ export function MissionTheatreExperience({ missionId }: { missionId?: string }) 
   const history = summariseMissionHistory(session?.runs ?? []);
   const recommendedChallenge = nextMissionChallenge(previousEvaluation?.outcome);
   const already = hasSource(log, todayMission.id);
-  const journey = journeySnapshot(log);
   const reducedMotion = useReducedMotion();
 
   const [step, setStep] = useState<MissionStep>(() => missionStepFromRun(run));
