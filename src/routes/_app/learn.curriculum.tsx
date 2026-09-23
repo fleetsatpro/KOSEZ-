@@ -46,7 +46,7 @@ function Curriculum() {
 
       <section className="mt-8 grid gap-4">
         {CURRICULUM_UNITS.map((unit) => {
-          const progress = curriculumUnitProgress(unit, log, attempts, vocabulary);
+          const progress = curriculumUnitProgress(unit, log);
           const domainLabels = unit.domainIds
             .map((id) => profile.find((item) => item.domain.id === id)?.domain.shortLabel)
             .filter(Boolean)
