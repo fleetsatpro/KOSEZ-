@@ -148,7 +148,7 @@ function PlantPage() {
 
           <div className="mt-auto pt-6">
             <Button asChild className="w-full sm:w-auto">
-              <Link to="/mission">
+              <Link to="/mission" search={{}}>
                 Nourrir la plante
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
