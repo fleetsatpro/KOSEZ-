@@ -91,7 +91,7 @@ function OsezPage() {
     } catch {
       /* ignore */
     }
-    navigate({ to: "/osez/$id", params: { id: "topic" } });
+    navigate({ to: "/osez/$id", params: { id: "topic" }, search: { lessonId: undefined } });
     setBuilding(false);
   }
 
