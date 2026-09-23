@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Flag, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Surface } from "@/components/app/primitives";
@@ -8,7 +8,12 @@ import {
   LANGUAGE_MODULES,
   TANDEM_PROMPTS,
 } from "@/lib/blossom/data";
-import { getTandemSessionOnServer } from "@/lib/blossom/domain.api";
+import {
+  endTandemSessionOnServer,
+  getTandemSessionOnServer,
+  logTandemPromptOnServer,
+  startTandemSessionOnServer,
+} from "@/lib/blossom/domain.api";
 import { useBlossom } from "@/lib/blossom/store";
 
 export const Route = createFileRoute("/_app/tandem/$id")({
@@ -33,6 +38,8 @@ function TandemSession() {
   const [partner, setPartner] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const lastLoggedPrompt = useRef("");
   const [half, setHalf] = useState<"target" | "partner">("target");
   const [left, setLeft] = useState(HALF_SECONDS);
   const [promptIndex, setPromptIndex] = useState(0);
@@ -42,8 +49,15 @@ function TandemSession() {
     let disposed = false;
     setLoading(true);
     void getTandemSessionOnServer({ data: { partnerUserId: id } })
-      .then((candidate) => {
-        if (!disposed) setPartner(candidate);
+      .then(async (candidate) => {
+        if (disposed || !candidate) return;
+        const durableSessionId = await startTandemSessionOnServer({
+          data: { partnerUserId: id },
+        });
+        if (!disposed) {
+          setPartner(candidate);
+          setSessionId(durableSessionId);
+        }
       })
       .catch(() => {
         if (!disposed) {
@@ -88,6 +102,32 @@ function TandemSession() {
     [half],
   );
 
+  useEffect(() => {
+    if (!sessionId || phase !== "live" || !partner) return;
+    const language = half === "target" ? partner.wants : partner.speaks;
+    const promptKey = `${half}:${promptIndex}:${prompt}`;
+    if (lastLoggedPrompt.current === promptKey) return;
+    lastLoggedPrompt.current = promptKey;
+    void logTandemPromptOnServer({
+      data: { sessionId, language, prompt },
+    }).catch(() => {
+      lastLoggedPrompt.current = "";
+    });
+  }, [half, partner, phase, prompt, promptIndex, sessionId]);
+
+  async function leaveSession() {
+    if (sessionId) {
+      try {
+        await endTandemSessionOnServer({
+          data: { sessionId, status: "cancelled" },
+        });
+      } catch {
+        toast("La sortie est locale ; la fermeture serveur n’a pas été confirmée.");
+      }
+    }
+    navigate({ to: "/tandem" });
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-bg px-6">
@@ -121,14 +161,22 @@ function TandemSession() {
   const prompt = prompts[promptIndex % prompts.length]!;
   const progress = ((HALF_SECONDS - left) / HALF_SECONDS) * 100;
 
-  function finish() {
+  async function finish() {
     const activePartner = partner;
-    if (!activePartner) return;
+    if (!activePartner || !sessionId) return;
+    try {
+      await endTandemSessionOnServer({
+        data: { sessionId, status: "completed" },
+      });
+    } catch {
+      toast("La session n’a pas pu être clôturée côté serveur.");
+      return;
+    }
     complete(
       "TANDEM_COMPLETED",
-      `tandem-${activePartner.id}`,
+      `tandem-session-${sessionId}`,
       undefined,
-      { minutes: 60 },
+      { minutes: 60, sessionId },
     );
     toast("Session terminée. Votre participation est enregistrée.");
     navigate({ to: "/tandem" });
@@ -193,7 +241,7 @@ function TandemSession() {
             </p>
           </Surface>
 
-          <Button className="mt-8 w-full" size="lg" onClick={finish}>
+          <Button className="mt-8 w-full" size="lg" onClick={() => void finish()}>
             Clore la session
             <ArrowRight className="size-4" />
           </Button>
@@ -227,7 +275,7 @@ function TandemSession() {
           type="button"
           aria-label="Quitter"
           className="rounded-lg p-2 transition-colors hover:bg-primary-foreground/10"
-          onClick={() => navigate({ to: "/tandem" })}
+          onClick={() => void leaveSession()}
         >
           <X className="size-5" />
         </button>
@@ -261,6 +309,11 @@ function TandemSession() {
             className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
             onClick={() => {
               reportTandem(id);
+              if (sessionId) {
+                void endTandemSessionOnServer({
+                  data: { sessionId, status: "cancelled" },
+                });
+              }
               toast(
                 "Signalement transmis au circuit de sécurité. Le profil est masqué pour vous.",
               );
@@ -273,7 +326,7 @@ function TandemSession() {
           <Button
             variant="outline"
             className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
-            onClick={() => navigate({ to: "/tandem" })}
+            onClick={() => void leaveSession()}
           >
             Partir
           </Button>
