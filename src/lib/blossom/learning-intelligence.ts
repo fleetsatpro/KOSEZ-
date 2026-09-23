@@ -100,7 +100,11 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
     DIAGNOSTIC_COMPLETED: { kind: "review", domains: ["speaking", "listening", "writing", "grammar", "interaction"], direct: false, label: "Repère" },
   };
 
-  if (event.type === "LESSON_COMPLETED" || event.type === "CURRICULUM_EVIDENCE_RECORDED") {
+  if (event.type === "LESSON_COMPLETED" ) {
+    return [];
+  }
+
+  if (event.type === "CURRICULUM_EVIDENCE_RECORDED") {
     const lesson = CURRICULUM_UNITS
       .flatMap((unit) => unit.lessons)
       .find((candidate) => candidate.id === event.sourceId);
