@@ -3,7 +3,12 @@ import { ArrowRight, CircleAlert, CircleCheck, Eye, FileCheck2, Sprout } from "l
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CAN_DO_OBJECTIVES, LEARNING_DOMAINS, buildSkillProfile } from "@/lib/blossom/learning-os";
+import {
+  CAN_DO_OBJECTIVES,
+  LEARNING_DOMAINS,
+  buildObjectiveEvidence,
+  buildSkillProfile,
+} from "@/lib/blossom/learning-os";
 import { buildLearningIntelligence } from "@/lib/blossom/learning-intelligence";
 import { buildReviewPlan } from "@/lib/blossom/review-scheduler";
 import { useBlossom } from "@/lib/blossom/store";
@@ -31,6 +36,7 @@ function ProgressPage() {
   const vocabulary = useBlossom((s) => s.vocabulary);
   const submissions = useBlossom((s) => s.learningSubmissions);
   const profile = buildSkillProfile(log, attempts, vocabulary);
+  const objectiveEvidence = buildObjectiveEvidence(log);
   const reviewPlan = buildReviewPlan(submissions, attempts, vocabulary);
   const intelligence = buildLearningIntelligence(log, attempts, vocabulary, submissions, reviewPlan);
   const documented = profile.filter((item) => item.coverage >= 60).length;
@@ -114,6 +120,61 @@ function ProgressPage() {
           ))}
         </div>
       </Surface>
+
+      <section className="mt-9">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <Eyebrow>Can-Do · preuves concrètes</Eyebrow>
+            <h2 className="mt-2 font-display text-3xl tracking-tight">
+              Ce que vous pouvez déjà faire — et ce qui demande encore du terrain.
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              Un objectif ne devient pas « ancré » sur une seule exposition.
+              K’Osez distingue les actes directs des signaux de soutien.
+            </p>
+          </div>
+          <Badge variant="outline">{objectiveEvidence.filter((x) => x.status === "ancré").length} ancrés</Badge>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-2">
+          {objectiveEvidence
+            .filter((entry) => entry.objective.level === useBlossom.getState().learner.level)
+            .map((entry) => (
+              <article
+                key={entry.objective.id}
+                className="rounded-2xl border border-border bg-surface p-5 shadow-[var(--shadow-border)]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">
+                      {entry.objective.domain} · {entry.objective.level}
+                    </p>
+                    <h3 className="mt-2 font-display text-xl tracking-tight">
+                      {entry.objective.title}
+                    </h3>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={entry.status === "ancré" ? "border-primary/20 bg-primary/10 text-primary" : ""}
+                  >
+                    {entry.status}
+                  </Badge>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-muted">{entry.objective.evidence}</p>
+                <div className="mt-4 grid grid-cols-2 gap-2 text-[11px]">
+                  <div className="rounded-lg bg-surface-2/60 p-2.5">
+                    <p className="uppercase tracking-[0.14em] text-subtle">Direct</p>
+                    <p className="mt-1 font-semibold tabular-nums">{entry.directCount}</p>
+                  </div>
+                  <div className="rounded-lg bg-surface-2/60 p-2.5">
+                    <p className="uppercase tracking-[0.14em] text-subtle">Soutien</p>
+                    <p className="mt-1 font-semibold tabular-nums">{entry.supportingCount}</p>
+                  </div>
+                </div>
+              </article>
+            ))}
+        </div>
+      </section>
 
       <section className="mt-8">
         <div className="flex items-end justify-between gap-4">
