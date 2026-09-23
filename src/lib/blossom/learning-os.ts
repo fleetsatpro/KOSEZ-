@@ -435,26 +435,15 @@ export function lessonDone(
   lesson: CurriculumLesson,
   log: ActivityEvent[],
 ): boolean {
-  if (log.some((event) => event.type === "LESSON_COMPLETED" && event.sourceId === lesson.id)) {
-    return true;
-  }
-
-  // Preserve compatibility with traces that already used a dedicated source
-  // id while giving the curriculum a canonical completion event.
-  const sourceByKind: Record<LessonKind, ActivityType | null> = {
-    mission: "MISSION_COMPLETED",
-    speak: "SPEAK_COMPLETED",
-    pronlab: "PRONLAB_COMPLETED",
-    library: null,
-    review: "REVIEW_COMPLETED",
-    grammar: "GRAMMAR_COMPLETED",
-    listening: "LISTENING_COMPLETED",
-    writing: "WRITING_COMPLETED",
-  };
-  const activityType = sourceByKind[lesson.kind];
-  return activityType
-    ? log.some((event) => event.type === activityType && event.sourceId === lesson.id)
-    : false;
+  // Curriculum completion is now attributed only after the learner completes
+  // the activity through a linked execution context. Self-report no longer
+  // counts, and generic activity in another part of the product cannot
+  // silently complete this lesson.
+  return log.some(
+    (event) =>
+      event.type === "CURRICULUM_EVIDENCE_RECORDED" &&
+      event.sourceId === lesson.id,
+  );
 }
 
 export function unitDoneCount(
@@ -518,6 +507,8 @@ export function activityLabel(type: ActivityType): string {
     IMMERSION_ATTENDED: "Immersion suivie",
     REVIEW_COMPLETED: "Révision terminée",
     DIAGNOSTIC_COMPLETED: "Repère indicatif enregistré",
+    LESSON_COMPLETED: "Ancienne confirmation de parcours",
+    CURRICULUM_EVIDENCE_RECORDED: "Preuve reliée au parcours",
   };
   return labels[type] ?? "Activité";
 }
