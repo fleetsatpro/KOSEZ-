@@ -112,18 +112,18 @@ const CURRICULUM_RESOURCE_MAP: Record<string, CurriculumResource> = {
   "u2-l3": { kind: "library", id: "lib-market" },
   "u2-l4": { kind: "grammar", id: "grammar-question-1" },
   "u3-l1": { kind: "speak", id: "office" },
-  "u3-l2": { kind: "review", id: "u3-listening-detail" },
+  "u3-l2": { kind: "review", id: "listening-u3-detail" },
   "u3-l3": { kind: "mission", id: "mission-directions" },
   "u3-l4": { kind: "listening", id: "listen-4" },
   "u4-l1": { kind: "speak", id: "social" },
-  "u4-l2": { kind: "review", id: "u4-vocabulary-recall" },
+  "u4-l2": { kind: "review", id: "vocabulary-u4-recall" },
   "u4-l3": { kind: "library", id: "lib-workday" },
   "u4-l4": { kind: "writing", id: "write-after-class" },
   "u5-l1": { kind: "speak", id: "airport" },
   "u5-l2": { kind: "mission", id: "mission-repair" },
   "u5-l3": { kind: "speak", id: "transit" },
   "u6-l1": { kind: "speak", id: "hotel" },
-  "u6-l2": { kind: "review", id: "u6-targeted-stabilisation" },
+  "u6-l2": { kind: "review", id: "vocabulary-u6-stabilisation" },
   "u6-l3": { kind: "mission", id: "mission-choose" },
   "u7-l1": { kind: "speak", id: "coast" },
   "u7-l2": { kind: "grammar", id: "grammar-b1-1" },
@@ -522,7 +522,7 @@ export function lessonDone(
     return log.some(
       (event) =>
         event.type === "REVIEW_COMPLETED" &&
-        event.sourceId === "review-" + resource.id,
+        event.sourceId?.startsWith("review-" + resource.id + ":"),
     );
   }
   if (resource.kind === "pronlab") {
