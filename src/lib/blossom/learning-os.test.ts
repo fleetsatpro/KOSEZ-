@@ -28,7 +28,7 @@ test("curriculum has a connected A2 → B1 spine", () => {
   assert.ok(CURRICULUM_UNITS.slice(6).every((unit) => unit.level === "B1"));
   assert.ok(CURRICULUM_UNITS.every((unit) => unit.lessons.length >= 3));
   assert.ok(CURRICULUM_UNITS.flatMap((unit) => unit.objectives).length >= 12);
-  assert.ok(curriculumUnitProgress(CURRICULUM_UNITS[0]!, [], [], []) >= 0);
+  assert.ok(curriculumUnitProgress(CURRICULUM_UNITS[0]!, []) >= 0);
   assert.ok(LEARNER.goal.includes("Parler"));
 });
 
@@ -48,14 +48,14 @@ test("curriculum completion is explicit and unit-specific", () => {
   ];
   assert.equal(lessonDone(unit.lessons[0]!, log), true);
   assert.equal(lessonDone(unit.lessons[1]!, log), false);
-  assert.ok(curriculumUnitProgress(unit, log, [], []) > 0);
+  assert.ok(curriculumUnitProgress(unit, log) > 0);
   assert.equal(
     lessonDone(unit.lessons[0]!, [
       { id: "self-report", type: "LESSON_COMPLETED" as const, sourceId: unit.lessons[0]!.id, createdAt: "2026-09-22T10:00:00.000Z" },
     ]),
     false,
   );
-  assert.ok(curriculumUnitProgress(CURRICULUM_UNITS[6]!, log, [], []) < 50);
+  assert.ok(curriculumUnitProgress(CURRICULUM_UNITS[6]!, log) < 50);
 });
 
 
@@ -75,7 +75,7 @@ test("self-reported lesson completion cannot create unit progress", () => {
     sourceId: unit.lessons[0]!.id,
     createdAt: "2026-09-22T10:00:00.000Z",
   }];
-  assert.equal(curriculumUnitProgress(unit, selfReport, [], []), 0);
+  assert.equal(curriculumUnitProgress(unit, selfReport), 0);
 });
 
 
