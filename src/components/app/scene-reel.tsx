@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import type { GrowthEvent } from "@/lib/blossom/organism";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,14 @@ const KIND_DOT: Record<GrowthEvent["kind"], string> = {
   mineral: "bg-white/40",
 };
 
+const KIND_WHISPER: Record<GrowthEvent["kind"], string> = {
+  root: "Ce qui s'ancre sous la terre",
+  stem: "La parole qui tient un peu plus",
+  leaf: "Un son qui se détache du bruit",
+  flower: "Quelque chose s'ouvre — sans forçage",
+  mineral: "Le sol se souvient des nutriments",
+};
+
 function sourceWhisper(sourceId: string | undefined): string | null {
   if (!sourceId) return null;
   const id = sourceId.toLowerCase();
@@ -27,6 +36,7 @@ function sourceWhisper(sourceId: string | undefined): string | null {
   if (id.includes("library") || id.startsWith("lib-")) return "Lecture";
   if (id.includes("event")) return "Rencontre";
   if (id.includes("homework")) return "Travail";
+  if (id.includes("class") || id.includes("immersion")) return "Présence";
   return null;
 }
 
@@ -70,19 +80,37 @@ export function SceneReel({
         )}
       >
         <div
-          className="pointer-events-none absolute -right-8 -top-8 size-32 rounded-full bg-primary/5 blur-2xl"
+          className="pointer-events-none absolute -right-8 -top-8 size-40 rounded-full bg-primary/5 blur-2xl"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -bottom-10 -left-6 size-28 rounded-full bg-emerald-400/5 blur-2xl"
           aria-hidden
         />
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">
           Bande de gestes
         </p>
-        <p className="mt-3 font-display text-xl tracking-tight text-fg">
-          Le film n&apos;a pas encore commencé.
+        <p className="mt-3 font-display text-xl tracking-tight text-fg sm:text-2xl">
+          Le film n'a pas encore commencé.
         </p>
         <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
-          Un seul geste réel — une mission, une prise de parole, une lecture —
-          s&apos;inscrit ici comme une image. La terre se souvient ensuite.
+          Un seul geste réel — mission, parole, lecture, son — s'inscrit ici
+          comme une image. La terre se souvient ensuite.
         </p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Link
+            to="/mission"
+            className="inline-flex min-h-10 items-center rounded-full border border-primary/25 bg-primary/10 px-4 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
+          >
+            Faire le geste du jour
+          </Link>
+          <Link
+            to="/osez"
+            className="inline-flex min-h-10 items-center rounded-full border border-border/70 px-4 text-xs font-medium text-muted transition-colors hover:text-fg"
+          >
+            Parler maintenant
+          </Link>
+        </div>
       </div>
     );
   }
@@ -111,7 +139,10 @@ export function SceneReel({
         {Array.from({ length: 24 }).map((_, i) => (
           <span
             key={i}
-            className="h-1.5 w-2 shrink-0 rounded-[1px] bg-border/80"
+            className={cn(
+              "h-1.5 w-2 shrink-0 rounded-[1px]",
+              i < Math.min(24, slice.length * 3) ? "bg-primary/40" : "bg-border/80",
+            )}
           />
         ))}
       </div>
@@ -119,11 +150,12 @@ export function SceneReel({
       <ul className="mt-3 flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {slice.map((e, i) => {
           const whisper = sourceWhisper(e.sourceId);
+          const kindLine = KIND_WHISPER[e.kind];
           return (
             <li
               key={e.id}
               className={cn(
-                "relative w-[156px] shrink-0 overflow-hidden rounded-xl border border-border/60 bg-surface-2/50",
+                "relative w-[168px] shrink-0 overflow-hidden rounded-xl border border-border/60 bg-surface-2/50",
                 "transition-transform duration-300 hover:-translate-y-0.5",
               )}
               style={{ animationDelay: `${i * 40}ms` }}
@@ -148,7 +180,9 @@ export function SceneReel({
                   <p className="mt-2 text-[10px] font-medium uppercase tracking-[0.12em] text-primary/80">
                     {whisper}
                   </p>
-                ) : null}
+                ) : (
+                  <p className="mt-2 text-[10px] leading-4 text-subtle">{kindLine}</p>
+                )}
                 <div className="absolute inset-x-0 bottom-0 p-3.5">
                   <div
                     className="mb-2 h-1 overflow-hidden rounded-full bg-border/60"
