@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, Volume2, BookMarked, Check, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
@@ -64,13 +64,9 @@ function LibraryDocPage() {
     ? (LIBRARY_GLOSS[picked] ?? "sens à préciser avec Léo")
     : null;
   const comprehension = doc.comprehension ?? [];
-  const score = useMemo(
-    () =>
-      comprehension.reduce(
-        (total, item, index) => total + (answers[index] === item.answer ? 1 : 0),
-        0,
-      ),
-    [answers, comprehension],
+  const score = comprehension.reduce(
+    (total, item, index) => total + (answers[index] === item.answer ? 1 : 0),
+    0,
   );
   const alreadyCompleted = activityLog.some(
     (event) =>
