@@ -232,7 +232,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
 
   {
     id: "a2-real-life-basics",
-    number: 1,
+    number: 4,
     title: "Les gestes qui ouvrent",
     blurb: "Entrer dans une interaction, demander, choisir et ne pas abandonner quand une phrase résiste.",
     level: "A2",
@@ -247,7 +247,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
   },
   {
     id: "a2-food-and-service",
-    number: 2,
+    number: 5,
     title: "Commander sans traduire",
     blurb: "Du menu au choix : préférences, quantités, politesse et petites reprises.",
     level: "A2",
@@ -263,7 +263,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
   },
   {
     id: "a2-workplace",
-    number: 3,
+    number: 6,
     title: "Parler au travail",
     blurb: "Se présenter, demander une information, confirmer et faire une relance courte.",
     level: "A2",
@@ -279,7 +279,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
   },
   {
     id: "a2-everyday-story",
-    number: 4,
+    number: 7,
     title: "Raconter une journée",
     blurb: "Passer de mots isolés à une petite histoire compréhensible.",
     level: "A2",
@@ -295,7 +295,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
   },
   {
     id: "a2-travel",
-    number: 5,
+    number: 8,
     title: "Voyager avec moins de friction",
     blurb: "Aéroport, hôtel, transport : comprendre vite et demander ce qui manque.",
     level: "A2",
@@ -310,7 +310,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
   },
   {
     id: "a2-independent",
-    number: 6,
+    number: 9,
     title: "Tenir l'échange",
     blurb: "Moins de kit, plus d'autonomie : relancer, clarifier et continuer malgré l'imprévu.",
     level: "A2",
@@ -325,7 +325,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
   },
   {
     id: "b1-description-and-comparison",
-    number: 7,
+    number: 10,
     title: "Décrire et comparer avec précision",
     blurb: "Passer du constat simple à une description nuancée, comparer des options et expliquer un choix.",
     level: "B1",
@@ -341,7 +341,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
   },
   {
     id: "b1-understand-and-mediate",
-    number: 8,
+    number: 11,
     title: "Comprendre et transmettre l'essentiel",
     blurb: "Écouter, sélectionner l'information importante et la reformuler pour quelqu'un d'autre.",
     level: "B1",
@@ -357,7 +357,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
   },
   {
     id: "b1-argument-with-nuance",
-    number: 9,
+    number: 12,
     title: "Argumenter sans simplifier",
     blurb: "Exprimer un avis, reconnaître un contre-argument et défendre une position sans réciter un texte.",
     level: "B1",
@@ -373,7 +373,7 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
   },
   {
     id: "b1-solve-and-adapt",
-    number: 10,
+    number: 13,
     title: "Résoudre et s'adapter",
     blurb: "Faire face à un imprévu, négocier une solution et réparer la conversation quand la situation dévie.",
     level: "B1",
@@ -407,6 +407,14 @@ export type ObjectiveEvidence = {
 
 function objectiveEventMatch(objective: CanDoObjective, event: ActivityEvent): "direct" | "support" | null {
   const map: Record<string, { direct: ActivityType[]; support: ActivityType[] }> = {
+    "a1-interact-greet": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED", "TANDEM_COMPLETED"], support: ["WRITING_COMPLETED"] },
+    "a1-speak-intro": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED"], support: ["WRITING_COMPLETED", "TANDEM_COMPLETED"] },
+    "a1-listen-basic": { direct: ["LISTENING_COMPLETED"], support: ["SPEAK_COMPLETED", "TANDEM_COMPLETED"] },
+    "a1-read-short": { direct: ["LIBRARY_COMPLETED"], support: [] },
+    "a1-write-simple": { direct: ["WRITING_COMPLETED", "HOMEWORK_COMPLETED"], support: [] },
+    "a1-grammar-be": { direct: ["GRAMMAR_COMPLETED"], support: ["WRITING_COMPLETED", "SPEAK_COMPLETED"] },
+    "a1-vocab-basics": { direct: ["REVIEW_COMPLETED"], support: ["MISSION_COMPLETED", "LIBRARY_COMPLETED"] },
+    "a1-request-place": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED"], support: ["LISTENING_COMPLETED"] },
     "a2-interact-ask": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED", "TANDEM_COMPLETED"], support: ["REVIEW_COMPLETED"] },
     "a2-interact-repair": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED", "TANDEM_COMPLETED"], support: ["REVIEW_COMPLETED"] },
     "a2-speak-routine": { direct: ["MISSION_COMPLETED", "SPEAK_COMPLETED"], support: ["TANDEM_COMPLETED"] },
