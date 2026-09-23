@@ -115,6 +115,7 @@ export type CurriculumResource =
 export const CURRICULUM_RESOURCE_MAP: Record<string, CurriculumResource> = {
   "a1-l1-hello": { kind: "mission", id: "mission-introduce" },
   "a1-l2-basic-listening": { kind: "listening", id: "listen-1" },
+  "a1-l2-basic-reading": { kind: "library", id: "lib-bus-stop" },
   "a1-l3-simple-writing": { kind: "writing", id: "write-a1-1" },
   "a1-l4-hello-practice": { kind: "speak", id: "cafe" },
   "a1b-l1-order": { kind: "mission", id: "mission-order" },
@@ -189,11 +190,12 @@ export const CURRICULUM_UNITS: CurriculumUnit[] = [
     title: "Commencer à parler",
     blurb: "Saluer, se présenter et comprendre les informations les plus simples sans construire une phrase parfaite.",
     level: "A1",
-    domainIds: ["interaction", "speaking", "listening", "writing"],
-    objectives: ["a1-interact-greet", "a1-speak-intro", "a1-listen-basic", "a1-write-simple"],
+    domainIds: ["interaction", "speaking", "listening", "reading", "writing"],
+    objectives: ["a1-interact-greet", "a1-speak-intro", "a1-listen-basic", "a1-read-short", "a1-write-simple"],
     lessons: [
       { id: "a1-l1-hello", title: "Bonjour, je m'appelle…", kind: "mission", minutes: 3, objectiveIds: ["a1-interact-greet", "a1-speak-intro"], description: "Se présenter en trois phrases dans une vraie rencontre." },
       { id: "a1-l2-basic-listening", title: "Attraper un prénom", kind: "listening", minutes: 3, objectiveIds: ["a1-listen-basic"], description: "Reconnaître un prénom dans une phrase courte." },
+      { id: "a1-l2-basic-reading", title: "Lire une consigne courte", kind: "library", minutes: 3, objectiveIds: ["a1-read-short"], description: "Repérer l'idée centrale et deux informations utiles dans un texte très court." },
       { id: "a1-l3-simple-writing", title: "Écrire un premier message", kind: "writing", minutes: 4, objectiveIds: ["a1-write-simple"], description: "Donner son nom, son lieu et un intérêt en quelques phrases." },
       { id: "a1-l4-hello-practice", title: "Premiers tours de parole", kind: "speak", minutes: 5, objectiveIds: ["a1-interact-greet"], description: "Saluer, répondre et poser une petite question en retour." },
     ],
