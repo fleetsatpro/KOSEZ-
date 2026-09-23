@@ -28,6 +28,7 @@ function LibraryDocPage() {
   const [readingCompleted, setReadingCompleted] = useState(false);
   const vocab = useBlossom((s) => s.vocabulary);
   const [picked, setPicked] = useState<string | null>(null);
+  const docId = doc?.id ?? null;
 
   if (!doc) {
     return (
@@ -66,18 +67,19 @@ function LibraryDocPage() {
     : null;
   useEffect(() => {
     const end = readingEndRef.current;
+    if (!docId) return;
     if (!end || readingCompleted) return;
     const observer = new IntersectionObserver(([entry]) => {
       if (!entry?.isIntersecting) return;
-      const sourceId = `library:${doc.id}:${new Date().toISOString().slice(0, 10)}`;
-      completeActivity("LIBRARY_COMPLETED", sourceId, `Lecture · ${doc.id}`);
+      const sourceId = `library:${docId}:${new Date().toISOString().slice(0, 10)}`;
+      completeActivity("LIBRARY_COMPLETED", sourceId, `Lecture · ${docId}`);
       if (curriculumLessonId) {
         const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find((item) => item.id === curriculumLessonId);
-        if (lesson?.kind === "library" && lesson.taskId === doc.id) {
+        if (lesson?.kind === "library" && lesson.taskId === docId) {
           completeActivity(
             "CURRICULUM_EVIDENCE_RECORDED",
             curriculumLessonId,
-            `Preuve curriculum · lecture · ${doc.id}`,
+            `Preuve curriculum · lecture · ${docId}`,
             { supportId: sourceId },
           );
         }
@@ -87,7 +89,7 @@ function LibraryDocPage() {
     }, { threshold: 0.95 });
     observer.observe(end);
     return () => observer.disconnect();
-  }, [completeActivity, curriculumLessonId, doc.id, readingCompleted]);
+  }, [completeActivity, curriculumLessonId, docId, readingCompleted]);
 
 
 
