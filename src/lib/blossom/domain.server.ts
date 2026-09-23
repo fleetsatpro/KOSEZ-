@@ -594,21 +594,18 @@ export async function requestWaitlist(userId: string, itemId: string) {
      returning id, item_id, status, created_at, updated_at`,
     [randomUUID(), userId, itemId],
   );
-  if (rows[0]) return rows[0];
+  if (!rows[0]) throw new Error("waitlist-write-failed");
 
-  const current = await sql.query(
-    `select id, item_id, status, created_at, updated_at
-     from blossom_waitlist_request
-     where user_id = $1 and item_id = $2`,
-    [userId, itemId],
-  );
-  if (!current[0]) throw new Error("waitlist-write-failed");
   await writeAuditEvent(userId, {
     action: "commerce.waitlist_requested",
     resourceType: "waitlist_request",
-    resourceId: String(current[0].id),
+    resourceId: String(rows[0].id),
+    metadata: {
+      itemId,
+      status: String(rows[0].status),
+    },
   });
-  return current[0];
+  return rows[0];
 }
 
 export type PronlabAttemptInput = {
