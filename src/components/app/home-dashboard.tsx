@@ -157,7 +157,7 @@ export function HomeDashboard() {
               size="lg"
               className="mt-5 h-12 w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
             >
-              <Link to="/mission" search={{ missionId: undefined }}>
+              <Link to="/mission" search={{ missionId: undefined, lessonId: undefined }}>
                 {missionDone ? "Revenir au geste" : "Faire le geste"}
                 <ArrowRight className="size-4" />
               </Link>
