@@ -279,7 +279,7 @@ function Review() {
           ) : (
             <Link
               to="/learn/labs"
-              search={{ lab: current.kind === "grammar" || current.kind === "listening" || current.kind === "writing" ? current.kind : undefined, task: current.sourceKey.split(":").slice(1).join(":") || undefined }}
+              search={{ lab: current.kind === "grammar" || current.kind === "listening" || current.kind === "writing" ? current.kind : undefined, task: current.sourceKey.split(":").slice(1).join(":") || undefined, lessonId: undefined }}
               className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
             >
               Ouvrir le lab <ArrowRight className="size-3.5" />
