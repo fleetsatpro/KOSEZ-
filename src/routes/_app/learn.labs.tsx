@@ -22,6 +22,10 @@ export const Route = createFileRoute("/_app/learn/labs")({
       typeof search.task === "string" && search.task.trim()
         ? search.task.trim()
         : undefined,
+    lessonId:
+      typeof search.lessonId === "string" && search.lessonId.trim()
+        ? search.lessonId.trim()
+        : undefined,
   }),
   component: LearningLabs,
 });
@@ -53,11 +57,11 @@ function LearningLabs() {
     <div className="mt-6 grid gap-2 sm:grid-cols-3">{LABS.map((item) => <button key={item.id} type="button" onClick={() => setLab(item.id)} className={`rounded-2xl border p-4 text-left transition ${lab === item.id ? "border-primary/30 bg-primary/8 text-fg" : "border-border bg-surface text-muted hover:bg-surface-2/60 hover:text-fg"}`}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">{item.label}</p><p className="mt-2 font-display text-xl tracking-tight">{item.detail}</p>
     </button>)}</div>
-    {lab === "grammar" ? <GrammarLab level={activeLevel} taskId={search.task} /> : null}{lab === "listening" ? <ListeningLab level={activeLevel} taskId={search.task} /> : null}{lab === "writing" ? <WritingLab level={activeLevel} taskId={search.task} /> : null}{lab === "diagnostic" ? <DiagnosticLab /> : null}
+    {lab === "grammar" ? <GrammarLab level={activeLevel} taskId={search.task} lessonId={search.lessonId} /> : null}{lab === "listening" ? <ListeningLab level={activeLevel} taskId={search.task} lessonId={search.lessonId} /> : null}{lab === "writing" ? <WritingLab level={activeLevel} taskId={search.task} lessonId={search.lessonId} /> : null}{lab === "diagnostic" ? <DiagnosticLab /> : null}
   </Page>;
 }
 
-function GrammarLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
+function GrammarLab({ level, taskId, lessonId }: { level: LabLevel; taskId?: string; lessonId?: string }) {
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const tasks = useMemo(() => GRAMMAR_TASKS.filter((item) => item.level === level), [level]);
@@ -83,6 +87,7 @@ function GrammarLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
       "GRAMMAR_COMPLETED",
       dailyLabSource("grammar", task.id),
       `Grammaire · ${nextCorrect}/${nextAnswered}`,
+      lessonId ? { curriculumLessonId: lessonId } : undefined,
     );
     setAnsweredCount(nextAnswered);
     if (index >= tasks.length - 1) {
@@ -118,7 +123,7 @@ function GrammarLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
   </Surface>;
 }
 
-function ListeningLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
+function ListeningLab({ level, taskId, lessonId }: { level: LabLevel; taskId?: string; lessonId?: string }) {
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const tasks = useMemo(() => LISTENING_TASKS.filter((item) => item.level === level), [level]);
@@ -145,6 +150,7 @@ function ListeningLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
       "LISTENING_COMPLETED",
       dailyLabSource("listening", task.id),
       `Écoute · ${nextCorrect}/${nextAnswered}`,
+      lessonId ? { curriculumLessonId: lessonId } : undefined,
     );
     setAnsweredCount(nextAnswered);
     if (index >= tasks.length - 1) {
@@ -205,7 +211,7 @@ function ListeningLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
   </Surface>;
 }
 
-function WritingLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
+function WritingLab({ level, taskId, lessonId }: { level: LabLevel; taskId?: string; lessonId?: string }) {
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const prompts = useMemo(() => WRITING_PROMPTS.filter((item) => item.level === level), [level]);
@@ -233,6 +239,7 @@ function WritingLab({ level, taskId }: { level: LabLevel; taskId?: string }) {
       "WRITING_COMPLETED",
       dailyLabSource("writing", prompt.id),
       `Écrit · ${prompt.id} · ${wordCount} mots · ${checks.length}/${prompt.checks.length} auto-vérifications`,
+      lessonId ? { curriculumLessonId: lessonId } : undefined,
     );
     setSubmitted(true);
   }
