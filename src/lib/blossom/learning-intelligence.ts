@@ -100,7 +100,7 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
     DIAGNOSTIC_COMPLETED: { kind: "review", domains: ["speaking", "listening", "writing", "grammar", "interaction"], direct: false, label: "Repère" },
   };
 
-  if (event.type === "LESSON_COMPLETED") {
+  if (event.type === "LESSON_COMPLETED" || event.type === "CURRICULUM_EVIDENCE_RECORDED") {
     const lesson = CURRICULUM_UNITS
       .flatMap((unit) => unit.lessons)
       .find((candidate) => candidate.id === event.sourceId);
@@ -117,8 +117,8 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
       domainId,
       kind: "lesson" as const,
       createdAt: event.createdAt,
-      direct: false,
-      label: "Pratique du parcours",
+      direct: event.type === "CURRICULUM_EVIDENCE_RECORDED",
+      label: event.type === "CURRICULUM_EVIDENCE_RECORDED" ? "Preuve reliée au parcours" : "Ancienne confirmation de parcours",
       freshnessKnown: true,
     }));
   }
