@@ -113,7 +113,7 @@ export function AdminStudio() {
         <Metric icon={Users} label="Profils" value={workspace.profiles} />
         <Metric icon={Activity} label="Enseignants" value={workspace.teachers} />
         <Metric icon={Users} label="Parents" value={workspace.guardians} />
-        <Metric icon={Building2} label="Organisations" value={workspace.activeOrganizations} />
+        <Metric icon={Building2} label="Organisations" value={workspace.organizations} />
       </section>
 
       <section className="mt-5">

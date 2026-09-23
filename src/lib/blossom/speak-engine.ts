@@ -156,6 +156,10 @@ function pressureAgent(rng: () => number, place: PlaceNode): PressurePattern {
   };
   const preferred = bias[place.archetype] ?? ["friendly"];
   const pool = PRESSURES.filter((p) => preferred.includes(p.id));
+  if (pool.length && rng() < 0.38) {
+    const advanced = PRESSURES.filter((p) => ["misunderstood", "decision"].includes(p.id));
+    if (advanced.length) return pick(rng, advanced);
+  }
   return pick(rng, pool.length ? pool : PRESSURES);
 }
 
@@ -360,6 +364,61 @@ function durationFor(turns: SpeakTurn[], pressure: PressurePattern): number {
   if (pressure.timePressure === "high") return Math.max(4, base - 1);
   if (pressure.timePressure === "low") return base + 1;
   return base;
+}
+
+export function adaptLivingRoomAfterTranscript(
+  room: LivingRoom,
+  nextTurnIndex: number,
+  transcript: string,
+): LivingRoom {
+  const clean = transcript.trim().replace(/\s+/g, " ");
+  if (!clean || clean.length < 3) return room;
+
+  const nextAiIndex = room.turns.findIndex(
+    (turn, index) => index >= nextTurnIndex && turn.speaker === "ai",
+  );
+  if (nextAiIndex < 0) return room;
+
+  const lower = clean.toLowerCase();
+  const next = room.turns[nextAiIndex]!;
+  const goal = next.goal.toLowerCase();
+  const responseLooksLikeQuestion =
+    /\?|\b(what|where|when|why|how|can|could|would|do|does|is|are)\b/.test(lower);
+  const asksForRepair = /\b(repeat|again|slow|clarify|mean|understand)\b/.test(lower);
+  const chooses = /\b(i'd|i would|i prefer|i want|i'll|i will|choose|rather|like)\b/.test(lower);
+  const isVeryShort = clean.split(/\s+/).length <= 3;
+
+  let line = next.line ?? "And you?";
+  if (asksForRepair || /clarif/.test(goal)) {
+    line = "Of course. The important detail is this — does that make sense?";
+  } else if (chooses || /choisir|choice|recommend/.test(goal)) {
+    line = "That makes sense. What is the main reason for your choice?";
+  } else if (responseLooksLikeQuestion) {
+    line = "Good question. What matters most to you here?";
+  } else if (isVeryShort) {
+    line = "Could you tell me a little more about that?";
+  } else if (clean.length >= 40) {
+    line = "That is useful. Could you give me one concrete example?";
+  } else {
+    line = "I see. And what about the other option?";
+  }
+
+  // A transcript can legitimately land on the same branch as a generated line.
+  // Adaptation still needs to be observable: choose a nearby follow-up instead.
+  if (line === next.line) {
+    line = clean.length >= 40
+      ? "That is useful. What happened next?"
+      : "Tell me one more detail about that.";
+  }
+
+  return {
+    ...room,
+    turns: room.turns.map((turn, index) =>
+      index === nextAiIndex
+        ? { ...turn, line }
+        : turn,
+    ),
+  };
 }
 
 export function generateLivingRoom(input: GenerateInput = {}): LivingRoom {

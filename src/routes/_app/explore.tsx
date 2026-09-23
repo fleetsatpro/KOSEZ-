@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   CATALOGUE,
+  EVENT_DETAILS,
   EVENTS,
   planAllows,
   type CatalogueItem,
@@ -270,6 +271,42 @@ function ExplorePage() {
                   <p className="mt-3 text-sm leading-6 text-muted">
                     {event.blurb}
                   </p>
+
+                  {EVENT_DETAILS[event.id] ? (
+                    <details className="mt-5 overflow-hidden rounded-2xl border border-border bg-surface-2/35">
+                      <summary className="cursor-pointer px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">
+                        Voir le format et préparer la rencontre
+                      </summary>
+                      <div className="grid gap-4 border-t border-border p-4 sm:grid-cols-3">
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">Pourquoi</p>
+                          <p className="mt-2 text-xs leading-5 text-muted">
+                            {EVENT_DETAILS[event.id].purpose}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">Déroulé</p>
+                          <ul className="mt-2 space-y-1.5 text-xs leading-5 text-muted">
+                            {EVENT_DETAILS[event.id].flow.map((step) => (
+                              <li key={step}>{step}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">Geste de langue</p>
+                          <p className="mt-2 text-xs leading-5 text-muted">
+                            {EVENT_DETAILS[event.id].languageMove}
+                          </p>
+                          <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">Avant de venir</p>
+                          <ul className="mt-2 space-y-1.5 text-xs leading-5 text-muted">
+                            {EVENT_DETAILS[event.id].prepare.map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </details>
+                  ) : null}
 
                   <div className="mt-5 grid gap-2 text-xs text-muted sm:grid-cols-2">
                     <span className="flex items-center gap-2">

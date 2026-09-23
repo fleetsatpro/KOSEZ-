@@ -104,8 +104,9 @@ function PronlabHub() {
                     setId:
                       PRONLAB_SETS.find((s) =>
                         s.items.some((i) => i.id === struggle.id),
-                      )?.id ?? sets[0]?.id ?? "th",
+                      )?.id ?? sets[0]?.id ?? "set-th",
                   }}
+                  search={{ lessonId: undefined }}
                 >
                   Reprendre ce son
                   <ArrowRight className="size-3.5" />
@@ -128,6 +129,27 @@ function PronlabHub() {
         </Surface>
       )}
 
+      <Surface className="mt-10 border border-primary/15 bg-primary/5 !p-5 sm:!p-6">
+        <Eyebrow>Progression Pron'Lab</Eyebrow>
+        <h2 className="mt-2 font-display text-2xl tracking-tight">
+          Du son isolé à la parole spontanée.
+        </h2>
+        <div className="mt-5 grid gap-2 sm:grid-cols-4">
+          {[
+            ["01", "Contrastes", "Stabiliser le son"],
+            ["02", "Mots", "Le son dans le vocabulaire"],
+            ["03", "Chaînes", "Relier les mots"],
+            ["04", "Spontané", "Parler sans modèle"],
+          ].map(([number, title, detail]) => (
+            <div key={number} className="rounded-xl bg-surface/70 p-3">
+              <p className="text-[10px] font-semibold tracking-[0.16em] text-primary">{number}</p>
+              <p className="mt-2 font-display text-lg">{title}</p>
+              <p className="mt-1 text-xs leading-5 text-muted">{detail}</p>
+            </div>
+          ))}
+        </div>
+      </Surface>
+
       <h2 className="mt-10 font-display text-2xl tracking-tight">Sets</h2>
       <p className="mt-1 text-sm text-muted">
         Chaîne progressive. Un set s'ouvre après le précédent — ou sur
@@ -137,10 +159,10 @@ function PronlabHub() {
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {sets.length === 0 && (
           <Surface className="sm:col-span-2">
-            <p className="font-display text-xl">Même moteur, autre langue</p>
+            <p className="font-display text-xl">Ce module n'a pas encore de set actif.</p>
             <p className="mt-2 text-sm text-muted">
-              English, Español et LSF ont des sets. Les autres modules du centre
-              s'ouvrent ici, sans changer de plante.
+              K’Osez n'affiche pas de faux contenu. Les sets disponibles pour
+              cette langue apparaissent dès qu'un parcours réel est publié.
             </p>
           </Surface>
         )}
@@ -193,7 +215,7 @@ function PronlabHub() {
               </p>
               {unlocked ? (
                 <Button asChild className="mt-5">
-                  <Link to="/pronlab/$setId" params={{ setId: set.id }}>
+                  <Link to="/pronlab/$setId" params={{ setId: set.id }} search={{ lessonId: undefined }}>
                     Entrer dans le set
                     <ArrowRight className="size-4" />
                   </Link>

@@ -22,6 +22,7 @@ import {
 } from "./domain.server";
 import { reportTandem } from "./safety.server";
 import { SYNC_OPERATIONS, type SyncMutation, type SyncResult } from "./sync-types";
+import { sanitizeSyncedActivity } from "./activity-integrity";
 
 const SYNC_TIMEOUT_MS = 120_000;
 
@@ -233,13 +234,19 @@ async function applyMutation(
   switch (mutation.operation) {
     case "activity.append": {
       const payload = activityPayloadSchema.parse(mutation.payload);
+      const sanitized = sanitizeSyncedActivity(
+        payload.eventType,
+        objectValue(payload.payload),
+        objectValue(payload.metadata),
+      );
+
       await appendBlossomActivity(userId, {
         eventType: payload.eventType,
         sourceId: payload.sourceId ?? null,
         payload: {
-          ...objectValue(payload.payload),
-          metadata: objectValue(payload.metadata),
-        },
+          ...sanitized.payload,
+          metadata: sanitized.metadata,
+        } as JsonObject,
         idempotencyKey: mutation.mutationId,
         occurredAt: payload.occurredAt,
       });

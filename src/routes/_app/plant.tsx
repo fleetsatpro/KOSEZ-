@@ -47,6 +47,33 @@ function PlantPage() {
     { key: "pron", label: "Pron", value: minerals.pron },
     { key: "social", label: "Lien", value: minerals.social },
   ] as const;
+  const lowestMineral = [...mineralRows].sort((a, b) => a.value - b.value)[0];
+  const mineralGuidance = {
+    mission: {
+      title: "Les racines demandent du réel.",
+      body: "Votre terrain est la branche la moins nourrie. Une courte mission située remet la langue dans une situation qui oblige à choisir et répondre.",
+      cta: "Ouvrir une mission",
+      to: "/mission" as const,
+    },
+    parole: {
+      title: "La tige a besoin de voix.",
+      body: "Vous avez besoin de davantage de tours de parole autonomes. Une Speak Room peut remettre du rythme sans attendre le prochain cours.",
+      cta: "Entrer dans OSEZ",
+      to: "/osez" as const,
+    },
+    pron: {
+      title: "Une feuille demande un son plus stable.",
+      body: "Votre Pron’Lab est la branche la moins nourrie. Reprendre un contraste ou une phrase courte peut débloquer la suite.",
+      cta: "Reprendre Pron’Lab",
+      to: "/pronlab" as const,
+    },
+    social: {
+      title: "Le sol manque de présence partagée.",
+      body: "Les activités à deux ou en groupe nourrissent cette branche. Une rencontre réelle ou un tandem structuré ajoute une autre qualité d'exposition.",
+      cta: "Voir les rencontres",
+      to: "/explore" as const,
+    },
+  }[lowestMineral.key];
 
   return (
     <Page className="kosez-feature-page max-w-4xl">
@@ -148,7 +175,7 @@ function PlantPage() {
 
           <div className="mt-auto pt-6">
             <Button asChild className="w-full sm:w-auto">
-              <Link to="/mission">
+              <Link to="/mission" search={{ missionId: undefined, lessonId: undefined }}>
                 Nourrir la plante
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
@@ -169,6 +196,34 @@ function PlantPage() {
           Quatre nutriments. Le plus bas oriente le prochain geste utile — sans
           culpabiliser.
         </p>
+        <div className="mt-5 rounded-2xl border border-primary/15 bg-primary/5 p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="max-w-2xl">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                Point d'attention
+              </p>
+              <h2 className="mt-2 font-display text-2xl tracking-tight">
+                {mineralGuidance.title}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                {mineralGuidance.body}
+              </p>
+            </div>
+            <Button asChild className="shrink-0">
+              {mineralGuidance.to === "/mission" ? (
+                <Link to="/mission" search={{ missionId: undefined, lessonId: undefined }}>
+                  {mineralGuidance.cta}
+                  <ArrowRight className="size-4" />
+                </Link>
+              ) : (
+                <Link to={mineralGuidance.to}>
+                  {mineralGuidance.cta}
+                  <ArrowRight className="size-4" />
+                </Link>
+              )}
+            </Button>
+          </div>
+        </div>
         <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {mineralRows.map((m) => (
             <div

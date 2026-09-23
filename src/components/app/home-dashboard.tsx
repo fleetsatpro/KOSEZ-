@@ -3,7 +3,7 @@ import { ArrowRight, Check, Leaf } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   LEARNER_MEMORY,
-  missionForLevel,
+  missionForToday,
   planAllows,
   PLANT_IMAGE,
 } from "@/lib/blossom/data";
@@ -34,7 +34,7 @@ export function HomeDashboard() {
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const journey = useJourney();
 
-  const todayMission = missionForLevel(learner.level);
+  const todayMission = missionForToday(learner.level);
   const missionDone = hasSource(log, todayMission.id);
   const memoryOn = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
@@ -157,7 +157,7 @@ export function HomeDashboard() {
               size="lg"
               className="mt-5 h-12 w-full bg-primary text-primary-foreground hover:bg-primary/90 sm:w-auto"
             >
-              <Link to="/mission">
+              <Link to="/mission" search={{ missionId: undefined, lessonId: undefined }}>
                 {missionDone ? "Revenir au geste" : "Faire le geste"}
                 <ArrowRight className="size-4" />
               </Link>

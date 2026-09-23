@@ -22,6 +22,13 @@ export const Route = createFileRoute("/_app/tandem/$id")({
 
 const HALF_SECONDS = 30 * 60;
 
+const TANDEM_ARC = [
+  { label: "Ouvrir", hint: "Commencez simple : répondre, relancer, installer le rythme." },
+  { label: "Approfondir", hint: "Ajoutez un exemple concret et laissez l'autre développer." },
+  { label: "Nuancer", hint: "Comparez, précisez ou dites ce qui vous fait changer d'avis." },
+  { label: "Conclure", hint: "Résumez une idée et laissez une dernière question." },
+] as const;
+
 type Candidate = NonNullable<
   Awaited<ReturnType<typeof getTandemSessionOnServer>>
 >;
@@ -44,6 +51,7 @@ function TandemSession() {
   const [left, setLeft] = useState(HALF_SECONDS);
   const [promptIndex, setPromptIndex] = useState(0);
   const [phase, setPhase] = useState<"live" | "transition" | "complete">("live");
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -103,6 +111,11 @@ function TandemSession() {
   );
 
   const prompt = prompts[promptIndex % prompts.length]!;
+  const arcIndex = Math.min(
+    TANDEM_ARC.length - 1,
+    Math.floor(((promptIndex % prompts.length) / Math.max(1, prompts.length)) * TANDEM_ARC.length),
+  );
+  const arcStage = TANDEM_ARC[arcIndex]!;
 
   useEffect(() => {
     if (!sessionId || phase !== "live" || !partner) return;
@@ -118,16 +131,19 @@ function TandemSession() {
   }, [half, partner, phase, prompt, promptIndex, sessionId]);
 
   async function leaveSession() {
-    if (sessionId) {
-      try {
+    if (closing) return;
+    setClosing(true);
+    try {
+      if (sessionId) {
         await endTandemSessionOnServer({
           data: { sessionId, status: "cancelled" },
         });
-      } catch {
-        toast("La sortie est locale ; la fermeture serveur n’a pas été confirmée.");
       }
+      navigate({ to: "/tandem" });
+    } catch {
+      setClosing(false);
+      toast("La sortie locale n’est pas confirmée tant que la fermeture serveur n’a pas été enregistrée.");
     }
-    navigate({ to: "/tandem" });
   }
 
   if (loading) {
@@ -164,12 +180,15 @@ function TandemSession() {
 
   async function finish() {
     const activePartner = partner;
-    if (!activePartner || !sessionId) return;
+    if (!activePartner || !sessionId || closing) return;
+    setClosing(true);
+    let closure: Awaited<ReturnType<typeof endTandemSessionOnServer>>;
     try {
-      await endTandemSessionOnServer({
+      closure = await endTandemSessionOnServer({
         data: { sessionId, status: "completed" },
       });
     } catch {
+      setClosing(false);
       toast("La session n’a pas pu être clôturée côté serveur.");
       return;
     }
@@ -177,7 +196,11 @@ function TandemSession() {
       "TANDEM_COMPLETED",
       `tandem-session-${sessionId}`,
       undefined,
-      { minutes: 60, sessionId },
+      {
+        durationSeconds: closure.durationSeconds,
+        serverTimerAvailable: true,
+        sessionId,
+      },
     );
     toast("Session terminée. Votre participation est enregistrée.");
     navigate({ to: "/tandem" });
@@ -242,7 +265,7 @@ function TandemSession() {
             </p>
           </Surface>
 
-          <Button className="mt-8 w-full" size="lg" onClick={() => void finish()}>
+          <Button className="mt-8 w-full" size="lg" disabled={closing} onClick={() => void finish()}>
             Clore la session
             <ArrowRight className="size-4" />
           </Button>
@@ -289,7 +312,18 @@ function TandemSession() {
         <p className="mt-6 max-w-2xl font-display text-3xl leading-snug tracking-tight sm:text-4xl">
           {prompt}
         </p>
-        <p className="mt-8 max-w-md text-sm leading-6 text-primary-foreground/55">
+        <div className="mt-8 w-full max-w-xl rounded-2xl border border-primary-foreground/15 bg-primary-foreground/5 p-4 text-left">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/50">
+              Arc · {arcIndex + 1}/4
+            </p>
+            <p className="text-xs font-semibold">{arcStage.label}</p>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-primary-foreground/65">
+            {arcStage.hint}
+          </p>
+        </div>
+        <p className="mt-4 max-w-md text-sm leading-6 text-primary-foreground/55">
           Parlez réellement avec votre partenaire. Les amorces sont là pour
           relancer, pas pour devenir un script.
         </p>
@@ -308,17 +342,24 @@ function TandemSession() {
           <Button
             variant="outline"
             className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
-            onClick={() => {
+            onClick={async () => {
+              if (closing) return;
               reportTandem(id);
-              if (sessionId) {
-                void endTandemSessionOnServer({
-                  data: { sessionId, status: "cancelled" },
-                });
+              setClosing(true);
+              try {
+                if (sessionId) {
+                  await endTandemSessionOnServer({
+                    data: { sessionId, status: "cancelled" },
+                  });
+                }
+                toast(
+                  "Signalement transmis au circuit de sécurité. Le profil est masqué pour vous.",
+                );
+                navigate({ to: "/tandem" });
+              } catch {
+                setClosing(false);
+                toast("Le signalement local est conservé, mais la fermeture serveur n’est pas confirmée.");
               }
-              toast(
-                "Signalement transmis au circuit de sécurité. Le profil est masqué pour vous.",
-              );
-              navigate({ to: "/tandem" });
             }}
           >
             <Flag className="size-3.5" />

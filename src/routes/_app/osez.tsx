@@ -14,7 +14,6 @@ import { Eyebrow, Page } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LEARNER_MEMORY, planAllows } from "@/lib/blossom/data";
-import { hasSource } from "@/lib/blossom/engine";
 import {
   courageDaysFromLog,
   courageRibbon,
@@ -72,7 +71,13 @@ function OsezPage() {
     [learner.level, learner.firstName, learner.interests, memoryOn],
   );
 
-  const roomsDone = rooms.filter((r) => hasSource(log, `speak-${r.id}`)).length;
+  const roomsDone = rooms.filter((room) =>
+    log.some(
+      (event) =>
+        event.type === "SPEAK_COMPLETED" &&
+        event.sourceId?.includes(`speak-${room.place.archetype}-${room.id}`),
+    ),
+  ).length;
 
   function launchTopic(raw?: string) {
     const t = (raw ?? topic).trim();
@@ -86,7 +91,7 @@ function OsezPage() {
     } catch {
       /* ignore */
     }
-    navigate({ to: "/osez/$id", params: { id: "topic" } });
+    navigate({ to: "/osez/$id", params: { id: "topic" }, search: { lessonId: undefined } });
     setBuilding(false);
   }
 
@@ -240,6 +245,7 @@ function OsezPage() {
           </ol>
           <Link
             to="/mission"
+            search={{ missionId: undefined, lessonId: undefined }}
             className="mt-5 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.14em] text-primary hover:underline"
           >
             Mission Terrain
@@ -283,7 +289,7 @@ function OsezPage() {
 
       <Link
         to="/osez/$id"
-        params={{ id: "live" }}
+        params={{ id: "live" }} search={{ lessonId: undefined }}
         className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-primary/25 bg-primary/8 p-5 transition-transform hover:-translate-y-0.5"
       >
         <div className="flex items-start gap-3">
@@ -302,12 +308,12 @@ function OsezPage() {
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {rooms.map((scene) => {
-          const done = hasSource(log, `speak-${scene.id}`);
+          const done = log.some((event) => event.type === "SPEAK_COMPLETED" && event.sourceId?.includes(`speak-${scene.place.archetype}-${scene.id}`));
           return (
             <Link
               key={scene.id}
               to="/osez/$id"
-              params={{ id: scene.place.archetype }}
+              params={{ id: scene.place.archetype }} search={{ lessonId: undefined }}
               className="group overflow-hidden rounded-2xl border border-border/50 bg-surface shadow-[var(--shadow-border)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5"
             >
               <div className="relative aspect-[16/10] overflow-hidden">

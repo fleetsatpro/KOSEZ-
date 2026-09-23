@@ -13,6 +13,12 @@ import { transcribeSpeakTurn } from "@/lib/blossom/speech.api";
 import { blobToBase64, captureOnlyEvidence } from "@/lib/blossom/speech-stt";
 
 export const Route = createFileRoute("/_app/pronlab/$setId")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    lessonId:
+      typeof search.lessonId === "string" && search.lessonId.trim()
+        ? search.lessonId.trim()
+        : undefined,
+  }),
   component: PronlabSetPage,
 });
 
@@ -33,10 +39,13 @@ function highlight(phrase: string, segment: string) {
 
 function PronlabSetPage() {
   const { setId } = Route.useParams();
+  const { lessonId: curriculumLessonId } = Route.useSearch();
   const setDef = findPronlabSet(setId);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const assigned = useBlossom((s) => s.assignedSetIds);
   const record = useBlossom((s) => s.recordPronlabAttempt);
+  const completeActivity = useBlossom((s) => s.completeActivity);
+  const activityLog = useBlossom((s) => s.activityLog);
   const [index, setIndex] = useState(0);
   const [heard, setHeard] = useState(false);
   const [lastAttempt, setLastAttempt] = useState<PronlabAttempt | null>(null);
@@ -55,6 +64,11 @@ function PronlabSetPage() {
   const unlocked = isSetUnlocked(setDef.id, attempts, assigned);
   const item = setDef.items[index]!;
   const summary = summarisePronlabItem(item.id, attempts);
+  const setCompleted = activityLog.some(
+    (event) =>
+      event.type === "PRONLAB_COMPLETED" &&
+      event.sourceId === "pronlab-" + setDef.id,
+  );
   const history = attempts
     .filter((a) => a.itemId === item.id)
     .slice(-10)
@@ -193,7 +207,44 @@ function PronlabSetPage() {
           />
         ) : (
           <div className="text-center">
-            {lastAttempt.metadata?.assessment === "capture-only" ? (
+            {lastAttempt.metadata?.assessment === "phonetic-provider" ? (
+              <>
+                <p className="text-xs uppercase tracking-[0.16em] text-subtle">
+                  Analyse phonétique
+                </p>
+                <p className="mt-1 font-display text-4xl tabular-nums">{lastAttempt.score}</p>
+                <p className="mt-4 text-sm leading-relaxed">{item.strength}</p>
+                <p className="mt-3 text-sm text-muted">Léo : {item.tip}</p>
+                <p className="mt-3 font-display text-lg">{item.model}</p>
+                <div className="mt-5">
+                  <DualWave
+                    leftLabel="Modèle"
+                    rightLabel="Vous"
+                    match={lastAttempt.score / 100}
+                  />
+                </div>
+              </>
+            ) : lastAttempt.metadata?.assessment === "transcript" ? (
+              <>
+                <p className="text-xs uppercase tracking-[0.16em] text-subtle">
+                  Transcription obtenue
+                </p>
+                <p className="mt-2 font-display text-2xl leading-snug">
+                  « {String(lastAttempt.metadata?.transcript ?? "").trim() || "Transcription vide"} »
+                </p>
+                <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-muted">
+                  Cette prise a été transcrite par un moteur vocal. K’Osez ne
+                  transforme pas une transcription en note phonétique.
+                </p>
+                <div className="mt-5 rounded-2xl border border-border bg-surface-2/50 p-4 text-left">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-subtle">
+                    Léo · repère
+                  </p>
+                  <p className="mt-2 text-sm leading-6">{item.tip}</p>
+                </div>
+                <p className="mt-4 font-display text-lg">{item.model}</p>
+              </>
+            ) : (
               <>
                 <p className="text-xs uppercase tracking-[0.16em] text-subtle">
                   Prise enregistrée
@@ -213,29 +264,12 @@ function PronlabSetPage() {
                 </div>
                 <p className="mt-4 font-display text-lg">{item.model}</p>
               </>
-            ) : (
-              <>
-                <p className="text-xs uppercase tracking-[0.16em] text-subtle">
-                  Analyse phonétique
-                </p>
-                <p className="mt-1 font-display text-4xl tabular-nums">{lastAttempt.score}</p>
-                <p className="mt-4 text-sm leading-relaxed">{item.strength}</p>
-                <p className="mt-3 text-sm text-muted">Léo : {item.tip}</p>
-                <p className="mt-3 font-display text-lg">{item.model}</p>
-                <div className="mt-5">
-                  <DualWave
-                    leftLabel="Modèle"
-                    rightLabel="Vous"
-                    match={lastAttempt.score / 100}
-                  />
-                </div>
-              </>
             )}
             <div className="mt-6 flex flex-col gap-2">
               <Button variant="outline" onClick={() => setLastAttempt(null)}>
                 Réessayer
               </Button>
-              {index < setDef.items.length - 1 && (
+              {index < setDef.items.length - 1 ? (
                 <Button
                   onClick={() => {
                     setIndex((n) => n + 1);
@@ -244,6 +278,23 @@ function PronlabSetPage() {
                   }}
                 >
                   Item suivant
+                </Button>
+              ) : (
+                <Button
+                  disabled={setCompleted}
+                  onClick={() => {
+                    const result = completeActivity(
+                      "PRONLAB_COMPLETED",
+                      "pronlab-" + setDef.id,
+                      "Set terminé · " + setDef.items.length + " items parcourus",
+                      curriculumLessonId ? { curriculumLessonId } : undefined,
+                    );
+                    if (result.ok || result.reason === "already") {
+                      toast("Set Pron'Lab ancré dans le parcours.");
+                    }
+                  }}
+                >
+                  {setCompleted ? "Set ancré" : "Clore le set"}
                 </Button>
               )}
             </div>

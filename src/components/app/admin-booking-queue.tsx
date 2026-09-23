@@ -115,13 +115,26 @@ export function AdminBookingQueue() {
                       {busy === row.id ? <LoaderCircle className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
                       Confirmer
                     </Button>
-                    <Button size="sm" variant="outline" disabled={busy === row.id} onClick={() => void update(row, { status: "cancelled" })}>
-                      <X className="size-3.5" /> Annuler
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy === row.id}
+                      onClick={() =>
+                        void update(
+                          row,
+                          row.paymentStatus === "paid"
+                            ? { status: "cancelled", paymentStatus: "refunded" }
+                            : { status: "cancelled" },
+                        )
+                      }
+                    >
+                      <X className="size-3.5" />
+                      {row.paymentStatus === "paid" ? "Annuler + rembourser" : "Annuler"}
                     </Button>
                   </>
                 ) : null}
-                {row.paymentStatus === "unpaid" ? (
-                  <Button size="sm" variant="secondary" disabled={busy === row.id || row.status === "cancelled"} onClick={() => void update(row, { paymentStatus: "paid" })}>
+                {row.paymentStatus === "unpaid" && row.status === "confirmed" ? (
+                  <Button size="sm" variant="secondary" disabled={busy === row.id} onClick={() => void update(row, { paymentStatus: "paid" })}>
                     <CircleDollarSign className="size-3.5" /> Marquer payé
                   </Button>
                 ) : null}

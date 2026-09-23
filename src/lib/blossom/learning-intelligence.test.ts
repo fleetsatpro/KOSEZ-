@@ -22,6 +22,34 @@ const review = (correct: boolean): LearningSubmission => ({
   updatedAt: "2026-09-22T10:00:00.000Z",
 });
 
+test("adaptive recommendations preserve the exact review target", () => {
+  const result = buildLearningIntelligence(
+    [],
+    [],
+    [],
+    [],
+    plan({
+      due: [{
+        id: "urgent-grammar",
+        kind: "grammar",
+        title: "Question utile",
+        prompt: "Where is the seminar room?",
+        answer: "Where is the seminar room?",
+        reason: "Encore fragile",
+        priority: "haute",
+        link: "labs",
+        dueAt: "2026-09-22T10:00:00.000Z",
+        intervalDays: 1,
+        sourceKey: "grammar:grammar-question-1",
+        state: "due",
+      }],
+    }),
+    "2026-09-22T12:00:00.000Z",
+  );
+  assert.equal(result.next.kind, "review");
+  assert.equal(result.next.targetId, "grammar:grammar-question-1");
+});
+
 test("intelligence prioritises an urgent scheduled review", () => {
   const result = buildLearningIntelligence(
     [],
@@ -119,7 +147,10 @@ test("weekly brief counts dated evidence and keeps review accuracy explicit", ()
 
 
 test("curriculum acknowledgements follow the lesson objectives and stay non-direct", () => {
-  const lesson = CURRICULUM_UNITS[1]!.lessons.find((item) => item.id === "u2-l4")!;
+  const lesson = CURRICULUM_UNITS
+    .flatMap((unit) => unit.lessons)
+    .find((item) => item.id === "u2-l4")!;
+  assert.ok(lesson, "u2-l4 must remain addressable by stable lesson id");
   const result = buildLearningIntelligence(
     [{
       id: "lesson",

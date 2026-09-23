@@ -87,7 +87,7 @@ function HistoryPage() {
           <div className="p-8 text-center">
             <p className="font-display text-2xl">Rien dans ce filtre.</p>
             <p className="mt-2 text-sm text-muted">La prochaine activité apparaîtra ici.</p>
-            <Button className="mt-5" asChild><Link to="/mission">Créer une première trace</Link></Button>
+            <Button className="mt-5" asChild><Link to="/mission" search={{ missionId: undefined, lessonId: undefined }}>Créer une première trace</Link></Button>
           </div>
         )}
       </section>

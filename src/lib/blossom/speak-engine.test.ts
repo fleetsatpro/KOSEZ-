@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  adaptLivingRoomAfterTranscript,
   generateLivingRoom,
   generateRoomCatalog,
   reshuffleRoom,
 } from "./speak-engine.ts";
+import { BEAT_LIBRARY, EVENT_ANCHORS, PLACES, PRESSURES } from "./speak-world.ts";
 
 describe("speak-engine swarm", () => {
   it("generates a living room with turns, cast, and protocol", () => {
@@ -97,4 +99,49 @@ it("gives B1 rooms a genuine stretch beat", () => {
     ),
   );
   assert.ok(room.turns.some((turn) => Boolean(turn.stretch)));
+});
+
+
+it("changes the next AI turn when a real transcript supplies a response signal", () => {
+  const room = generateLivingRoom({
+    archetype: "office",
+    level: "B1",
+    entropy: "response-aware",
+    now: new Date("2026-09-22T12:00:00Z"),
+  });
+  const nextAiIndex = room.turns.findIndex(
+    (turn, index) => index >= 3 && turn.speaker === "ai" && Boolean(turn.line),
+  );
+  assert.ok(nextAiIndex >= 0);
+  const nextAi = room.turns[nextAiIndex]!.line;
+  const adapted = adaptLivingRoomAfterTranscript(
+    room,
+    3,
+    "I would prefer the later option because I have a meeting first.",
+  );
+  const adaptedAi = adapted.turns[nextAiIndex]!.line;
+  assert.ok(nextAi);
+  assert.ok(adaptedAi);
+  assert.notEqual(adaptedAi, nextAi);
+});
+
+it("does not branch without usable transcript evidence", () => {
+  const room = generateLivingRoom({
+    archetype: "cafe",
+    level: "A2",
+    entropy: "response-empty",
+    now: new Date("2026-09-22T12:00:00Z"),
+  });
+  assert.deepEqual(adaptLivingRoomAfterTranscript(room, 1, ""), room);
+  assert.deepEqual(adaptLivingRoomAfterTranscript(room, 1, "ok"), room);
+});
+
+
+it("world substrate has enough authored variety for sustained composition", () => {
+  assert.ok(PLACES.length >= 18);
+  assert.ok(EVENT_ANCHORS.length >= 11);
+  assert.ok(PRESSURES.length >= 8);
+  assert.ok(BEAT_LIBRARY.open.length >= 3);
+  assert.ok(BEAT_LIBRARY.challenge.length >= 2);
+  assert.ok(new Set(PLACES.map((place) => place.archetype)).size >= 10);
 });

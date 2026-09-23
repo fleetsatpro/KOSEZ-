@@ -94,7 +94,7 @@ export type Homework = {
 export type LearningSubmission = {
   id: string;
   taskId: string;
-  kind: "grammar" | "listening" | "writing" | "review";
+  kind: "grammar" | "listening" | "writing" | "reading" | "review";
   content: string;
   checks: string[];
   result: Record<string, unknown>;
@@ -174,7 +174,7 @@ type AppState = {
     reflection: MissionReflection,
   ) => boolean;
   reopenMissionSession: (missionId: string) => boolean;
-  completeMissionSession: (missionId: string) => {
+  completeMissionSession: (missionId: string, curriculumLessonId?: string) => {
     ok: boolean;
     reason?: string;
     evaluation?: ReturnType<typeof evaluateMission>;
@@ -477,7 +477,7 @@ export const useBlossom = create<AppState>()(
         });
         return true;
       },
-      completeMissionSession: (missionId) => {
+      completeMissionSession: (missionId, curriculumLessonId) => {
         const current = get().missionSessions[missionId];
         const active = current ? activeMissionRun(current) : null;
         if (!active?.reflection) {
@@ -510,6 +510,7 @@ export const useBlossom = create<AppState>()(
             String(evaluation.evidenceCount) +
             "/3 · " +
             evaluation.outcome,
+          curriculumLessonId ? { curriculumLessonId } : undefined,
         );
         track("mission_session_completed", {
           missionId,
@@ -535,12 +536,13 @@ export const useBlossom = create<AppState>()(
             occurredAt: new Date().toISOString(),
           },
         });
-        const event = {
+        const event: ActivityEvent = {
           id: mutation.mutationId,
           type,
           createdAt: String(mutation.payload.occurredAt),
           sourceId,
           note,
+          metadata: metadata ? { ...metadata } : undefined,
         };
         const nextLog = [...log, event];
         const ge = growthEventForActivity(type, sourceId, event.createdAt);
@@ -629,12 +631,22 @@ export const useBlossom = create<AppState>()(
         const item = findPronlabItem(itemId);
         if (!item) return null;
         const before = summarisePronlabItem(itemId, get().pronlabAttempts);
-        const score = 0;
+        // Client-recorded evidence may preserve a server-produced transcript, but
+        // it must never promote itself into a phonetic score. Trusted scores are
+        // accepted only by the server-side scoring path.
+        const assessment =
+          evidenceMetadata?.assessment === "transcript"
+            ? "transcript"
+            : "capture-only";
         const metadata = {
           ...(evidenceMetadata ?? {}),
-          assessment: "capture-only",
-          provider: "speech-evidence",
+          assessment,
+          provider:
+            typeof evidenceMetadata?.provider === "string"
+              ? evidenceMetadata.provider
+              : "speech-evidence",
         };
+        const score = 0;
         const mutation = createMutation({
           operation: "pronlab.attempt",
           entityId: itemId,

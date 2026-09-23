@@ -2,11 +2,12 @@ import type { ActivityEvent, ActivityType, PronlabAttempt } from "./engine.ts";
 import type { LearningSubmission } from "./store.ts";
 import { summarisePronlabItem } from "./engine.ts";
 import { PRONLAB_SETS } from "./data.ts";
-import type { ScheduledReviewItem, ReviewPlan } from "./review-scheduler.ts";
+import type { ReviewPlan } from "./review-scheduler.ts";
 import {
   CAN_DO_OBJECTIVES,
   CURRICULUM_UNITS,
   LEARNING_DOMAINS,
+  curriculumResource,
   type LearningDomainId,
 } from "./learning-os.ts";
 
@@ -20,7 +21,8 @@ export type LearningEvidenceKind =
   | "vocabulary"
   | "review"
   | "tandem"
-  | "lesson";
+  | "lesson"
+  | "reading";
 
 export type LearningEvidence = {
   domainId: LearningDomainId;
@@ -28,6 +30,7 @@ export type LearningEvidence = {
   createdAt: string;
   direct: boolean;
   label: string;
+  sourceId?: string;
   freshnessKnown: boolean;
 };
 
@@ -54,7 +57,9 @@ export type LearningIntelligence = {
     eyebrow: string;
     title: string;
     body: string;
-    kind: "pronlab" | "mission" | "library" | "review" | "labs";
+    kind: "pronlab" | "mission" | "library" | "review" | "labs" | "speak";
+    labKind?: "grammar" | "listening" | "writing";
+    targetId?: string;
     reasons: string[];
   };
 };
@@ -98,6 +103,7 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
     HOMEWORK_COMPLETED: { kind: "writing", domains: ["writing"], direct: true, label: "Devoir" },
     IMMERSION_ATTENDED: { kind: "mission", domains: ["speaking", "listening", "interaction"], direct: false, label: "Immersion" },
     DIAGNOSTIC_COMPLETED: { kind: "review", domains: ["speaking", "listening", "writing", "grammar", "interaction"], direct: false, label: "Repère" },
+    LIBRARY_COMPLETED: { kind: "reading", domains: ["reading", "vocabulary"], direct: true, label: "Lecture comprise" },
   };
 
   if (event.type === "LESSON_COMPLETED") {
@@ -120,6 +126,7 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
       direct: false,
       label: "Pratique du parcours",
       freshnessKnown: true,
+      sourceId: event.sourceId,
     }));
   }
 
@@ -132,6 +139,7 @@ function activityEvidence(event: ActivityEvent): LearningEvidence[] {
     direct: entry.direct,
     label: entry.label,
     freshnessKnown: true,
+    sourceId: event.sourceId,
   }));
 }
 
@@ -140,15 +148,19 @@ function submissionEvidence(submission: LearningSubmission): LearningEvidence[] 
     grammar: ["grammar"],
     listening: ["listening"],
     writing: ["writing"],
+    reading: ["reading", "vocabulary"],
     review: ["vocabulary", "pronunciation", "grammar"],
   };
-  const kind: LearningEvidenceKind = submission.kind === "writing"
-    ? "writing"
-    : submission.kind === "listening"
-      ? "listening"
-      : submission.kind === "grammar"
-        ? "grammar"
-        : "review";
+  const kind: LearningEvidenceKind =
+    submission.kind === "writing"
+      ? "writing"
+      : submission.kind === "listening"
+        ? "listening"
+        : submission.kind === "grammar"
+          ? "grammar"
+          : submission.kind === "reading"
+            ? "reading"
+            : "review";
   return domains[submission.kind].map((domainId) => ({
     domainId,
     kind,
@@ -156,6 +168,7 @@ function submissionEvidence(submission: LearningSubmission): LearningEvidence[] 
     direct: submission.kind !== "review",
     label: `Trace · ${kind}`,
     freshnessKnown: true,
+    sourceId: submission.taskId,
   }));
 }
 
@@ -167,6 +180,7 @@ function pronunciationEvidence(attempts: PronlabAttempt[]): LearningEvidence[] {
     direct: true,
     label: `Pron'Lab · ${attempt.itemId}`,
     freshnessKnown: true,
+    sourceId: attempt.itemId,
   }));
 }
 
@@ -180,6 +194,7 @@ function vocabularyEvidence(
     direct: false,
     label: "Mot sauvegardé",
     freshnessKnown: Boolean(word.updatedAt || word.firstSavedAt),
+    sourceId: "vocab:" + word.word,
   }));
 }
 
@@ -238,6 +253,49 @@ function domainSignal(
   };
 }
 
+function resourceForDomain(domainId: LearningDomainId): {
+  kind: "pronlab" | "mission" | "library" | "labs" | "speak";
+  targetId?: string;
+  labKind?: "grammar" | "listening" | "writing";
+} {
+  switch (domainId) {
+    case "pronunciation": return { kind: "pronlab", targetId: "set-th" };
+    case "reading": return { kind: "library", targetId: "lib-market" };
+    case "speaking": return { kind: "speak", targetId: "cafe" };
+    case "interaction": return { kind: "mission", targetId: "mission-recommend" };
+    case "mediation": return { kind: "mission", targetId: "mission-mediate" };
+    case "grammar": return { kind: "labs", labKind: "grammar", targetId: "grammar-question-1" };
+    case "listening": return { kind: "labs", labKind: "listening", targetId: "listen-4" };
+    case "writing": return { kind: "labs", labKind: "writing", targetId: "write-after-class" };
+    case "vocabulary": return { kind: "library", targetId: "lib-market" };
+  }
+}
+
+function targetFromEvidence(item: LearningEvidence): {
+  kind: "pronlab" | "mission" | "library" | "labs" | "speak";
+  targetId?: string;
+  labKind?: "grammar" | "listening" | "writing";
+} | null {
+  const source = item.sourceId;
+  if (!source) return null;
+  if (item.kind === "mission") return { kind: "mission", targetId: source };
+  if (item.kind === "reading" && source.startsWith("library:")) {
+    return { kind: "library", targetId: source.slice("library:".length) };
+  }
+  if (["grammar", "listening", "writing"].includes(item.kind)) {
+    const parts = source.split(":");
+    const labKind = parts[1] as "grammar" | "listening" | "writing" | undefined;
+    if (labKind && parts[2]) {
+      return { kind: "labs", targetId: parts[2], labKind };
+    }
+  }
+  if (item.kind === "speaking") {
+    const match = source.match(/^speak-([^-]+)-/);
+    return match ? { kind: "speak", targetId: match[1] } : { kind: "speak" };
+  }
+  return null;
+}
+
 function recommendation(
   domains: DomainIntelligence[],
   evidence: LearningEvidence[],
@@ -251,6 +309,7 @@ function recommendation(
       title: urgent.title,
       body: urgent.reason,
       kind: "review",
+      targetId: urgent.sourceKey,
       reasons: [
         "Le système a identifié une révision due.",
         `${urgent.intervalDays} jour(s) depuis le dernier intervalle planifié.`,
@@ -265,6 +324,7 @@ function recommendation(
       title: due.title,
       body: due.reason,
       kind: "review",
+      targetId: due.sourceKey,
       reasons: [
         `${plan.due.length} rappel(s) sont dus aujourd'hui.`,
         due.kind === "pronunciation" ? "La trace vient directement de Pron'Lab." : "Le rappel s'appuie sur votre historique.",
@@ -279,9 +339,11 @@ function recommendation(
       title: "Créer votre première trace écrite",
       body: "Votre profil ne contient pas encore de preuve directe en production écrite.",
       kind: "labs",
+      labKind: "writing",
+      targetId: "write-after-class",
       reasons: [
         "Aucune production écrite enregistrée.",
-        "Un lab de quelques minutes suffit pour créer cette première preuve.",
+        "Un lab d’écriture de quelques minutes suffit pour créer cette première preuve.",
       ],
     };
   }
@@ -292,11 +354,29 @@ function recommendation(
 
   if (fading && (fading.recencyDays ?? 0) >= 15) {
     const label = LEARNING_DOMAINS.find((domain) => domain.id === fading.domainId)?.shortLabel ?? "compétence";
+    const fadingEvidence = evidence
+      .filter((item) => item.domainId === fading.domainId && item.direct)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    const target = fadingEvidence
+      ? targetFromEvidence(fadingEvidence) ?? resourceForDomain(fading.domainId)
+      : resourceForDomain(fading.domainId);
     return {
       eyebrow: "SIGNAL · À RAVIVER",
       title: `Revenir à « ${label} »`,
       body: "Cette branche a des traces, mais elles commencent à dater.",
-      kind: fading.domainId === "pronunciation" ? "pronlab" : "labs",
+      kind: target?.kind ?? (
+        fading.domainId === "pronunciation"
+          ? "pronlab"
+          : fading.domainId === "reading"
+            ? "library"
+            : fading.domainId === "speaking" ||
+                fading.domainId === "interaction" ||
+                fading.domainId === "mediation"
+              ? "mission"
+              : "labs"
+      ),
+      targetId: target?.targetId,
+      labKind: target?.labKind,
       reasons: [
         `Dernière preuve il y a ${fading.recencyDays} jours.`,
         "Raviver une compétence évite que la progression repose uniquement sur les nouveautés.",
@@ -328,9 +408,42 @@ function recommendation(
     eyebrow: "PROCHAINE ACTION",
     title: `Approfondir « ${label} »`,
     body: "Votre profil est assez nourri pour passer de l'exposition à une pratique plus ciblée.",
-    kind: "labs",
+    ...(freshest ? ((
+      evidence
+        .filter((item) => item.domainId === freshest.domainId && item.direct)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] &&
+      targetFromEvidence(
+        evidence
+          .filter((item) => item.domainId === freshest.domainId && item.direct)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]!,
+      )
+    ) ?? resourceForDomain(freshest.domainId) ?? {
+      kind:
+        freshest.domainId === "pronunciation"
+          ? "pronlab"
+          : freshest.domainId === "reading"
+            ? "library"
+            : freshest.domainId === "speaking" ||
+                freshest.domainId === "interaction" ||
+                freshest.domainId === "mediation"
+              ? "mission"
+              : "labs",
+        labKind:
+          freshest.domainId === "grammar"
+            ? "grammar"
+            : freshest.domainId === "listening"
+              ? "listening"
+              : freshest.domainId === "writing"
+                ? "writing"
+                : undefined,
+      }) : {
+      kind: "labs" as const,
+    }),
     reasons: [
-      `${domains.filter((domain) => domain.evidenceCount > 0).length}/${domains.length} domaines ont déjà des traces.`,
+      domains.filter((domain) => domain.evidenceCount > 0).length +
+        "/" +
+        domains.length +
+        " domaines ont déjà des traces.",
       "La prochaine valeur vient maintenant d'une preuve plus précise.",
     ],
   };

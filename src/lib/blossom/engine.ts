@@ -21,6 +21,7 @@ export type ActivityType =
   | "LISTENING_COMPLETED"
   | "WRITING_COMPLETED"
   | "DIAGNOSTIC_COMPLETED"
+  | "LIBRARY_COMPLETED"
   | "LESSON_COMPLETED";
 
 export type ActivityEvent = {
@@ -29,6 +30,7 @@ export type ActivityEvent = {
   createdAt: string;
   sourceId?: string;
   note?: string;
+  metadata?: Record<string, string | number | boolean>;
 };
 
 export const POINTS: Record<ActivityType, number> = {
@@ -47,6 +49,7 @@ export const POINTS: Record<ActivityType, number> = {
   LISTENING_COMPLETED: 4,
   WRITING_COMPLETED: 4,
   DIAGNOSTIC_COMPLETED: 0,
+  LIBRARY_COMPLETED: 3,
   // Curriculum acknowledgement is intentionally lightweight: it records
   // practice without pretending that self-report is performance assessment.
   LESSON_COMPLETED: 1,
@@ -174,7 +177,9 @@ export function summarisePronlabItem(
   attempts: PronlabAttempt[],
 ): PronlabSummary {
   const mine = attempts.filter((a) => a.itemId === itemId);
-  const scored = mine.filter((attempt) => attempt.metadata?.assessment !== "capture-only");
+  const scored = mine.filter(
+    (attempt) => attempt.metadata?.assessment === "phonetic-provider",
+  );
   const scores = scored.map((a) => a.score);
   const lastThree = scores.slice(-3);
   const bestScore = scores.length ? Math.max(...scores) : 0;
@@ -216,6 +221,86 @@ export type TandemPartner = {
   avatar: string | null;
 };
 
+export type TandemMatchBreakdown = {
+  score: number;
+  reasons: string[];
+  checks: Array<{
+    label: string;
+    state: "strong" | "partial" | "unknown";
+  }>;
+};
+
+export function tandemMatchBreakdown(
+  me: {
+    speaks: string;
+    wants: string;
+    level: string;
+    interests: string[];
+    window: string;
+  },
+  partner: TandemPartner,
+): TandemMatchBreakdown {
+  let score = 0;
+  const reasons: string[] = [];
+  const checks: TandemMatchBreakdown["checks"] = [];
+
+  const langFit =
+    partner.speaks.toLowerCase().startsWith(me.wants.toLowerCase().slice(0, 3)) &&
+    partner.wants.toLowerCase().startsWith(me.speaks.toLowerCase().slice(0, 3));
+  if (langFit) {
+    score += 40;
+    reasons.push("Vos langues se répondent directement.");
+    checks.push({ label: "Échange linguistique", state: "strong" });
+  } else {
+    checks.push({ label: "Échange linguistique", state: "unknown" });
+  }
+
+  const bands = ["A1", "A2", "B1", "B2", "C1", "C2"];
+  const myBand = bands.indexOf(me.level);
+  const theirBand = bands.indexOf(partner.wantsLevel);
+  const delta = myBand < 0 || theirBand < 0 ? 99 : Math.abs(myBand - theirBand);
+  if (delta <= 1) {
+    score += 25;
+    reasons.push("Vos niveaux cibles sont proches.");
+    checks.push({ label: "Niveau", state: "strong" });
+  } else if (delta === 2) {
+    score += 10;
+    reasons.push("Vos niveaux sont assez proches pour un échange cadré.");
+    checks.push({ label: "Niveau", state: "partial" });
+  } else {
+    checks.push({ label: "Niveau", state: "unknown" });
+  }
+
+  const shared = me.interests.filter((i) =>
+    partner.interests.some((p) => p.toLowerCase() === i.toLowerCase()),
+  ).length;
+  score += Math.min(25, shared * 10);
+  if (shared > 0) {
+    reasons.push(
+      shared === 1
+        ? "Vous avez un centre d'intérêt en commun."
+        : shared + " centres d'intérêt se recoupent.",
+    );
+    checks.push({ label: "Intérêts", state: "strong" });
+  } else {
+    checks.push({ label: "Intérêts", state: "unknown" });
+  }
+
+  if (partner.window.includes(me.window.slice(0, 2))) {
+    score += 10;
+    reasons.push("Les créneaux déclarés semblent compatibles.");
+    checks.push({ label: "Créneau", state: "strong" });
+  } else {
+    checks.push({ label: "Créneau", state: "unknown" });
+  }
+
+  return {
+    score: Math.min(100, score),
+    reasons: reasons.slice(0, 3),
+    checks,
+  };
+}
+
 export function tandemMatchScore(
   me: {
     speaks: string;
@@ -226,23 +311,7 @@ export function tandemMatchScore(
   },
   partner: TandemPartner,
 ): number {
-  let score = 0;
-  const langFit =
-    partner.speaks.toLowerCase().startsWith(me.wants.toLowerCase().slice(0, 3)) &&
-    partner.wants.toLowerCase().startsWith(me.speaks.toLowerCase().slice(0, 3));
-  if (langFit) score += 40;
-  const bands = ["A1", "A2", "B1", "B2", "C1", "C2"];
-  const myBand = bands.indexOf(me.level);
-  const theirBand = bands.indexOf(partner.wantsLevel);
-  const delta = Math.abs(myBand - theirBand);
-  if (delta <= 1) score += 25;
-  else if (delta === 2) score += 10;
-  const shared = me.interests.filter((i) =>
-    partner.interests.some((p) => p.toLowerCase() === i.toLowerCase()),
-  ).length;
-  score += Math.min(25, shared * 10);
-  if (partner.window.includes(me.window.slice(0, 2))) score += 10;
-  return score;
+  return tandemMatchBreakdown(me, partner).score;
 }
 
 export type LearnerMemory = {

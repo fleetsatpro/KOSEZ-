@@ -59,7 +59,7 @@ function ConnectPage() {
     } catch {
       /* session storage can be unavailable in privacy modes */
     }
-    navigate({ to: "/osez/$id", params: { id: "topic" } });
+    navigate({ to: "/osez/$id", params: { id: "topic" }, search: { lessonId: undefined } });
   }
 
   return (
@@ -78,9 +78,9 @@ function ConnectPage() {
 
       <section className="mt-8 grid gap-3 sm:grid-cols-3" aria-label="Résumé de connexion">
         <Surface className="!p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">Présences</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">Rendez-vous partagés</p>
           <p className="mt-2 font-display text-2xl tabular-nums">{peers.length}</p>
-          <p className="mt-1 text-xs leading-5 text-muted">personne{peers.length === 1 ? "" : "s"} réellement reliée{peers.length === 1 ? "" : "s"} à vos rendez-vous</p>
+          <p className="mt-1 text-xs leading-5 text-muted">personne{peers.length === 1 ? "" : "s"} reliée{peers.length === 1 ? "" : "s"} à vos rendez-vous</p>
         </Surface>
         <Surface className="!p-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">Rencontres partagées</p>
@@ -150,7 +150,7 @@ function ConnectPage() {
       <section className="mt-10">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <Eyebrow>Présences</Eyebrow>
+            <Eyebrow>Rendez-vous partagés</Eyebrow>
             <h2 className="mt-2 font-display text-3xl tracking-tight">
               Votre cercle actuel
             </h2>
@@ -193,7 +193,7 @@ function ConnectPage() {
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-muted">
                   <span className="rounded-full border border-border px-3 py-1.5">
-                    {peer.sharedEvents} rencontre{peer.sharedEvents > 1 ? "s" : ""} partagée{peer.sharedEvents > 1 ? "s" : ""}
+                    {peer.sharedEvents} rendez-vous partagé{peer.sharedEvents > 1 ? "s" : ""}
                   </span>
                   {peer.interests.slice(0, 3).map((interest) => (
                     <span key={interest} className="rounded-full bg-surface-2 px-3 py-1.5">
@@ -201,6 +201,19 @@ function ConnectPage() {
                     </span>
                   ))}
                 </div>
+                {peer.sharedEventIds.length ? (
+                  <div className="mt-4 rounded-xl bg-surface-2/45 p-3.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">
+                      Contexte commun
+                    </p>
+                    <ul className="mt-2 space-y-1 text-xs leading-5 text-muted">
+                      {peer.sharedEventIds.slice(0, 3).map((eventId) => {
+                        const event = EVENTS.find((item) => item.id === eventId);
+                        return event ? <li key={eventId}>{event.title}</li> : null;
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
               </Surface>
             ))}
           </div>

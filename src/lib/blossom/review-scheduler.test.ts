@@ -72,3 +72,28 @@ test("a failed review collapses the next interval to one day", () => {
   assert.ok(item);
   assert.equal(item.intervalDays, 1);
 });
+
+
+test("a completed reading seeds a spaced comprehension recall", () => {
+  const reading: LearningSubmission = {
+    id: "reading-1",
+    taskId: "library:lib-market",
+    kind: "reading",
+    content: "3",
+    checks: ["correct", "correct", "correct"],
+    result: { correct: true, checkCount: 3, checkTotal: 3 },
+    createdAt: iso(10),
+    updatedAt: iso(10),
+  };
+  const plan = buildReviewPlan(
+    [reading],
+    [],
+    [],
+    "2026-09-22T12:00:00.000Z",
+  );
+  const item = plan.due.find((entry) => entry.sourceKey === "reading:lib-market");
+  assert.ok(item);
+  assert.equal(item.kind, "reading");
+  assert.equal(item.link, "library");
+  assert.ok(item.prompt.length > 10);
+});

@@ -1,4 +1,5 @@
-import { PRONLAB_SETS, TODAY_MISSION } from "./data.ts";
+import { LIBRARY, PRONLAB_SETS, TODAY_MISSION } from "./data.ts";
+import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS } from "./lab-content.ts";
 import { summarisePronlabItem, type PronlabAttempt } from "./engine.ts";
 import type { LearningSubmission } from "./store.ts";
 import type { ReviewItem } from "./learning-os.ts";
@@ -128,6 +129,121 @@ export function buildReviewPlan(
     });
   }
 
+
+  const latestReading = new Map<string, LearningSubmission>();
+  for (const submission of submissions) {
+    if (submission.kind !== "reading") continue;
+    const key = "reading:" + submission.taskId;
+    const prior = latestReading.get(key);
+    if (!prior || prior.createdAt < submission.createdAt) {
+      latestReading.set(key, submission);
+    }
+  }
+
+  for (const submission of latestReading.values()) {
+    const document = LIBRARY.find((item) => item.id === submission.taskId.replace(/^library:/, ""));
+    if (!document || !document.comprehension?.length) continue;
+    const sourceKey = "reading:" + document.id;
+    const latest = latestReview(submissions, sourceKey);
+    const correct = isCorrectSubmission(submission);
+    const anchorTime = submission.createdAt;
+    const dueAt = latest
+      ? addDays(latest.createdAt, intervalForSubmission(latest, submissions))
+      : addDays(anchorTime, correct ? 7 : 1);
+    const check = document.comprehension[0]!;
+    items.push({
+      id: "review-reading-" + document.id,
+      kind: "reading",
+      title: document.title,
+      prompt: check.prompt,
+      answer: check.answer,
+      reason: correct
+        ? "Cette lecture mérite un rappel pour vérifier ce qui reste accessible sans le texte."
+        : "La dernière vérification de compréhension demande un nouveau passage.",
+      priority: !correct ? "haute" : "normale",
+      link: "library",
+      dueAt,
+      intervalDays: Math.max(1, daysBetween(latest?.createdAt ?? anchorTime, dueAt)),
+      sourceKey,
+      state: dueAt <= now ? "due" : "upcoming",
+      lastReviewedAt: latest?.createdAt,
+    });
+  }
+
+  const latestPractice = new Map<string, LearningSubmission>();
+  for (const submission of submissions) {
+    if (!["grammar", "listening", "writing"].includes(submission.kind)) continue;
+    const key = submission.kind + ":" + submission.taskId;
+    const prior = latestPractice.get(key);
+    if (!prior || prior.createdAt < submission.createdAt) {
+      latestPractice.set(key, submission);
+    }
+  }
+
+  for (const submission of latestPractice.values()) {
+    const sourceKey = submission.kind + ":" + submission.taskId;
+    const latest = latestReview(submissions, sourceKey);
+    const correct = isCorrectSubmission(submission);
+    const anchorTime = submission.createdAt;
+    const dueAt = latest
+      ? addDays(latest.createdAt, intervalForSubmission(latest, submissions))
+      : addDays(anchorTime, correct ? 3 : 1);
+
+    const common = {
+      id: "review-" + submission.kind + "-" + submission.taskId,
+      reason:
+        latest && !isCorrectSubmission(latest)
+          ? "Votre dernier rappel demande encore un passage."
+          : correct
+            ? "Cette pratique vient d'être travaillée ; le rappel espacé la remettra en circulation."
+            : "La dernière production n'était pas entièrement maîtrisée.",
+      priority: (!correct || (latest !== null && !isCorrectSubmission(latest))
+        ? "haute"
+        : "normale") as "haute" | "normale",
+      link: "labs" as const,
+      dueAt,
+      intervalDays: Math.max(1, daysBetween(latest?.createdAt ?? anchorTime, dueAt)),
+      sourceKey,
+      state: (dueAt <= now ? "due" : "upcoming") as "due" | "upcoming",
+      lastReviewedAt: latest?.createdAt,
+    };
+
+    if (submission.kind === "grammar") {
+      const task = GRAMMAR_TASKS.find((item) => item.id === submission.taskId);
+      if (!task) continue;
+      items.push({
+        ...common,
+        kind: "grammar",
+        title: task.target,
+        prompt: task.prompt,
+        answer: task.answer,
+      });
+      continue;
+    }
+
+    if (submission.kind === "listening") {
+      const task = LISTENING_TASKS.find((item) => item.id === submission.taskId);
+      if (!task) continue;
+      items.push({
+        ...common,
+        kind: "listening",
+        title: task.question,
+        prompt: task.question,
+        answer: task.answer,
+      });
+      continue;
+    }
+
+    const task = WRITING_PROMPTS.find((item) => item.id === submission.taskId);
+    if (!task) continue;
+    items.push({
+      ...common,
+      kind: "writing",
+      title: task.title,
+      prompt: task.task,
+      answer: task.model,
+    });
+  }
 
   for (const kit of TODAY_MISSION.scene?.languageKit ?? []) {
     const sourceKey = `mission:${kit.phrase}`;

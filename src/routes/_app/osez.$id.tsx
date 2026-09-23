@@ -8,9 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LEARNER_MEMORY, planAllows } from "@/lib/blossom/data";
 import type { LivingRoom } from "@/lib/blossom/speak-engine";
-import { reshuffleRoom } from "@/lib/blossom/speak-engine";
+import { adaptLivingRoomAfterTranscript, reshuffleRoom } from "@/lib/blossom/speak-engine";
 import { buildSpeakRoom } from "@/lib/blossom/speak-llm";
 import { transcribeSpeakTurn } from "@/lib/blossom/speech.api";
+import {
+  endSpeakSessionOnServer,
+  startSpeakSessionOnServer,
+} from "@/lib/blossom/domain.api";
 import {
   appendSpeechTurn,
   blobToBase64,
@@ -25,11 +29,18 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/osez/$id")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    lessonId:
+      typeof search.lessonId === "string" && search.lessonId.trim()
+        ? search.lessonId.trim()
+        : undefined,
+  }),
   component: SpeakRoom,
 });
 
 function SpeakRoom() {
   const { id } = Route.useParams();
+  const { lessonId: curriculumLessonId } = Route.useSearch();
   const navigate = useNavigate();
   const complete = useBlossom((s) => s.completeActivity);
   const plan = useBlossom((s) => s.plan);
@@ -50,6 +61,9 @@ function SpeakRoom() {
   const [ceremonyOpen, setCeremonyOpen] = useState(false);
   const [yourTurns, setYourTurns] = useState(0);
   const [showRescue, setShowRescue] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [speakSessionId, setSpeakSessionId] = useState<string | null>(null);
+  const [serverTimerAvailable, setServerTimerAvailable] = useState(true);
   const [speechSummary, setSpeechSummary] = useState<SessionSpeechSummary>(() => emptySpeechSummary());
   const mineralsBefore = useRef(minerals);
 
@@ -156,23 +170,49 @@ function SpeakRoom() {
     toast("Nouvelle composition.");
   }
 
-  function finish() {
-    if (!room) return;
+  async function finish() {
+    if (!room || closing) return;
+    setClosing(true);
+
+    let authoritativeSeconds: number | null = null;
+    if (speakSessionId) {
+      try {
+        const closure = await endSpeakSessionOnServer({
+          data: { sessionId: speakSessionId, status: "completed" },
+        });
+        authoritativeSeconds = closure.durationSeconds;
+      } catch {
+        setClosing(false);
+        toast("La fermeture serveur n'est pas confirmée. Réessayez pour enregistrer la session mesurée.");
+        return;
+      }
+    }
+
     mineralsBefore.current = useBlossom.getState().mineralSnapshot;
-    const speakingMinutes = Math.max(1, Math.round(elapsed / 60));
     const result = complete(
       "SPEAK_COMPLETED",
-      `speak-${room.id}`,
+      `speak-${room.place.archetype}-${room.id}`,
       undefined,
       {
-        minutes: speakingMinutes,
+        ...(authoritativeSeconds === null
+          ? {}
+          : {
+              durationSeconds: authoritativeSeconds,
+              serverTimerAvailable: true,
+            }),
+        ...(curriculumLessonId ? { curriculumLessonId } : {}),
         spokenSeconds: speechSummary.spokenSeconds,
         transcriptCount: speechSummary.transcriptCount,
         captureOnlyCount: speechSummary.captureOnlyCount,
       },
     );
+    setClosing(false);
     if (result.ok) {
-      toast("Session close. La tige s'épaissit.");
+      toast(
+        authoritativeSeconds === null
+          ? "Session close. Pratique enregistrée localement ; le temps n'est pas certifié."
+          : "Session close. La tige s'épaissit.",
+      );
       setCeremonyOpen(true);
     } else {
       navigate({ to: "/osez" });
@@ -276,12 +316,37 @@ function SpeakRoom() {
 
             <Button
               className="mt-8 h-12 w-full bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => {
-                track("speak_started", { roomId: room.id, seed: room.seed, source });
+              disabled={closing}
+              onClick={async () => {
+                if (closing) return;
+                setClosing(true);
+                let timerAvailable = true;
+                try {
+                  const session = await startSpeakSessionOnServer({
+                    data: { roomId: room.id },
+                  });
+                  setSpeakSessionId(session.id);
+                  setServerTimerAvailable(true);
+                } catch {
+                  // Practice can continue offline or during a transient outage,
+                  // but the resulting activity must remain uncertified for time.
+                  timerAvailable = false;
+                  setSpeakSessionId(null);
+                  setServerTimerAvailable(false);
+                  toast("La room s'ouvre, mais le temps ne sera pas certifié par le serveur.");
+                } finally {
+                  setClosing(false);
+                }
+                track("speak_started", {
+                  roomId: room.id,
+                  seed: room.seed,
+                  source,
+                  serverTimerAvailable: timerAvailable,
+                });
                 setStarted(true);
               }}
             >
-              Entrer dans la room
+              {closing ? "Ouverture…" : "Entrer dans la room"}
             </Button>
           </div>
         </div>
@@ -302,6 +367,12 @@ function SpeakRoom() {
             </span>{" "}
             · {yourTurns} réponse{yourTurns > 1 ? "s" : ""} enregistrée{yourTurns > 1 ? "s" : ""}
           </p>
+
+          <div className="mb-5 rounded-xl border border-border bg-surface-2/50 p-3 text-xs leading-5 text-muted">
+            {serverTimerAvailable
+              ? "Temps de session certifié par le serveur."
+              : "Temps de session non certifié : la pratique reste disponible, mais aucun crédit de durée ne sera attribué."}
+          </div>
 
           <div className="mt-8 space-y-3">
             <Surface className="border border-primary/15 bg-primary/5">
@@ -326,8 +397,8 @@ function SpeakRoom() {
             </Surface>
           </div>
 
-          <Button className="mt-8 h-12 w-full" onClick={finish}>
-            Clore la session
+          <Button className="mt-8 h-12 w-full" disabled={closing} onClick={() => void finish()}>
+            {closing ? "Clôture…" : "Clore la session"}
           </Button>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <Button variant="secondary" onClick={() => void reshuffle()}>
@@ -451,6 +522,18 @@ function SpeakRoom() {
                   }
                 }
                 setSpeechSummary((summary) => appendSpeechTurn(summary, evidence));
+                const transcript = evidence.transcript;
+                if (evidence.assessment === "transcript" && transcript) {
+                  setRoom((currentRoom) =>
+                    currentRoom
+                      ? adaptLivingRoomAfterTranscript(
+                          currentRoom,
+                          turn + 1,
+                          transcript,
+                        )
+                      : currentRoom,
+                  );
+                }
                 track("speak_turn_evidence", {
                   roomId: room.id,
                   assessment: evidence.assessment,

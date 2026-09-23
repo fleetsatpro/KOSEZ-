@@ -27,6 +27,8 @@ import {
   startTandemSession,
   logTandemPrompt,
   endTandemSession,
+  startSpeakSession,
+  endSpeakSession,
 } from "./domain.server";
 import type { JsonObject } from "./backend.server";
 
@@ -151,6 +153,30 @@ export const endTandemSessionOnServer = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) =>
     endTandemSession(context.userId, data.sessionId, data.status),
+  );
+
+
+export const startSpeakSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      roomId: z.string().trim().min(1).max(200),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    startSpeakSession(context.userId, data.roomId),
+  );
+
+export const endSpeakSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      sessionId: z.string().uuid(),
+      status: z.enum(["completed", "cancelled"]),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    endSpeakSession(context.userId, data.sessionId, data.status),
   );
 
 

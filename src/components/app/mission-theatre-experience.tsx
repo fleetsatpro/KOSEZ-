@@ -10,12 +10,13 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BlossomPlant } from "@/components/app/plant";
-import { Eyebrow, Page, Surface, Wordmark } from "@/components/app/primitives";
+import { Eyebrow, Page, Wordmark } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   LEARNER_MEMORY,
-  missionForLevel,
+  missionForId,
+  missionsForLevel,
   planAllows,
 } from "@/lib/blossom/data";
 import {
@@ -447,7 +448,7 @@ function GrowthCeremony({
   );
 }
 
-export function MissionTheatreExperience() {
+export function MissionTheatreExperience({ missionId, curriculumLessonId }: { missionId?: string; curriculumLessonId?: string }) {
   const navigate = useNavigate();
   const log = useBlossom((state) => state.activityLog);
   const attempts = useBlossom((state) => state.pronlabAttempts);
@@ -461,7 +462,7 @@ export function MissionTheatreExperience() {
   const completeMissionSession = useBlossom((state) => state.completeMissionSession);
   const reopenMissionSession = useBlossom((state) => state.reopenMissionSession);
 
-  const todayMission = missionForLevel(learner.level);
+  const todayMission = missionForId(missionId, learner.level);
   const session = sessions[todayMission.id];
   const run = activeMissionRun(session);
   const completedRuns = session?.runs.filter((item) => item.completedAt) ?? [];
@@ -472,7 +473,6 @@ export function MissionTheatreExperience() {
   const history = summariseMissionHistory(session?.runs ?? []);
   const recommendedChallenge = nextMissionChallenge(previousEvaluation?.outcome);
   const already = hasSource(log, todayMission.id);
-  const journey = journeySnapshot(log);
   const reducedMotion = useReducedMotion();
 
   const [step, setStep] = useState<MissionStep>(() => missionStepFromRun(run));
@@ -564,7 +564,7 @@ export function MissionTheatreExperience() {
 
   function finishSession() {
     const before = journeySnapshot(useBlossom.getState().activityLog);
-    const result = completeMissionSession(todayMission.id);
+    const result = completeMissionSession(todayMission.id, curriculumLessonId);
     if (result.reason === "already") {
       navigate({ to: "/" });
       return;
@@ -636,6 +636,63 @@ export function MissionTheatreExperience() {
           onChallenge={setChallenge}
           onStart={startSession}
         />
+
+        <Page className="max-w-[1240px] bg-bg pb-20 lg:pb-28">
+          <section className="border-t border-border py-12 sm:py-16">
+            <div className="max-w-3xl">
+              <Eyebrow>Banque de terrains</Eyebrow>
+              <h2 className="mt-3 font-display text-3xl tracking-tight sm:text-4xl">
+                Ne pas répéter toujours la même scène.
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-muted sm:text-base">
+                Choisissez une intention différente. La progression vient aussi
+                du changement de personne, de pression et de contexte.
+              </p>
+            </div>
+
+            <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {missionsForLevel(learner.level).map((mission) => {
+                const selected = mission.id === todayMission.id;
+                const completed = hasSource(log, mission.id);
+                return (
+                  <Link
+                    key={mission.id}
+                    to="/mission"
+                    search={{ missionId: mission.id, lessonId: undefined }}
+                    className={[
+                      "rounded-2xl border p-4 shadow-[var(--shadow-border)] transition",
+                      selected
+                        ? "border-primary/35 bg-primary/7"
+                        : "border-border bg-surface hover:-translate-y-0.5 hover:border-primary/20",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">
+                          {mission.level} · {mission.durationMin} min
+                        </p>
+                        <p className="mt-2 font-display text-xl leading-tight">
+                          {mission.title}
+                        </p>
+                      </div>
+                      {completed ? (
+                        <Badge className="border-primary/20 bg-primary/10 text-primary">
+                          Ancrée
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-muted">
+                      {mission.prompt}
+                    </p>
+                    <p className="mt-4 text-xs text-subtle">
+                      {mission.place}
+                    </p>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        </Page>
       </div>
     );
   }

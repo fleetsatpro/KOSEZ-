@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Building2, Users } from "lucide-react";
-import { toast } from "sonner";
 import { Eyebrow, Initials, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -126,8 +125,8 @@ export function OrgStudio() {
           <p className="mt-2 font-display text-4xl tabular-nums text-primary">{workspace.stats.activeLearnersThisWeek}</p>
         </Surface>
         <Surface>
-          <p className="text-xs uppercase tracking-[0.16em] text-muted">Parole · 7 jours</p>
-          <p className="mt-2 font-display text-4xl tabular-nums">{workspace.stats.speakingMinutesThisWeek}<span className="ml-1 text-sm text-muted">min</span></p>
+          <p className="text-xs uppercase tracking-[0.16em] text-muted">Pratique · 7 jours</p>
+          <p className="mt-2 font-display text-4xl tabular-nums">{workspace.stats.practiceMinutesThisWeek}<span className="ml-1 text-sm text-muted">min</span></p>
         </Surface>
       </div>
 

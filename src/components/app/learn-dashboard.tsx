@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 import {
   ArrowRight,
@@ -71,6 +72,63 @@ const PILLARS = [
   },
 ] as const;
 
+function NextActionLink({
+  action,
+  className,
+  children,
+}: {
+  action: ReturnType<typeof buildLearningIntelligence>["next"];
+  className?: string;
+  children: ReactNode;
+}) {
+  switch (action.kind) {
+    case "pronlab":
+      return (
+        <Link to="/pronlab" className={className}>
+          {children}
+        </Link>
+      );
+    case "library":
+      return (
+        <Link to="/library" className={className}>
+          {children}
+        </Link>
+      );
+    case "mission":
+      return (
+        <Link to="/mission" search={{ missionId: action.targetId, lessonId: undefined }} className={className}>
+          {children}
+        </Link>
+      );
+    case "speak":
+      return (
+        <Link
+          to={action.targetId ? "/osez/$id" : "/osez"}
+          params={action.targetId ? { id: action.targetId } : undefined}
+          className={className}
+        >
+          {children}
+        </Link>
+      );
+    case "labs":
+      return (
+        <Link
+          to="/learn/labs"
+          search={{ lab: action.labKind, task: action.targetId, lessonId: undefined }}
+          className={className}
+        >
+          {children}
+        </Link>
+      );
+    case "review":
+      return (
+        <Link to="/learn/review" search={{ focus: action.targetId, lessonId: undefined }} className={className}>
+          {children}
+        </Link>
+      );
+  }
+}
+
 export function LearnDashboard() {
   const enrolledIds = useBlossom((s) => s.enrolledIds);
   const bookingStatuses = useBlossom((s) => s.bookingStatuses);
@@ -104,16 +162,6 @@ export function LearnDashboard() {
     submissions,
   );
   const nextAction = intelligence.next;
-  const nextActionHref =
-    nextAction.kind === "pronlab"
-      ? "/pronlab"
-      : nextAction.kind === "library"
-        ? "/library"
-        : nextAction.kind === "mission"
-          ? "/mission"
-          : nextAction.kind === "labs"
-            ? "/learn/labs"
-            : "/learn/review";
 
   const sets = setsForLanguage(useBlossom((s) => s.languageId));
   const libraryOk = planAllows(plan, "library");
@@ -206,7 +254,7 @@ export function LearnDashboard() {
               size="lg"
               className="mt-6 bg-primary-foreground text-fg hover:bg-primary-foreground/90"
             >
-              <Link to="/pronlab/$setId" params={{ setId: activeSet.id }}>
+              <Link to="/pronlab/$setId" params={{ setId: activeSet.id }} search={{ lessonId: undefined }}>
                 Reprendre
                 <ArrowRight className="size-4" />
               </Link>
@@ -217,7 +265,7 @@ export function LearnDashboard() {
               size="lg"
               className="mt-6 bg-primary-foreground text-fg hover:bg-primary-foreground/90"
             >
-              <Link to="/library/$id" params={{ id: LIBRARY[0].id }}>
+              <Link to="/library/$id" params={{ id: LIBRARY[0].id }} search={{ lessonId: undefined }}>
                 Lire
                 <ArrowRight className="size-4" />
               </Link>
@@ -296,7 +344,7 @@ export function LearnDashboard() {
           <Eyebrow>Mémoire · maintenant</Eyebrow>
           <p className="mt-3 font-display text-4xl tabular-nums text-primary">{intelligence.dueNow}</p>
           <p className="mt-1 text-xs text-muted">rappel{intelligence.dueNow === 1 ? "" : "s"} dû{intelligence.dueNow === 1 ? "" : "s"} aujourd'hui</p>
-          <Link to="/learn/review" className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+          <Link to="/learn/review" search={{ focus: undefined, lessonId: undefined }} className="mt-5 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
             Ouvrir la mémoire <ArrowRight className="size-3.5" />
           </Link>
         </article>
@@ -453,7 +501,7 @@ export function LearnDashboard() {
 
           <div className="mt-5 border-t border-border pt-4">
             <p className="text-xs text-muted">
-              {CATALOGUE.length} formats structurent actuellement le catalogue.
+              {CATALOGUE.length} formats structurent actuellement le catalogue, en complément des pratiques libres.
             </p>
           </div>
         </article>
@@ -555,8 +603,8 @@ export function LearnDashboard() {
       </section>
 
       <section className="mt-10 grid gap-4 lg:grid-cols-[1.15fr_.85fr]">
-        <Link
-          to={nextActionHref}
+        <NextActionLink
+          action={nextAction}
           className="group relative overflow-hidden rounded-2xl bg-fg p-6 text-primary-foreground shadow-[var(--shadow-border)] sm:p-7"
         >
           <div className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full border border-primary-foreground/10" />
@@ -572,7 +620,7 @@ export function LearnDashboard() {
               Réviser maintenant <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
             </span>
           </div>
-        </Link>
+        </NextActionLink>
 
         <Surface>
           <Eyebrow>Profil vivant</Eyebrow>
@@ -607,9 +655,12 @@ export function LearnDashboard() {
           <Link to="/learn/curriculum" className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
             <GraduationCap className="size-4 text-primary" />
             <p className="mt-5 font-display text-xl tracking-tight">Parcours</p>
-            <p className="mt-1 text-xs text-muted">{CURRICULUM_UNITS.length} unités A2</p>
+            <p className="mt-1 text-xs text-muted">
+              {CURRICULUM_UNITS.length} unités ·{" "}
+              {CURRICULUM_UNITS.reduce((total, unit) => total + unit.lessons.length, 0)} pratiques · A1 → B1
+            </p>
           </Link>
-          <Link to="/learn/review" className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
+          <Link to="/learn/review" search={{ focus: undefined, lessonId: undefined }} className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
             <RotateCcw className="size-4 text-primary" />
             <p className="mt-5 font-display text-xl tracking-tight">Révision</p>
             <p className="mt-1 text-xs text-muted">Mémoire en circulation</p>
@@ -626,7 +677,7 @@ export function LearnDashboard() {
             <p className="mt-5 font-display text-xl tracking-tight">Historique</p>
             <p className="mt-1 text-xs text-muted">Actions + preuves</p>
           </Link>
-          <Link to="/learn/labs" className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
+          <Link to="/learn/labs" search={{ lab: undefined, task: undefined, lessonId: undefined }} className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
             <FlaskConical className="size-4 text-primary" />
             <p className="mt-5 font-display text-xl tracking-tight">Labs</p>
             <p className="mt-1 text-xs text-muted">Grammaire · écoute · écrit</p>
