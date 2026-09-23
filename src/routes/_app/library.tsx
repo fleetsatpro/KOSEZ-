@@ -3,8 +3,11 @@ import { ArrowLeft, ArrowRight, BookMarked, Clock } from "lucide-react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LIBRARY, planAllows } from "@/lib/blossom/data";
+import { LIBRARY as LIBRARY_CORE, planAllows } from "@/lib/blossom/data";
+import { EXTRA_LIBRARY } from "@/lib/blossom/library-extra";
 import { useBlossom } from "@/lib/blossom/store";
+
+const LIBRARY = [...LIBRARY_CORE, ...EXTRA_LIBRARY];
 
 export const Route = createFileRoute("/_app/library")({
   component: LibraryPage,
@@ -12,7 +15,6 @@ export const Route = createFileRoute("/_app/library")({
 
 /**
  * Library is a reading room — not a content dump.
- * Three texts this week · touch a word · it feeds missions later.
  */
 function LibraryPage() {
   const pathname = useRouterState({
@@ -46,12 +48,6 @@ function LibraryIndex() {
             ludothèque s'ouvrent avec Premium — le hub physique reste
             Saint-Pierre.
           </p>
-          <Surface className="mt-8 !p-5">
-            <p className="text-sm leading-6 text-muted">
-              Trois textes, pas un dictionnaire infini. Assez pour cette
-              semaine — et pour nourrir les missions qui suivent.
-            </p>
-          </Surface>
         </div>
       </Page>
     );
@@ -72,8 +68,8 @@ function LibraryIndex() {
           La ludothèque, ici
         </h1>
         <p className="mt-3 text-sm leading-7 text-muted sm:text-base">
-          Touchez un mot, gardez-le. Il nourrira les missions plus tard. Pas
-          un dictionnaire infini — trois textes, assez pour cette semaine.
+          Touchez un mot, gardez-le. Pas un dictionnaire infini — des textes
+          courts à lire à voix haute, ancrés ici.
         </p>
       </header>
 
@@ -121,9 +117,7 @@ function LibraryIndex() {
               </Badge>
             </div>
             <div className="p-5">
-              <h2 className="font-display text-2xl tracking-tight">
-                {doc.title}
-              </h2>
+              <h2 className="font-display text-2xl tracking-tight">{doc.title}</h2>
               <p className="mt-2 text-sm leading-6 text-muted">{doc.blurb}</p>
               <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/50 pt-4">
                 <span className="inline-flex items-center gap-1.5 text-xs text-subtle">
@@ -141,8 +135,7 @@ function LibraryIndex() {
       </div>
 
       <p className="mt-10 text-center text-xs leading-5 text-subtle">
-        Les mots gardés ne vivent pas dans une liste infinie — ils reviennent
-        dans les missions et les Speak rooms.
+        Les mots gardés reviennent dans les missions et les Speak rooms.
       </p>
     </Page>
   );
