@@ -1531,6 +1531,45 @@ export const PRONLAB_SETS: PronlabSetDef[] = [
       },
     ],
   },
+  {
+    id: "set-pt-starter",
+    title: "Português · premiers gestes",
+    blurb: "Saluer, demander, choisir : quatre phrases pour commencer à agir.",
+    kind: "sentence",
+    language: "pt",
+    items: [
+      { id: "pt-1", phrase: "Bom dia.", hint: "Gardez les deux mots légers et naturels.", ipa: "/bõ ˈdi.a/", kind: "sentence", focus: "salutation", level: "A1", strength: "Le contact est immédiat.", tip: "Le premier mot reste court ; ne forcez pas le m final.", model: "Bom dia.", problemSegment: "dia" },
+      { id: "pt-2", phrase: "Quanto custa?", hint: "Question courte pour demander un prix.", ipa: "/ˈkwɐ̃tu ˈkuʃtɐ/", kind: "sentence", focus: "question", level: "A1", strength: "La demande est claire.", tip: "Gardez custa bref et net.", model: "Quanto custa?", problemSegment: "Quanto" },
+      { id: "pt-3", phrase: "Eu gostaria de um café.", hint: "Le groupe verbal doit rester fluide.", ipa: "/ew ɡɔʃtɐˈɾiɐ dɨ ũ kɐˈfɛ/", kind: "sentence", focus: "demande polie", level: "A2", strength: "La demande reste simple.", tip: "Ne donnez pas le même poids à chaque mot.", model: "Eu gostaria de um café.", problemSegment: "gostaria" },
+      { id: "pt-4", phrase: "Pode repetir, por favor?", hint: "Le but est de réparer sans abandonner.", ipa: "/ˈpɔdɨ ʁɨpɨˈtiɾ puɾ fɐˈvoɾ/", kind: "sentence", focus: "repair", level: "A2", strength: "Vous récupérez l'échange.", tip: "Répéter doucement suffit ; la vitesse n'est pas l'objectif.", model: "Pode repetir, por favor?", problemSegment: "repetir" },
+    ],
+  },
+  {
+    id: "set-it-starter",
+    title: "Italiano · premiers gestes",
+    blurb: "Entrer dans l'échange, choisir, demander et réparer.",
+    kind: "sentence",
+    language: "it",
+    items: [
+      { id: "it-1", phrase: "Buongiorno.", hint: "Une salutation simple, posée.", ipa: "/bwonˈdʒorno/", kind: "sentence", focus: "salutation", level: "A1", strength: "Le contact est net.", tip: "Gardez la première partie liée.", model: "Buongiorno.", problemSegment: "giorno" },
+      { id: "it-2", phrase: "Quanto costa?", hint: "La question reste courte.", ipa: "/ˈkwanto ˈkɔsta/", kind: "sentence", focus: "question", level: "A1", strength: "Le prix est demandé sans détour.", tip: "Costa porte le mouvement final.", model: "Quanto costa?", problemSegment: "costa" },
+      { id: "it-3", phrase: "Vorrei un caffè, per favore.", hint: "Vorrei ouvre une demande polie.", ipa: "/vorˈrɛi un kafˈfɛ per faˈvoːre/", kind: "sentence", focus: "demande polie", level: "A2", strength: "La demande est naturelle.", tip: "Laissez la phrase avancer vers caffè.", model: "Vorrei un caffè, per favore.", problemSegment: "vorrei" },
+      { id: "it-4", phrase: "Può ripetere, per favore?", hint: "Utilisez la répétition comme stratégie normale.", ipa: "/pwɔ ripeˈtere per faˈvoːre/", kind: "sentence", focus: "repair", level: "A2", strength: "Vous gardez le fil.", tip: "Ripetere reçoit l'accent principal.", model: "Può ripetere, per favore?", problemSegment: "ripetere" },
+    ],
+  },
+  {
+    id: "set-de-starter",
+    title: "Deutsch · premiers gestes",
+    blurb: "Saluer, demander un prix, choisir et demander de répéter.",
+    kind: "sentence",
+    language: "de",
+    items: [
+      { id: "de-1", phrase: "Guten Morgen.", hint: "Deux mots, une seule ouverture.", ipa: "/ˈɡuːtn̩ ˈmɔʁɡn̩/", kind: "sentence", focus: "salutation", level: "A1", strength: "Le contact est direct.", tip: "Guten reste léger devant Morgen.", model: "Guten Morgen.", problemSegment: "Guten" },
+      { id: "de-2", phrase: "Wie viel kostet das?", hint: "Gardez die Frage structurée et courte.", ipa: "/viː fiːl ˈkɔstət das/", kind: "sentence", focus: "question", level: "A1", strength: "La question arrive entière.", tip: "Wie viel forme un groupe, puis kostet.", model: "Wie viel kostet das?", problemSegment: "Wie viel" },
+      { id: "de-3", phrase: "Ich hätte gern einen Kaffee.", hint: "Hätte gern exprime une demande polie.", ipa: "/ɪç ˈhɛtə ɡɛʁn̩ ˈaɪnən ˈkafeː/", kind: "sentence", focus: "demande polie", level: "A2", strength: "La demande garde une forme naturelle.", tip: "Hätte gern reste lié.", model: "Ich hätte gern einen Kaffee.", problemSegment: "hätte gern" },
+      { id: "de-4", phrase: "Können Sie das bitte wiederholen?", hint: "Demander de répéter fait partie de la conversation.", ipa: "/ˈkœnən ziː das ˈbɪtə ˌviːdɐˈhoːlən/", kind: "sentence", focus: "repair", level: "A2", strength: "Vous réparez sans vous excuser longuement.", tip: "Wiederholen porte le poids final.", model: "Können Sie das bitte wiederholen?", problemSegment: "wiederholen" },
+    ],
+  },
 export const PRONLAB_SET: PronlabItem[] = PRONLAB_SETS[0]!.items;
 
 export function allPronlabItems(): PronlabItem[] {
@@ -2009,9 +2048,9 @@ export const LANGUAGE_MODULES = [
   { id: "en", name: "English", status: "actif" },
   { id: "cr", name: "Créole réunionnais", status: "module centre" },
   { id: "es", name: "Español", status: "même moteur" },
-  { id: "pt", name: "Português", status: "même moteur" },
-  { id: "it", name: "Italiano", status: "même moteur" },
-  { id: "de", name: "Deutsch", status: "même moteur" },
+  { id: "pt", name: "Português", status: "starter A1–A2" },
+  { id: "it", name: "Italiano", status: "starter A1–A2" },
+  { id: "de", name: "Deutsch", status: "starter A1–A2" },
   { id: "lsf", name: "LSF", status: "même moteur" },
 ];
 
