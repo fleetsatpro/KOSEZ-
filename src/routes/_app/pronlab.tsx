@@ -214,7 +214,7 @@ function PronlabHub() {
               </p>
               {unlocked ? (
                 <Button asChild className="mt-5">
-                  <Link to="/pronlab/$setId" params={{ setId: set.id }}>
+                  <Link to="/pronlab/$setId" params={{ setId: set.id }} search={{ lessonId: undefined }}>
                     Entrer dans le set
                     <ArrowRight className="size-4" />
                   </Link>
