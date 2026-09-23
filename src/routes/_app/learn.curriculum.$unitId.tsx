@@ -13,6 +13,7 @@ import {
   lessonDone,
 } from "@/lib/blossom/learning-os";
 import { useBlossom } from "@/lib/blossom/store";
+import { setCurriculumLessonContext } from "@/lib/blossom/curriculum-context";
 
 export const Route = createFileRoute("/_app/learn/curriculum/$unitId")({
   component: CurriculumUnit,
@@ -50,7 +51,6 @@ function CurriculumUnit() {
   const log = useBlossom((s) => s.activityLog);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const vocabulary = useBlossom((s) => s.vocabulary);
-  const completeActivity = useBlossom((s) => s.completeActivity);
   const profile = buildSkillProfile(log, attempts, vocabulary);
 
   if (!unit) {
@@ -129,7 +129,11 @@ function CurriculumUnit() {
             const done = lessonDone(lesson, log);
             return (
               <div key={lesson.id} className="rounded-2xl bg-surface p-5 shadow-[var(--shadow-border)]">
-                <Link to={href} className="group block">
+                <Link
+                  to={href}
+                  className="group block"
+                  onClick={() => setCurriculumLessonContext(lesson.id)}
+                >
                   <div className="flex items-start gap-4">
                     <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                       <Icon className="size-5" />
@@ -138,8 +142,21 @@ function CurriculumUnit() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">0{index + 1} · {lesson.kind}</span>
                         <span className="text-xs tabular-nums text-muted">{lesson.minutes} min</span>
-                        {done ? <Badge className="border-primary/20 bg-primary/10 text-primary">trace enregistrée</Badge> : null}
+                        {done ? <Badge className="border-primary/20 bg-primary/10 text-primary">preuve enregistrée</Badge> : null}
                       </div>
+                      <h3 className="mt-2 font-display text-2xl tracking-tight">{lesson.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-muted">{lesson.description}</p>
+                    </div>
+                    <ArrowRight className="mt-2 size-4 shrink-0 text-subtle transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                  </div>
+                </Link>
+                <div className="mt-4 border-t border-border pt-4">
+                  <p className="text-xs leading-5 text-subtle">
+                    {done
+                      ? "Cette étape possède maintenant une preuve issue de l’activité reliée."
+                      : "Ouvrez l’activité et terminez-la pour créer la preuve. Une simple déclaration ne complète plus l’étape."}
+                  </p>
+                </div>              </div>
                       <h3 className="mt-2 font-display text-2xl tracking-tight">{lesson.title}</h3>
                       <p className="mt-2 text-sm leading-6 text-muted">{lesson.description}</p>
                     </div>
