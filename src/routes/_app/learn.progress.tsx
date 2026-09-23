@@ -98,20 +98,44 @@ function ProgressPage() {
             <h2 className="mt-2 font-display text-2xl tracking-tight">{intelligence.next.title}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{intelligence.next.body}</p>
           </div>
-          <Link
-            to={
-              intelligence.next.kind === "review"
-                ? "/learn/review"
-                : intelligence.next.kind === "mission"
-                  ? "/mission"
-                  : intelligence.next.kind === "pronlab"
-                    ? "/pronlab"
-                    : intelligence.next.kind === "library"
-                      ? "/library"
-                      : "/learn/labs"
-            }
-            className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
-          >
+          {intelligence.next.kind === "review" ? (
+            <Link
+              to="/learn/review"
+              search={{ focus: intelligence.next.targetId }}
+              className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
+            >
+              Agir maintenant <ArrowRight className="size-3.5" />
+            </Link>
+          ) : intelligence.next.kind === "labs" ? (
+            <Link
+              to="/learn/labs"
+              search={{ lab: intelligence.next.labKind, task: intelligence.next.targetId }}
+              className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
+            >
+              Agir maintenant <ArrowRight className="size-3.5" />
+            </Link>
+          ) : intelligence.next.kind === "mission" ? (
+            <Link
+              to="/mission"
+              search={{ missionId: intelligence.next.targetId }}
+              className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
+            >
+              Agir maintenant <ArrowRight className="size-3.5" />
+            </Link>
+          ) : (
+            <Link
+              to={
+                intelligence.next.kind === "pronlab"
+                  ? "/pronlab"
+                  : intelligence.next.kind === "library"
+                    ? "/library"
+                    : "/learn/labs"
+              }
+              className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
+            >
+              Agir maintenant <ArrowRight className="size-3.5" />
+            </Link>
+          )}
             Agir maintenant <ArrowRight className="size-3.5" />
           </Link>
         </div>
