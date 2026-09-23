@@ -57,6 +57,7 @@ export type LearningIntelligence = {
     body: string;
     kind: "pronlab" | "mission" | "library" | "review" | "labs";
     labKind?: "grammar" | "listening" | "writing";
+    targetId?: string;
     reasons: string[];
   };
 };
@@ -254,6 +255,7 @@ function recommendation(
       title: urgent.title,
       body: urgent.reason,
       kind: "review",
+      targetId: urgent.sourceKey,
       reasons: [
         "Le système a identifié une révision due.",
         `${urgent.intervalDays} jour(s) depuis le dernier intervalle planifié.`,
@@ -268,6 +270,7 @@ function recommendation(
       title: due.title,
       body: due.reason,
       kind: "review",
+      targetId: due.sourceKey,
       reasons: [
         `${plan.due.length} rappel(s) sont dus aujourd'hui.`,
         due.kind === "pronunciation" ? "La trace vient directement de Pron'Lab." : "Le rappel s'appuie sur votre historique.",
@@ -283,6 +286,7 @@ function recommendation(
       body: "Votre profil ne contient pas encore de preuve directe en production écrite.",
       kind: "labs",
       labKind: "writing",
+      targetId: "write-after-class",
       reasons: [
         "Aucune production écrite enregistrée.",
         "Un lab d’écriture de quelques minutes suffit pour créer cette première preuve.",
