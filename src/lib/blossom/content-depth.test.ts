@@ -165,3 +165,27 @@ test("all curriculum speak resources target supported room archetypes", () => {
     }
   }
 });
+
+
+test("A1 pathway is a complete evidence-bearing bridge", () => {
+  const a1Objectives = CAN_DO_OBJECTIVES.filter((item) => item.level === "A1");
+  const a1Units = CURRICULUM_UNITS.filter((unit) => unit.level === "A1");
+  assert.ok(a1Objectives.length >= 7);
+  assert.equal(a1Units.length, 3);
+  assert.ok(a1Units.reduce((sum, unit) => sum + unit.lessons.length, 0) >= 12);
+  for (const unit of a1Units) {
+    for (const lesson of unit.lessons) {
+      const resource = curriculumResource(lesson);
+      assert.ok(resource.id.length > 0, lesson.id + " has no A1 resource target");
+    }
+  }
+});
+
+test("immersion has a real reflective transfer contract", () => {
+  assert.ok(IMMERSION.challenges.length >= 4);
+  for (const challenge of IMMERSION.challenges) {
+    assert.ok(challenge.action.length >= 30);
+    assert.ok(challenge.languageCue.length >= 8);
+    assert.ok(challenge.stretch.length >= 20);
+  }
+});
