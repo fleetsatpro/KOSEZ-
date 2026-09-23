@@ -658,7 +658,7 @@ export function MissionTheatreExperience({ missionId, curriculumLessonId }: { mi
                   <Link
                     key={mission.id}
                     to="/mission"
-                    search={{ missionId: mission.id }}
+                    search={{ missionId: mission.id, lessonId: undefined }}
                     className={[
                       "rounded-2xl border p-4 shadow-[var(--shadow-border)] transition",
                       selected
