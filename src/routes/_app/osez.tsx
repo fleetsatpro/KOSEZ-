@@ -18,6 +18,8 @@ import { hasSource } from "@/lib/blossom/engine";
 import {
   courageDaysFromLog,
   courageRibbon,
+  causalNextGesture,
+  computeMinerals,
   todaysPulseDare,
 } from "@/lib/blossom/organism";
 import { generateRoomCatalog } from "@/lib/blossom/speak-engine";
@@ -44,6 +46,10 @@ const TOPIC_SUGGESTIONS = [
   "Négocier le prix des gousses",
   "Expliquer un retard de vol",
   "Inviter quelqu'un à marcher au front de mer",
+  "Décrire mon quartier à Saint-Denis",
+  "Réserver une table pour deux",
+  "Demander un conseil à un commerçant",
+  "Parler de la météo cyclonique",
 ];
 
 function OsezPage() {
@@ -64,6 +70,8 @@ function OsezHub() {
   const courageDays = courageDaysFromLog(log);
   const cells = courageRibbon(courageDays);
   const spoken = cells.filter(Boolean).length;
+  const minerals = useMemo(() => computeMinerals(log), [log]);
+  const nextGesture = causalNextGesture(minerals);
 
   const [topic, setTopic] = useState("");
   const [building, setBuilding] = useState(false);
@@ -145,13 +153,32 @@ function OsezHub() {
         </ul>
       </section>
 
+      <section
+        className="mt-8 rounded-2xl border border-border/70 bg-surface p-5 shadow-[var(--shadow-border)] sm:p-6"
+        aria-label="Prochain geste causal"
+      >
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/80">
+          Prochain geste · {nextGesture.mineral}
+        </p>
+        <p className="mt-2 font-display text-xl tracking-tight text-fg sm:text-2xl">
+          {nextGesture.line}
+        </p>
+        <Link
+          to={nextGesture.door as "/osez"}
+          className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary hover:underline"
+        >
+          Ouvrir la porte
+          <ArrowRight className="size-3.5" />
+        </Link>
+      </section>
+
       <section className="mt-8 rounded-2xl border border-primary/25 bg-primary/8 p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-2">
           <Wand2 className="size-4 text-primary" />
           <Eyebrow className="text-primary">Sujet libre</Eyebrow>
         </div>
         <h2 className="mt-3 font-display text-2xl tracking-tight sm:text-3xl">
-          N&apos;importe quel sujet
+          N'importe quel sujet
         </h2>
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
           Écrivez ce que vous voulez travailler. Une room unique se compose
@@ -198,16 +225,17 @@ function OsezHub() {
       </section>
 
       <div className="mt-8 grid gap-4 lg:grid-cols-3">
-        <Link
-          to="/osez/pulse"
-          className="group relative flex flex-col overflow-hidden rounded-2xl border border-primary/25 bg-primary/8 p-5 shadow-[var(--shadow-border)] transition-transform hover:-translate-y-0.5 sm:p-6"
+        <button
+          type="button"
+          onClick={() => launchTopic(dare.line)}
+          className="group relative flex flex-col overflow-hidden rounded-2xl border border-primary/25 bg-primary/8 p-5 text-left shadow-[var(--shadow-border)] transition-transform hover:-translate-y-0.5 sm:p-6"
         >
           <div className="flex items-start justify-between gap-3">
             <span className="flex size-11 items-center justify-center rounded-xl bg-primary/20 text-primary">
               <Sparkles className="size-4" strokeWidth={1.7} />
             </span>
             <span className="rounded-full bg-primary/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">
-              Aujourd&apos;hui
+              Aujourd'hui
             </span>
           </div>
           <h2 className="mt-5 font-display text-2xl tracking-tight sm:text-3xl">
@@ -220,11 +248,11 @@ function OsezHub() {
               {dare.seconds}s · un acte
             </span>
             <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-              Entrer
+              Lancer en room
               <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
             </span>
           </div>
-        </Link>
+        </button>
 
         <div className="flex flex-col rounded-2xl border border-border/70 bg-surface p-5 shadow-[var(--shadow-border)] sm:p-6">
           <span className="flex size-11 items-center justify-center rounded-xl bg-surface-2 text-primary">
@@ -289,87 +317,107 @@ function OsezHub() {
         </p>
       </div>
 
-      <Link
-        to="/osez/$id"
-        params={{ id: "live" }}
-        className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-primary/25 bg-primary/8 p-5 transition-transform hover:-translate-y-0.5"
-      >
-        <div className="flex items-start gap-3">
-          <span className="flex size-10 items-center justify-center rounded-xl bg-primary/20 text-primary">
-            <RefreshCw className="size-4" strokeWidth={1.7} />
-          </span>
-          <div>
-            <p className="font-display text-xl tracking-tight">Room libre</p>
-            <p className="mt-1 text-sm text-muted">
-              Une room composée pour aujourd&apos;hui — lieu, pression, ancrage.
-            </p>
+      {rooms.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-border/60 bg-surface/80 p-8 text-center">
+          <p className="font-display text-2xl tracking-tight">
+            Le catalogue se compose
+          </p>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted">
+            En attendant, lancez un Pulse ou un sujet libre — une room unique se
+            construit autour de votre geste.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Button onClick={() => launchTopic(dare.line)}>Pulse du jour</Button>
+            <Button variant="secondary" onClick={() => launchTopic("Présentez-vous")}>
+              Room libre
+            </Button>
           </div>
         </div>
-        <ArrowRight className="size-4 shrink-0 text-primary" />
-      </Link>
+      ) : (
+        <>
+          <Link
+            to="/osez/$id"
+            params={{ id: "live" }}
+            className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-primary/25 bg-primary/8 p-5 transition-transform hover:-translate-y-0.5"
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-primary/20 text-primary">
+                <RefreshCw className="size-4" strokeWidth={1.7} />
+              </span>
+              <div>
+                <p className="font-display text-xl tracking-tight">Room libre</p>
+                <p className="mt-1 text-sm text-muted">
+                  Une room composée pour aujourd'hui — lieu, pression, ancrage.
+                </p>
+              </div>
+            </div>
+            <ArrowRight className="size-4 shrink-0 text-primary" />
+          </Link>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        {rooms.map((scene) => {
-          const done = hasSource(log, `speak-${scene.id}`);
-          return (
-            <Link
-              key={scene.id}
-              to="/osez/$id"
-              params={{ id: scene.place.archetype }}
-              className="group overflow-hidden rounded-2xl border border-border/50 bg-surface shadow-[var(--shadow-border)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5"
-            >
-              <div className="relative aspect-[16/10] overflow-hidden">
-                <img
-                  src={scene.image}
-                  alt=""
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-                />
-                <div
-                  className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
-                  aria-hidden
-                />
-                <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-4">
-                  <div className="min-w-0">
-                    <h3 className="font-display text-2xl text-white">
-                      {scene.titleFr}
-                    </h3>
-                    {scene.event ? (
-                      <p className="mt-0.5 truncate text-[11px] text-primary/90">
-                        {scene.event.title}
-                      </p>
-                    ) : null}
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {rooms.map((scene) => {
+              const done = hasSource(log, `speak-${scene.id}`);
+              return (
+                <Link
+                  key={scene.id}
+                  to="/osez/$id"
+                  params={{ id: scene.place.archetype }}
+                  className="group overflow-hidden rounded-2xl border border-border/50 bg-surface shadow-[var(--shadow-border)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5"
+                >
+                  <div className="relative aspect-[16/10] overflow-hidden">
+                    <img
+                      src={scene.image}
+                      alt=""
+                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                    />
+                    <div
+                      className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
+                      aria-hidden
+                    />
+                    <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-4">
+                      <div className="min-w-0">
+                        <h3 className="font-display text-2xl text-white">
+                          {scene.titleFr}
+                        </h3>
+                        {scene.event ? (
+                          <p className="mt-0.5 truncate text-[11px] text-primary/90">
+                            {scene.event.title}
+                          </p>
+                        ) : null}
+                      </div>
+                      <Badge
+                        variant={done ? "default" : "outline"}
+                        className={cn(
+                          done && "bg-primary text-primary-foreground",
+                          !done && "border-white/30 bg-black/30 text-white",
+                        )}
+                      >
+                        {done ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Check className="size-3" /> Ancrée
+                          </span>
+                        ) : (
+                          `${scene.durationMin} min`
+                        )}
+                      </Badge>
+                    </div>
                   </div>
-                  <Badge
-                    variant={done ? "default" : "outline"}
-                    className={cn(
-                      done && "bg-primary text-primary-foreground",
-                      !done && "border-white/30 bg-black/30 text-white",
-                    )}
-                  >
-                    {done ? (
-                      <span className="inline-flex items-center gap-1">
-                        <Check className="size-3" /> Ancrée
-                      </span>
-                    ) : (
-                      `${scene.durationMin} min`
-                    )}
-                  </Badge>
-                </div>
-              </div>
-              <div className="p-4">
-                <p className="text-sm leading-6 text-muted">{scene.setting}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-subtle">
-                  <span>{scene.cast.name}</span>
-                  <span aria-hidden>·</span>
-                  <span>{scene.pressure.label}</span>
-                  <span aria-hidden>·</span>
-                  <span>{scene.turns.length} tours</span>
-                </div>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
+                  <div className="p-4">
+                    <p className="text-sm leading-6 text-muted">{scene.setting}</p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-subtle">
+                      <span>{scene.cast.name}</span>
+                      <span aria-hidden>·</span>
+                      <span>{scene.pressure.label}</span>
+                      <span aria-hidden>·</span>
+                      <span>{scene.turns.length} tours</span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </>
+      )}
     </Page>
   );
 }
