@@ -170,7 +170,7 @@ function TandemSession() {
     const activePartner = partner;
     if (!activePartner || !sessionId || closing) return;
     setClosing(true);
-    let closure;
+    let closure: Awaited<ReturnType<typeof endTandemSessionOnServer>>;
     try {
       closure = await endTandemSessionOnServer({
         data: { sessionId, status: "completed" },
