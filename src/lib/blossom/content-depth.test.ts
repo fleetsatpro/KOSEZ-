@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   CATALOGUE,
+  EVENT_DETAILS,
   EVENTS,
   IMMERSION,
   LIBRARY,
@@ -38,6 +39,17 @@ test("product depth floor remains above demo-scale content", () => {
     "curriculum regressed below 35 linked practices",
   );
   assert.ok(CAN_DO_OBJECTIVES.length >= 20, "Can-Do objective bank regressed below 20 objectives");
+});
+
+test("every published event has a real preparation brief", () => {
+  for (const event of EVENTS) {
+    const detail = EVENT_DETAILS[event.id];
+    assert.ok(detail, event.id + " has no event detail brief");
+    assert.ok(detail.purpose.length >= 40, event.id + " purpose is too thin");
+    assert.ok(detail.flow.length >= 3, event.id + " flow is too thin");
+    assert.ok(detail.prepare.length >= 1, event.id + " preparation is missing");
+    assert.ok(detail.languageMove.length >= 10, event.id + " language move is missing");
+  }
 });
 
 test("deep content ids are unique across their primary collections", () => {
