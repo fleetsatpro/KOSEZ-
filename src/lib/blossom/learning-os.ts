@@ -696,7 +696,12 @@ export function historyRows(
     at: attempt.createdAt,
     kind: "preuve" as const,
     title: `Pron'Lab · ${attempt.itemId}`,
-    detail: `${attempt.score}/100 · ${attempt.seconds}s`,
+    detail:
+      attempt.metadata?.assessment === "phonetic-provider"
+        ? `${attempt.score}/100 · ${attempt.seconds}s`
+        : attempt.metadata?.assessment === "transcript"
+          ? `Transcription · ${attempt.seconds}s`
+          : `Prise enregistrée · ${attempt.seconds}s`,
     tone: "pronunciation",
   }));
 
