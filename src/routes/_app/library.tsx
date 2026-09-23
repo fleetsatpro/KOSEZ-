@@ -73,8 +73,8 @@ function LibraryPage() {
           </p>
           <Surface className="mt-8 !p-5">
             <p className="text-sm leading-6 text-muted">
-              Trois textes, pas un dictionnaire infini. Assez pour cette
-              semaine — et pour nourrir les missions qui suivent.
+              {LIBRARY.length} textes vivants, pas un dictionnaire infini. Assez
+              pour cette semaine — et pour nourrir les missions qui suivent.
             </p>
           </Surface>
         </div>
@@ -98,7 +98,8 @@ function LibraryPage() {
         </h1>
         <p className="mt-3 text-sm leading-7 text-muted sm:text-base">
           Touchez un mot, gardez-le. Il nourrira les missions plus tard. Pas
-          un dictionnaire infini — trois textes, assez pour cette semaine.
+          un dictionnaire infini — {LIBRARY.length} textes, assez pour nourrir
+          plusieurs situations cette semaine.
         </p>
       </header>
 
