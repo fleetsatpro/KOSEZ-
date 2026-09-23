@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, BookMarked, Clock } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowLeft, ArrowRight, BookMarked, Check, Clock, Search } from "lucide-react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,12 +13,43 @@ export const Route = createFileRoute("/_app/library")({
 
 /**
  * Library is a reading room — not a content dump.
- * Three texts this week · touch a word · it feeds missions later.
+ * Read, test comprehension, transfer one idea, then return to the world.
  */
 function LibraryPage() {
   const vocab = useBlossom((s) => s.vocabulary);
+  const activityLog = useBlossom((s) => s.activityLog);
   const plan = useBlossom((s) => s.plan);
   const libraryOk = planAllows(plan, "library");
+  const [query, setQuery] = useState("");
+  const [level, setLevel] = useState<"all" | "A2" | "B1">("all");
+  const [status, setStatus] = useState<"all" | "unread" | "read">("all");
+
+  const completedIds = useMemo(
+    () =>
+      new Set(
+        activityLog
+          .filter((event) => event.type === "LIBRARY_COMPLETED")
+          .map((event) => event.sourceId?.replace("library:", ""))
+          .filter((id): id is string => Boolean(id)),
+      ),
+    [activityLog],
+  );
+
+  const visibleLibrary = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return LIBRARY.filter((doc) => {
+      const matchesQuery =
+        !q ||
+        doc.title.toLowerCase().includes(q) ||
+        doc.blurb.toLowerCase().includes(q) ||
+        doc.body.toLowerCase().includes(q);
+      const matchesLevel = level === "all" || doc.level.includes(level);
+      const isRead = completedIds.has(doc.id);
+      const matchesStatus =
+        status === "all" || (status === "read" ? isRead : !isRead);
+      return matchesQuery && matchesLevel && matchesStatus;
+    });
+  }, [completedIds, level, query, status]);
 
   if (!libraryOk) {
     return (
@@ -69,6 +101,65 @@ function LibraryPage() {
         </p>
       </header>
 
+      <Surface className="mt-7 !p-4 sm:!p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-border bg-bg px-3.5">
+            <Search className="size-4 shrink-0 text-subtle" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Rechercher un texte, un sujet…"
+              className="min-h-11 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-subtle"
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {([
+              ["all", "Tous niveaux"],
+              ["A2", "A2"],
+              ["B1", "B1"],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setLevel(id)}
+                className={[
+                  "rounded-full border px-3 py-2 text-xs font-semibold transition",
+                  level === id
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-surface-2/40 text-muted hover:text-fg",
+                ].join(" ")}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {([
+              ["all", "Tout"],
+              ["unread", "À lire"],
+              ["read", "Compris"],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setStatus(id)}
+                className={[
+                  "rounded-full border px-3 py-2 text-xs font-semibold transition",
+                  status === id
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-surface-2/40 text-muted hover:text-fg",
+                ].join(" ")}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-subtle">
+          {completedIds.size} lecture{completedIds.size > 1 ? "s" : ""} comprise{completedIds.size > 1 ? "s" : ""} · {visibleLibrary.length} résultat{visibleLibrary.length > 1 ? "s" : ""}
+        </p>
+      </Surface>
+
       {vocab.length > 0 && (
         <Surface className="mt-8 !p-4 sm:!p-5">
           <div className="flex items-center gap-2">
@@ -88,7 +179,7 @@ function LibraryPage() {
       )}
 
       <div className="mt-8 grid gap-5 sm:grid-cols-2">
-        {LIBRARY.map((doc) => (
+        {visibleLibrary.map((doc) => (
           <Link
             key={doc.id}
             to="/library/$id"
@@ -105,12 +196,19 @@ function LibraryPage() {
                 className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"
                 aria-hidden
               />
-              <Badge
-                variant="outline"
-                className="absolute right-3 top-3 border-white/30 bg-black/40 text-white"
-              >
-                {doc.level}
-              </Badge>
+              <div className="absolute right-3 top-3 flex items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className="border-white/30 bg-black/40 text-white"
+                >
+                  {doc.level}
+                </Badge>
+                {completedIds.has(doc.id) ? (
+                  <Badge className="border-primary/30 bg-primary text-primary-foreground">
+                    <Check className="mr-1 size-3" /> Compris
+                  </Badge>
+                ) : null}
+              </div>
             </div>
             <div className="p-5">
               <h2 className="font-display text-2xl tracking-tight">
@@ -131,6 +229,15 @@ function LibraryPage() {
           </Link>
         ))}
       </div>
+
+      {visibleLibrary.length === 0 ? (
+        <Surface className="mt-6 text-center !p-8">
+          <p className="font-display text-2xl">Aucun texte ne correspond.</p>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Essayez un autre mot, niveau ou filtre de lecture.
+          </p>
+        </Surface>
+      ) : null}
 
       <p className="mt-10 text-center text-xs leading-5 text-subtle">
         Les mots gardés ne vivent pas dans une liste infinie — ils reviennent
