@@ -133,7 +133,7 @@ const AppLearnCurriculumRoute = AppLearnCurriculumRouteImport.update({
 const AppLearnCurriculumUnitIdRoute = AppLearnCurriculumUnitIdRouteImport.update({
   id: '/curriculum/$unitId',
   path: '/curriculum/$unitId',
-  getParentRoute: () => AppLearnRoute,
+  getParentRoute: () => AppLearnCurriculumRoute,
 } as any)
 const AppLearnReviewRoute = AppLearnReviewRouteImport.update({
   id: '/review',
@@ -530,8 +530,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppLearnRouteChildren {
-  AppLearnCurriculumRoute: typeof AppLearnCurriculumRoute
-  AppLearnCurriculumUnitIdRoute: typeof AppLearnCurriculumUnitIdRoute
+  AppLearnCurriculumRoute: typeof AppLearnCurriculumRouteWithChildren
   AppLearnReviewRoute: typeof AppLearnReviewRoute
   AppLearnProgressRoute: typeof AppLearnProgressRoute
   AppLearnHistoryRoute: typeof AppLearnHistoryRoute
@@ -539,8 +538,7 @@ interface AppLearnRouteChildren {
 }
 
 const AppLearnRouteChildren: AppLearnRouteChildren = {
-  AppLearnCurriculumRoute: AppLearnCurriculumRoute,
-  AppLearnCurriculumUnitIdRoute: AppLearnCurriculumUnitIdRoute,
+  AppLearnCurriculumRoute: AppLearnCurriculumRouteWithChildren,
   AppLearnReviewRoute: AppLearnReviewRoute,
   AppLearnProgressRoute: AppLearnProgressRoute,
   AppLearnHistoryRoute: AppLearnHistoryRoute,
@@ -549,6 +547,18 @@ const AppLearnRouteChildren: AppLearnRouteChildren = {
 
 const AppLearnRouteWithChildren = AppLearnRoute._addFileChildren(
   AppLearnRouteChildren,
+)
+
+interface AppLearnCurriculumRouteChildren {
+  AppLearnCurriculumUnitIdRoute: typeof AppLearnCurriculumUnitIdRoute
+}
+
+const AppLearnCurriculumRouteChildren: AppLearnCurriculumRouteChildren = {
+  AppLearnCurriculumUnitIdRoute: AppLearnCurriculumUnitIdRoute,
+}
+
+const AppLearnCurriculumRouteWithChildren = AppLearnCurriculumRoute._addFileChildren(
+  AppLearnCurriculumRouteChildren,
 )
 
 interface AppLibraryRouteChildren {
