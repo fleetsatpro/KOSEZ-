@@ -48,9 +48,7 @@ function CurriculumUnit() {
   const { unitId } = Route.useParams();
   const unit = CURRICULUM_UNITS.find((item) => item.id === unitId);
   const log = useBlossom((s) => s.activityLog);
-  const attempts = useBlossom((s) => s.pronlabAttempts);
-  const vocabulary = useBlossom((s) => s.vocabulary);
-  const profile = buildSkillProfile(log, attempts, vocabulary);
+  const log = useBlossom((s) => s.activityLog);
 
   if (!unit) {
     return (
