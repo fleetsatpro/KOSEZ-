@@ -29,11 +29,18 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/osez/$id")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    lessonId:
+      typeof search.lessonId === "string" && search.lessonId.trim()
+        ? search.lessonId.trim()
+        : undefined,
+  }),
   component: SpeakRoom,
 });
 
 function SpeakRoom() {
   const { id } = Route.useParams();
+  const { lessonId: curriculumLessonId } = Route.useSearch();
   const navigate = useNavigate();
   const complete = useBlossom((s) => s.completeActivity);
   const plan = useBlossom((s) => s.plan);
@@ -193,6 +200,7 @@ function SpeakRoom() {
               durationSeconds: authoritativeSeconds,
               serverTimerAvailable: true,
             }),
+        ...(curriculumLessonId ? { curriculumLessonId } : {}),
         spokenSeconds: speechSummary.spokenSeconds,
         transcriptCount: speechSummary.transcriptCount,
         captureOnlyCount: speechSummary.captureOnlyCount,
