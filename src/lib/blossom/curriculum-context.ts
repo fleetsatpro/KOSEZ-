@@ -9,13 +9,24 @@ export function setCurriculumLessonContext(lessonId: string): void {
   }
 }
 
-export function takeCurriculumLessonContext(): string | null {
+/**
+ * Read without consuming. This is intentionally side-effect free because React
+ * may invoke state initializers more than once in development Strict Mode.
+ */
+export function readCurriculumLessonContext(): string | null {
   if (typeof window === "undefined") return null;
   try {
-    const value = sessionStorage.getItem(KEY);
-    sessionStorage.removeItem(KEY);
-    return value?.trim() || null;
+    return sessionStorage.getItem(KEY)?.trim() || null;
   } catch {
     return null;
+  }
+}
+
+export function clearCurriculumLessonContext(): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(KEY);
+  } catch {
+    // Attribution is optional; durable evidence is stored separately.
   }
 }
