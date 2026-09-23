@@ -707,6 +707,7 @@ export const MISSION_BANK: Mission[] = [
     realWorldInstruction: "La prochaine fois qu'un détail vous échappe en anglais, demandez uniquement ce détail au lieu de demander à la personne de recommencer toute l'explication.",
     stretch: "Ajoutez une courte conséquence : So I should …, right?",
   },
+  {
     id: "mission-describe",
     title: "Décrire une expérience",
     prompt: "Racontez une expérience récente avec un début, un détail concret et votre impression personnelle.",
