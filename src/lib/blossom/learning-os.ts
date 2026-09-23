@@ -369,13 +369,13 @@ export function buildSkillProfile(
 
 export type ReviewItem = {
   id: string;
-  kind: "pronunciation" | "vocabulary" | "mission";
+  kind: "pronunciation" | "vocabulary" | "mission" | "grammar" | "listening" | "writing";
   title: string;
   prompt: string;
   answer: string;
   reason: string;
   priority: "haute" | "normale" | "nouvelle";
-  link: "pronlab" | "mission" | "library";
+  link: "pronlab" | "mission" | "library" | "labs";
 };
 
 export function buildReviewQueue(
