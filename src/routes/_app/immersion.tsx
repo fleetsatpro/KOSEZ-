@@ -377,7 +377,12 @@ function ImmersionPage() {
             disabled={doneCount === 0 || reflection.trim().length < 12}
             onClick={() => {
               if (reflection.trim().length < 12) return;
-              const result = complete("IMMERSION_ATTENDED", IMMERSION.id);
+              const result = complete(
+                "IMMERSION_ATTENDED",
+                IMMERSION.id,
+                "Immersion · " + doneCount + "/" + total + " défis réalisés",
+                { reflection: reflection.trim(), challengeCount: doneCount },
+              );
               if (result.ok || result.reason === "already") {
                 setReflectionSaved(true);
                 toast(
