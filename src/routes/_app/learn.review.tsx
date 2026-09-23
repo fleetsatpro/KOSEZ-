@@ -9,6 +9,12 @@ import { buildReviewPlan, type ScheduledReviewItem } from "@/lib/blossom/review-
 import { useBlossom } from "@/lib/blossom/store";
 
 export const Route = createFileRoute("/_app/learn/review")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    focus:
+      typeof search.focus === "string" && search.focus.trim()
+        ? search.focus.trim()
+        : undefined,
+  }),
   component: Review,
 });
 
@@ -21,6 +27,7 @@ function kindIcon(kind: ReviewItem["kind"]) {
 }
 
 function Review() {
+  const { focus } = Route.useSearch();
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const vocabulary = useBlossom((s) => s.vocabulary);
   const submissions = useBlossom((s) => s.learningSubmissions);
@@ -77,7 +84,14 @@ function Review() {
 
   function finish() {
     const day = new Date().toISOString().slice(0, 10);
-    completeActivity("REVIEW_COMPLETED", `review-${day}`, `Révision · ${reviewed} passages · ${plan.due.length} dues au départ`);
+    const source = focus ? "review-" + focus + ":" + day : "review-general:" + day;
+    completeActivity(
+      "REVIEW_COMPLETED",
+      source,
+      focus
+        ? `Révision ciblée · ${focus} · ${reviewed} passages`
+        : `Révision générale · ${reviewed} passages`,
+    );
     setDone(true);
   }
 
@@ -143,6 +157,7 @@ function Review() {
         <div className="mt-4 flex flex-wrap gap-2">
           <Badge variant="outline">{plan.due.length} dues maintenant</Badge>
           {plan.upcoming.length > 0 ? <Badge variant="outline">{plan.upcoming.length} à venir</Badge> : null}
+          {focus ? <Badge className="border-primary/20 bg-primary/10 text-primary">Focus · {focus.replaceAll("-", " ")}</Badge> : null}
         </div>
       </header>
 
