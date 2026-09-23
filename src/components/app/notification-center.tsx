@@ -19,7 +19,7 @@ function relativeTime(value: string) {
   return days === 1 ? "Hier" : `Il y a ${days} jours`;
 }
 
-export function NotificationCenter() {
+export function NotificationCenter({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<BlossomNotification[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,7 +65,9 @@ export function NotificationCenter() {
         aria-label={unread ? `${unread} notification${unread > 1 ? "s" : ""} non lue${unread > 1 ? "s" : ""}` : "Notifications"}
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
-        className="relative flex w-full items-center gap-3 rounded-xl border border-border bg-surface-2/50 px-3.5 py-3 text-left transition hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        className={compact
+          ? "relative flex size-10 items-center justify-center rounded-xl border border-border bg-bg/85 text-fg transition hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          : "relative flex w-full items-center gap-3 rounded-xl border border-border bg-surface-2/50 px-3.5 py-3 text-left transition hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"}
       >
         <span className="relative flex size-8 items-center justify-center rounded-lg bg-bg text-primary">
           <Bell className="size-4" strokeWidth={1.7} />
@@ -75,16 +77,20 @@ export function NotificationCenter() {
             </span>
           ) : null}
         </span>
-        <span className="min-w-0">
-          <span className="block text-xs font-medium">Notifications</span>
-          <span className="mt-0.5 block truncate text-[11px] text-subtle">
-            {unread ? `${unread} à lire` : "Rien de nouveau"}
+        {!compact ? (
+          <span className="min-w-0">
+            <span className="block text-xs font-medium">Notifications</span>
+            <span className="mt-0.5 block truncate text-[11px] text-subtle">
+              {unread ? `${unread} à lire` : "Rien de nouveau"}
+            </span>
           </span>
-        </span>
+        ) : null}
       </button>
 
       {open ? (
-        <div className="absolute bottom-[calc(100%+0.6rem)] left-0 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-bg shadow-[0_24px_80px_-32px_rgba(0,0,0,.7)]">
+        <div className={compact
+          ? "absolute right-0 top-[calc(100%+0.6rem)] z-50 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-bg shadow-[0_24px_80px_-32px_rgba(0,0,0,.7)]"
+          : "absolute bottom-[calc(100%+0.6rem)] left-0 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-bg shadow-[0_24px_80px_-32px_rgba(0,0,0,.7)]"}>
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">Centre</p>
