@@ -52,9 +52,9 @@ test("inactivity does not invent points", () => {
 
 test("pronlab mastery: three consecutive >= 75", () => {
   const attempts = [
-    { id: "1", itemId: "x", score: 76, tip: "", createdAt: "", seconds: 2 },
-    { id: "2", itemId: "x", score: 80, tip: "", createdAt: "", seconds: 2 },
-    { id: "3", itemId: "x", score: 84, tip: "", createdAt: "", seconds: 2 },
+    { id: "1", itemId: "x", score: 76, tip: "", createdAt: "", seconds: 2, metadata: { assessment: "phonetic-provider" } },
+    { id: "2", itemId: "x", score: 80, tip: "", createdAt: "", seconds: 2, metadata: { assessment: "phonetic-provider" } },
+    { id: "3", itemId: "x", score: 84, tip: "", createdAt: "", seconds: 2, metadata: { assessment: "phonetic-provider" } },
   ];
   const sum = summarisePronlabItem("x", attempts);
   assert.equal(sum.mastered, true);
@@ -64,9 +64,38 @@ test("pronlab mastery: three consecutive >= 75", () => {
 
 test("pronlab mastery: best >= 90", () => {
   const attempts = [
-    { id: "1", itemId: "x", score: 91, tip: "", createdAt: "", seconds: 2 },
+    { id: "1", itemId: "x", score: 91, tip: "", createdAt: "", seconds: 2, metadata: { assessment: "phonetic-provider" } },
   ];
   assert.equal(summarisePronlabItem("x", attempts).mastered, true);
+});
+
+test("pronlab ignores capture and transcript evidence when deriving scores", () => {
+  const attempts = [
+    {
+      id: "capture",
+      itemId: "x",
+      score: 99,
+      tip: "",
+      createdAt: "",
+      seconds: 2,
+      metadata: { assessment: "capture-only" },
+    },
+    {
+      id: "transcript",
+      itemId: "x",
+      score: 0,
+      tip: "",
+      createdAt: "",
+      seconds: 2,
+      metadata: { assessment: "transcript", transcript: "I need a ticket." },
+    },
+  ];
+  const sum = summarisePronlabItem("x", attempts);
+  assert.equal(sum.attemptCount, 2);
+  assert.deepEqual(sum.scores, []);
+  assert.equal(sum.bestScore, 0);
+  assert.equal(sum.mastered, false);
+  assert.equal(sum.struggling, false);
 });
 
 test("pronlab flags: best < 60 after 2 attempts", () => {

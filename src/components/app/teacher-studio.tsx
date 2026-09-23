@@ -534,7 +534,7 @@ export function TeacherStudio() {
                         </button>
                       </td>
                       <td className="py-3 tabular-nums">{student.activitiesThisWeek}</td>
-                      <td className="py-3 tabular-nums">{student.speakingMinutes} min</td>
+                      <td className="py-3 tabular-nums">{student.practiceMinutes} min</td>
                       <td className="py-3 tabular-nums">{student.pronlabAttempts}</td>
                       <td className="py-3 text-muted">{formatLastActivity(student.lastActivity)}</td>
                     </tr>
@@ -563,9 +563,9 @@ export function TeacherStudio() {
                 <p className="mt-2 font-display text-4xl tabular-nums">{attention.length}</p>
               </Surface>
               <Surface>
-                <Eyebrow>Parole observée</Eyebrow>
+                <Eyebrow>Temps de pratique</Eyebrow>
                 <p className="mt-2 font-display text-4xl tabular-nums">
-                  {roster.reduce((sum, student) => sum + student.speakingMinutes, 0)}
+                  {roster.reduce((sum, student) => sum + student.practiceMinutes, 0)}
                   <span className="ml-1 text-base text-muted">min</span>
                 </p>
               </Surface>

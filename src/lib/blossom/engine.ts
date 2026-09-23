@@ -174,7 +174,9 @@ export function summarisePronlabItem(
   attempts: PronlabAttempt[],
 ): PronlabSummary {
   const mine = attempts.filter((a) => a.itemId === itemId);
-  const scored = mine.filter((attempt) => attempt.metadata?.assessment !== "capture-only");
+  const scored = mine.filter(
+    (attempt) => attempt.metadata?.assessment === "phonetic-provider",
+  );
   const scores = scored.map((a) => a.score);
   const lastThree = scores.slice(-3);
   const bestScore = scores.length ? Math.max(...scores) : 0;

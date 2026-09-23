@@ -456,7 +456,8 @@ function MoiPage() {
       />
 
       {/* Verified workspace doors */}
-      {!accessPending && (access.isTeacher || access.isOrgStaff || access.isGuardian) ? (
+      {!accessPending &&
+      (access.isTeacher || access.isOrgStaff || access.isGuardian || access.isAdmin || access.isChild) ? (
         <div className="mt-8 space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">
             Espaces autorisés

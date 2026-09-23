@@ -76,7 +76,7 @@ export type TeacherWorkspaceLearner = {
   level: string | null;
   lastActivity: string | null;
   activitiesThisWeek: number;
-  speakingMinutes: number;
+  practiceMinutes: number;
   pronlabAttempts: number;
   pronlabBest: number;
 };
@@ -95,21 +95,25 @@ export async function getTeacherWorkspace(userId: string): Promise<TeacherWorksp
       coalesce(sum(
         case
           when a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
-           and coalesce(a.payload->'metadata'->>'minutes', a.payload->>'minutes','') ~ '^[0-9]+$'
+           and a.payload->'metadata'->>'serverAuthoritativeMinutes' = 'true'
+           and coalesce(a.payload->'metadata'->>'minutes', '') ~ '^[0-9]+$'
           then coalesce(
             (a.payload->'metadata'->>'minutes')::integer,
             (a.payload->>'minutes')::integer
           )
           else 0
         end
-      ), 0)::integer as speaking_minutes,
+      ), 0)::integer as practice_minutes,
       coalesce(pr.attempts, 0)::integer as pronlab_attempts,
       coalesce(pr.best_score, 0)::integer as pronlab_best
     from blossom_teacher_link tl
     left join blossom_profile p on p.user_id = tl.learner_user_id
     left join blossom_activity_event a on a.user_id = tl.learner_user_id
     left join lateral (
-      select count(*) as attempts, max(score) as best_score
+      select count(*) as attempts,
+             max(score) filter (
+               where metadata->>'assessment' = 'phonetic-provider'
+             ) as best_score
       from blossom_pronlab_attempt
       where user_id = tl.learner_user_id
     ) pr on true
@@ -126,7 +130,7 @@ export async function getTeacherWorkspace(userId: string): Promise<TeacherWorksp
       ? new Date(String(row.last_activity)).toISOString()
       : null,
     activitiesThisWeek: Number(row.activities_this_week ?? 0),
-    speakingMinutes: Number(row.speaking_minutes ?? 0),
+    practiceMinutes: Number(row.practice_minutes ?? 0),
     pronlabAttempts: Number(row.pronlab_attempts ?? 0),
     pronlabBest: Number(row.pronlab_best ?? 0),
   }));
@@ -138,7 +142,7 @@ export type GuardianWorkspaceLearner = {
   level: string | null;
   lastActivity: string | null;
   activitiesThisWeek: number;
-  speakingMinutes: number;
+  practiceMinutes: number;
 };
 
 export async function getGuardianWorkspace(userId: string): Promise<GuardianWorkspaceLearner[]> {
@@ -155,14 +159,15 @@ export async function getGuardianWorkspace(userId: string): Promise<GuardianWork
       coalesce(sum(
         case
           when a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
-           and coalesce(a.payload->'metadata'->>'minutes', a.payload->>'minutes','') ~ '^[0-9]+$'
+           and a.payload->'metadata'->>'serverAuthoritativeMinutes' = 'true'
+           and coalesce(a.payload->'metadata'->>'minutes', '') ~ '^[0-9]+$'
           then coalesce(
             (a.payload->'metadata'->>'minutes')::integer,
             (a.payload->>'minutes')::integer
           )
           else 0
         end
-      ), 0)::integer as speaking_minutes
+      ), 0)::integer as practice_minutes
     from blossom_guardian_link gl
     left join blossom_profile p on p.user_id = gl.learner_user_id
     left join blossom_activity_event a on a.user_id = gl.learner_user_id
@@ -179,7 +184,7 @@ export async function getGuardianWorkspace(userId: string): Promise<GuardianWork
       ? new Date(String(row.last_activity)).toISOString()
       : null,
     activitiesThisWeek: Number(row.activities_this_week ?? 0),
-    speakingMinutes: Number(row.speaking_minutes ?? 0),
+    practiceMinutes: Number(row.practice_minutes ?? 0),
   }));
 }
 
@@ -213,7 +218,7 @@ export type AdminWorkspace = {
   profiles: number;
   teachers: number;
   guardians: number;
-  activeOrganizations: number;
+  organizations: number;
   joinedEventRegistrations: number;
   bookingRequests: {
     requested: number;
@@ -263,7 +268,7 @@ export async function getAdminWorkspace(userId: string): Promise<AdminWorkspace>
     profiles: Number(learners[0]?.count ?? 0),
     teachers: Number(teachers[0]?.count ?? 0),
     guardians: Number(guardians[0]?.count ?? 0),
-    activeOrganizations: Number(organizations[0]?.count ?? 0),
+    organizations: Number(organizations[0]?.count ?? 0),
     joinedEventRegistrations: Number(registrations[0]?.count ?? 0),
     bookingRequests: {
       requested: Number(booking.requested ?? 0),
@@ -428,6 +433,160 @@ export async function getTandemSession(
   return partner;
 }
 
+export async function startSpeakSession(userId: string, roomId: string) {
+  const sql = await getSql();
+  const active = await sql.query(
+    `select id, room_id, started_at
+     from blossom_speak_session
+     where user_id = $1 and status = 'active'
+     order by created_at desc
+     limit 1`,
+    [userId],
+  );
+  if (active[0]) {
+    const ageSeconds = Math.max(
+      0,
+      Math.floor((Date.now() - new Date(String(active[0].started_at)).getTime()) / 1000),
+    );
+    const sameRoom = String(active[0].room_id) === roomId;
+    if (sameRoom && ageSeconds <= 90 * 60) {
+      return {
+        id: String(active[0].id),
+        roomId: String(active[0].room_id),
+        startedAt: new Date(String(active[0].started_at)).toISOString(),
+      };
+    }
+    // A different room must never inherit the timing identity of another
+    // room. Close the old session before creating the new room session.
+    await sql.query(
+      `update blossom_speak_session
+       set status = 'cancelled',
+           ended_at = coalesce(ended_at, current_timestamp),
+           duration_seconds = least(3600, greatest(0, $2)),
+           updated_at = current_timestamp
+       where id = $1::uuid and status = 'active'`,
+      [String(active[0].id), ageSeconds],
+    );
+  }
+
+  const sessionId = randomUUID();
+  await sql.query(
+    `insert into blossom_speak_session (id, user_id, room_id, status)
+     values ($1::uuid, $2, $3, 'active')
+     on conflict do nothing`,
+    [sessionId, userId, roomId],
+  );
+  const durable = await sql.query(
+    `select id, room_id, started_at
+     from blossom_speak_session
+     where user_id = $1 and status = 'active'
+     order by created_at desc
+     limit 1`,
+    [userId],
+  );
+  if (!durable[0]) throw new Error("speak-session-start-failed");
+
+  const durableId = String(durable[0].id);
+  if (durableId === sessionId) {
+    await writeAuditEvent(userId, {
+      action: "speak.session.started",
+      resourceType: "speak_session",
+      resourceId: durableId,
+      metadata: { roomId },
+    });
+  }
+  return {
+    id: durableId,
+    roomId: String(durable[0].room_id),
+    startedAt: new Date(String(durable[0].started_at)).toISOString(),
+  };
+}
+
+export async function endSpeakSession(
+  userId: string,
+  sessionId: string,
+  status: "completed" | "cancelled",
+) {
+  const sql = await getSql();
+  const activityId = randomUUID();
+  const rows = await sql.query(
+    `with closed as (
+       update blossom_speak_session
+       set status = $2,
+           ended_at = current_timestamp,
+           duration_seconds = least(
+             3600,
+             greatest(
+               0,
+               floor(extract(epoch from (current_timestamp - started_at)))
+             )
+           )::integer,
+           updated_at = current_timestamp
+       where id = $1::uuid
+         and user_id = $3
+         and status = 'active'
+       returning id, user_id, room_id, status, ended_at, duration_seconds
+     ),
+     activity as (
+       insert into blossom_activity_event (
+         id, user_id, idempotency_key, event_type, source_id, payload, occurred_at
+       )
+       select
+         $4::uuid,
+         c.user_id,
+         c.id,
+         'SPEAK_COMPLETED',
+         concat('speak-session:', c.id::text),
+         jsonb_build_object(
+           'metadata',
+           jsonb_build_object(
+             'serverAuthoritativeMinutes', true,
+             'minutes', floor(c.duration_seconds / 60.0)::integer,
+             'durationSeconds', c.duration_seconds,
+             'sessionId', c.id::text,
+             'roomId', c.room_id
+           )
+         ),
+         c.ended_at
+       from closed c
+       where c.status = 'completed'
+       on conflict (user_id, idempotency_key) where idempotency_key is not null do nothing
+       returning id
+     )
+     select
+       c.id,
+       c.room_id,
+       c.status,
+       c.ended_at,
+       c.duration_seconds,
+       a.id as activity_id
+     from closed c
+     left join activity a on true`,
+    [sessionId, status, userId, activityId],
+  );
+  if (!rows[0]) {
+    throw new BlossomForbiddenError("Cette session de parole n'est plus active.");
+  }
+
+  await writeAuditEvent(userId, {
+    action: `speak.session.${status}`,
+    resourceType: "speak_session",
+    resourceId: sessionId,
+    metadata: {
+      durationSeconds: Number(rows[0].duration_seconds ?? 0),
+      roomId: String(rows[0].room_id),
+    },
+  });
+
+  return {
+    id: String(rows[0].id),
+    roomId: String(rows[0].room_id),
+    status: String(rows[0].status) as "completed" | "cancelled",
+    endedAt: new Date(String(rows[0].ended_at)).toISOString(),
+    durationSeconds: Number(rows[0].duration_seconds ?? 0),
+  };
+}
+
 export type OrganizationWorkspace = {
   id: string;
   name: string;
@@ -442,7 +601,7 @@ export type OrganizationWorkspace = {
     learners: number;
     staff: number;
     activeLearnersThisWeek: number;
-    speakingMinutesThisWeek: number;
+    practiceMinutesThisWeek: number;
   };
 };
 
@@ -450,66 +609,93 @@ export async function getOrganizationWorkspace(
   userId: string,
 ): Promise<OrganizationWorkspace | null> {
   const sql = await getSql();
-  const rows = await sql.query(
+
+  // A user may legitimately belong to multiple organisations. This workspace
+  // surface currently represents one organisation, so select a deterministic
+  // primary membership and never join members from sibling tenants.
+  const orgRows = await sql.query(
     `select
       o.id,
       o.name,
       o.metadata,
-      m.user_id,
-      m.role,
-      m.status,
-      coalesce(p.display_name, m.user_id) as display_name
-    from blossom_organization o
-    join blossom_organization_member me
-      on me.organization_id = o.id
-     and me.user_id = $1
-     and me.status = 'active'
-     and me.role in ('owner','admin','teacher')
-    join blossom_organization_member m
-      on m.organization_id = o.id
-     and m.status = 'active'
-    left join blossom_profile p on p.user_id = m.user_id
-    order by m.role, display_name`,
+      me.role,
+      me.created_at
+     from blossom_organization o
+     join blossom_organization_member me
+       on me.organization_id = o.id
+      and me.user_id = $1
+      and me.status = 'active'
+      and me.role in ('owner','admin','teacher')
+     order by
+       case me.role
+         when 'owner' then 0
+         when 'admin' then 1
+         else 2
+       end,
+       me.created_at asc,
+       o.id asc
+     limit 1`,
     [userId],
   );
-  if (!rows[0]) return null;
+  if (!orgRows[0]) return null;
 
-  const organizationId = String(rows[0].id);
-  const statsRows = await sql.query(
-    `select
-       count(*) filter (where role = 'learner')::integer as learners,
-       count(*) filter (where role <> 'learner')::integer as staff,
-       count(distinct m.user_id) filter (
-         where m.role = 'learner'
-           and a.occurred_at >= current_timestamp - interval '7 days'
-       )::integer as active_learners_this_week,
-       coalesce(sum(
-         case
-           when m.role = 'learner'
-            and a.occurred_at >= current_timestamp - interval '7 days'
-            and a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
-            and coalesce(a.payload->'metadata'->>'minutes', a.payload->>'minutes','') ~ '^[0-9]+$'
-           then coalesce(
-             (a.payload->'metadata'->>'minutes')::integer,
-             (a.payload->>'minutes')::integer
-           )
-           else 0
-         end
-       ), 0)::integer as speaking_minutes
-     from blossom_organization_member m
-     left join blossom_activity_event a on a.user_id = m.user_id
-     where m.organization_id = $1 and m.status = 'active'`,
-    [organizationId],
-  );
+  const organizationId = String(orgRows[0].id);
+  const [rows, statsRows] = await Promise.all([
+    sql.query(
+      `select
+        m.user_id,
+        m.role,
+        m.status,
+        coalesce(p.display_name, m.user_id) as display_name
+       from blossom_organization_member m
+       left join blossom_profile p on p.user_id = m.user_id
+       where m.organization_id = $1
+         and m.status = 'active'
+       order by
+         case m.role
+           when 'owner' then 0
+           when 'admin' then 1
+           when 'teacher' then 2
+           else 3
+         end,
+         display_name asc`,
+      [organizationId],
+    ),
+    sql.query(
+      `select
+         count(*) filter (where role = 'learner')::integer as learners,
+         count(*) filter (where role <> 'learner')::integer as staff,
+         count(distinct m.user_id) filter (
+           where m.role = 'learner'
+             and a.occurred_at >= current_timestamp - interval '7 days'
+         )::integer as active_learners_this_week,
+         coalesce(sum(
+           case
+             when m.role = 'learner'
+              and a.occurred_at >= current_timestamp - interval '7 days'
+              and a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
+              and a.payload->'metadata'->>'serverAuthoritativeMinutes' = 'true'
+              and coalesce(a.payload->'metadata'->>'minutes', '') ~ '^[0-9]+$'
+             then (a.payload->'metadata'->>'minutes')::integer
+             else 0
+           end
+         ), 0)::integer as practice_minutes
+       from blossom_organization_member m
+       left join blossom_activity_event a on a.user_id = m.user_id
+       where m.organization_id = $1 and m.status = 'active'`,
+      [organizationId],
+    ),
+  ]);
+
   const stats = statsRows[0] ?? {};
   const metadata =
-    rows[0].metadata && typeof rows[0].metadata === "object"
-      ? (rows[0].metadata as Record<string, unknown>)
+    orgRows[0].metadata && typeof orgRows[0].metadata === "object"
+      ? (orgRows[0].metadata as Record<string, unknown>)
       : {};
 
   return {
     id: organizationId,
-    name: String(rows[0].name),
+    name: String(orgRows[0].name),
     city: typeof metadata.city === "string" ? metadata.city : null,
     members: rows.map((row) => ({
       id: String(row.user_id),
@@ -521,7 +707,7 @@ export async function getOrganizationWorkspace(
       learners: Number(stats.learners ?? 0),
       staff: Number(stats.staff ?? 0),
       activeLearnersThisWeek: Number(stats.active_learners_this_week ?? 0),
-      speakingMinutesThisWeek: Number(stats.speaking_minutes ?? 0),
+      practiceMinutesThisWeek: Number(stats.practice_minutes ?? 0),
     },
   };
 }
@@ -545,25 +731,33 @@ export async function requestCatalogueBooking(
            then blossom_booking_request.status
          else 'requested'
        end,
+       payment_status = case
+         when blossom_booking_request.status = 'confirmed'
+           then blossom_booking_request.payment_status
+         else 'unpaid'
+       end,
+       provider_reference = case
+         when blossom_booking_request.status = 'confirmed'
+           then blossom_booking_request.provider_reference
+         else null
+       end,
        updated_at = current_timestamp
      returning id, catalogue_item_id, status, payment_status, created_at, updated_at`,
     [randomUUID(), userId, catalogueItemId],
   );
-  if (rows[0]) return rows[0];
+  if (!rows[0]) throw new Error("booking-request-write-failed");
 
-  const current = await sql.query(
-    `select id, catalogue_item_id, status, payment_status, created_at, updated_at
-     from blossom_booking_request
-     where user_id = $1 and catalogue_item_id = $2`,
-    [userId, catalogueItemId],
-  );
-  if (!current[0]) throw new Error("booking-request-write-failed");
   await writeAuditEvent(userId, {
     action: "commerce.booking_requested",
     resourceType: "booking_request",
-    resourceId: String(current[0].id),
+    resourceId: String(rows[0].id),
+    metadata: {
+      catalogueItemId,
+      status: String(rows[0].status),
+      paymentStatus: String(rows[0].payment_status),
+    },
   });
-  return current[0];
+  return rows[0];
 }
 
 export async function requestWaitlist(userId: string, itemId: string) {
@@ -586,21 +780,18 @@ export async function requestWaitlist(userId: string, itemId: string) {
      returning id, item_id, status, created_at, updated_at`,
     [randomUUID(), userId, itemId],
   );
-  if (rows[0]) return rows[0];
+  if (!rows[0]) throw new Error("waitlist-write-failed");
 
-  const current = await sql.query(
-    `select id, item_id, status, created_at, updated_at
-     from blossom_waitlist_request
-     where user_id = $1 and item_id = $2`,
-    [userId, itemId],
-  );
-  if (!current[0]) throw new Error("waitlist-write-failed");
   await writeAuditEvent(userId, {
     action: "commerce.waitlist_requested",
     resourceType: "waitlist_request",
-    resourceId: String(current[0].id),
+    resourceId: String(rows[0].id),
+    metadata: {
+      itemId,
+      status: String(rows[0].status),
+    },
   });
-  return current[0];
+  return rows[0];
 }
 
 export type PronlabAttemptInput = {
@@ -640,7 +831,7 @@ export async function recordPronlabAttempt(
   }
 
   const rows = await sql.query(
-    "insert into blossom_pronlab_attempt (id, user_id, item_id, idempotency_key, score, seconds, tip, metadata) values ($1::uuid, $2, $3, $4::uuid, $5, $6, $7, $8::jsonb) on conflict (user_id, idempotency_key) do update set idempotency_key = excluded.idempotency_key returning id, item_id, score, seconds, tip, metadata, created_at",
+    "insert into blossom_pronlab_attempt (id, user_id, item_id, idempotency_key, score, seconds, tip, metadata) values ($1::uuid, $2, $3, $4::uuid, $5, $6, $7, $8::jsonb) on conflict (user_id, idempotency_key) where idempotency_key is not null do update set idempotency_key = excluded.idempotency_key returning id, item_id, score, seconds, tip, metadata, created_at",
     [
       recordId,
       userId,
@@ -1110,22 +1301,30 @@ async function createNotification(
     metadata?: Record<string, unknown>;
   },
 ) {
-  const sql = await getSql();
-  const rows = await sql.query(
-    `insert into blossom_notification (id, user_id, kind, title, body, href, metadata)
-     values ($1::uuid, $2, $3, $4, $5, $6, $7::jsonb)
-     returning id, kind, title, body, href, metadata, read_at, created_at`,
-    [
-      randomUUID(),
-      userId,
-      input.kind,
-      input.title,
-      input.body,
-      input.href ?? null,
-      JSON.stringify(input.metadata ?? {}),
-    ],
-  );
-  return rows[0] ?? null;
+  try {
+    const sql = await getSql();
+    const rows = await sql.query(
+      `insert into blossom_notification (id, user_id, kind, title, body, href, metadata)
+       values ($1::uuid, $2, $3, $4, $5, $6, $7::jsonb)
+       returning id, kind, title, body, href, metadata, read_at, created_at`,
+      [
+        randomUUID(),
+        userId,
+        input.kind,
+        input.title,
+        input.body,
+        input.href ?? null,
+        JSON.stringify(input.metadata ?? {}),
+      ],
+    );
+    return rows[0] ?? null;
+  } catch (error) {
+    // Notification delivery is secondary to the mutation that triggered it.
+    // A missing/unavailable notification store must never turn a committed
+    // homework/booking/tandem action into a false failure.
+    console.error("[blossom] notification write failed", error);
+    return null;
+  }
 }
 
 export async function getNotifications(
@@ -1256,17 +1455,29 @@ export async function updateAdminBooking(
   if (nextStatus === "requested" && currentStatus !== "requested") {
     throw new BlossomForbiddenError("Une demande déjà traitée ne revient pas en attente.");
   }
+  if (nextStatus === "requested" && nextPayment !== "unpaid") {
+    throw new BlossomForbiddenError("Une demande en attente doit rester impayée.");
+  }
   if (currentStatus === "cancelled" && nextStatus !== "cancelled") {
     throw new BlossomForbiddenError("Une demande annulée reste clôturée.");
   }
   if (nextPayment === "paid" && currentPayment === "refunded") {
     throw new BlossomForbiddenError("Un paiement remboursé ne peut pas être marqué payé ici.");
   }
+  if (nextPayment === "paid" && nextStatus === "cancelled") {
+    throw new BlossomForbiddenError("Une demande annulée ne peut pas rester marquée payée.");
+  }
   if (currentPayment === "refunded" && nextPayment !== "refunded") {
     throw new BlossomForbiddenError("Un paiement remboursé reste clôturé.");
   }
   if (currentPayment === "paid" && nextPayment === "unpaid") {
     throw new BlossomForbiddenError("Un paiement déjà marqué payé ne revient pas à impayé ici.");
+  }
+  if (currentPayment === "paid" && nextStatus === "cancelled" && nextPayment !== "refunded") {
+    throw new BlossomForbiddenError("Une annulation après paiement doit être remboursée dans la même transition.");
+  }
+  if (nextPayment === "paid" && nextStatus !== "confirmed") {
+    throw new BlossomForbiddenError("Un paiement ne peut être confirmé qu'après la réservation.");
   }
   if (nextPayment === "refunded" && currentPayment !== "paid") {
     throw new BlossomForbiddenError("Un remboursement exige un paiement marqué payé.");
@@ -1385,12 +1596,17 @@ function mapLearnerDetail(
     pronlab: pronlabRows.map((row) => ({
       id: String(row.id),
       itemId: String(row.item_id),
-      score: Number(row.score ?? 0),
       seconds: Number(row.seconds ?? 0),
       assessment:
         row.metadata && typeof row.metadata === "object"
           ? String((row.metadata as Record<string, unknown>).assessment ?? "unknown")
           : "unknown",
+      score:
+        row.metadata &&
+        typeof row.metadata === "object" &&
+        (row.metadata as Record<string, unknown>).assessment === "phonetic-provider"
+          ? Number(row.score ?? 0)
+          : 0,
       createdAt: new Date(String(row.created_at)).toISOString(),
     })),
     homework: homeworkRows.map((row) => ({
@@ -1458,28 +1674,63 @@ export async function startTandemSession(userId: string, partnerUserId: string) 
     throw new BlossomForbiddenError("La connexion tandem n'est pas réciproque.");
   }
   const active = await sql.query(
-    `select id from blossom_tandem_session
+    `select id, started_at
+     from blossom_tandem_session
      where ((user_id = $1 and partner_user_id = $2) or (user_id = $2 and partner_user_id = $1))
        and status = 'active'
      order by created_at desc limit 1`,
     [userId, partnerUserId],
   );
-  if (active[0]) return String(active[0].id);
+  if (active[0]) {
+    const ageSeconds = Math.max(
+      0,
+      Math.floor((Date.now() - new Date(String(active[0].started_at)).getTime()) / 1000),
+    );
+    // The product is a 60-minute exercise. A session left open beyond a
+    // generous grace window is stale, not a fresh opportunity to accrue time.
+    if (ageSeconds <= 90 * 60) return String(active[0].id);
+    await sql.query(
+      `update blossom_tandem_session
+       set status = 'cancelled',
+           ended_at = coalesce(ended_at, current_timestamp),
+           duration_seconds = least(3600, greatest(0, $2)),
+           updated_at = current_timestamp
+       where id = $1::uuid and status = 'active'`,
+      [String(active[0].id), ageSeconds],
+    );
+  }
 
   const sessionId = randomUUID();
   await sql.query(
     `insert into blossom_tandem_session
       (id, user_id, partner_user_id, status, started_at)
-     values ($1::uuid, $2, $3, 'active', current_timestamp)`,
+     values ($1::uuid, $2, $3, 'active', current_timestamp)
+     on conflict do nothing`,
     [sessionId, userId, partnerUserId],
   );
-  await writeAuditEvent(userId, {
-    subjectUserId: partnerUserId,
-    action: "tandem.session.started",
-    resourceType: "tandem_session",
-    resourceId: sessionId,
-  });
-  return sessionId;
+
+  const durable = await sql.query(
+    `select id, user_id, partner_user_id
+     from blossom_tandem_session
+     where ((user_id = $1 and partner_user_id = $2) or (user_id = $2 and partner_user_id = $1))
+       and status = 'active'
+     order by created_at desc
+     limit 1`,
+    [userId, partnerUserId],
+  );
+  if (!durable[0]) throw new Error("tandem-session-start-failed");
+
+  const durableId = String(durable[0].id);
+  if (durableId === sessionId) {
+    await writeAuditEvent(userId, {
+      subjectUserId: partnerUserId,
+      action: "tandem.session.started",
+      resourceType: "tandem_session",
+      resourceId: durableId,
+      metadata: { createdByThisRequest: true },
+    });
+  }
+  return durableId;
 }
 
 export async function logTandemPrompt(
@@ -1510,18 +1761,92 @@ export async function endTandemSession(
   status: "completed" | "cancelled",
 ) {
   const sql = await getSql();
+  const activityId = randomUUID();
+  const partnerActivityId = randomUUID();
   const rows = await sql.query(
-    `update blossom_tandem_session
-     set status = $2, ended_at = coalesce(ended_at, current_timestamp), updated_at = current_timestamp
-     where id = $1::uuid and (user_id = $3 or partner_user_id = $3)
-     returning id, status, ended_at`,
-    [sessionId, status, userId],
+    `with closed as (
+       update blossom_tandem_session
+       set status = $2,
+           ended_at = coalesce(ended_at, current_timestamp),
+           duration_seconds = least(
+             3600,
+             greatest(
+               0,
+               floor(extract(epoch from (current_timestamp - started_at)))
+             )
+           )::integer,
+           updated_at = current_timestamp
+       where id = $1::uuid
+         and (user_id = $3 or partner_user_id = $3)
+         and status = 'active'
+       returning id, user_id, partner_user_id, status, ended_at, duration_seconds
+     ),
+     activity as (
+       insert into blossom_activity_event (
+         id, user_id, idempotency_key, event_type, source_id, payload, occurred_at
+       )
+       select
+         $4::uuid,
+         c.user_id,
+         c.id,
+         'TANDEM_COMPLETED',
+         concat('tandem-session:', c.id::text),
+         jsonb_build_object(
+           'metadata',
+           jsonb_build_object(
+             'serverAuthoritativeMinutes', true,
+             'minutes', floor(c.duration_seconds / 60.0)::integer,
+             'durationSeconds', c.duration_seconds,
+             'sessionId', c.id::text
+           )
+         ),
+         c.ended_at
+       from closed c
+       where c.status = 'completed'
+       union all
+       select
+         $5::uuid,
+         c.partner_user_id,
+         c.id,
+         'TANDEM_COMPLETED',
+         concat('tandem-session:', c.id::text),
+         jsonb_build_object(
+           'metadata',
+           jsonb_build_object(
+             'serverAuthoritativeMinutes', true,
+             'minutes', floor(c.duration_seconds / 60.0)::integer,
+             'durationSeconds', c.duration_seconds,
+             'sessionId', c.id::text
+           )
+         ),
+         c.ended_at
+       from closed c
+       where c.status = 'completed'
+       on conflict (user_id, idempotency_key) where idempotency_key is not null do nothing
+       returning id
+     )
+     select
+       c.id,
+       c.status,
+       c.ended_at,
+       c.duration_seconds
+     from closed c`,
+    [sessionId, status, userId, activityId, partnerActivityId],
   );
   if (!rows[0]) throw new BlossomForbiddenError("Cette session tandem n'est pas disponible.");
+
   await writeAuditEvent(userId, {
     action: `tandem.session.${status}`,
     resourceType: "tandem_session",
     resourceId: sessionId,
+    metadata: {
+      durationSeconds: Number(rows[0].duration_seconds ?? 0),
+    },
   });
-  return { id: String(rows[0].id), status: String(rows[0].status), endedAt: new Date(String(rows[0].ended_at)).toISOString() };
+  return {
+    id: String(rows[0].id),
+    status: String(rows[0].status),
+    endedAt: new Date(String(rows[0].ended_at)).toISOString(),
+    durationSeconds: Number(rows[0].duration_seconds ?? 0),
+  };
 }
