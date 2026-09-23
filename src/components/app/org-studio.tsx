@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Building2, Users } from "lucide-react";
-import { toast } from "sonner";
 import { Eyebrow, Initials, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
