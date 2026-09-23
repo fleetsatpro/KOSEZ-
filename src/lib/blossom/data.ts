@@ -1607,6 +1607,15 @@ export const LIBRARY_GLOSS: Record<string, string> = {
   solution: "solution",
 };
 
+export type ImmersionChallenge = {
+  id: string;
+  title: string;
+  place: string;
+  action: string;
+  languageCue: string;
+  stretch: string;
+};
+
 export const IMMERSION = {
   id: "imm-sep",
   title: "Immersion weekend",
@@ -1617,22 +1626,64 @@ export const IMMERSION = {
     "Un carnet",
     "De quoi enregistrer 60 s",
     "Crème solaire",
+    "Écouteurs pour le retour audio",
+    "Une petite carte du quartier",
   ],
   itinerary: [
-    { when: "Samedi 9:00", what: "Arrivée, café anglais, tour de table." },
-    { when: "Samedi 12:30", what: "Marché. Commander sans basculer." },
-    { when: "Samedi 16:00", what: "Côte. Décrire ce que l'on voit." },
-    { when: "Dimanche 9:30", what: "Atelier Pron'Lab, puis débrief." },
+    { when: "Samedi 9:00", what: "Arrivée, café anglais, tour de table.", goal: "Se présenter et poser une question en retour." },
+    { when: "Samedi 10:30", what: "Marche vers le marché. Repérer trois lieux.", goal: "Donner des indications courtes." },
+    { when: "Samedi 12:30", what: "Marché. Commander sans basculer.", goal: "Demander, choisir, clarifier." },
+    { when: "Samedi 16:00", what: "Côte. Décrire ce que l'on voit.", goal: "Produire trois phrases reliées." },
+    { when: "Samedi 18:30", what: "Débrief en petit groupe.", goal: "Raconter un moment et une difficulté." },
+    { when: "Dimanche 9:30", what: "Atelier Pron'Lab, puis transfert.", goal: "Transformer un son travaillé en phrase utile." },
+  ],
+  fieldKit: [
+    { phrase: "What do you recommend?", use: "Ouvrir un choix dans un lieu réel." },
+    { phrase: "Could you say that again?", use: "Récupérer un détail sans changer de langue." },
+    { phrase: "What stood out was …", use: "Décrire ce qui vous a marqué." },
+    { phrase: "Would that work for you?", use: "Vérifier une proposition." },
+    { phrase: "I mean …", use: "Réparer une phrase en gardant le fil." },
   ],
   participants: [] as string[],
   challenges: [
-    "Ask someone what they recommend for lunch.",
-    "Describe the coast in three sentences.",
-    "Hold one minute on yesterday — no French.",
-  ],
+    {
+      id: "ch-market",
+      title: "Commander + relancer",
+      place: "Marché couvert",
+      action: "Demandez une recommandation, choisissez un produit et posez une question en retour.",
+      languageCue: "I'd recommend … / What about you?",
+      stretch: "Demandez une précision sur l'origine ou le prix.",
+    },
+    {
+      id: "ch-directions",
+      title: "Donner un chemin",
+      place: "Entre le marché et le front de mer",
+      action: "Donnez deux étapes et un repère visible à quelqu'un qui cherche un lieu.",
+      languageCue: "Go straight … / Turn left at …",
+      stretch: "Ajoutez une estimation du temps.",
+    },
+    {
+      id: "ch-coast",
+      title: "Décrire la côte",
+      place: "Front de mer",
+      action: "Décrivez trois éléments visibles et ajoutez une impression personnelle.",
+      languageCue: "I can see … / What stands out is …",
+      stretch: "Comparez ce lieu à un autre endroit que vous connaissez.",
+    },
+    {
+      id: "ch-repair",
+      title: "Réparer en direct",
+      place: "N'importe quel échange",
+      action: "Demandez de répéter une information que vous n'avez pas comprise puis reformulez-la.",
+      languageCue: "Could you say that again? / So you mean …?",
+      stretch: "Expliquez quel détail vous aviez manqué.",
+    },
+  ] as ImmersionChallenge[],
   story:
-    "Deux jours. Un marché, une côte, une table. Vos défis vous accompagnent ; la participation, elle, est enregistrée séparément.",
+    "Deux jours. Un marché, une côte, une table. Vos gestes deviennent des traces situées ; le débrief rassemble ce que vous avez réellement rencontré.",
 };
+
+
 
 export type PlanId = "centre" | "digital" | "premium";
 
