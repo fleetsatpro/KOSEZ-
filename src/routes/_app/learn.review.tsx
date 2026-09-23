@@ -14,6 +14,10 @@ export const Route = createFileRoute("/_app/learn/review")({
       typeof search.focus === "string" && search.focus.trim()
         ? search.focus.trim()
         : undefined,
+    lessonId:
+      typeof search.lessonId === "string" && search.lessonId.trim()
+        ? search.lessonId.trim()
+        : undefined,
   }),
   component: Review,
 });
@@ -43,7 +47,7 @@ function focusKind(focus: string | undefined): ReviewItem["kind"] | null {
 }
 
 function Review() {
-  const { focus } = Route.useSearch();
+  const { focus, lessonId: curriculumLessonId } = Route.useSearch();
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const vocabulary = useBlossom((s) => s.vocabulary);
   const submissions = useBlossom((s) => s.learningSubmissions);
@@ -120,6 +124,7 @@ function Review() {
       focus
         ? `Révision ciblée · ${focus} · ${reviewed} passages`
         : `Révision générale · ${reviewed} passages`,
+      curriculumLessonId ? { curriculumLessonId } : undefined,
     );
     setDone(true);
   }
