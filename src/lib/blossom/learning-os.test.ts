@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { INITIAL_PRONLAB_ATTEMPTS, LEARNER } from "./data.fixtures.ts";
-import { buildReviewQueue, buildSkillProfile, curriculumUnitProgress, CURRICULUM_UNITS, lessonDone } from "./learning-os.ts";
+import { buildReviewQueue, buildSkillProfile, curriculumIntegrityIssues, curriculumUnitProgress, CURRICULUM_UNITS, lessonDone } from "./learning-os.ts";
 
 test("review queue prioritises persistent pronunciation friction", () => {
   const queue = buildReviewQueue(INITIAL_PRONLAB_ATTEMPTS, []);
@@ -96,4 +96,9 @@ test("curriculum progress ignores legacy self-report events", () => {
     }]),
     0,
   );
+});
+
+
+test("curriculum schema is internally coherent", () => {
+  assert.deepEqual(curriculumIntegrityIssues(), []);
 });
