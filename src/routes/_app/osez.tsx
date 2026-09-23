@@ -14,7 +14,6 @@ import { Eyebrow, Page } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LEARNER_MEMORY, planAllows } from "@/lib/blossom/data";
-import { hasSource } from "@/lib/blossom/engine";
 import {
   courageDaysFromLog,
   courageRibbon,
