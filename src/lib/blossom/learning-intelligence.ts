@@ -20,7 +20,8 @@ export type LearningEvidenceKind =
   | "vocabulary"
   | "review"
   | "tandem"
-  | "lesson";
+  | "lesson"
+  | "reading";
 
 export type LearningEvidence = {
   domainId: LearningDomainId;
