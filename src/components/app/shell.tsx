@@ -419,22 +419,25 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className={cn("min-h-dvh", !hideChrome && "lg:pl-[246px]")}>
         {!hideChrome && (
-          <nav className="border-b border-border/60 bg-bg/80 px-4 py-2 backdrop-blur-md lg:hidden" aria-label="Navigation secondaire">
-            <div className="mx-auto flex max-w-full gap-1 overflow-x-auto pb-0.5">
-              {contextNav.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={cn(
-                    "shrink-0 rounded-full border border-transparent px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-subtle transition",
-                    (pathname === item.to || pathname.startsWith(`${item.to}/`)) && "border-primary/20 bg-primary/8 text-primary",
-                  )}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-          </nav>
+          <div className="flex items-center gap-2 border-b border-border/60 bg-bg/80 px-3 py-2 backdrop-blur-md lg:hidden">
+            <nav className="min-w-0 flex-1" aria-label="Navigation secondaire">
+              <div className="mx-auto flex max-w-full gap-1 overflow-x-auto pb-0.5">
+                {contextNav.map((item) => (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={cn(
+                      "shrink-0 rounded-full border border-transparent px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-subtle transition",
+                      (pathname === item.to || pathname.startsWith(`${item.to}/`)) && "border-primary/20 bg-primary/8 text-primary",
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </nav>
+            <NotificationCenter compact />
+          </div>
           )}
         {children}
       </div>
