@@ -491,7 +491,7 @@ export function LearnDashboard() {
 
           <div className="mt-5 border-t border-border pt-4">
             <p className="text-xs text-muted">
-              {CATALOGUE.length} formats structurent actuellement le catalogue.
+              {CATALOGUE.length} formats structurent actuellement le catalogue, en complément des pratiques libres.
             </p>
           </div>
         </article>
@@ -645,7 +645,10 @@ export function LearnDashboard() {
           <Link to="/learn/curriculum" className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
             <GraduationCap className="size-4 text-primary" />
             <p className="mt-5 font-display text-xl tracking-tight">Parcours</p>
-            <p className="mt-1 text-xs text-muted">{CURRICULUM_UNITS.length} unités A2</p>
+            <p className="mt-1 text-xs text-muted">
+              {CURRICULUM_UNITS.length} unités ·{" "}
+              {CURRICULUM_UNITS.reduce((total, unit) => total + unit.lessons.length, 0)} pratiques · A1 → B1
+            </p>
           </Link>
           <Link to="/learn/review" search={{ focus: undefined }} className="group rounded-xl border border-border bg-surface p-4 transition hover:border-primary/20 hover:bg-surface-2/60">
             <RotateCcw className="size-4 text-primary" />
