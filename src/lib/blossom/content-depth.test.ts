@@ -12,6 +12,7 @@ import {
 import {
   CAN_DO_OBJECTIVES,
   CURRICULUM_UNITS,
+  curriculumResource,
 } from "./learning-os.ts";
 import {
   GRAMMAR_TASKS,
@@ -52,5 +53,27 @@ test("deep content ids are unique across their primary collections", () => {
   ] as const) {
     const ids = values.map((value) => value.id);
     assert.equal(new Set(ids).size, ids.length, label + " contains duplicate ids");
+  }
+});
+
+
+test("every curriculum lesson points to a real underlying resource", () => {
+  const missions = new Set(MISSION_BANK.map((item) => item.id));
+  const libraries = new Set(LIBRARY.map((item) => item.id));
+  const pronlab = new Set(PRONLAB_SETS.map((item) => item.id));
+  const grammar = new Set(GRAMMAR_TASKS.map((item) => item.id));
+  const listening = new Set(LISTENING_TASKS.map((item) => item.id));
+  const writing = new Set(WRITING_PROMPTS.map((item) => item.id));
+
+  for (const unit of CURRICULUM_UNITS) {
+    for (const lesson of unit.lessons) {
+      const resource = curriculumResource(lesson);
+      if (resource.kind === "mission") assert.ok(missions.has(resource.id), lesson.id + " points to missing mission " + resource.id);
+      if (resource.kind === "library") assert.ok(libraries.has(resource.id), lesson.id + " points to missing library item " + resource.id);
+      if (resource.kind === "pronlab") assert.ok(pronlab.has(resource.id), lesson.id + " points to missing Pron'Lab set " + resource.id);
+      if (resource.kind === "grammar") assert.ok(grammar.has(resource.id), lesson.id + " points to missing grammar task " + resource.id);
+      if (resource.kind === "listening") assert.ok(listening.has(resource.id), lesson.id + " points to missing listening task " + resource.id);
+      if (resource.kind === "writing") assert.ok(writing.has(resource.id), lesson.id + " points to missing writing prompt " + resource.id);
+    }
   }
 });
