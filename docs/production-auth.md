@@ -14,7 +14,7 @@ Optional: `VITE_AUTH_ENABLED` must not be `false`.
 
 Email/password is enabled in `src/lib/auth/email-password.ts`.
 
-## Google / X (optional)
+## Google (optional)
 
 Requires Grok auth broker **per-app** credentials (not `grok_preview`):
 
@@ -22,7 +22,7 @@ Requires Grok auth broker **per-app** credentials (not `grok_preview`):
 - `GROK_AUTH_CLIENT_ID=…`
 - `GROK_AUTH_CLIENT_SECRET=…`
 
-Without these, OAuth buttons still appear but will fail; email login works.
+Without these, the Google button will fail; email login works.
 
 ## After changing env
 
