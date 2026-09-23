@@ -108,15 +108,17 @@ it("changes the next AI turn when a real transcript supplies a response signal",
     entropy: "response-aware",
     now: new Date("2026-09-22T12:00:00Z"),
   });
-  const nextAi = room.turns.find(
-    (turn, index) => index >= 3 && turn.speaker === "ai" && turn.line,
-  )?.line;
+  const nextAiIndex = room.turns.findIndex(
+    (turn, index) => index >= 3 && turn.speaker === "ai" && Boolean(turn.line),
+  );
+  assert.ok(nextAiIndex >= 0);
+  const nextAi = room.turns[nextAiIndex]!.line;
   const adapted = adaptLivingRoomAfterTranscript(
     room,
     3,
     "I would prefer the later option because I have a meeting first.",
   );
-  const adaptedAi = adapted.turns.find((turn) => turn.speaker === "ai" && turn.line)?.line;
+  const adaptedAi = adapted.turns[nextAiIndex]!.line;
   assert.ok(nextAi);
   assert.ok(adaptedAi);
   assert.notEqual(adaptedAi, nextAi);
