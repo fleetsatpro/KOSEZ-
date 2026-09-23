@@ -32,6 +32,8 @@ function ImmersionPage() {
   const completeChallenge = useBlossom((s) => s.completeChallenge);
   const complete = useBlossom((s) => s.completeActivity);
   const doneCount = done.length;
+  const [reflection, setReflection] = useState("");
+  const [reflectionSaved, setReflectionSaved] = useState(false);
   const total = IMMERSION.challenges.length;
 
   useEffect(() => {
@@ -345,19 +347,48 @@ function ImmersionPage() {
               ? " Les gestes restent ouverts tant que vous êtes sur place."
               : " Ils nourrissent le voyage."}
           </p>
+
+          <div className="mt-7 rounded-2xl border border-border bg-surface-2/35 p-4 sm:p-5">
+            <Eyebrow>Débrief</Eyebrow>
+            <label className="mt-3 block text-sm font-medium" htmlFor="immersion-reflection">
+              Quel moment vous a obligé à chercher vos mots ?
+            </label>
+            <textarea
+              id="immersion-reflection"
+              value={reflection}
+              onChange={(event) => {
+                setReflection(event.target.value);
+                setReflectionSaved(false);
+              }}
+              rows={4}
+              maxLength={600}
+              className="mt-3 w-full resize-y rounded-xl border border-border bg-surface px-3.5 py-3 text-sm leading-6 outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+              placeholder="Une scène, une phrase, une difficulté — pas un résumé scolaire."
+            />
+            <div className="mt-2 flex items-center justify-between gap-3 text-xs text-subtle">
+              <span>{reflection.length}/600</span>
+              <span>{reflectionSaved ? "Débrief conservé dans cette session." : "Écrivez ce que vous avez réellement rencontré."}</span>
+            </div>
+          </div>
+
           <Button
             className="mt-8 w-full"
             size="lg"
+            disabled={doneCount === 0 || reflection.trim().length < 12}
             onClick={() => {
+              if (reflection.trim().length < 12) return;
               const result = complete("IMMERSION_ATTENDED", IMMERSION.id);
-              toast(
-                result.ok
-                  ? "L'immersion entre dans le voyage."
-                  : "Déjà enregistrée.",
-              );
+              if (result.ok || result.reason === "already") {
+                setReflectionSaved(true);
+                toast(
+                  result.ok
+                    ? "L'immersion entre dans le voyage."
+                    : "Déjà enregistrée.",
+                );
+              }
             }}
           >
-            Inscrire au BLOSSOM
+            {reflectionSaved ? "Immersion inscrite" : "Inscrire au BLOSSOM"}
           </Button>
         </Surface>
       )}
