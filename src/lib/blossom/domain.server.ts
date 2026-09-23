@@ -1486,13 +1486,31 @@ export async function startTandemSession(userId: string, partnerUserId: string) 
     throw new BlossomForbiddenError("La connexion tandem n'est pas réciproque.");
   }
   const active = await sql.query(
-    `select id from blossom_tandem_session
+    `select id, started_at
+     from blossom_tandem_session
      where ((user_id = $1 and partner_user_id = $2) or (user_id = $2 and partner_user_id = $1))
        and status = 'active'
      order by created_at desc limit 1`,
     [userId, partnerUserId],
   );
-  if (active[0]) return String(active[0].id);
+  if (active[0]) {
+    const ageSeconds = Math.max(
+      0,
+      Math.floor((Date.now() - new Date(String(active[0].started_at)).getTime()) / 1000),
+    );
+    // The product is a 60-minute exercise. A session left open beyond a
+    // generous grace window is stale, not a fresh opportunity to accrue time.
+    if (ageSeconds <= 90 * 60) return String(active[0].id);
+    await sql.query(
+      `update blossom_tandem_session
+       set status = 'cancelled',
+           ended_at = coalesce(ended_at, current_timestamp),
+           duration_seconds = least(3600, greatest(0, $2)),
+           updated_at = current_timestamp
+       where id = $1::uuid and status = 'active'`,
+      [String(active[0].id), ageSeconds],
+    );
+  }
 
   const sessionId = randomUUID();
   await sql.query(
