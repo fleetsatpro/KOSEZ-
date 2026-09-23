@@ -57,3 +57,23 @@ test("curriculum completion is explicit and unit-specific", () => {
   );
   assert.ok(curriculumUnitProgress(CURRICULUM_UNITS[6]!, log, [], []) < 50);
 });
+
+
+test("curriculum lesson task bindings are exact for direct labs", () => {
+  const labLessons = CURRICULUM_UNITS.flatMap((unit) => unit.lessons)
+    .filter((lesson) => ["grammar", "listening", "writing"].includes(lesson.kind));
+  assert.ok(labLessons.length >= 8);
+  assert.ok(labLessons.every((lesson) => Boolean(lesson.taskId)));
+  assert.ok(labLessons.every((lesson) => lesson.taskId!.length > 3));
+});
+
+test("self-reported lesson completion cannot create unit progress", () => {
+  const unit = CURRICULUM_UNITS[0]!;
+  const selfReport = [{
+    id: "self-report",
+    type: "LESSON_COMPLETED" as const,
+    sourceId: unit.lessons[0]!.id,
+    createdAt: "2026-09-22T10:00:00.000Z",
+  }];
+  assert.equal(curriculumUnitProgress(unit, selfReport, [], []), 0);
+});
