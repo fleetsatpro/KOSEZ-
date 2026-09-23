@@ -320,7 +320,7 @@ async function applyMutation(
       await setTandemStatus(userId, {
         partnerUserId: mutation.entityId,
         status: payload.status,
-        metadata: payload.metadata ?? {},
+        metadata: objectValue(payload.metadata),
       });
       return { mutationId: mutation.mutationId, status: "applied" };
     }
