@@ -156,6 +156,10 @@ function pressureAgent(rng: () => number, place: PlaceNode): PressurePattern {
   };
   const preferred = bias[place.archetype] ?? ["friendly"];
   const pool = PRESSURES.filter((p) => preferred.includes(p.id));
+  if (pool.length && rng() < 0.38) {
+    const advanced = PRESSURES.filter((p) => ["misunderstood", "decision"].includes(p.id));
+    if (advanced.length) return pick(rng, advanced);
+  }
   return pick(rng, pool.length ? pool : PRESSURES);
 }
 
