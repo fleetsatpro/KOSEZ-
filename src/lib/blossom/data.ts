@@ -1,4 +1,5 @@
 import type { StageId } from "./engine";
+import { LEARN_LANGUAGES, isLearnLanguageId } from "@/lib/i18n/locales";
 type PronlabKind = "word" | "sentence" | "phoneme" | "spontaneous";
 
 export const PLANT_IMAGE: Record<StageId, string> = {
@@ -1006,8 +1007,13 @@ export function findPronlabSet(id: string) {
   return PRONLAB_SETS.find((s) => s.id === id);
 }
 
+function normalisePronlabLanguage(language?: string): string {
+  if (!language || language === "English") return "en";
+  return isLearnLanguageId(language) ? language : "en";
+}
+
 export function setsForLanguage(languageId: string) {
-  return PRONLAB_SETS.filter((set) => (set.language ?? "en") === languageId);
+  return PRONLAB_SETS.filter((set) => normalisePronlabLanguage(set.language) === languageId);
 }
 
 export const TANDEM_PROMPTS = {
@@ -1214,15 +1220,19 @@ export const PLANS: Array<{
   },
 ];
 
-export const LANGUAGE_MODULES = [
-  { id: "en", name: "English", status: "actif", blurb: "Le parcours principal BLOSSOM." },
-  { id: "cr", name: "Créole réunionnais", status: "module centre", blurb: "Un module ancré dans le territoire." },
-  { id: "es", name: "Español", status: "même moteur", blurb: "Même moteur de pratique, autre langue." },
-  { id: "pt", name: "Português", status: "même moteur", blurb: "Même moteur de pratique, autre langue." },
-  { id: "it", name: "Italiano", status: "même moteur", blurb: "Même moteur de pratique, autre langue." },
-  { id: "de", name: "Deutsch", status: "même moteur", blurb: "Même moteur de pratique, autre langue." },
-  { id: "lsf", name: "LSF", status: "même moteur", blurb: "Module en langue des signes, selon disponibilité du centre." },
-];
+export const LANGUAGE_MODULES = LEARN_LANGUAGES.map((language) => ({
+  id: language.id,
+  name: language.nativeName,
+  status:
+    language.engine === "active"
+      ? "actif"
+      : language.engine === "module"
+        ? "module centre"
+        : language.engine === "sign"
+          ? "langue des signes"
+          : "même moteur",
+  blurb: language.blurb.fr,
+}));
 
 export const MARKETPLACE = [
   {
