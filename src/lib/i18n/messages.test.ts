@@ -28,5 +28,5 @@ test("all UI locale message trees keep one identical shape", () => {
   assert.notEqual(MESSAGES.es.nav.blossomDesc, MESSAGES.en.nav.blossomDesc);
   assert.notEqual(MESSAGES.pt.languages.sectionUi, MESSAGES.en.languages.sectionUi);
   assert.notEqual(MESSAGES.de.welcome.firstName, MESSAGES.en.welcome.firstName);
-  assert.notEqual(MESSAGES.it.sync.offline, MESSAGES.en.sync.offline);
+  assert.notEqual(MESSAGES.it.sync.syncing, MESSAGES.en.sync.syncing);
 });
