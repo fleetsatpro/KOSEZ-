@@ -236,11 +236,26 @@ export async function sendMessage(
   }
 
   const messageId = randomUUID();
-  const rows = await sql.query(
-    "insert into blossom_message (id, conversation_id, sender_user_id, client_message_id, body) values ($1::uuid, $2::uuid, $3, $4::uuid, $5) returning id, sender_user_id, body, created_at",
-    [messageId, input.conversationId, userId, input.clientMessageId ?? null, body],
-  );
+  let rows: Record<string, unknown>[] = [];
+  try {
+    rows = await sql.query(
+      "insert into blossom_message (id, conversation_id, sender_user_id, client_message_id, body) values ($1::uuid, $2::uuid, $3, $4::uuid, $5) returning id, sender_user_id, body, created_at",
+      [messageId, input.conversationId, userId, input.clientMessageId ?? null, body],
+    );
+  } catch (error) {
+    if ((error as { code?: string })?.code !== "23505" || !input.clientMessageId) {
+      throw error;
+    }
+    rows = await sql.query(
+      "select id, sender_user_id, body, created_at
+       from blossom_message
+       where sender_user_id = $1 and client_message_id = $2::uuid
+       limit 1",
+      [userId, input.clientMessageId],
+    );
+  }
   if (!rows[0]) throw new Error("message-write-failed");
+  const duplicateMessage = String(rows[0].id) !== messageId;
 
   await sql.query(
     "update blossom_conversation set updated_at = current_timestamp where id = $1::uuid",
@@ -250,6 +265,15 @@ export async function sendMessage(
     "update blossom_conversation_member set last_read_at = current_timestamp where conversation_id = $1::uuid and user_id = $2",
     [input.conversationId, userId],
   );
+
+  if (duplicateMessage) {
+    return {
+      id: String(rows[0].id),
+      senderUserId: String(rows[0].sender_user_id),
+      body: String(rows[0].body),
+      createdAt: new Date(String(rows[0].created_at)).toISOString(),
+    };
+  }
 
   const recipients = await sql.query(
     "select user_id from blossom_conversation_member where conversation_id = $1::uuid and user_id <> $2",
