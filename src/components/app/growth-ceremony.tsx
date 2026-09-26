@@ -1,16 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
-import { causalNextGesture, MINERAL_DEFINITIONS, type MineralKey } from "@/lib/blossom/organism";
+import { causalNextGesture, MINERAL_DEFINITIONS } from "@/lib/blossom/organism";
 import { cn } from "@/lib/utils";
 
-const MINERAL_LABEL: Record<MineralKey, string> = {
-  mission: "mission",
-  parole: "parole",
-  pron: "prononciation",
-  social: "social",
-  atelier: "atelier",
-};
 
 const KIND_META: Record<
   GrowthEvent["kind"],
@@ -220,7 +213,7 @@ function CausalDoor({
   return (
     <div className="mt-6 rounded-2xl border border-primary/25 bg-primary/5 px-4 py-3 text-left">
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/80">
-        Prochain geste · {next.mineral}
+        Prochain geste · {MINERAL_DEFINITIONS[next.mineral].label} · {next.value}/100
       </p>
       <p className="mt-1 text-sm leading-5 text-fg/90">{next.line}</p>
       <p className="mt-1 text-[11px] leading-5 text-muted">{next.basis}</p>
@@ -229,7 +222,7 @@ function CausalDoor({
         onClick={onNavigate}
         className="mt-3 inline-flex text-sm font-semibold text-primary hover:underline"
       >
-        Ouvrir la porte →
+        Ouvrir {MINERAL_DEFINITIONS[next.mineral].doorLabel} →
       </Link>
     </div>
   );
