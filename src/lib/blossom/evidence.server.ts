@@ -61,13 +61,14 @@ export async function getEvidenceTimeline(
   await assertEvidenceAccess(actorUserId, learnerUserId);
   const sql = await getSql();
   const bounded = Math.min(120, Math.max(1, Math.round(limit)));
-  const [activities, submissions, feedback, pronlab, homework, tandem, events, bookings, challenges] = await Promise.all([
+  const [activities, submissions, feedback, pronlab, homework, tandem, attendance, events, bookings, challenges] = await Promise.all([
     sql.query("select id, event_type, source_id, note, payload, occurred_at from blossom_activity_event where user_id = $1 order by occurred_at desc limit " + bounded, [learnerUserId]),
     sql.query("select id, task_id, kind, content, created_at from blossom_learning_submission where user_id = $1 order by created_at desc limit " + Math.min(40, bounded), [learnerUserId]),
     sql.query("select id, submission_id, teacher_user_id, body, created_at, updated_at from blossom_learning_feedback where learner_user_id = $1 order by updated_at desc limit " + Math.min(30, bounded), [learnerUserId]),
     sql.query("select id, item_id, score, seconds, metadata, created_at from blossom_pronlab_attempt where user_id = $1 order by created_at desc limit " + Math.min(40, bounded), [learnerUserId]),
     sql.query("select id, title, body, status, updated_at from blossom_homework where learner_user_id = $1 order by updated_at desc limit " + Math.min(30, bounded), [learnerUserId]),
     sql.query("select id, user_id, partner_user_id, status, started_at, ended_at from blossom_tandem_session where (user_id = $1 or partner_user_id = $1) order by started_at desc limit " + Math.min(30, bounded), [learnerUserId]),
+    sql.query("select event_id, recorded_by_user_id, note, recorded_at from blossom_event_attendance where user_id = $1 order by recorded_at desc limit " + Math.min(30, bounded), [learnerUserId]),
     sql.query("select event_id, status, seat_no, updated_at from blossom_event_registration where user_id = $1 order by updated_at desc limit " + Math.min(30, bounded), [learnerUserId]),
     sql.query("select id, catalogue_item_id, status, payment_status, provider_reference, updated_at from blossom_booking_request where user_id = $1 order by updated_at desc limit " + Math.min(30, bounded), [learnerUserId]),
     sql.query("select challenge_id, completed_at from blossom_challenge_completion where user_id = $1 order by completed_at desc limit " + Math.min(30, bounded), [learnerUserId]),
@@ -164,6 +165,24 @@ export async function getEvidenceTimeline(
       metadata: { status, partnerUserId: partner },
     });
   }
+  for (const row of attendance) {
+    items.push({
+      id: "attendance:" + String(row.event_id),
+      at: new Date(String(row.recorded_at)).toISOString(),
+      kind: "event",
+      evidenceClass: "action",
+      title: "Présence confirmée",
+      summary: "Présence enregistrée par un opérateur K’Osez autorisé.",
+      sourceId: String(row.event_id),
+      route: "/explore",
+      metadata: {
+        eventId: String(row.event_id),
+        recordedBy: String(row.recorded_by_user_id),
+        note: row.note ? String(row.note) : null,
+      },
+    });
+  }
+
   for (const row of events) {
     items.push({
       id: "event:" + String(row.event_id) + ":" + String(row.updated_at),
