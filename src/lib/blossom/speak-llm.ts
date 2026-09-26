@@ -7,6 +7,9 @@ export type TopicRequest = {
   firstName?: string;
   friction?: string | null;
   interests?: string[];
+  pressureHint?: "soft" | "steady" | "firm";
+  kitBoost?: Array<{ phrase: string; use: string }>;
+  influenceReasons?: string[];
 };
 
 const TOPIC_ARCHETYPE_HINTS: Array<{ keys: string[]; archetype: string }> = [
@@ -31,6 +34,18 @@ export function inferArchetypeFromTopic(topic: string): string | undefined {
   )?.archetype;
 }
 
+function influenceFields(input: GenerateInput | TopicRequest): Pick<
+  GenerateInput,
+  "pressureHint" | "kitBoost" | "influenceReasons" | "friction"
+> {
+  return {
+    friction: input.friction,
+    pressureHint: input.pressureHint,
+    kitBoost: input.kitBoost,
+    influenceReasons: input.influenceReasons,
+  };
+}
+
 export function generateFromTopicOffline(
   topic: string,
   input: GenerateInput = {},
@@ -39,6 +54,7 @@ export function generateFromTopicOffline(
   const archetype = input.archetype ?? inferArchetypeFromTopic(clean);
   const room = generateLivingRoom({
     ...input,
+    ...influenceFields(input),
     archetype,
     entropy: `topic:${clean.toLowerCase()}|${input.entropy ?? ""}`,
   });
@@ -78,15 +94,17 @@ export async function buildSpeakRoom(
   opts: TopicRequest & { archetype?: string; entropy?: string },
 ): Promise<{ room: LivingRoom; source: "llm" | "swarm"; modelId?: string }> {
   const topic = opts.topic?.trim();
+  const influence = influenceFields(opts);
+
   if (!topic) {
     return {
       room: generateLivingRoom({
         archetype: opts.archetype,
         level: opts.level,
         firstName: opts.firstName,
-        friction: opts.friction,
         interests: opts.interests,
         entropy: opts.entropy,
+        ...influence,
       }),
       source: "swarm",
     };
@@ -107,7 +125,10 @@ export async function buildSpeakRoom(
     });
   } catch {
     return {
-      room: generateFromTopicOffline(topic, opts),
+      room: generateFromTopicOffline(topic, {
+        ...opts,
+        ...influence,
+      }),
       source: "swarm",
     };
   }
