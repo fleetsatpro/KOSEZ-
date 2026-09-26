@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Clock, Heart, MapPin, Pause, RefreshCw, Users } from "lucide-react";
+import { ArrowRight, Clock, Heart, MapPin, Pause, RefreshCw, Users, Leaf } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Initials, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,10 @@ import {
 } from "@/lib/blossom/data";
 import { getTandemCandidatesOnServer } from "@/lib/blossom/domain.api";
 import { tandemMatchScore } from "@/lib/blossom/engine";
+import {
+  causalNextGesture,
+  computeMinerals,
+} from "@/lib/blossom/organism";
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
@@ -40,9 +44,17 @@ function TandemHub() {
   const tandemOpen = useBlossom((s) => s.tandemOpen);
   const setTandemOpen = useBlossom((s) => s.setTandemOpen);
   const plan = useBlossom((s) => s.plan);
+  const log = useBlossom((s) => s.activityLog);
+  const growthEvents = useBlossom((s) => s.growthEvents);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const minerals = useMemo(() => computeMinerals(log), [log]);
+  const nextGesture = causalNextGesture(minerals);
+  const socialGrowth = growthEvents
+    .filter((g) => g.mineral === "social" || g.kind === "flower")
+    .slice(0, 3);
 
   const me = useMemo(
     () => ({
@@ -118,20 +130,51 @@ function TandemHub() {
           Trente et trente
         </h1>
         <p className="mt-3 text-sm leading-7 text-muted sm:text-base">
-          Deux personnes, un cadre clair. Chacun accepte avant l’ouverture
-          d’une session. Pas de messagerie libre, pas de score de performance.
+          Deux personnes, un cadre clair. Chacun accepte avant l'ouverture
+          d'une session. Une session terminée écrit une fleur sur votre BLOSSOM — le minéral social monte.
         </p>
+        {socialGrowth.length > 0 ? (
+          <ul className="mt-4 flex flex-wrap gap-2" aria-label="Présences récentes">
+            {socialGrowth.map((g) => (
+              <li
+                key={g.id}
+                className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[11px] text-primary"
+              >
+                {g.label}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </header>
 
+      <section
+        className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 p-4 magnetic-surface sm:p-5"
+        aria-label="Minéral social"
+      >
+        <div className="flex items-start gap-3">
+          <Leaf className="mt-0.5 size-4 shrink-0 text-primary" />
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
+              Minéral social · {minerals.social}/100
+            </p>
+            <p className="mt-1 text-sm leading-6 text-fg/90">
+              {nextGesture.mineral === "social"
+                ? nextGesture.line
+                : "Une présence partagée (tandem, café, atelier) fait fleurir le sol. Double accord obligatoire."}
+            </p>
+          </div>
+        </div>
+      </section>
+
       {!available ? (
-        <Surface className="mt-8">
+        <Surface className="mt-8 magnetic-surface">
           <Eyebrow>Tandem fermé</Eyebrow>
           <h2 className="mt-2 font-display text-2xl">
             Votre formule ne permet pas encore le tandem.
           </h2>
           <p className="mt-2 text-sm leading-6 text-muted">
             Les rencontres et activités de BLOSSOM restent accessibles. Le
-            tandem apparaîtra lorsque votre formule l’autorisera.
+            tandem apparaîtra lorsque votre formule l'autorisera.
           </p>
           <Button asChild variant="secondary" className="mt-5">
             <Link to="/explore">Voir EXPLORE</Link>
@@ -149,7 +192,7 @@ function TandemHub() {
               {
                 icon: Heart,
                 title: "Double accord",
-                body: "Une demande n’ouvre jamais une session seule.",
+                body: "Une demande n'ouvre jamais une session seule.",
               },
               {
                 icon: Users,
@@ -157,7 +200,7 @@ function TandemHub() {
                 body: "Pas de fil public. Les débriefs restent personnels.",
               },
             ].map((item) => (
-              <Surface key={item.title} className="!p-4">
+              <Surface key={item.title} className="!p-4 magnetic-surface">
                 <item.icon className="size-4 text-primary" strokeWidth={1.7} />
                 <p className="mt-3 font-display text-lg">{item.title}</p>
                 <p className="mt-1 text-xs leading-5 text-muted">{item.body}</p>
@@ -165,7 +208,7 @@ function TandemHub() {
             ))}
           </section>
 
-          <Surface className="mt-8 !p-5 sm:!p-6">
+          <Surface className="mt-8 !p-5 magnetic-surface sm:!p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <Eyebrow>Votre demande</Eyebrow>
@@ -175,7 +218,7 @@ function TandemHub() {
                 <p className="mt-1 text-sm text-muted">
                   {learner.interests.length
                     ? learner.interests.join(" · ")
-                    : "Centres d’intérêt non renseignés"}
+                    : "Centres d'intérêt non renseignés"}
                   {" · "}
                   {learner.practiceWindow || "Créneau non renseigné"}
                 </p>
@@ -209,10 +252,10 @@ function TandemHub() {
           </Surface>
 
           {!tandemOpen ? (
-            <Surface className="mt-8 text-center !py-12">
+            <Surface className="mt-8 text-center !py-12 magnetic-surface">
               <p className="font-display text-xl">Demande en pause.</p>
               <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted">
-                Aucune nouvelle proposition ne sera ouverte jusqu’à la reprise.
+                Aucune nouvelle proposition ne sera ouverte jusqu'à la reprise.
               </p>
             </Surface>
           ) : (
@@ -222,8 +265,8 @@ function TandemHub() {
                   <p className="text-sm text-muted">Recherche de profils compatibles…</p>
                 </Surface>
               ) : error ? (
-                <Surface className="mt-10">
-                  <p className="font-display text-xl">Le réseau n’est pas disponible.</p>
+                <Surface className="mt-10 magnetic-surface">
+                  <p className="font-display text-xl">Le réseau n'est pas disponible.</p>
                   <p className="mt-2 text-sm text-muted">{error}</p>
                   <Button className="mt-5" variant="secondary" onClick={load}>
                     <RefreshCw className="size-4" />
@@ -231,13 +274,17 @@ function TandemHub() {
                   </Button>
                 </Surface>
               ) : candidates.length === 0 ? (
-                <Surface className="mt-10 text-center !py-12">
+                <Surface className="mt-10 text-center !py-12 magnetic-surface">
                   <Users className="mx-auto size-5 text-primary" />
                   <p className="mt-4 font-display text-2xl">Pas encore de partenaire disponible.</p>
                   <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">
                     Le tandem ne fabrique pas de faux profils. Un candidat
                     apparaîtra quand un autre apprenant aura un profil compatible.
+                    En attendant, le minéral social peut aussi monter via une immersion ou un événement.
                   </p>
+                  <Button asChild variant="secondary" className="mt-5">
+                    <Link to="/explore">Voir EXPLORE</Link>
+                  </Button>
                 </Surface>
               ) : (
                 <>
@@ -249,6 +296,9 @@ function TandemHub() {
                           <h2 className="mt-2 font-display text-2xl tracking-tight">
                             Sessions prêtes
                           </h2>
+                          <p className="mt-1 text-xs text-muted">
+                            Une session terminée écrit TANDEM_COMPLETED — fleur + minéral social.
+                          </p>
                         </div>
                         <Badge>{accepted.length}</Badge>
                       </div>
@@ -271,6 +321,9 @@ function TandemHub() {
                       <h2 className="mt-2 font-display text-2xl tracking-tight">
                         Demandes reçues
                       </h2>
+                      <p className="mt-1 text-xs text-muted">
+                        Double accord obligatoire — aucune session ne s'ouvre seule.
+                      </p>
                       <ul className="mt-4 space-y-4">
                         {incoming.map((row) => (
                           <PartnerCard
@@ -367,7 +420,7 @@ function PartnerCard({
           : "Proposé";
 
   return (
-    <li className="overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-[var(--shadow-border)]">
+    <li className="overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-[var(--shadow-border)] magnetic-surface">
       <div className="flex items-start gap-4 p-5 sm:p-6">
         <Initials letters={candidate.initials} className="size-14 rounded-2xl" />
         <div className="min-w-0 flex-1">
@@ -393,7 +446,7 @@ function PartnerCard({
           <p className="mt-1 text-xs text-subtle">
             {candidate.interests.length
               ? candidate.interests.join(" · ")
-              : "Centres d’intérêt non renseignés"}
+              : "Centres d'intérêt non renseignés"}
             {" · "}
             {candidate.window}
           </p>
@@ -432,14 +485,14 @@ function PartnerCard({
               </Button>
             ) : status === "pending" ? (
               <span className="self-center text-sm text-muted">
-                En attente de l’autre personne.
+                En attente de l'autre personne.
               </span>
             ) : (
               <Button
                 size="sm"
                 onClick={() => {
                   onStatus(candidate.id, "pending");
-                  toast("Demande envoyée. L’autre personne doit encore accepter.");
+                  toast("Demande envoyée. L'autre personne doit encore accepter.");
                 }}
               >
                 Proposer
