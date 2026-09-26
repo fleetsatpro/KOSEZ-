@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { isLearnLanguageId, isUiLocaleId, type LearnLanguageId, type UiLocaleId } from "@/lib/i18n/locales";
 import { persist } from "zustand/middleware";
 import { track } from "@/lib/analytics";
 import { createMutation, enqueueMutation } from "./sync-client";
@@ -139,8 +140,8 @@ type AppState = {
   childMissionDone: boolean;
   childWords: string[];
   waitlistIds: string[];
-  languageId: string;
-  uiLocale: string;
+  languageId: LearnLanguageId;
+  uiLocale: UiLocaleId;
   missionSessions: Record<string, MissionSession>;
   backendMissionRevisions: Record<string, number>;
   syncOwnerUserId: string | null;
@@ -182,8 +183,8 @@ type AppState = {
   completeChildMission: () => void;
   markChildWord: (id: string) => void;
   joinWaitlist: (id: string) => void;
-  setLanguage: (id: string) => void;
-  setUiLocale: (id: string) => void;
+  setLanguage: (id: LearnLanguageId) => void;
+  setUiLocale: (id: UiLocaleId) => void;
   completePulse: (dareId: string, seconds: number, offline: boolean) => void;
   markLeoLetterRead: (id: string) => void;
   refreshOrganism: () => void;
@@ -559,6 +560,7 @@ export const useBlossom = create<AppState>()(
         set({ waitlistIds: [...get().waitlistIds, id] });
       },
       setLanguage: (id) => {
+        if (!isLearnLanguageId(id)) return;
         const current = get();
         const learner = { ...current.learner, targetLanguage: id };
         set({ languageId: id, learner });
@@ -566,18 +568,22 @@ export const useBlossom = create<AppState>()(
         track("language_changed", { languageId: id });
       },
       setUiLocale: (id) => {
+        if (!isUiLocaleId(id)) return;
+        const current = get();
         set({ uiLocale: id });
         track("ui_locale_changed", { uiLocale: id });
+        voidProfileSync(current.learner, current.languageId, current.plan, current.warmup, current.exportConsent, current.tandemOpen);
         if (typeof document !== "undefined") {
-          const map: Record<string, string> = {
-            fr: "fr-FR",
-            en: "en-GB",
-            es: "es-ES",
-            pt: "pt-PT",
-            de: "de-DE",
-            it: "it-IT",
+          const map: Record<UiLocaleId, { lang: string; dir: "ltr" | "rtl" }> = {
+            fr: { lang: "fr-FR", dir: "ltr" },
+            en: { lang: "en-GB", dir: "ltr" },
+            es: { lang: "es-ES", dir: "ltr" },
+            pt: { lang: "pt-PT", dir: "ltr" },
+            de: { lang: "de-DE", dir: "ltr" },
+            it: { lang: "it-IT", dir: "ltr" },
           };
-          document.documentElement.lang = map[id] ?? id;
+          document.documentElement.lang = map[id].lang;
+          document.documentElement.dir = map[id].dir;
         }
       },
       completePulse: (dareId, seconds, offline) => {
