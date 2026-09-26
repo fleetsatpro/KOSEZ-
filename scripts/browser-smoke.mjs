@@ -106,7 +106,6 @@ const SMOKE_ROUTES = [
   "/library",
   "/pronlab",
   "/moi",
-  "/inbox",
 ];
 
 mkdirSync(dirname(outPng), { recursive: true });
