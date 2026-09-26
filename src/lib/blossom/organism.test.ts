@@ -20,6 +20,24 @@ describe("organism minerals", () => {
     assert.equal(m.atelier, 0);
   });
 
+  it("keeps tandem in social rather than silently adding to parole", () => {
+    const now = new Date().toISOString();
+    const m = computeMinerals([
+      { id: "t", type: "TANDEM_COMPLETED", createdAt: now, sourceId: "t1" },
+    ]);
+    assert.equal(m.parole, 0);
+    assert.ok(m.social > 0);
+  });
+
+  it("counts only the declared atelier doors", () => {
+    const now = new Date().toISOString();
+    const m = computeMinerals([
+      { id: "d", type: "DIAGNOSTIC_COMPLETED", createdAt: now },
+      { id: "l", type: "LESSON_COMPLETED", createdAt: now },
+    ]);
+    assert.equal(m.atelier, 0);
+  });
+
   it("increases mission mineral after mission events", () => {
     const log: ActivityEvent[] = [
       {
@@ -83,6 +101,20 @@ describe("growth events", () => {
       ),
       null,
     );
+  });
+
+  it("makes ties explicit instead of hiding the second need", () => {
+    const next = causalNextGesture({
+      at: "",
+      mission: 20,
+      parole: 20,
+      pron: 20,
+      social: 50,
+      atelier: 80,
+    });
+    assert.deepEqual(next.tiedWith, ["mission", "parole", "pron"]);
+    assert.equal(next.value, 20);
+    assert.match(next.line, /Également à 20\/100/);
   });
 
   it("routes the weakest atelier mineral to Learn labs", () => {
