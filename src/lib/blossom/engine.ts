@@ -168,6 +168,7 @@ export type PronlabSummary = {
   lastScore: number;
   scores: number[];
   mastered: boolean;
+  verifiedMastered: boolean;
   struggling: boolean;
 };
 
@@ -178,25 +179,31 @@ export function summarisePronlabItem(
   const mine = attempts.filter((a) => a.itemId === itemId);
   const scored = mine.filter(
     (attempt) =>
-      attempt.metadata?.assessment === "transcript" ||
-      (typeof attempt.score === "number" &&
-        attempt.score > 0 &&
-        attempt.metadata?.assessment !== "capture-only"),
+      attempt.metadata?.assessment === "phonetic-provider" &&
+      typeof attempt.score === "number" &&
+      attempt.score > 0,
+  );
+  const practiceAttempts = mine.filter(
+    (attempt) =>
+      attempt.metadata?.assessment === "capture-only" &&
+      Number.isFinite(attempt.seconds) &&
+      attempt.seconds >= 2,
   );
   const scores = scored.map((a) => a.score);
   const lastThree = scores.slice(-3);
   const bestScore = scores.length ? Math.max(...scores) : 0;
   const lastScore = scores.length ? scores[scores.length - 1]! : 0;
-  const scoreMastered =
+  const verifiedMastered =
     bestScore >= 90 ||
     (lastThree.length >= 3 && lastThree.every((s) => s >= 75));
-  // Rehearsal duration is practice evidence, not evidence of pronunciation
-  // mastery. Without a verified phonetic score, the learner remains unscored.
-  const mastered = scoreMastered;
+  const practiceMastered =
+    practiceAttempts.length >= 2 ||
+    (mine.length >= 3 && mine.reduce((sum, attempt) => sum + Math.max(0, attempt.seconds), 0) >= 6);
+  const mastered = verifiedMastered || practiceMastered;
   const struggling =
     scored.length >= 2 && bestScore < 60
       ? true
-      : scored.length === 0 && mine.length >= 4 && practiceAttempts.length < 2;
+      : scored.length === 0 && practiceAttempts.length >= 4;
   return {
     itemId,
     attemptCount: mine.length,
@@ -204,6 +211,7 @@ export function summarisePronlabItem(
     lastScore,
     scores,
     mastered,
+    verifiedMastered,
     struggling,
   };
 }
