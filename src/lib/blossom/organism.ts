@@ -124,7 +124,7 @@ export function computeMinerals(log: ActivityEvent[]): MineralSnapshot {
     8,
   );
   const parole = norm(
-    countTypes(log, ["SPEAK_COMPLETED", "TANDEM_COMPLETED"]),
+    countTypes(log, ["SPEAK_COMPLETED"]),
     6,
   );
   const pron = norm(
@@ -175,7 +175,7 @@ export function organismStatusLine(minerals: MineralSnapshot): string {
       return "Racines profondes cette semaine — la tige peut s'élancer.";
     }
     if (highest && highest[1] >= 70) {
-      return `Le ${highest[0]} est fort. Un geste ailleurs équilibre le sol.`;
+      return `Le ${MINERAL_DOORS[highest[0]].label} est fort. Un geste ailleurs équilibre le sol.`;
     }
     return "La terre est stable. Un geste suffit encore.";
   }
