@@ -29,13 +29,14 @@ describe("organism minerals", () => {
     assert.ok(m.social > 0);
   });
 
-  it("counts only the declared atelier doors", () => {
+  it("counts only declared atelier events, including curriculum evidence", () => {
     const now = new Date().toISOString();
     const m = computeMinerals([
       { id: "d", type: "DIAGNOSTIC_COMPLETED", createdAt: now },
       { id: "l", type: "LESSON_COMPLETED", createdAt: now },
+      { id: "c", type: "CURRICULUM_EVIDENCE_RECORDED", createdAt: now, sourceId: "lesson-1" },
     ]);
-    assert.equal(m.atelier, 0);
+    assert.ok(m.atelier > 0);
   });
 
   it("increases mission mineral after mission events", () => {
@@ -93,14 +94,13 @@ describe("growth events", () => {
     assert.equal(grammar?.mineral, "atelier");
     assert.equal(tandem?.mineral, "social");
     assert.equal(tandem?.kind, "flower");
-    assert.equal(
-      growthEventForActivity(
-        "CURRICULUM_EVIDENCE_RECORDED",
-        "u1-l1",
-        "2026-09-22T00:00:00.000Z",
-      ),
-      null,
+    const curriculum = growthEventForActivity(
+      "CURRICULUM_EVIDENCE_RECORDED",
+      "u1-l1",
+      "2026-09-22T00:00:00.000Z",
     );
+    assert.equal(curriculum?.mineral, "atelier");
+    assert.equal(curriculum?.kind, "mineral");
   });
 
   it("makes ties explicit instead of hiding the second need", () => {
