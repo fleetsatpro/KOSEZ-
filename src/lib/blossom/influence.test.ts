@@ -45,7 +45,7 @@ test("tandem struggle prompt follows the selected learning language", () => {
       tip: "",
       createdAt: new Date().toISOString(),
       seconds: 2,
-      metadata: { assessment: "phonetic-provider" },
+      metadata: { assessment: "phonetic-provider" as const },
     }],
     allItems: [{
       id: "x",
