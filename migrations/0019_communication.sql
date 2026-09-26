@@ -1,3 +1,6 @@
+alter table blossom_notification drop constraint if exists blossom_notification_kind_check;
+alter table blossom_notification add constraint blossom_notification_kind_check check (kind in ('homework','booking','event','tandem','learning','system','communication'));
+
 -- Durable communication primitives.
 create table if not exists blossom_conversation (
   id uuid primary key,
