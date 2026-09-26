@@ -1,7 +1,7 @@
 import { getSql } from "@/lib/db";
 import { BlossomForbiddenError } from "./domain.server";
 import { pronlabEvidenceProjection } from "./evidence-projection";
-import { MINERAL_DOORS, type MineralKey } from "./organism";
+import type { MineralKey } from "./organism";
 
 export type EvidenceClass = "action" | "artifact" | "observation" | "plan";
 
@@ -20,6 +20,7 @@ export type EvidenceTimelineItem = {
 
 
 function activityDescriptor(type: string) {
+  switch (type) {
     case "MISSION_COMPLETED": return { title: "Mission accomplie", summary: "Une mission réellement clôturée.", evidenceClass: "action" as const, route: "/mission", mineral: "mission" as const };
     case "REAL_WORLD_BONUS": return { title: "Geste terrain", summary: "Une action réelle enregistrée.", evidenceClass: "action" as const, route: "/mission", mineral: "mission" as const };
     case "SPEAK_COMPLETED": return { title: "Prise de parole", summary: "Une session OSEZ clôturée avec ses métadonnées.", evidenceClass: "observation" as const, route: "/osez", mineral: "parole" as const };
@@ -112,7 +113,6 @@ export async function getEvidenceTimeline(
   ]);
 
   const items: EvidenceTimelineItem[] = [];
-  void MINERAL_DOORS;
   for (const row of activities) {
     const desc = activityDescriptor(String(row.event_type));
     const payload = row.payload && typeof row.payload === "object" ? (row.payload as Record<string, unknown>) : {};
