@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   LEARNER_MEMORY,
-  PRONLAB_SETS,
   setsForLanguage,
   planAllows,
 } from "@/lib/blossom/data";
