@@ -66,7 +66,40 @@ async function assertEvidenceAccess(actorUserId: string, learnerUserId: string) 
   );
   if (admin[0]) return;
   const allowed = await sql.query(
-    "select 1 from blossom_teacher_link where teacher_user_id = $1 and learner_user_id = $2 and status = 'active' union all select 1 from blossom_guardian_link where guardian_user_id = $1 and learner_user_id = $2 and status = 'active' union all select 1 from blossom_organization_member staff join blossom_organization_member learner on learner.organization_id = staff.organization_id and learner.user_id = $2 and learner.status = 'active' and learner.role = 'learner' where staff.user_id = $1 and staff.status = 'active' and staff.role in ('owner','admin','teacher') limit 1",
+    `select 1
+     from blossom_teacher_link
+     where teacher_user_id = $1 and learner_user_id = $2 and status = 'active'
+     union all
+     select 1
+     from blossom_guardian_link
+     where guardian_user_id = $1 and learner_user_id = $2 and status = 'active'
+     union all
+     select 1
+     from blossom_organization_member staff
+     join blossom_organization_member learner
+       on learner.organization_id = staff.organization_id
+     where staff.user_id = $1
+       and staff.status = 'active'
+       and learner.user_id = $2
+       and learner.status = 'active'
+       and learner.role = 'learner'
+       and (
+         staff.role in ('owner','admin')
+         or (
+           staff.role = 'teacher'
+           and exists (
+             select 1
+             from blossom_organization_group g
+             join blossom_organization_group_member gm
+               on gm.group_id = g.id
+              and gm.user_id = learner.user_id
+             where g.organization_id = staff.organization_id
+               and g.teacher_user_id = staff.user_id
+               and g.status = 'active'
+           )
+         )
+       )
+     limit 1`,
     [actorUserId, learnerUserId],
   );
   if (!allowed[0]) throw new BlossomForbiddenError("Vous n'avez pas accès aux preuves de cet apprenant.");
