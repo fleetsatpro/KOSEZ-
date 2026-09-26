@@ -36,6 +36,7 @@ import {
 } from "./domain.server";
 import type { JsonObject } from "./backend.server";
 import { getAdminEventAttendance, recordEventAttendance } from "./event-attendance.server";
+import { getSavedExploreItems, toggleSavedExploreItem } from "./explore.server";
 import { getOrganizationGroups, createOrganizationGroup, setOrganizationGroupTeacher, addOrganizationGroupMember, removeOrganizationGroupMember, archiveOrganizationGroup } from "./organization-groups.server";
 import {
   getOrCreateConversation,
@@ -183,6 +184,20 @@ export const getTeacherWorkspaceOnServer = createServerFn({ method: "GET" })
 export const getGuardianWorkspaceOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => getGuardianWorkspace(context.userId));
+
+export const getSavedExploreItemsOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getSavedExploreItems(context.userId));
+
+export const toggleSavedExploreItemOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      itemType: z.enum(["event", "catalogue"]),
+      itemId: z.string().trim().min(1).max(200),
+    }),
+  )
+  .handler(async ({ context, data }) => toggleSavedExploreItem(context.userId, data));
 
 export const getOrganizationGroupsOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
