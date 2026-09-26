@@ -356,8 +356,8 @@ export function missionObjective(
 
   const sceneLanguageKit: MissionScene["languageKit"] = languageKit.map((item) => ({
     phrase: item.phrase,
-    meaning: "meaning" in item ? item.meaning : item.use,
-    use: item.use,
+    meaning: String("meaning" in item ? item.meaning : item.use),
+    use: String(item.use),
   }));
 
   const scene: MissionScene | null = mission.scene
