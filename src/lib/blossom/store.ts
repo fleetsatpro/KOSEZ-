@@ -33,6 +33,7 @@ import {
   findPronlabItem,
   findPronlabSet,
   PRONLAB_SETS,
+  setsForLanguage,
   type PlanId,
 } from "./data";
 import {
@@ -393,7 +394,11 @@ export const useBlossom = create<AppState>()(
         const ge = growthEventForActivity(type, sourceId, event.createdAt);
         const growthEvents = ge ? pushGrowthEvent(get().growthEvents, ge) : get().growthEvents;
         const mineralSnapshot = computeMinerals(nextLog);
-        const phonemeLeaves = buildPhonemeLeaves(get().pronlabAttempts, PRONLAB_SETS.flatMap((s) => s.items));
+        const current = get();
+        const phonemeLeaves = buildPhonemeLeaves(
+          current.pronlabAttempts,
+          setsForLanguage(current.languageId).flatMap((setDef) => setDef.items),
+        );
         let leoLetters = get().leoLetters;
         const letter = composeLeoLetter(mineralSnapshot, growthEvents, get().learner.firstName);
         if (!leoLetters.some((l) => l.id === letter.id)) leoLetters = [letter, ...leoLetters].slice(0, 12);
@@ -563,7 +568,11 @@ export const useBlossom = create<AppState>()(
         if (!isLearnLanguageId(id)) return;
         const current = get();
         const learner = { ...current.learner, targetLanguage: id };
-        set({ languageId: id, learner });
+        const phonemeLeaves = buildPhonemeLeaves(
+          current.pronlabAttempts,
+          setsForLanguage(id).flatMap((setDef) => setDef.items),
+        );
+        set({ languageId: id, learner, phonemeLeaves });
         voidProfileSync(learner, id, current.plan, current.warmup, current.exportConsent, current.tandemOpen);
         track("language_changed", { languageId: id });
       },
