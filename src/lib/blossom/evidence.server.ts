@@ -28,6 +28,7 @@ function activityDescriptor(type: string) {
     case "MISSION_COMPLETED": return { title: "Mission accomplie", summary: "Une mission réellement clôturée.", evidenceClass: "action" as const, route: "/mission" };
     case "REAL_WORLD_BONUS": return { title: "Geste terrain", summary: "Une action réelle enregistrée.", evidenceClass: "action" as const, route: "/mission" };
     case "SPEAK_COMPLETED": return { title: "Prise de parole", summary: "Une session OSEZ clôturée avec ses métadonnées.", evidenceClass: "action" as const, route: "/osez" };
+    case "PRONLAB_ATTEMPTED": return { title: "Tentative Pron’Lab", summary: "Une tentative a été enregistrée. Sans moteur phonétique, K’Osez ne fabrique pas de note.", evidenceClass: "action" as const, route: "/pronlab" };
     case "PRONLAB_MASTERY": return { title: "Observation Pron’Lab", summary: "Un item Pron’Lab a franchi le seuil calculé.", evidenceClass: "observation" as const, route: "/pronlab" };
     case "PRONLAB_COMPLETED": return { title: "Set Pron’Lab terminé", summary: "Le set a été parcouru; aucune note de performance n’est inventée.", evidenceClass: "action" as const, route: "/pronlab" };
     case "TANDEM_COMPLETED": return { title: "Tandem clôturé", summary: "Un échange tandem a été enregistré avec une réflexion personnelle.", evidenceClass: "action" as const, route: "/tandem" };
@@ -50,6 +51,11 @@ function exactRoute(kind: EvidenceTimelineItem["kind"], sourceId: string | null,
   if (!sourceId) return null;
   if (kind === "activity") {
     const type = typeof metadata.activityType === "string" ? metadata.activityType : "";
+    if (type === "PRONLAB_ATTEMPTED") {
+      const itemId = typeof metadata.itemId === "string" ? metadata.itemId : "";
+      const set = PRONLAB_SETS.find((entry) => entry.items.some((item) => item.id === itemId));
+      return itemId && set ? `/pronlab/${encodeURIComponent(set.id)}?item=${encodeURIComponent(itemId)}` : "/pronlab";
+    }
     if (type === "LIBRARY_COMPLETED") return `/library/${encodeURIComponent(sourceId)}`;
     if (type === "GRAMMAR_COMPLETED" || type === "LISTENING_COMPLETED" || type === "WRITING_COMPLETED") {
       const parts = sourceId.split(":");
