@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { ArrowLeft, Volume2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, ArrowRight, Leaf, Target, Volume2 } from "lucide-react";
 import { RecordControl } from "@/components/app/record-control";
 import { Eyebrow, Page, Sparkline, DualWave, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { findPronlabSet } from "@/lib/blossom/data";
+import { findPronlabSet, LEARNER_MEMORY, PRONLAB_SETS } from "@/lib/blossom/data";
 import { summarisePronlabItem, type PronlabAttempt } from "@/lib/blossom/engine";
+import { influenceFromState } from "@/lib/blossom/influence";
 import { isSetUnlocked, useBlossom } from "@/lib/blossom/store";
 import { toast } from "sonner";
 import {
@@ -35,12 +36,57 @@ function highlight(phrase: string, segment: string) {
   );
 }
 
+/** Explicit path to mastery — zero ambiguity. */
+function masteryPath(summary: ReturnType<typeof summarisePronlabItem>): {
+  label: string;
+  detail: string;
+  pct: number;
+} {
+  if (summary.mastered) {
+    return {
+      label: "Maîtrisé",
+      detail: summary.verifiedMastered
+        ? "Score tenu (≥90 ou 3× ≥75). Une feuille s'ouvre sur BLOSSOM."
+        : "Pratique tenue (2 captures ≥2s ou 3 passages ≥6s). Une feuille s'ouvre.",
+      pct: 100,
+    };
+  }
+  if (summary.struggling) {
+    return {
+      label: "Son qui résiste",
+      detail: "Best < 60 après ≥2 analyses. Mission, OSEZ et Pulse reçoivent ce frottement.",
+      pct: Math.min(40, summary.attemptCount * 10),
+    };
+  }
+  if (summary.attemptCount === 0) {
+    return {
+      label: "Pas encore touché",
+      detail: "Premier passage : écrit un minéral pron. Deux captures ≥2s = maîtrise pratique.",
+      pct: 0,
+    };
+  }
+  const need = Math.max(0, 2 - summary.attemptCount);
+  return {
+    label: `${summary.attemptCount} passage${summary.attemptCount > 1 ? "s" : ""}`,
+    detail:
+      need > 0
+        ? `Encore ${need} capture${need > 1 ? "s" : ""} claire${need > 1 ? "s" : ""} (≥2s) pour la maîtrise pratique — ou un score ≥90.`
+        : "Proche de la maîtrise. Un passage net suffit encore.",
+    pct: Math.min(90, summary.attemptCount * 35),
+  };
+}
+
 function PronlabSetPage() {
   const { setId } = Route.useParams();
   const setDef = findPronlabSet(setId);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const assigned = useBlossom((s) => s.assignedSetIds);
   const record = useBlossom((s) => s.recordPronlabAttempt);
+  const log = useBlossom((s) => s.activityLog);
+  const growthEvents = useBlossom((s) => s.growthEvents);
+  const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
+  const missionSessions = useBlossom((s) => s.missionSessions);
+  const minerals = useBlossom((s) => s.mineralSnapshot);
   const [index, setIndex] = useState(0);
   const [heard, setHeard] = useState(false);
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
@@ -48,6 +94,22 @@ function PronlabSetPage() {
     if (curriculumLessonId) clearCurriculumLessonContext();
   }, [curriculumLessonId]);
   const [lastAttempt, setLastAttempt] = useState<PronlabAttempt | null>(null);
+  const [justMastered, setJustMastered] = useState(false);
+
+  const influence = useMemo(
+    () =>
+      influenceFromState({
+        activityLog: log,
+        pronlabAttempts: attempts,
+        growthEvents,
+        phonemeLeaves,
+        missionSessions,
+        allItems: PRONLAB_SETS.flatMap((s) => s.items),
+        memory: LEARNER_MEMORY,
+        memoryOn: true,
+      }),
+    [log, attempts, growthEvents, phonemeLeaves, missionSessions],
+  );
 
   if (!setDef) {
     return (
@@ -63,6 +125,7 @@ function PronlabSetPage() {
   const unlocked = isSetUnlocked(setDef.id, attempts, assigned);
   const item = setDef.items[index]!;
   const summary = summarisePronlabItem(item.id, attempts);
+  const path = masteryPath(summary);
   const history = attempts
     .filter((a) => a.itemId === item.id)
     .slice(-10)
@@ -95,6 +158,13 @@ function PronlabSetPage() {
     );
   }
 
+  const impactReasons = [
+    ...influence.mission.reasons,
+    ...influence.speak.reasons,
+    ...influence.pulse.reasons,
+    ...influence.tandem.reasons,
+  ].filter((r) => r.code !== "balanced");
+
   return (
     <Page className="max-w-xl">
       <Button variant="ghost" size="sm" asChild className="-ml-2">
@@ -109,8 +179,39 @@ function PronlabSetPage() {
         <h1 className="font-display text-3xl tracking-tight">
           {index + 1} / {setDef.items.length}
         </h1>
-        {summary.mastered && <Badge>Maîtrisé</Badge>}
+        {summary.mastered ? (
+          <Badge>Maîtrisé</Badge>
+        ) : summary.struggling ? (
+          <Badge variant="outline" className="border-primary/40 text-primary">
+            Résiste
+          </Badge>
+        ) : null}
       </div>
+
+      {/* Mastery path — zero ambiguity */}
+      <section
+        className="mt-4 rounded-2xl border border-border/70 bg-surface/80 p-4"
+        aria-label="Chemin vers la maîtrise"
+      >
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">
+            Chemin · {path.label}
+          </p>
+          <p className="text-xs tabular-nums text-muted">{path.pct}%</p>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
+          <div
+            className="h-full rounded-full bg-primary transition-[width] duration-500"
+            style={{ width: `${path.pct}%` }}
+          />
+        </div>
+        <p className="mt-2 text-xs leading-5 text-muted">{path.detail}</p>
+        <p className="mt-2 text-[11px] text-subtle">
+          Minéral pron · {minerals.pron}/100 · {phonemeLeaves.length} feuille
+          {phonemeLeaves.length !== 1 ? "s" : ""} ouverte
+          {phonemeLeaves.length !== 1 ? "s" : ""}
+        </p>
+      </section>
 
       <div className="mt-4 flex flex-wrap gap-2">
         {setDef.items.map((it, i) => {
@@ -123,6 +224,7 @@ function PronlabSetPage() {
                 setIndex(i);
                 setHeard(false);
                 setLastAttempt(null);
+                setJustMastered(false);
               }}
               className={`rounded-full px-3 py-1 text-xs ${
                 i === index
@@ -130,7 +232,7 @@ function PronlabSetPage() {
                   : "bg-surface-2 text-muted"
               }`}
             >
-              {s.mastered ? "●" : "○"} {i + 1}
+              {s.mastered ? "●" : s.struggling ? "◎" : "○"} {i + 1}
             </button>
           );
         })}
@@ -165,6 +267,7 @@ function PronlabSetPage() {
           <RecordControl
             cta={heard ? "Maintenir pour dire" : "Écoutez, ou tentez"}
             onFinished={async ({ seconds, blob, mimeType }) => {
+              const beforeMastered = summarisePronlabItem(item.id, useBlossom.getState().pronlabAttempts).mastered;
               let evidence = captureOnlyEvidence(seconds);
               if (blob) {
                 try {
@@ -205,17 +308,40 @@ function PronlabSetPage() {
                     );
                   }
                 }
+                const afterMastered = summarisePronlabItem(
+                  item.id,
+                  useBlossom.getState().pronlabAttempts,
+                ).mastered;
+                setJustMastered(!beforeMastered && afterMastered);
                 setLastAttempt(attempt);
                 toast(
-                  evidence.assessment === "transcript"
-                    ? "Prise transcrite. Aucune note phonétique n’est inventée."
-                    : "Prise enregistrée. K’Osez n’invente pas de note sans moteur phonétique.",
+                  !beforeMastered && afterMastered
+                    ? "Maîtrise. Une feuille s'ouvre sur BLOSSOM."
+                    : evidence.assessment === "transcript"
+                      ? "Prise transcrite. Aucune note phonétique n'est inventée."
+                      : "Prise enregistrée. K'Osez n'invente pas de note sans moteur phonétique.",
                 );
               }
             }}
           />
         ) : (
           <div className="text-center">
+            {justMastered ? (
+              <div className="mb-6 rounded-2xl border border-primary/25 bg-primary/8 p-4 text-left">
+                <div className="flex items-start gap-2">
+                  <Leaf className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
+                      Feuille ouverte
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-fg">
+                      « {item.focus || item.phrase} » tient. Le minéral pron monte. Mission, OSEZ et Pulse n'injectent plus ce son comme friction.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             {lastAttempt.metadata?.assessment === "capture-only" ? (
               <>
                 <p className="text-xs uppercase tracking-[0.16em] text-subtle">
@@ -225,8 +351,8 @@ function PronlabSetPage() {
                   {lastAttempt.seconds}s de parole
                 </p>
                 <p className="mx-auto mt-4 max-w-md text-sm leading-7 text-muted">
-                  Votre voix a bien été capturée, mais K’Osez ne fabrique pas
-                  de note en l’absence d’un moteur phonétique connecté.
+                  Voix capturée. Pas de note inventée sans moteur phonétique. La
+                  maîtrise pratique compte les captures ≥2s.
                 </p>
                 <div className="mt-5 rounded-2xl border border-border bg-surface-2/50 p-4 text-left">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-subtle">
@@ -255,7 +381,7 @@ function PronlabSetPage() {
               </>
             )}
             <div className="mt-6 flex flex-col gap-2">
-              <Button variant="outline" onClick={() => setLastAttempt(null)}>
+              <Button variant="outline" onClick={() => { setLastAttempt(null); setJustMastered(false); }}>
                 Réessayer
               </Button>
               {index < setDef.items.length - 1 && (
@@ -264,6 +390,7 @@ function PronlabSetPage() {
                     setIndex((n) => n + 1);
                     setHeard(false);
                     setLastAttempt(null);
+                    setJustMastered(false);
                   }}
                 >
                   Item suivant
@@ -273,6 +400,63 @@ function PronlabSetPage() {
           </div>
         )}
       </Surface>
+
+      {/* Organism impact — what other doors receive */}
+      {(lastAttempt || summary.struggling || summary.mastered) && (
+        <section
+          className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5"
+          aria-label="Impact sur l'organisme"
+        >
+          <div className="flex items-start gap-2">
+            <Target className="mt-0.5 size-4 shrink-0 text-primary" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
+                Organisme · conséquences
+              </p>
+              <p className="mt-1 text-sm leading-6 text-fg">
+                {summary.mastered
+                  ? "Ce son ne bloque plus Mission ni OSEZ. Il peut entrer dans le kit comme outil."
+                  : summary.struggling
+                    ? "Ce son traverse Mission (phrase d'appui), OSEZ (kit + pression douce), Pulse (dare recalibré) et Tandem (prompt d'ouverture)."
+                    : "Chaque passage nourrit le minéral pron. La maîtrise ouvre une feuille."}
+              </p>
+              {impactReasons.length > 0 ? (
+                <ul className="mt-3 space-y-1.5">
+                  {impactReasons.slice(0, 4).map((r) => (
+                    <li key={r.code + r.line} className="text-xs leading-5 text-muted">
+                      <span className="font-medium text-primary/90">{r.code}</span>
+                      {" · "}
+                      {r.line}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {summary.struggling ? (
+                  <>
+                    <Button asChild size="sm" variant="secondary">
+                      <Link to="/mission">
+                        Mission
+                        <ArrowRight className="size-3.5" />
+                      </Link>
+                    </Button>
+                    <Button asChild size="sm" variant="ghost">
+                      <Link to="/osez">OSEZ</Link>
+                    </Button>
+                  </>
+                ) : summary.mastered ? (
+                  <Button asChild size="sm" variant="secondary">
+                    <Link to="/osez">
+                      Utiliser dans une room
+                      <ArrowRight className="size-3.5" />
+                    </Link>
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       <Surface className="mt-4">
         <Eyebrow>Historique</Eyebrow>
@@ -296,47 +480,15 @@ function PronlabSetPage() {
                   className="tabular-nums text-primary"
                   onClick={() => speak(item.model)}
                 >
-                  {a.metadata?.assessment === "capture-only" ? `Capture · ${a.seconds}s` : `${a.score} · score`}
+                  {a.metadata?.assessment === "capture-only"
+                    ? `Capture · ${a.seconds}s`
+                    : `${a.score} · score`}
                 </button>
               </li>
             ))}
           </ul>
         )}
       </Surface>
-
-      {summary.scores.length >= 2 && (
-        <Surface className="mt-4">
-          <Eyebrow>Avant / après</Eyebrow>
-          <p className="mt-3 text-sm tabular-nums">
-            Premier {summary.scores[0]} → dernier {summary.lastScore}
-          </p>
-          <p className="mt-3 text-sm leading-6 text-muted">
-            Ce résumé compare uniquement des analyses phonétiques réellement disponibles.
-          </p>
-          <Button
-            variant="secondary"
-            className="mt-4 w-full"
-            onClick={() => {
-              const first = summary.scores[0] ?? 0;
-              const last = summary.lastScore;
-              const html = `<!doctype html><meta charset="utf-8"><title>K'Osez BLOSSOM — avant / après</title><body style="font-family:Georgia,serif;background:#F3EEE4;color:#1C2B26;padding:48px;max-width:40rem"><p style="letter-spacing:.2em;font-size:11px;text-transform:uppercase">Pron'Lab</p><h1>${item.phrase}</h1><p>Premier passage ${first} · dernier ${last}</p><p style="color:#5E6E68">Résumé de progression. Audio non inclus. ${new Date().toLocaleDateString("fr-FR")} · Saint-Pierre</p></body>`;
-              const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `kosez-pronlab-${item.id}-resume.html`;
-              document.body.appendChild(a);
-              a.click();
-              a.remove();
-              URL.revokeObjectURL(url);
-              toast("Résumé Pron’Lab téléchargé.");
-            }}
-          >
-            Télécharger le résumé
-          </Button>
-        </Surface>
-      )}
-
     </Page>
   );
 }
