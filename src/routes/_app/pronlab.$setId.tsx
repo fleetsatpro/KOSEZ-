@@ -5,7 +5,7 @@ import { RecordControl } from "@/components/app/record-control";
 import { Eyebrow, Page, Sparkline, DualWave, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { findPronlabSet, LEARNER_MEMORY, PRONLAB_SETS } from "@/lib/blossom/data";
+import { findPronlabSet, LEARNER_MEMORY, PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
 import { summarisePronlabItem, type PronlabAttempt } from "@/lib/blossom/engine";
 import { influenceFromState } from "@/lib/blossom/influence";
 import { isSetUnlocked, useBlossom } from "@/lib/blossom/store";
@@ -16,6 +16,7 @@ import {
 } from "@/lib/blossom/curriculum-context";
 import { transcribeSpeakTurn } from "@/lib/blossom/speech.api";
 import { blobToBase64, captureOnlyEvidence } from "@/lib/blossom/speech-stt";
+import { learnLanguageDef } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_app/pronlab/$setId")({
   component: PronlabSetPage,
@@ -79,6 +80,7 @@ function masteryPath(summary: ReturnType<typeof summarisePronlabItem>): {
 function PronlabSetPage() {
   const { setId } = Route.useParams();
   const setDef = findPronlabSet(setId);
+  const languageId = useBlossom((s) => s.languageId);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const assigned = useBlossom((s) => s.assignedSetIds);
   const record = useBlossom((s) => s.recordPronlabAttempt);
@@ -121,6 +123,16 @@ function PronlabSetPage() {
       </Page>
     );
   }
+  if (setDef && !setsForLanguage(languageId).some((set) => set.id === setId)) {
+    return (
+      <Page className="max-w-xl">
+        <p className="font-display text-2xl">Set indisponible dans la langue apprise</p>
+        <p className="mt-2 text-sm text-muted">Ce set appartient à une autre langue cible. Changez la langue apprise dans MOI ou choisissez un set disponible.</p>
+        <Button asChild className="mt-4"><Link to="/pronlab">Retour</Link></Button>
+      </Page>
+    );
+  }
+
 
   const unlocked = isSetUnlocked(setDef.id, attempts, assigned);
   const item = setDef.items[index]!;
@@ -138,7 +150,8 @@ function PronlabSetPage() {
     }
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = setDef?.language === "es" ? "es-ES" : "en-GB";
+    const speechLanguage = setDef?.language === "English" || !setDef?.language ? "en" : setDef.language;
+    utter.lang = learnLanguageDef(speechLanguage).speechLocale;
     utter.rate = 0.92;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utter);
