@@ -671,6 +671,12 @@ export const useBlossom = create<AppState>()(
         void enqueueMutation(mutation);
         set({ pronlabAttempts: nextAttempts });
         track("pronlab_attempted");
+        get().completeActivity(
+          "PRONLAB_ATTEMPTED",
+          mutation.mutationId,
+          `Tentative Pron’Lab · ${itemId}`,
+          { itemId, attemptId: mutation.mutationId, seconds: attempt.seconds },
+        );
         const after = summarisePronlabItem(itemId, nextAttempts);
         if (!before.mastered && after.mastered) {
           get().completeActivity("PRONLAB_MASTERY", `mastery-${itemId}`);
