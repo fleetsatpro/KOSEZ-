@@ -5,6 +5,7 @@ import { BlossomForbiddenError, createNotification, writeAuditEvent } from "./do
 export type TeacherSession = {
   id: string;
   teacherUserId: string;
+  teacherName: string;
   learnerUserId: string;
   learnerName: string;
   title: string;
@@ -43,6 +44,7 @@ function mapSession(row: Record<string, unknown>): TeacherSession {
   return {
     id: String(row.id),
     teacherUserId: String(row.teacher_user_id),
+    teacherName: String(row.teacher_name),
     learnerUserId: String(row.learner_user_id),
     learnerName: String(row.learner_name),
     title: String(row.title),
@@ -66,10 +68,12 @@ async function loadTeacherSessions(
     `select
        s.id, s.teacher_user_id, s.learner_user_id,
        coalesce(nullif(p.display_name, ''), s.learner_user_id) as learner_name,
+       coalesce(nullif(tp.display_name, ''), s.teacher_user_id) as teacher_name,
        s.title, s.starts_at, s.duration_minutes, s.notes, s.status,
        s.created_at, s.updated_at
      from blossom_teacher_session s
      left join blossom_profile p on p.user_id = s.learner_user_id
+     left join blossom_profile tp on tp.user_id = s.teacher_user_id
      where ${whereSql}
      order by s.starts_at asc
      limit ${bounded}`,
