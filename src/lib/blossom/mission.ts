@@ -1,5 +1,6 @@
 import type { Mission } from "./data";
 import type { LearnerMemory } from "./engine";
+import type { MissionInfluence } from "./influence";
 
 export type MissionMode = "real-world" | "practice";
 export type MissionChallenge = "core" | "stretch";
@@ -319,35 +320,77 @@ export function evaluateMission(
   };
 }
 
+/**
+ * Build the living objective for today's mission.
+ * Optional `influence` injects Pron'Lab struggle, mission friction history,
+ * and phoneme mastery into kit / stretch / support — causal, not cosmetic.
+ */
 export function missionObjective(
   mission: Mission,
   memory: LearnerMemory,
   memoryEnabled: boolean,
   previousOutcome?: MissionOutcome | null,
+  influence?: MissionInfluence | null,
 ) {
   const successSignals = mission.successSignals ?? [
     "Vous ouvrez réellement la conversation.",
     "Vous utilisez au moins une fois la phrase travaillée.",
     "Vous restez dans la langue cible pendant l'échange.",
   ];
-  const support = memoryEnabled
+
+  const supportBase = memoryEnabled
     ? "Léo garde votre point de friction en arrière-plan ; vous ne devez pas le résoudre aujourd'hui."
     : "Une phrase d'appui suffit. Le reste peut être imparfait.";
+
+  const supportPhrase =
+    influence?.emphasis ?? mission.supportPhrase ?? mission.title;
+
+  // Merge kit: influence front item first, then scene kit
+  const baseKit = mission.scene?.languageKit ?? [];
+  const languageKit = influence?.kitFront
+    ? [
+        influence.kitFront,
+        ...baseKit.filter((k) => k.phrase !== influence.kitFront!.phrase),
+      ].slice(0, 4)
+    : baseKit;
+
+  const scene = mission.scene
+    ? { ...mission.scene, languageKit }
+    : influence?.kitFront
+      ? {
+          time: "Maintenant",
+          sensoryCue: "Votre environnement immédiat",
+          pressure: "Utile, pas hostile",
+          languageKit,
+          rescuePhrases: [] as { phrase: string; meaning: string }[],
+        }
+      : null;
+
+  const influenceSupport =
+    influence?.reasons.map((r) => r.line).join(" ") || null;
 
   const common = {
     title: mission.title,
     prompt: mission.prompt,
     situation: mission.realWorldInstruction ?? mission.context,
     successSignals,
-    supportPhrase: mission.supportPhrase ?? mission.title,
-    support,
-    scene: mission.scene ?? null,
+    supportPhrase,
+    support: influenceSupport
+      ? `${supportBase} ${influenceSupport}`
+      : supportBase,
+    scene,
+    influenceReasons: influence?.reasons ?? [],
+    adaptationDetail: influence?.adaptationDetail ?? null,
   };
+
+  const stretchFromInfluence = influence?.stretchOverride;
 
   if (previousOutcome === "repeat") {
     return {
       ...common,
-      stretch: "Gardez le geste identique. N'ajoutez aucune difficulté tant qu'il n'est pas disponible.",
+      stretch:
+        stretchFromInfluence ??
+        "Gardez le geste identique. N'ajoutez aucune difficulté tant qu'il n'est pas disponible.",
       adaptation: "Sécuriser",
     };
   }
@@ -355,7 +398,10 @@ export function missionObjective(
   if (previousOutcome === "stabilise") {
     return {
       ...common,
-      stretch: mission.stretch ?? "Même geste, nouvelle personne ou nouveau contexte.",
+      stretch:
+        stretchFromInfluence ??
+        mission.stretch ??
+        "Même geste, nouvelle personne ou nouveau contexte.",
       adaptation: "Stabiliser",
     };
   }
@@ -363,15 +409,21 @@ export function missionObjective(
   if (previousOutcome === "advance") {
     return {
       ...common,
-      stretch: mission.stretch ?? "Ajoutez une relance courte.",
+      stretch:
+        stretchFromInfluence ??
+        mission.stretch ??
+        "Ajoutez une relance courte.",
       adaptation: "Prolonger",
     };
   }
 
   return {
     ...common,
-    stretch: mission.stretch ?? "Ajoutez une relance seulement si la première phrase sort naturellement.",
-    adaptation: "Fondation",
+    stretch:
+      stretchFromInfluence ??
+      mission.stretch ??
+      "Ajoutez une relance seulement si la première phrase sort naturellement.",
+    adaptation: influence?.adaptationDetail ?? "Fondation",
   };
 }
 
