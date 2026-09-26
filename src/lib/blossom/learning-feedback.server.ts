@@ -40,7 +40,32 @@ async function assertTeacherRelation(teacherUserId: string, learnerUserId: strin
   );
   if (!rows[0]) {
     const org = await sql.query(
-      "select 1 from blossom_organization_member staff join blossom_organization_member learner on learner.organization_id = staff.organization_id where staff.user_id = $1 and staff.status = 'active' and staff.role in ('owner','admin','teacher') and learner.user_id = $2 and learner.status = 'active' and learner.role = 'learner' limit 1",
+      `select 1
+       from blossom_organization_member staff
+       join blossom_organization_member learner
+         on learner.organization_id = staff.organization_id
+       where staff.user_id = $1
+         and staff.status = 'active'
+         and learner.user_id = $2
+         and learner.status = 'active'
+         and learner.role = 'learner'
+         and (
+           staff.role in ('owner','admin')
+           or (
+             staff.role = 'teacher'
+             and exists (
+               select 1
+               from blossom_organization_group g
+               join blossom_organization_group_member gm
+                 on gm.group_id = g.id
+                and gm.user_id = learner.user_id
+               where g.organization_id = staff.organization_id
+                 and g.teacher_user_id = staff.user_id
+                 and g.status = 'active'
+             )
+           )
+         )
+       limit 1`,
       [teacherUserId, learnerUserId],
     );
     if (!org[0]) {
