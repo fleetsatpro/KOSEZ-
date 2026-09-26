@@ -33,23 +33,26 @@ export function TeacherSessionPlanner({ roster }: { roster: TeacherRow[] }) {
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function load() {
-    setLoading(true);
-    try {
-      setSessions(await getTeacherSessionsOnServer({ data: { limit: 20 } }));
-    } catch {
-      setSessions([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
     setLearnerUserId((current) => current || roster[0]?.id || "");
   }, [roster]);
 
   useEffect(() => {
-    void load();
+    let disposed = false;
+    setLoading(true);
+    void getTeacherSessionsOnServer({ data: { limit: 20 } })
+      .then((rows) => {
+        if (!disposed) setSessions(rows);
+      })
+      .catch(() => {
+        if (!disposed) setSessions([]);
+      })
+      .finally(() => {
+        if (!disposed) setLoading(false);
+      });
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   async function schedule() {
