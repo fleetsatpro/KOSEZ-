@@ -1,15 +1,35 @@
 import { useEffect, useState } from "react";
 import { HeartHandshake, MessageCircle, Users } from "lucide-react";
+import { calendarFilename, teacherSessionToIcs } from "@/lib/blossom/calendar";
 import { Button } from "@/components/ui/button";
 import { Eyebrow, Initials, Page, Surface } from "./primitives";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
-import { getGuardianTeacherContactsOnServer, getGuardianWorkspaceOnServer } from "@/lib/blossom/domain.api";
+import { getGuardianTeacherContactsOnServer, getGuardianWorkspaceOnServer, getGuardianSessionsOnServer } from "@/lib/blossom/domain.api";
 import { useBlossom } from "@/lib/blossom/store";
 import { LearnerDetail } from "./learner-detail";
 import { ConversationPanel } from "./conversation-panel";
 
 type GuardianRow = Awaited<ReturnType<typeof getGuardianWorkspaceOnServer>>[number];
 type GuardianTeacherContact = Awaited<ReturnType<typeof getGuardianTeacherContactsOnServer>>[number];
+type GuardianSession = Awaited<ReturnType<typeof getGuardianSessionsOnServer>>[number];
+
+function downloadSessionCalendar(session: {
+  id: string;
+  title: string;
+  startsAt: string;
+  durationMinutes: number;
+  teacherName: string;
+  learnerName: string;
+}) {
+  const ics = teacherSessionToIcs(session);
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = calendarFilename(session.title);
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
 
 function relative(value: string | null) {
   if (!value) return "Aucune activité enregistrée";
@@ -28,6 +48,8 @@ export function ParentView() {
   const [selectedTeacher, setSelectedTeacher] = useState<GuardianTeacherContact | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<GuardianSession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -64,6 +86,29 @@ export function ParentView() {
   }, [access.isGuardian, accessPending]);
 
   const selected = children.find((child) => child.id === selectedId) ?? children[0];
+  useEffect(() => {
+    if (!selected) {
+      setSessions([]);
+      return;
+    }
+    let disposed = false;
+    setSessionsLoading(true);
+    void getGuardianSessionsOnServer({
+      data: { learnerUserId: selected.id, limit: 12 },
+    })
+      .then((rows) => {
+        if (!disposed) setSessions(rows);
+      })
+      .catch(() => {
+        if (!disposed) setSessions([]);
+      })
+      .finally(() => {
+        if (!disposed) setSessionsLoading(false);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [selected?.id]);
 
   if (accessPending || loading) {
     return (
@@ -178,12 +223,38 @@ export function ParentView() {
               </div>
 
               <Surface className="mt-4">
-                <Eyebrow>Prochaine séance</Eyebrow>
-                <p className="mt-2 font-display text-2xl">Aucune séance confirmée visible.</p>
+                <Eyebrow>Planning pédagogique</Eyebrow>
+                <h2 className="mt-2 font-display text-2xl tracking-tight">
+                  Les séances réellement programmées
+                </h2>
                 <p className="mt-2 text-sm leading-6 text-muted">
-                  Les demandes d’inscription sont séparées des séances réellement confirmées.
-                  Une date n’apparaîtra ici qu’une fois enregistrée comme donnée de planning.
+                  Une séance planifiée indique une date de travail. Elle ne certifie
+                  pas la présence de l’apprenant.
                 </p>
+                {sessionsLoading ? (
+                  <p className="mt-4 text-sm text-muted">Lecture du planning…</p>
+                ) : sessions.length === 0 ? (
+                  <p className="mt-4 rounded-xl border border-dashed border-border p-4 text-sm leading-6 text-muted">
+                    Aucune séance programmée pour le moment.
+                  </p>
+                ) : (
+                  <ul className="mt-4 space-y-2">
+                    {sessions.slice(0, 6).map((session) => (
+                      <li key={session.id} className="rounded-xl border border-border bg-surface-2/30 p-4">
+                        <p className="font-medium">{session.title}</p>
+                        <p className="mt-1 text-xs text-muted">
+                          {new Date(session.startsAt).toLocaleString("fr-FR", {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })} · {session.durationMinutes} min · {session.teacherName}
+                        </p>
+                        {session.notes ? (
+                          <p className="mt-2 text-xs leading-5 text-subtle">{session.notes}</p>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </Surface>
             </section>
             <LearnerDetail learnerUserId={selected.id} role="guardian" />

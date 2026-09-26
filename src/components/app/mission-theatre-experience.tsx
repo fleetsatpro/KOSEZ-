@@ -461,19 +461,24 @@ export function MissionTheatreExperience() {
               </p>
             </header>
             <ReflectionStage
-              reflection={reflection}
+              draft={reflection}
               onChange={setReflection}
               saved={saved}
+              run={run}
               onSave={saveReflection}
-              onFinish={finishSession}
-              onReopen={() => {
-                reopenMissionSession(todayMission.id);
+              onRedo={() => {
+                const reopened = reopenMissionSession(todayMission.id);
+                if (!reopened) {
+                  toast("Impossible de reprendre cette session.");
+                  return;
+                }
                 setStep("execute");
                 setSaved(false);
               }}
+              onFinish={finishSession}
               history={history}
             />
-            <MissionHistory history={history} />
+            <MissionHistory history={history} runs={session?.runs ?? []} />
           </div>
         ) : null}
       </div>

@@ -222,7 +222,7 @@ function SpeakRoom() {
       <div className="relative min-h-dvh overflow-hidden bg-fg text-primary-foreground">
         <img src={room.image} alt="" className="absolute inset-0 h-full w-full object-cover opacity-40" />
         <AmbientParticles
-          stageId="sprouting"
+          stageId="growing"
           intensity={0.55}
           className="pointer-events-none absolute inset-0 z-[1] opacity-70"
         />

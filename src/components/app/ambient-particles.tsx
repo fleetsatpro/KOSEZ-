@@ -44,7 +44,7 @@ export function AmbientParticles({
       hue:
         stageId === "independent" || stageId === "blossoming"
           ? 72
-          : stageId === "sprouting" || stageId === "rooted"
+          : stageId === "growing" || stageId === "flourishing"
             ? 130
             : 140,
     }));
