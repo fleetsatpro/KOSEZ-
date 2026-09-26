@@ -1,6 +1,9 @@
 import { getSql } from "@/lib/db";
 import { BlossomForbiddenError } from "./domain.server";
 import { pronlabEvidenceProjection } from "./evidence-projection";
+import { PRONLAB_SETS } from "./data";
+import { mineralForActivity, type MineralKey } from "./organism";
+import type { ActivityType } from "./engine";
 
 export type EvidenceClass = "action" | "artifact" | "observation" | "plan";
 
@@ -14,6 +17,9 @@ export type EvidenceTimelineItem = {
   sourceId: string | null;
   route: string | null;
   metadata: Record<string, string | number | boolean | null>;
+  mineral: MineralKey | null;
+  actionLabel: string;
+  actionKind: "replay" | "context";
 };
 
 
@@ -38,6 +44,23 @@ function activityDescriptor(type: string) {
     case "IMMERSION_ATTENDED": return { title: "Immersion enregistrée", summary: "Une immersion a été enregistrée.", evidenceClass: "action" as const, route: "/immersion" };
     default: return { title: type, summary: "Activité enregistrée par K’Osez.", evidenceClass: "action" as const, route: null };
   }
+}
+
+function exactRoute(kind: EvidenceTimelineItem["kind"], sourceId: string | null, metadata: Record<string, unknown>): string | null {
+  if (!sourceId) return null;
+  if (kind === "submission") {
+    const lab = typeof metadata.kind === "string" ? metadata.kind : "grammar";
+    return `/learn/labs?lab=${encodeURIComponent(lab)}&task=${encodeURIComponent(sourceId)}`;
+  }
+  if (kind === "pronlab") {
+    const set = PRONLAB_SETS.find((entry) => entry.items.some((item) => item.id === sourceId));
+    return set ? `/pronlab/${encodeURIComponent(set.id)}?item=${encodeURIComponent(sourceId)}` : "/pronlab";
+  }
+  if (kind === "homework") return `/moi#homework-${encodeURIComponent(sourceId)}`;
+  if (kind === "booking") return `/explore#catalogue-${encodeURIComponent(sourceId)}`;
+  if (kind === "event") return `/explore#event-${encodeURIComponent(sourceId)}`;
+  if (kind === "challenge") return `/immersion?challenge=${encodeURIComponent(sourceId)}`;
+  return null;
 }
 
 async function assertEvidenceAccess(actorUserId: string, learnerUserId: string) {
@@ -124,6 +147,8 @@ export async function getEvidenceTimeline(
       sourceId: row.source_id ? String(row.source_id) : null,
       route: desc.route,
       metadata: { activityType: String(row.event_type), ...Object.fromEntries(Object.entries(metadata).filter(([,v]) => v === null || typeof v === "string" || typeof v === "number" || typeof v === "boolean")) },
+      mineral: mineralForActivity(String(row.event_type) as ActivityType),
+      actionLabel: "Voir la porte", actionKind: "context",
     });
   }
   for (const row of submissions) {
@@ -137,6 +162,7 @@ export async function getEvidenceTimeline(
       sourceId: String(row.task_id),
       route: String(row.kind) === "review" ? "/learn/review" : "/learn/labs",
       metadata: { taskId: String(row.task_id), kind: String(row.kind) },
+      mineral: "atelier", actionLabel: "Reprendre le geste", actionKind: "replay",
     });
   }
   for (const row of feedback) {
@@ -153,6 +179,7 @@ export async function getEvidenceTimeline(
         submissionId: String(row.submission_id),
         teacherUserId: String(row.teacher_user_id),
       },
+      mineral: null, actionLabel: "Voir la trace", actionKind: "context",
     });
   }
 
@@ -178,6 +205,7 @@ export async function getEvidenceTimeline(
         seconds: Math.max(0, Number(row.seconds ?? 0)),
         assessment: typeof metadata.assessment === "string" ? metadata.assessment : null,
       },
+      mineral: "pron", actionLabel: "Reprendre le geste", actionKind: "replay",
     });
   }
   for (const row of homework) {
@@ -191,6 +219,8 @@ export async function getEvidenceTimeline(
       sourceId: String(row.id),
       route: "/moi",
       metadata: { status: String(row.status) },
+      mineral: String(row.status) === "done" ? "atelier" : null,
+      actionLabel: String(row.status) === "done" ? "Voir le devoir" : "Voir le contexte", actionKind: "context",
     });
   }
   for (const row of tandem) {
@@ -206,6 +236,8 @@ export async function getEvidenceTimeline(
       sourceId: partner,
       route: "/tandem",
       metadata: { status, partnerUserId: partner },
+      mineral: status === "completed" ? "social" : null,
+      actionLabel: status === "completed" ? "Voir Tandem" : "Voir le contexte", actionKind: "context",
     });
   }
   for (const row of attendance) {
@@ -223,6 +255,7 @@ export async function getEvidenceTimeline(
         recordedBy: String(row.recorded_by_user_id),
         note: row.note ? String(row.note) : null,
       },
+      mineral: "social", actionLabel: "Voir la rencontre", actionKind: "context",
     });
   }
 
@@ -237,6 +270,7 @@ export async function getEvidenceTimeline(
       sourceId: String(row.event_id),
       route: "/explore",
       metadata: { eventId: String(row.event_id), status: String(row.status), seatNo: row.seat_no == null ? null : Number(row.seat_no) },
+      mineral: null, actionLabel: "Voir l’inscription", actionKind: "context",
     });
   }
   for (const row of bookings) {
@@ -250,6 +284,7 @@ export async function getEvidenceTimeline(
       sourceId: String(row.catalogue_item_id),
       route: "/explore",
       metadata: { bookingId: String(row.id), status: String(row.status), paymentStatus: String(row.payment_status), providerReference: row.provider_reference ? String(row.provider_reference) : null },
+      mineral: null, actionLabel: "Voir la réservation", actionKind: "context",
     });
   }
   for (const row of challenges) {
@@ -263,7 +298,8 @@ export async function getEvidenceTimeline(
       sourceId: String(row.challenge_id),
       route: "/immersion",
       metadata: { challengeId: String(row.challenge_id) },
+      mineral: "social", actionLabel: "Reprendre le geste", actionKind: "replay",
     });
   }
-  return items.sort((a,b) => b.at.localeCompare(a.at)).slice(0, bounded);
+  return items.map((item) => ({ ...item, route: exactRoute(item.kind, item.sourceId, item.metadata) ?? item.route })).sort((a,b) => b.at.localeCompare(a.at)).slice(0, bounded);
 }
