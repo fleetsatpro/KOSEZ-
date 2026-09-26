@@ -1215,13 +1215,13 @@ export const PLANS: Array<{
 ];
 
 export const LANGUAGE_MODULES = [
-  { id: "en", name: "English", status: "actif" },
-  { id: "cr", name: "Créole réunionnais", status: "module centre" },
-  { id: "es", name: "Español", status: "même moteur" },
-  { id: "pt", name: "Português", status: "même moteur" },
-  { id: "it", name: "Italiano", status: "même moteur" },
-  { id: "de", name: "Deutsch", status: "même moteur" },
-  { id: "lsf", name: "LSF", status: "même moteur" },
+  { id: "en", name: "English", status: "actif", blurb: "Le parcours principal BLOSSOM." },
+  { id: "cr", name: "Créole réunionnais", status: "module centre", blurb: "Un module ancré dans le territoire." },
+  { id: "es", name: "Español", status: "même moteur", blurb: "Même moteur de pratique, autre langue." },
+  { id: "pt", name: "Português", status: "même moteur", blurb: "Même moteur de pratique, autre langue." },
+  { id: "it", name: "Italiano", status: "même moteur", blurb: "Même moteur de pratique, autre langue." },
+  { id: "de", name: "Deutsch", status: "même moteur", blurb: "Même moteur de pratique, autre langue." },
+  { id: "lsf", name: "LSF", status: "même moteur", blurb: "Module en langue des signes, selon disponibilité du centre." },
 ];
 
 export const MARKETPLACE = [
