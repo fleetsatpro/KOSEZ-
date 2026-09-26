@@ -184,7 +184,13 @@ type AppState = {
     sourceId: string,
     note?: string,
     metadata?: Record<string, string | number | boolean>,
-  ) => { ok: boolean; reason?: string };
+  ) => {
+    ok: boolean;
+    reason?: string;
+    event?: GrowthEvent;
+    previousMinerals?: MineralSnapshot;
+    minerals?: MineralSnapshot;
+  };
   joinEvent: (id: string) => void;
   leaveEvent: (id: string) => void;
   enroll: (id: string) => void;
@@ -524,6 +530,7 @@ export const useBlossom = create<AppState>()(
           return { ok: false, reason: "already" };
         }
         const before = journeySnapshot(log).stage.id;
+        const previousMinerals = computeMinerals(log);
         const mutation = createMutation({
           operation: "activity.append",
           entityId: sourceId,
@@ -577,7 +584,12 @@ export const useBlossom = create<AppState>()(
         if (type === "IMMERSION_ATTENDED") track("immersion_attended");
         if (type === "EVENT_ATTENDED") track("event_joined");
         if (before !== after) track("blossom_stage_changed", { stage: after });
-        return { ok: true };
+        return {
+          ok: true,
+          event: ge ?? undefined,
+          previousMinerals,
+          minerals: mineralSnapshot,
+        };
       },
       joinEvent: (id) => {
         if (get().joinedEventIds.includes(id)) return;
@@ -1068,6 +1080,9 @@ export const useBlossom = create<AppState>()(
         ...current,
         ...(persisted as object),
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.refreshOrganism();
+      },
     },
   ),
 );

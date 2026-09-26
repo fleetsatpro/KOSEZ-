@@ -7,6 +7,7 @@ import {
   courageRibbon,
   growthEventForActivity,
   organismStatusLine,
+  causalNextGesture,
   pushGrowthEvent,
   weekKey,
 } from "./organism.ts";
@@ -16,6 +17,7 @@ describe("organism minerals", () => {
     const m = computeMinerals([]);
     assert.equal(m.mission, 0);
     assert.equal(m.parole, 0);
+    assert.equal(m.atelier, 0);
   });
 
   it("increases mission mineral after mission events", () => {
@@ -58,6 +60,43 @@ describe("growth events", () => {
     assert.ok((g?.intensity ?? 0) > 0.5);
   });
 
+
+  it("maps learning evidence to atelier mineral", () => {
+    const grammar = growthEventForActivity(
+      "GRAMMAR_COMPLETED",
+      "grammar-session",
+      "2026-09-22T00:00:00.000Z",
+    );
+    const tandem = growthEventForActivity(
+      "TANDEM_COMPLETED",
+      "tandem-session",
+      "2026-09-22T00:00:00.000Z",
+    );
+    assert.equal(grammar?.mineral, "atelier");
+    assert.equal(tandem?.mineral, "social");
+    assert.equal(tandem?.kind, "flower");
+    assert.equal(
+      growthEventForActivity(
+        "CURRICULUM_EVIDENCE_RECORDED",
+        "u1-l1",
+        "2026-09-22T00:00:00.000Z",
+      ),
+      null,
+    );
+  });
+
+  it("routes the weakest atelier mineral to Learn labs", () => {
+    const next = causalNextGesture({
+      at: "",
+      mission: 80,
+      parole: 80,
+      pron: 80,
+      social: 80,
+      atelier: 5,
+    });
+    assert.equal(next.mineral, "atelier");
+    assert.equal(next.door, "/learn/labs");
+  });
 
   it("caps event list", () => {
     const events = Array.from({ length: 35 }, (_, i) => ({
@@ -103,6 +142,7 @@ describe("status line", () => {
       parole: 80,
       pron: 10,
       social: 50,
+      atelier: 80,
     });
     assert.match(line, /son/i);
   });

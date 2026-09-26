@@ -158,8 +158,9 @@ export function MissionTheatreExperience() {
     setSupportUsed(true);
   }
 
-  function saveReflection() {
-    const ok = saveMissionReflection(todayMission.id, reflection);
+  function saveReflection(next: MissionReflection = reflection) {
+    if (next !== reflection) setReflection(next);
+    const ok = saveMissionReflection(todayMission.id, next);
     if (!ok) {
       toast("Réflexion non enregistrée.");
       return;
@@ -453,19 +454,20 @@ export function MissionTheatreExperience() {
               </p>
             </header>
             <ReflectionStage
-              reflection={reflection}
-              onChange={setReflection}
+              draft={reflection}
+              run={run}
               saved={saved}
+              onChange={setReflection}
               onSave={saveReflection}
-              onFinish={finishSession}
-              onReopen={() => {
+              onRedo={() => {
                 reopenMissionSession(todayMission.id);
                 setStep("execute");
                 setSaved(false);
               }}
+              onFinish={finishSession}
               history={history}
             />
-            <MissionHistory history={history} />
+            <MissionHistory history={history} runs={session?.runs ?? []} />
           </div>
         ) : null}
       </div>

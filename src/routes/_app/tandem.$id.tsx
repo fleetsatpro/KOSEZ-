@@ -4,6 +4,8 @@ import { ArrowRight, Flag, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
+import { GrowthCeremony } from "@/components/app/growth-ceremony";
+import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
 import {
   LANGUAGE_MODULES,
   TANDEM_PROMPTS,
@@ -21,6 +23,12 @@ export const Route = createFileRoute("/_app/tandem/$id")({
 });
 
 const HALF_SECONDS = 30 * 60;
+
+type CeremonyState = {
+  event: GrowthEvent;
+  minerals: MineralSnapshot;
+  previousMinerals: MineralSnapshot;
+};
 
 type Candidate = NonNullable<
   Awaited<ReturnType<typeof getTandemSessionOnServer>>
@@ -44,6 +52,9 @@ function TandemSession() {
   const [left, setLeft] = useState(HALF_SECONDS);
   const [promptIndex, setPromptIndex] = useState(0);
   const [phase, setPhase] = useState<"live" | "transition" | "complete">("live");
+  const [reflection, setReflection] = useState("");
+  const [finishing, setFinishing] = useState(false);
+  const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -164,23 +175,35 @@ function TandemSession() {
 
   async function finish() {
     const activePartner = partner;
-    if (!activePartner || !sessionId) return;
+    const note = reflection.trim();
+    if (!activePartner || !sessionId || note.length < 8 || finishing) return;
+    setFinishing(true);
     try {
       await endTandemSessionOnServer({
         data: { sessionId, status: "completed" },
       });
     } catch {
+      setFinishing(false);
       toast("La session n’a pas pu être clôturée côté serveur.");
       return;
     }
-    complete(
+    const growth = complete(
       "TANDEM_COMPLETED",
       `tandem-session-${sessionId}`,
-      undefined,
-      { minutes: 60, sessionId },
+      note,
+      { minutes: 60, sessionId, reflectionRecorded: true },
     );
-    toast("Session terminée. Votre participation est enregistrée.");
-    navigate({ to: "/tandem" });
+    if (growth.ok && growth.event && growth.minerals && growth.previousMinerals) {
+      setCeremony({
+        event: growth.event,
+        minerals: growth.minerals,
+        previousMinerals: growth.previousMinerals,
+      });
+    } else {
+      setFinishing(false);
+      toast("Session terminée. Votre participation est enregistrée.");
+      navigate({ to: "/tandem" });
+    }
   }
 
   if (phase === "transition") {
@@ -234,18 +257,58 @@ function TandemSession() {
           </Surface>
 
           <Surface className="mt-4">
-            <Eyebrow>Débrief</Eyebrow>
-            <p className="mt-3 text-sm leading-7 text-muted">
-              K’Osez n’invente pas un débrief vocal lorsqu’aucune transcription
-              ou analyse audio fiable n’a été produite. Cette session compte
-              comme participation au tandem ; son contenu n’est ni noté ni publié.
+            <Eyebrow>Réflexion · votre trace</Eyebrow>
+            <h2 className="mt-2 font-display text-2xl tracking-tight">
+              Qu'avez-vous réellement tenu dans l'échange ?
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Une phrase suffit : un moment précis, une difficulté traversée, ou quelque chose que vous avez réussi à dire.
+              Pas de note, pas de performance à justifier.
+            </p>
+            <textarea
+              value={reflection}
+              onChange={(event) => setReflection(event.target.value)}
+              placeholder="Ex. J'ai réussi à relancer la conversation sans revenir au français."
+              maxLength={500}
+              className="mt-4 min-h-28 w-full resize-y rounded-2xl border border-border bg-bg p-4 text-sm leading-7 outline-none transition focus:border-primary/30 focus:ring-2 focus:ring-primary/10"
+              aria-label="Réflexion sur la session tandem"
+            />
+            <p className="mt-2 text-[11px] text-subtle">
+              {reflection.trim().length}/500 · cette phrase devient la mémoire de la rencontre.
             </p>
           </Surface>
 
-          <Button className="mt-8 w-full" size="lg" onClick={() => void finish()}>
-            Clore la session
+          <Surface className="mt-4">
+            <Eyebrow>Débrief</Eyebrow>
+            <p className="mt-3 text-sm leading-7 text-muted">
+              K’Osez n’invente pas un débrief vocal lorsqu’aucune transcription
+              ou analyse audio fiable n’a été produite. Votre réflexion textuelle
+              reste dans votre historique de pratique ; la session n’est ni notée ni publiée.
+            </p>
+          </Surface>
+
+          <Button
+            className="mt-8 w-full"
+            size="lg"
+            disabled={reflection.trim().length < 8 || finishing}
+            onClick={() => void finish()}
+          >
+            {finishing ? "Enregistrement…" : "Clore la session"}
             <ArrowRight className="size-4" />
           </Button>
+
+          {ceremony ? (
+            <GrowthCeremony
+              event={ceremony.event}
+              minerals={ceremony.minerals}
+              previousMinerals={ceremony.previousMinerals}
+              open
+              onDismiss={() => {
+                setCeremony(null);
+                navigate({ to: "/tandem" });
+              }}
+            />
+          ) : null}
         </div>
       </div>
     );

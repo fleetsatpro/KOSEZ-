@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
-import { causalNextGesture } from "@/lib/blossom/organism";
+import { causalNextGesture, type MineralKey } from "@/lib/blossom/organism";
 import { cn } from "@/lib/utils";
+
+const MINERAL_LABEL: Record<MineralKey, string> = {
+  mission: "mission",
+  parole: "parole",
+  pron: "prononciation",
+  social: "social",
+  atelier: "atelier",
+};
 
 const KIND_META: Record<
   GrowthEvent["kind"],
@@ -78,7 +86,7 @@ export function GrowthCeremony({
 
   const deltas = useMemo(() => {
     if (!previousMinerals) return null;
-    const keys = ["mission", "parole", "pron", "social"] as const;
+    const keys = ["mission", "parole", "pron", "social", "atelier"] as const;
     return keys
       .map((k) => ({
         key: k,
@@ -154,8 +162,19 @@ export function GrowthCeremony({
             La terre s'en souvient. Rien à forcer.
           </p>
 
+          {event.mineral ? (
+            <div className="mt-6 rounded-2xl border border-primary/25 bg-primary/6 px-4 py-3 text-left">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/80">
+                Minéral nourri · {MINERAL_LABEL[event.mineral]}
+              </p>
+              <p className="mt-1 text-sm leading-5 text-fg">
+                Ce geste laisse une trace dans votre organisme — et la porte suivante reste liée à ce qu’il vient de nourrir.
+              </p>
+            </div>
+          ) : null}
+
           {deltas && deltas.length > 0 ? (
-            <ul className="mt-6 flex flex-wrap justify-center gap-2">
+            <ul className="mt-4 flex flex-wrap justify-center gap-2">
               {deltas.map((d) => (
                 <li
                   key={d.key}

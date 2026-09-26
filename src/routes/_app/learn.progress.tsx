@@ -20,6 +20,9 @@ function ProgressPage() {
   const profile = buildSkillProfile(log, attempts, vocabulary);
   const reviewPlan = buildReviewPlan(submissions, attempts, vocabulary);
   const intelligence = buildLearningIntelligence(log, attempts, vocabulary, submissions, reviewPlan);
+  const minerals = useBlossom((s) => s.mineralSnapshot);
+  const growthEvents = useBlossom((s) => s.growthEvents);
+  const atelierGrowth = growthEvents.filter((event) => event.mineral === "atelier").slice(0, 4);
   const documented = profile.filter((item) => item.coverage >= 60).length;
   const blindSpots = profile.filter((item) => item.evidenceCount === 0);
 
@@ -100,6 +103,33 @@ function ProgressPage() {
             <Badge key={reason} variant="outline">{reason}</Badge>
           ))}
         </div>
+      </Surface>
+
+      <Surface className="mt-6 overflow-hidden border border-primary/20 bg-primary/5">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <Eyebrow>Organisme · Atelier</Eyebrow>
+            <h2 className="mt-2 font-display text-2xl tracking-tight">Les preuves ont maintenant une conséquence visible.</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              {minerals.atelier}/100 de minéral atelier dans la fenêtre vivante. Une activité d'apprentissage nourrira cette branche ; les preuves détaillées restent la référence pour comprendre ce qui a réellement été observé.
+            </p>
+          </div>
+          <Link
+            to="/learn/labs"
+            className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
+          >
+            Nourrir l'atelier <ArrowRight className="size-3.5" />
+          </Link>
+        </div>
+        {atelierGrowth.length ? (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {atelierGrowth.map((event) => (
+              <Badge key={event.id} variant="outline">{event.label}</Badge>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-5 text-xs text-subtle">Aucune trace d'atelier récente. Les premiers labs créeront la première nervure.</p>
+        )}
       </Surface>
 
       <section className="mt-8">

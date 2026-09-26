@@ -8,6 +8,7 @@ import { summarisePronlabItem } from "./engine.ts";
 import type { PronlabItem } from "./data.ts";
 
 export type GrowthKind = "root" | "stem" | "leaf" | "flower" | "mineral";
+export type MineralKey = "mission" | "parole" | "pron" | "social" | "atelier";
 
 export type GrowthEvent = {
   id: string;
@@ -16,6 +17,7 @@ export type GrowthEvent = {
   sourceId?: string;
   intensity: number;
   label: string;
+  mineral?: MineralKey;
 };
 
 export type MineralSnapshot = {
@@ -24,6 +26,7 @@ export type MineralSnapshot = {
   parole: number;
   pron: number;
   social: number;
+  atelier: number;
 };
 
 export type PhonemeLeaf = {
@@ -95,21 +98,35 @@ export function computeMinerals(log: ActivityEvent[]): MineralSnapshot {
     ]),
     5,
   );
+  const atelier = norm(
+    countTypes(log, [
+      "GRAMMAR_COMPLETED",
+      "LISTENING_COMPLETED",
+      "WRITING_COMPLETED",
+      "REVIEW_COMPLETED",
+      "LIBRARY_COMPLETED",
+      "DIAGNOSTIC_COMPLETED",
+      "HOMEWORK_COMPLETED",
+    ]),
+    10,
+  );
   return {
     at: new Date().toISOString(),
     mission,
     parole,
     pron,
     social,
+    atelier,
   };
 }
 
 export function organismStatusLine(minerals: MineralSnapshot): string {
-  const entries: [keyof Omit<MineralSnapshot, "at">, number][] = [
+  const entries: [MineralKey, number][] = [
     ["pron", minerals.pron],
     ["parole", minerals.parole],
     ["mission", minerals.mission],
     ["social", minerals.social],
+    ["atelier", minerals.atelier],
   ];
   const sorted = [...entries].sort((a, b) => a[1] - b[1]);
   const lowest = sorted[0];
@@ -132,6 +149,8 @@ export function organismStatusLine(minerals: MineralSnapshot): string {
       return "Les racines demandent une scène réelle aujourd'hui.";
     case "social":
       return "Une présence partagée (tandem, café, atelier) nourrirait le sol.";
+    case "atelier":
+      return "Une preuve d'apprentissage nourrirait encore la canopée.";
     default:
       return "Un geste utile vaut mieux qu'une longue séance.";
   }
@@ -139,15 +158,16 @@ export function organismStatusLine(minerals: MineralSnapshot): string {
 
 /** Causal next-gesture hint for plant / home — lowest mineral maps to a door. */
 export function causalNextGesture(minerals: MineralSnapshot): {
-  mineral: keyof Omit<MineralSnapshot, "at">;
+  mineral: MineralKey;
   door: string;
   line: string;
 } {
-  const entries: [keyof Omit<MineralSnapshot, "at">, number][] = [
+  const entries: [MineralKey, number][] = [
     ["pron", minerals.pron],
     ["parole", minerals.parole],
     ["mission", minerals.mission],
     ["social", minerals.social],
+    ["atelier", minerals.atelier],
   ];
   const lowest = [...entries].sort((a, b) => a[1] - b[1])[0]!;
   switch (lowest[0]) {
@@ -174,6 +194,12 @@ export function causalNextGesture(minerals: MineralSnapshot): {
         mineral: "social",
         door: "/tandem",
         line: "Une présence partagée fait fleurir le sol.",
+      };
+    case "atelier":
+      return {
+        mineral: "atelier",
+        door: "/learn/labs",
+        line: "Une preuve d'apprentissage nourrit la canopée.",
       };
   }
 }
@@ -229,16 +255,27 @@ export function growthEventForActivity(
         sourceId,
         intensity: type === "REAL_WORLD_BONUS" ? 0.92 : 0.72,
         label: pickLabel(ROOT_LABELS, seed),
+        mineral: "mission",
       };
     case "SPEAK_COMPLETED":
-    case "TANDEM_COMPLETED":
       return {
         id,
         at,
         kind: "stem",
         sourceId,
-        intensity: type === "TANDEM_COMPLETED" ? 0.78 : 0.66,
+        intensity: 0.66,
         label: pickLabel(STEM_LABELS, seed),
+        mineral: "parole",
+      };
+    case "TANDEM_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "flower",
+        sourceId,
+        intensity: 0.84,
+        label: "Une présence partagée fleurit.",
+        mineral: "social",
       };
     case "PRONLAB_MASTERY":
       return {
@@ -248,6 +285,7 @@ export function growthEventForActivity(
         sourceId,
         intensity: 0.88,
         label: pickLabel(LEAF_LABELS, seed),
+        mineral: "pron",
       };
     case "PRONLAB_COMPLETED":
       return {
@@ -257,7 +295,50 @@ export function growthEventForActivity(
         sourceId,
         intensity: 0.42,
         label: "Le sol retient un son.",
+        mineral: "pron",
       };
+    case "GRAMMAR_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "leaf",
+        sourceId,
+        intensity: 0.58,
+        label: "Une structure tient mieux.",
+        mineral: "atelier",
+      };
+    case "LISTENING_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "leaf",
+        sourceId,
+        intensity: 0.58,
+        label: "Une oreille capte mieux l'essentiel.",
+        mineral: "atelier",
+      };
+    case "WRITING_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "leaf",
+        sourceId,
+        intensity: 0.62,
+        label: "Une pensée devient une trace.",
+        mineral: "atelier",
+      };
+    case "REVIEW_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "leaf",
+        sourceId,
+        intensity: 0.5,
+        label: "Une trace revient en circulation.",
+        mineral: "atelier",
+      };
+    case "CURRICULUM_EVIDENCE_RECORDED":
+      return null;
     case "LIBRARY_COMPLETED":
       return {
         id,
@@ -266,15 +347,37 @@ export function growthEventForActivity(
         sourceId,
         intensity: 0.62,
         label: pickLabel(FLOWER_LABELS, seed),
+        mineral: "atelier",
+      };
+    case "HOMEWORK_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "leaf",
+        sourceId,
+        intensity: 0.5,
+        label: "Une trace écrite rejoint l'atelier.",
+        mineral: "atelier",
       };
     case "LESSON_COMPLETED":
       return {
         id,
         at,
-        kind: "root",
+        kind: "mineral",
         sourceId,
         intensity: 0.28,
         label: "Une pratique prend racine.",
+        mineral: "atelier",
+      };
+    case "DIAGNOSTIC_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "mineral",
+        sourceId,
+        intensity: 0.24,
+        label: "Le repère affine le prochain terrain.",
+        mineral: "atelier",
       };
     case "CLASS_ATTENDED":
     case "EVENT_ATTENDED":
@@ -286,6 +389,7 @@ export function growthEventForActivity(
         sourceId,
         intensity: 0.74,
         label: pickLabel(FLOWER_LABELS, seed),
+        mineral: "social",
       };
     default:
       return {

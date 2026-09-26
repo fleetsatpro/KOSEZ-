@@ -8,6 +8,8 @@ import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructu
 import { DIAGNOSTIC_QUESTIONS, diagnosticLevel, diagnosticScore, diagnosticSummary } from "@/lib/blossom/learning-labs";
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
+import { GrowthCeremony } from "@/components/app/growth-ceremony";
+import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
 import { CURRICULUM_UNITS } from "@/lib/blossom/learning-os";
 import {
   clearCurriculumLessonContext,
@@ -17,6 +19,11 @@ import {
 export const Route = createFileRoute("/_app/learn/labs")({ component: LearningLabs });
 
 type Lab = "grammar" | "listening" | "writing" | "diagnostic";
+type CeremonyState = {
+  event: GrowthEvent;
+  minerals: MineralSnapshot;
+  previousMinerals: MineralSnapshot;
+};
 const LABS: Array<{ id: Lab; label: string; detail: string }> = [
   { id: "grammar", label: "Grammaire", detail: "Construire la phrase qui sert." },
   { id: "listening", label: "Écoute", detail: "Attraper l'information utile." },
@@ -59,6 +66,7 @@ function GrammarLab({ level }: { level: LabLevel }) {
     return linkedTaskId ? all.filter((item) => item.id === linkedTaskId) : all;
   }, [level, linkedTaskId]);
   const [index, setIndex] = useState(0), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
+  const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
   const task = tasks[index]!, answered = choice !== null;
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
@@ -72,9 +80,17 @@ function GrammarLab({ level }: { level: LabLevel }) {
       result: { correct: isCorrect, target: task.target, position: index + 1, level: task.level },
     });
     if (index >= tasks.length - 1) {
-      completeActivity("GRAMMAR_COMPLETED", dailyLabSource("grammar", task.id), `Grammaire · ${correct + (isCorrect ? 1 : 0)}/${tasks.length}`);
+      let growth = completeActivity("GRAMMAR_COMPLETED", dailyLabSource("grammar", task.id), `Grammaire · ${correct + (isCorrect ? 1 : 0)}/${tasks.length}`);
       if (curriculumLessonId && linkedLessonKind(curriculumLessonId) === "grammar") {
-        completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · grammaire · ${task.id}`, { supportId: task.id });
+        const evidence = completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · grammaire · ${task.id}`, { supportId: task.id });
+        if (evidence.ok && evidence.event) growth = evidence;
+      }
+      if (growth.ok && growth.event && growth.minerals && growth.previousMinerals) {
+        setCeremony({
+          event: growth.event,
+          minerals: growth.minerals,
+          previousMinerals: growth.previousMinerals,
+        });
       }
       setFinished(true);
       return;
@@ -82,7 +98,20 @@ function GrammarLab({ level }: { level: LabLevel }) {
     setIndex((v) => v + 1);
     setChoice(null);
   }
-  if (finished) return <LabComplete title="Grammaire terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. Cette trace mesure une séance de pratique, pas un niveau CEFR.`} />;
+  if (finished) return (
+    <>
+      <LabComplete title="Grammaire terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. La séance a nourri le minéral atelier ; cette trace ne prétend pas mesurer un niveau CEFR.`} />
+      {ceremony ? (
+        <GrowthCeremony
+          event={ceremony.event}
+          minerals={ceremony.minerals}
+          previousMinerals={ceremony.previousMinerals}
+          open
+          onDismiss={() => setCeremony(null)}
+        />
+      ) : null}
+    </>
+  );
   return <Surface className="mt-6 overflow-hidden p-0">
     <div className="flex items-center justify-between border-b border-border px-5 py-4"><div><Eyebrow>Grammaire · {index + 1}/{tasks.length}</Eyebrow><p className="mt-1 text-xs text-muted">{task.target}</p></div><Badge variant="outline">{task.level}</Badge></div>
     <div className="p-5 sm:p-7"><h2 className="max-w-3xl font-display text-3xl tracking-tight sm:text-4xl">{task.prompt}</h2>
@@ -106,6 +135,7 @@ function ListeningLab({ level }: { level: LabLevel }) {
     return linkedTaskId ? all.filter((item) => item.id === linkedTaskId) : all;
   }, [level, linkedTaskId]);
   const [index, setIndex] = useState(0), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
+  const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
   const task = tasks[index]!, answered = choice !== null;
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
@@ -119,9 +149,17 @@ function ListeningLab({ level }: { level: LabLevel }) {
       result: { correct: isCorrect, level: task.level, position: index + 1 },
     });
     if (index >= tasks.length - 1) {
-      completeActivity("LISTENING_COMPLETED", dailyLabSource("listening", task.id), `Écoute · ${correct + (isCorrect ? 1 : 0)}/${tasks.length}`);
+      let growth = completeActivity("LISTENING_COMPLETED", dailyLabSource("listening", task.id), `Écoute · ${correct + (isCorrect ? 1 : 0)}/${tasks.length}`);
       if (curriculumLessonId && linkedLessonKind(curriculumLessonId) === "listening") {
-        completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · écoute · ${task.id}`, { supportId: task.id });
+        const evidence = completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · écoute · ${task.id}`, { supportId: task.id });
+        if (evidence.ok && evidence.event) growth = evidence;
+      }
+      if (growth.ok && growth.event && growth.minerals && growth.previousMinerals) {
+        setCeremony({
+          event: growth.event,
+          minerals: growth.minerals,
+          previousMinerals: growth.previousMinerals,
+        });
       }
       setFinished(true);
       return;
@@ -129,7 +167,20 @@ function ListeningLab({ level }: { level: LabLevel }) {
     setIndex((v) => v + 1);
     setChoice(null);
   }
-  if (finished) return <LabComplete title="Écoute terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. Vous avez travaillé des détails concrets : heure, lieu, prix et option.`} />;
+  if (finished) return (
+    <>
+      <LabComplete title="Écoute terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. La séance a nourri le minéral atelier ; vous avez travaillé des détails concrets : heure, lieu, prix et option.`} />
+      {ceremony ? (
+        <GrowthCeremony
+          event={ceremony.event}
+          minerals={ceremony.minerals}
+          previousMinerals={ceremony.previousMinerals}
+          open
+          onDismiss={() => setCeremony(null)}
+        />
+      ) : null}
+    </>
+  );
   return <Surface className="mt-6 p-5 sm:p-7">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><Eyebrow>Écoute · {index + 1}/{tasks.length}</Eyebrow><h2 className="mt-2 font-display text-3xl tracking-tight">{task.question}</h2></div><Badge variant="outline">{task.level} · voix synthétique · texte après réponse</Badge></div>
     <div className="mt-6 rounded-2xl border border-border bg-fg p-5 text-primary-foreground"><p className="text-xs text-primary-foreground/50">Deux écoutes maximum avant de répondre.</p><Button variant="secondary" className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => speakSyntheticEnglish(task.audioText)}><Headphones className="size-4" /> Écouter</Button>{answered ? <p className="mt-4 font-display text-lg text-primary-foreground/80">{task.audioText}</p> : null}<p className="mt-1 text-[11px] text-primary-foreground/45">La voix est générée par votre appareil. Les enregistrements humains seront ajoutés dans le pack audio éditorial.</p></div>
@@ -155,6 +206,7 @@ function WritingLab({ level }: { level: LabLevel }) {
   const [draft, setDraft] = useState("");
   const [evaluation, setEvaluation] = useState<ReturnType<typeof evaluateWritingStructure> | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
   const prompt = useMemo(() => prompts[promptIndex % Math.max(prompts.length, 1)]!, [promptIndex, prompts]);
 
   function submit() {
@@ -172,18 +224,26 @@ function WritingLab({ level }: { level: LabLevel }) {
         method: result.method,
       },
     });
-    completeActivity(
+    let growth = completeActivity(
       "WRITING_COMPLETED",
       dailyLabSource("writing", prompt.id),
       `Écrit · ${prompt.id} · structure ${result.passed.length}/${result.total}`,
     );
     if (curriculumLessonId && linkedLessonKind(curriculumLessonId) === "writing") {
-      completeActivity(
+      const evidence = completeActivity(
         "CURRICULUM_EVIDENCE_RECORDED",
         curriculumLessonId,
         `Preuve curriculum · écrit · ${prompt.id}`,
         { supportId: prompt.id },
       );
+      if (evidence.ok && evidence.event) growth = evidence;
+    }
+    if (growth.ok && growth.event && growth.minerals && growth.previousMinerals) {
+      setCeremony({
+        event: growth.event,
+        minerals: growth.minerals,
+        previousMinerals: growth.previousMinerals,
+      });
     }
     setEvaluation(result);
     setSubmitted(true);
@@ -197,7 +257,8 @@ function WritingLab({ level }: { level: LabLevel }) {
   }
 
   return (
-    <Surface className="mt-6 p-5 sm:p-7">
+    <>
+      <Surface className="mt-6 p-5 sm:p-7">
       <div className="flex items-start justify-between gap-3">
         <div>
           <Eyebrow>Écrit · pratique guidée</Eyebrow>
@@ -259,6 +320,16 @@ function WritingLab({ level }: { level: LabLevel }) {
         </Button>
       )}
     </Surface>
+      {ceremony ? (
+        <GrowthCeremony
+          event={ceremony.event}
+          minerals={ceremony.minerals}
+          previousMinerals={ceremony.previousMinerals}
+          open
+          onDismiss={() => setCeremony(null)}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -282,6 +353,7 @@ function DiagnosticLab() {
   const completeActivity = useBlossom((s) => s.completeActivity);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
 
   const score = diagnosticScore(answers);
   const ready = Object.keys(answers).length === DIAGNOSTIC_QUESTIONS.length;
@@ -298,6 +370,15 @@ function DiagnosticLab() {
           <Button asChild><Link to="/learn/curriculum">Ouvrir le parcours <ArrowRight className="size-4" /></Link></Button>
           <Button variant="secondary" onClick={() => setSaved(false)}>Refaire</Button>
         </div>
+        {ceremony ? (
+          <GrowthCeremony
+            event={ceremony.event}
+            minerals={ceremony.minerals}
+            previousMinerals={ceremony.previousMinerals}
+            open
+            onDismiss={() => setCeremony(null)}
+          />
+        ) : null}
       </Surface>
     );
   }
@@ -366,7 +447,14 @@ function DiagnosticLab() {
         disabled={!ready}
         onClick={() => {
           updateLearner({ level });
-          completeActivity("DIAGNOSTIC_COMPLETED", dailyLabSource("diagnostic", "placement"), `Repère indicatif · ${score}/10 · ${level}`);
+          const growth = completeActivity("DIAGNOSTIC_COMPLETED", dailyLabSource("diagnostic", "placement"), `Repère indicatif · ${score}/10 · ${level}`);
+          if (growth.ok && growth.event && growth.minerals && growth.previousMinerals) {
+            setCeremony({
+              event: growth.event,
+              minerals: growth.minerals,
+              previousMinerals: growth.previousMinerals,
+            });
+          }
           setSaved(true);
         }}
       >
