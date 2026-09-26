@@ -24,6 +24,8 @@ export type MineralDefinition = {
   scoreMeaning: string;
 };
 
+export const MINERAL_ORDER: readonly MineralKey[] = ["mission", "parole", "pron", "social", "atelier"];
+
 export const MINERAL_DEFINITIONS: Record<MineralKey, MineralDefinition> = {
   mission: { label: "Mission", door: "/mission", doorLabel: "Mission", writtenBy: ["MISSION_COMPLETED", "REAL_WORLD_BONUS"], purpose: "Agir dans une situation réelle.", gesture: "Un geste terrain réellement clôturé.", windowLabel: "14 jours", writtenByLabel: "Mission clôturée · bonus terrain", scoreMeaning: "Activité mission récente, plafonnée à l’échelle 100." },
   parole: { label: "Parole", door: "/osez", doorLabel: "OSEZ", writtenBy: ["SPEAK_COMPLETED"], purpose: "Prendre la parole, ici et maintenant.", gesture: "Une prise de parole réellement clôturée.", windowLabel: "14 jours", writtenByLabel: "OSEZ clôturé", scoreMeaning: "Activité de prise de parole récente, plafonnée à l’échelle 100." },
@@ -151,7 +153,7 @@ export function computeMinerals(log: ActivityEvent[]): MineralSnapshot {
 }
 
 export function organismStatusLine(minerals: MineralSnapshot): string {
-  const order: MineralKey[] = ["mission", "parole", "pron", "social", "atelier"];
+  const order = MINERAL_ORDER;
   const lowest = Math.min(...order.map((key) => minerals[key]));
   const needs = order.filter((key) => minerals[key] === lowest);
   if (lowest >= 40) return "Les cinq minéraux restent en mouvement. Aucun n’est en retrait marqué.";
