@@ -1125,7 +1125,7 @@ export async function saveLearningSubmission(
 
 export type BlossomNotification = {
   id: string;
-  kind: "homework" | "booking" | "event" | "tandem" | "learning" | "system";
+  kind: "homework" | "booking" | "event" | "tandem" | "learning" | "system" | "communication";
   title: string;
   body: string;
   href: string | null;
