@@ -108,7 +108,7 @@ async function assertRelationship(
   }
 }
 
-function deterministicConversationId(
+export function deterministicConversationId(
   kind: Exclude<ConversationKind, "support">,
   userA: string,
   userB: string,
