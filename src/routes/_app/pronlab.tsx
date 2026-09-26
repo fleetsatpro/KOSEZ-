@@ -1,12 +1,16 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Lock, Target } from "lucide-react";
+import { ArrowLeft, ArrowRight, Lock, Target, Leaf } from "lucide-react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
 import { summarisePronlabItem } from "@/lib/blossom/engine";
-import { strugglingFocus } from "@/lib/blossom/organism";
+import {
+  causalNextGesture,
+  computeMinerals,
+  strugglingFocus,
+} from "@/lib/blossom/organism";
 import { isSetUnlocked, useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
@@ -27,12 +31,19 @@ function PronlabIndex() {
   const assigned = useBlossom((s) => s.assignedSetIds);
   const syncOwnerUserId = useBlossom((s) => s.syncOwnerUserId);
   const languageId = useBlossom((s) => s.languageId);
+  const log = useBlossom((s) => s.activityLog);
+  const growthEvents = useBlossom((s) => s.growthEvents);
   const homework = useBlossom((s) => s.homework).filter(
     (h) => h.status === "sent" && h.studentId === syncOwnerUserId,
   );
   const sets = setsForLanguage(languageId);
   const allItems = PRONLAB_SETS.flatMap((s) => s.items);
   const struggle = strugglingFocus(attempts, allItems);
+  const minerals = computeMinerals(log);
+  const nextGesture = causalNextGesture(minerals);
+  const recentLeaves = growthEvents
+    .filter((g) => g.kind === "leaf" || g.kind === "mineral")
+    .slice(0, 3);
 
   const totalMastered = allItems.filter(
     (item) => summarisePronlabItem(item.id, attempts).mastered,
@@ -57,13 +68,43 @@ function PronlabIndex() {
         </h1>
         <p className="mt-3 text-sm leading-7 text-muted sm:text-base">
           Le même item, plusieurs fois. L'historique reste. La maîtrise se
-          voit. Léo commente un point — pas une liste de fautes.
+          voit. Chaque son maîtrisé ouvre une feuille sur votre BLOSSOM — le minéral « pron » monte.
         </p>
+        {recentLeaves.length > 0 ? (
+          <ul className="mt-4 flex flex-wrap gap-2" aria-label="Feuilles et minéraux récents">
+            {recentLeaves.map((g) => (
+              <li
+                key={g.id}
+                className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[11px] text-primary"
+              >
+                {g.label}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </header>
 
-      {/* At-a-glance mastery */}
+      <section
+        className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 p-4 magnetic-surface sm:p-5"
+        aria-label="Lien causal avec l'organisme"
+      >
+        <div className="flex items-start gap-3">
+          <Leaf className="mt-0.5 size-4 shrink-0 text-primary" />
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
+              Minéral pron · {minerals.pron}/100
+            </p>
+            <p className="mt-1 text-sm leading-6 text-fg/90">
+              {nextGesture.mineral === "pron"
+                ? nextGesture.line
+                : "Un son tenu nourrit la canopée. La maîtrise s'écrit comme une feuille."}
+            </p>
+          </div>
+        </div>
+      </section>
+
       <div className="mt-8 grid gap-3 sm:grid-cols-3">
-        <Surface className="!p-4">
+        <Surface className="!p-4 magnetic-surface">
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">
             Maîtrisés
           </p>
@@ -72,7 +113,7 @@ function PronlabIndex() {
           </p>
           <p className="mt-1 text-xs text-muted">feuilles de son ouvertes</p>
         </Surface>
-        <Surface className="!p-4">
+        <Surface className="!p-4 magnetic-surface">
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">
             Touchés
           </p>
@@ -81,7 +122,7 @@ function PronlabIndex() {
           </p>
           <p className="mt-1 text-xs text-muted">items déjà essayés</p>
         </Surface>
-        <Surface className="!p-4">
+        <Surface className="!p-4 magnetic-surface">
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">
             Sets
           </p>
@@ -91,19 +132,18 @@ function PronlabIndex() {
       </div>
 
       {struggle ? (
-        <Surface className="mt-4 border-primary/20 bg-primary/5">
+        <Surface className="mt-4 border-primary/20 bg-primary/5 magnetic-surface">
           <div className="flex items-start gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
               <Target className="size-4" strokeWidth={1.7} />
             </span>
             <div className="min-w-0 flex-1">
-              <Eyebrow>Son qui résiste</Eyebrow>
+              <Eyebrow>Son qui résiste · annotation vivante</Eyebrow>
               <p className="mt-1 font-display text-xl">
                 {struggle.focus || struggle.phrase}
               </p>
               <p className="mt-1 text-sm leading-6 text-muted">
-                {struggle.phrase} — un retour ici vaut mieux qu'un long
-                exercice neuf.
+                {struggle.phrase} — ce point apparaît aussi sur l'accueil et dans la mission du jour. Un retour ici vaut mieux qu'un long exercice neuf.
               </p>
               <Button asChild size="sm" className="mt-3" variant="secondary">
                 <Link
@@ -122,10 +162,16 @@ function PronlabIndex() {
             </div>
           </div>
         </Surface>
-      ) : null}
+      ) : (
+        <Surface className="mt-4 border-border/60">
+          <p className="text-sm text-muted">
+            Aucun son en résistance pour l'instant. Continuez — la canopée s'ouvre par la maîtrise, pas par le volume.
+          </p>
+        </Surface>
+      )}
 
       {homework.length > 0 && (
-        <Surface className="mt-4">
+        <Surface className="mt-4 magnetic-surface">
           <Eyebrow>De Léa</Eyebrow>
           {homework.map((h) => (
             <div key={h.id} className="mt-3">
@@ -139,7 +185,7 @@ function PronlabIndex() {
       <h2 className="mt-10 font-display text-2xl tracking-tight">Sets</h2>
       <p className="mt-1 text-sm text-muted">
         Chaîne progressive. Un set s'ouvre après le précédent — ou sur
-        consigne de Léa.
+        consigne de Léa. Chaque maîtrise écrit une feuille.
       </p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -165,7 +211,7 @@ function PronlabIndex() {
             <article
               key={set.id}
               className={cn(
-                "flex flex-col rounded-2xl border border-border/60 bg-surface p-5 shadow-[var(--shadow-border)] sm:p-6",
+                "flex flex-col rounded-2xl border border-border/60 bg-surface p-5 shadow-[var(--shadow-border)] magnetic-surface sm:p-6",
                 !unlocked && "opacity-80",
               )}
             >
