@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useMessages } from "@/lib/i18n";
 import {
   ArrowLeft,
   ArrowRight,
@@ -16,116 +17,6 @@ import { Wordmark } from "./primitives";
 
 type StepId = "identity" | "level" | "goal" | "rhythm";
 
-const STEPS: Array<{
-  id: StepId;
-  eyebrow: string;
-  title: string;
-  detail: string;
-}> = [
-  {
-    id: "identity",
-    eyebrow: "01 · VOUS",
-    title: "Commençons par vous.",
-    detail:
-      "Quelques repères suffisent. K’Osez s’en servira pour choisir le bon niveau de pression, les bonnes situations et le bon rythme.",
-  },
-  {
-    id: "level",
-    eyebrow: "02 · REPÈRE",
-    title: "Où en êtes-vous aujourd’hui ?",
-    detail:
-      "Ce n’est pas un examen. Votre réponse détermine simplement le point de départ des premières pratiques.",
-  },
-  {
-    id: "goal",
-    eyebrow: "03 · INTENTION",
-    title: "Pour quoi voulez-vous parler ?",
-    detail:
-      "Le but devient un filtre pour les missions, les Speak Rooms et les exemples proposés par Léo.",
-  },
-  {
-    id: "rhythm",
-    eyebrow: "04 · RYTHME",
-    title: "Installez un rythme que vous pourrez tenir.",
-    detail:
-      "Pas besoin d’une heure par jour. Une fenêtre réaliste donne au système un meilleur signal qu’une ambition impossible.",
-  },
-];
-
-const LEVELS = [
-  {
-    id: "A1",
-    title: "Je commence",
-    detail:
-      "Je peux saluer, me présenter et comprendre des phrases très simples.",
-  },
-  {
-    id: "A2",
-    title: "Je me débrouille",
-    detail:
-      "Je peux gérer des échanges familiers, mais je cherche encore mes mots.",
-  },
-  {
-    id: "B1",
-    title: "Je peux tenir l’échange",
-    detail:
-      "Je peux expliquer, raconter et relancer sur des sujets courants.",
-  },
-] as const;
-
-const GOALS = [
-  "Parler au travail",
-  "Voyager avec plus d’aisance",
-  "Comprendre les conversations",
-  "Passer un cap à l’oral",
-  "Me sentir plus spontané",
-] as const;
-
-const INTERESTS = [
-  "Cuisine",
-  "Océan",
-  "Musique",
-  "Voyage",
-  "Travail",
-  "Culture",
-] as const;
-
-const RHYTHMS = [
-  {
-    id: "07:00 – 08:00",
-    label: "Matin",
-    detail: "Avant que la journée commence.",
-  },
-  {
-    id: "12:00 – 13:00",
-    label: "Midi",
-    detail: "Une respiration au milieu de la journée.",
-  },
-  {
-    id: "18:00 – 19:00",
-    label: "Soir",
-    detail: "Quand le rythme professionnel retombe.",
-  },
-] as const;
-
-const COACHES = [
-  {
-    id: "Posé",
-    voice: "Posé, précis, jamais infantilisant.",
-    detail: "Calme, précis, jamais infantilisant.",
-  },
-  {
-    id: "Direct",
-    voice: "Direct, concis, orienté action.",
-    detail: "Plus de pression, peu de détour.",
-  },
-  {
-    id: "Chaleureux",
-    voice: "Chaleureux, humain, contextualisé.",
-    detail: "Encourageant, humain, très contextualisé.",
-  },
-] as const;
-
 function StepIcon({ step }: { step: StepId }) {
   const Icon =
     step === "identity"
@@ -139,8 +30,10 @@ function StepIcon({ step }: { step: StepId }) {
 }
 
 export function Welcome() {
+  const m = useMessages();
   const enter = useBlossom((s) => s.enter);
   const learner = useBlossom((s) => s.learner);
+  const languageId = useBlossom((s) => s.languageId);
   const updateLearner = useBlossom((s) => s.updateLearner);
 
   const [stepIndex, setStepIndex] = useState(0);
@@ -151,9 +44,32 @@ export function Welcome() {
   const [practiceWindow, setPracticeWindow] = useState(learner.practiceWindow);
   const [coachVoice, setCoachVoice] = useState(learner.coachVoice);
 
-  const step = STEPS[stepIndex]!;
-  const isLast = stepIndex === STEPS.length - 1;
-  const todayMission = todayMissionForLevel(level || learner.level);
+  const steps = [
+    { id: "identity" as const, ...m.welcome.steps.identity },
+    { id: "level" as const, ...m.welcome.steps.level },
+    { id: "goal" as const, ...m.welcome.steps.goal },
+    { id: "rhythm" as const, ...m.welcome.steps.rhythm },
+  ];
+  const levels = [
+    { id: "A1", ...m.welcome.levels.A1 },
+    { id: "A2", ...m.welcome.levels.A2 },
+    { id: "B1", ...m.welcome.levels.B1 },
+  ] as const;
+  const goals = m.welcome.goals;
+  const interestsCatalog = m.welcome.interests;
+  const rhythms = [
+    { id: "07:00 – 08:00", ...m.welcome.rhythms.morning },
+    { id: "12:00 – 13:00", ...m.welcome.rhythms.noon },
+    { id: "18:00 – 19:00", ...m.welcome.rhythms.evening },
+  ] as const;
+  const coaches = [
+    { ...m.welcome.coaches.calm, id: "Posé" },
+    { ...m.welcome.coaches.direct, id: "Direct" },
+    { ...m.welcome.coaches.warm, id: "Chaleureux" },
+  ];
+  const step = steps[stepIndex]!;
+  const isLast = stepIndex === steps.length - 1;
+  const todayMission = languageId === "en" ? todayMissionForLevel(level || learner.level) : null;
 
   const canContinue = useMemo(() => {
     if (step.id === "identity") return firstName.trim().length >= 2;
@@ -211,7 +127,7 @@ export function Welcome() {
           <Wordmark inverted />
           <div className="hidden items-center gap-2 text-xs text-primary-foreground/55 sm:flex">
             <span className="size-1.5 rounded-full bg-primary-foreground/45" />
-            Saint-Pierre · La Réunion
+            {m.welcome.location}
           </div>
         </header>
 
@@ -219,7 +135,7 @@ export function Welcome() {
           <div className="grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:items-center">
             <section className="max-w-md">
               <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-primary-foreground/50">
-                Votre BLOSSOM
+                {m.welcome.yourBlossom}
               </p>
               <h1 className="mt-4 font-display text-5xl leading-[0.93] tracking-[-0.04em] sm:text-6xl">
                 {step.title}
@@ -228,8 +144,8 @@ export function Welcome() {
                 {step.detail}
               </p>
 
-              <div className="mt-8 grid gap-2" aria-label="Progression de configuration">
-                {STEPS.map((item, index) => {
+              <div className="mt-8 grid gap-2" aria-label={m.welcome.configTitle}>
+                {steps.map((item, index) => {
                   const active = index === stepIndex;
                   const complete = index < stepIndex;
                   return (
@@ -256,13 +172,7 @@ export function Welcome() {
                             active ? "text-primary-foreground" : "text-primary-foreground/45",
                           ].join(" ")}
                         >
-                          {item.id === "identity"
-                            ? "Identité"
-                            : item.id === "level"
-                              ? "Repère"
-                              : item.id === "goal"
-                                ? "Intention"
-                                : "Rythme"}
+                          {item.short}
                         </span>
                       </span>
                     </div>
@@ -271,8 +181,7 @@ export function Welcome() {
               </div>
 
               <p className="mt-8 text-xs leading-5 text-primary-foreground/35">
-                Vos choix restent modifiables dans MOI. L’objectif est de rendre les
-                premières pratiques plus justes, pas de vous enfermer dans un profil.
+                {m.welcome.footerNote}
               </p>
             </section>
 
@@ -283,11 +192,11 @@ export function Welcome() {
                     {step.eyebrow}
                   </p>
                   <p className="mt-2 font-display text-2xl tracking-tight sm:text-3xl">
-                    Une configuration, puis vous entrez.
+                    {m.welcome.configTitle}
                   </p>
                 </div>
                 <span className="rounded-full border border-primary-foreground/10 bg-primary-foreground/5 px-3 py-1 text-[10px] tabular-nums text-primary-foreground/45">
-                  {stepIndex + 1} / {STEPS.length}
+                  {stepIndex + 1} / {steps.length}
                 </span>
               </div>
 
@@ -295,7 +204,7 @@ export function Welcome() {
                 <div className="mt-8 space-y-6">
                   <label className="block">
                     <span className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-foreground/48">
-                      Prénom
+                      {m.welcome.firstName}
                     </span>
                     <input
                       autoFocus
@@ -304,7 +213,7 @@ export function Welcome() {
                       onKeyDown={(event) => {
                         if (event.key === "Enter") next();
                       }}
-                      placeholder="Votre prénom"
+                      placeholder={m.welcome.firstNamePlaceholder}
                       maxLength={40}
                       className="mt-3 h-12 w-full rounded-xl border border-primary-foreground/12 bg-primary-foreground/5 px-4 text-sm text-primary-foreground outline-none placeholder:text-primary-foreground/30 focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
                     />
@@ -312,25 +221,32 @@ export function Welcome() {
 
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-foreground/48">
-                      La mission d’aujourd’hui
+                      {m.welcome.todayMission}
                     </p>
-                    <div className="mt-3 rounded-2xl border border-primary-foreground/10 bg-primary-foreground/5 p-4">
-                      <div className="flex items-center gap-2 text-xs text-primary-foreground/42">
-                        <Sparkles className="size-3.5 text-primary" />
-                        {todayMission.durationMin} min · {todayMission.level}
+                    {todayMission ? (
+                      <div className="mt-3 rounded-2xl border border-primary-foreground/10 bg-primary-foreground/5 p-4">
+                        <div className="flex items-center gap-2 text-xs text-primary-foreground/42">
+                          <Sparkles className="size-3.5 text-primary" />
+                          {todayMission.durationMin} min · {todayMission.level}
+                        </div>
+                        <p className="mt-3 font-display text-xl">{todayMission.title}</p>
+                        <p className="mt-2 text-sm leading-6 text-primary-foreground/52">
+                          {todayMission.prompt}
+                        </p>
                       </div>
-                      <p className="mt-3 font-display text-xl">{todayMission.title}</p>
-                      <p className="mt-2 text-sm leading-6 text-primary-foreground/52">
-                        {todayMission.prompt}
-                      </p>
-                    </div>
+                    ) : (
+                      <div className="mt-3 rounded-2xl border border-primary-foreground/10 bg-primary-foreground/5 p-4">
+                        <p className="font-medium text-primary-foreground/85">{m.languages.packsEmpty}</p>
+                        <p className="mt-2 text-sm leading-6 text-primary-foreground/52">{m.languages.impactMission}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : null}
 
               {step.id === "level" ? (
                 <div className="mt-8 grid gap-3">
-                  {LEVELS.map((item) => {
+                  {levels.map((item) => {
                     const selected = level === item.id;
                     return (
                       <button
@@ -366,7 +282,7 @@ export function Welcome() {
               {step.id === "goal" ? (
                 <div className="mt-8 space-y-6">
                   <div className="grid gap-2 sm:grid-cols-2">
-                    {GOALS.map((item) => {
+                    {goals.map((item) => {
                       const selected = goal === item;
                       return (
                         <button
@@ -392,28 +308,28 @@ export function Welcome() {
 
                   <label className="block">
                     <span className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-foreground/48">
-                      Ou formulez-le à votre manière
+                      {m.welcome.orFormulate}
                     </span>
                     <input
                       value={goal}
                       onChange={(event) => setGoal(event.target.value)}
                       maxLength={140}
                       className="mt-3 h-12 w-full rounded-xl border border-primary-foreground/12 bg-primary-foreground/5 px-4 text-sm text-primary-foreground outline-none placeholder:text-primary-foreground/30 focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
-                      placeholder="Ex. : prendre la parole avec mes clients"
+                      placeholder={m.welcome.goalPlaceholder}
                     />
                   </label>
 
                   <div>
                     <div className="flex items-center justify-between gap-4">
                       <span className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-foreground/48">
-                        Ce qui vous intéresse
+                        {m.welcome.whatInterests}
                       </span>
                       <span className="text-[10px] tabular-nums text-primary-foreground/32">
                         {interests.length} / 4
                       </span>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {INTERESTS.map((interest) => {
+                      {interestsCatalog.map((interest) => {
                         const selected = interests.includes(interest);
                         return (
                           <button
@@ -441,10 +357,10 @@ export function Welcome() {
                 <div className="mt-8 space-y-7">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-foreground/48">
-                      Votre fenêtre de pratique
+                      {m.welcome.practiceWindow}
                     </p>
                     <div className="mt-3 grid gap-2">
-                      {RHYTHMS.map((item) => {
+                      {rhythms.map((item) => {
                         const selected = practiceWindow === item.id;
                         return (
                           <button
@@ -478,10 +394,10 @@ export function Welcome() {
 
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-foreground/48">
-                      Voix de Léo
+                      {m.welcome.coachTitle}
                     </p>
                     <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                      {COACHES.map((item) => {
+                      {coaches.map((item) => {
                         const selected = coachVoice === item.id;
                         return (
                           <button
@@ -520,7 +436,7 @@ export function Welcome() {
                   className="text-primary-foreground/55 hover:text-primary-foreground"
                 >
                   <ArrowLeft className="size-4" />
-                  Retour
+                  {m.common.back}
                 </Button>
                 <Button
                   type="button"
@@ -529,7 +445,7 @@ export function Welcome() {
                   disabled={!canContinue}
                   className="min-h-12 rounded-xl bg-primary px-6 text-primary-foreground hover:bg-primary/90"
                 >
-                  {isLast ? "Entrer dans BLOSSOM" : "Continuer"}
+                  {isLast ? m.welcome.enter : m.common.continue}
                   <ArrowRight className="size-4" />
                 </Button>
               </div>
@@ -538,7 +454,7 @@ export function Welcome() {
         </div>
 
         <footer className="mt-auto flex items-center justify-between gap-4 pt-6 text-[10px] uppercase tracking-[0.16em] text-primary-foreground/30">
-          <span>Configuration · 4 étapes</span>
+          <span>{m.welcome.configTitle}</span>
           <span>K’Osez · Saint-Pierre</span>
         </footer>
       </div>

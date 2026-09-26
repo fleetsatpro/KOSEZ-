@@ -101,10 +101,10 @@ export function formatDuration(seconds: number) {
   return `${minutes} min${remainder ? ` ${remainder} s` : ""}`;
 }
 
-export function speakModel(text: string) {
+export function speakModel(text: string, speechLocale = "en-GB") {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "en-GB";
+  utterance.lang = speechLocale;
   utterance.rate = 0.88;
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);

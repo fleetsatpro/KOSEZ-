@@ -176,26 +176,23 @@ function SyncStatus() {
   ) : (
     <Cloud className="size-3.5 text-primary" strokeWidth={1.7} />
   );
+  const m = useMessages();
   const label = conflicts
-    ? "Conflit à résoudre"
+    ? m.sync.conflict
     : !online
-      ? "Hors connexion"
+      ? m.sync.offline
       : pending
-        ? "Synchronisation"
-        : "Synchronisé";
+        ? m.sync.syncing
+        : m.sync.synced;
   const detail = conflicts
     ? conflicts === 1
-      ? "1 modification nécessite votre attention"
-      : conflicts + " modifications nécessitent votre attention"
-    : !online
+      ? m.sync.conflictDetailOne
+      : m.sync.conflictDetailMany.replace("{n}", String(conflicts))
+    : pending
       ? pending === 1
-        ? "1 changement en attente"
-        : pending + " changements en attente"
-      : pending
-        ? pending === 1
-          ? "1 changement en attente"
-          : pending + " changements en attente"
-        : "Aucun changement en attente";
+        ? m.sync.pendingOne
+        : m.sync.pendingMany.replace("{n}", String(pending))
+      : m.sync.nonePending;
 
   return (
     <div className="flex items-center gap-2" aria-live="polite">
@@ -224,18 +221,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const journey = useJourney();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const contextNav = contextNavFor(pathname, m);
-  const contextLabel =
-    contextKey(pathname) === "learn"
-      ? "Atelier LEARN"
-      : contextKey(pathname) === "osez"
-        ? "Parler"
-        : contextKey(pathname) === "explore"
-          ? "Sortir"
-          : contextKey(pathname) === "connect"
-            ? "Présences"
-            : contextKey(pathname) === "blossom"
-              ? "Votre croissance"
-              : "Votre espace";
+  const contextLabels = {
+    learn: m.context.learn,
+    osez: m.context.osez,
+    explore: m.context.explore,
+    connect: m.context.connect,
+    blossom: m.context.blossom,
+    moi: m.context.moi,
+  } as const;
+  const contextLabel = contextLabels[contextKey(pathname)];
   const hideChrome =
     pathname === "/mission" || pathname.startsWith("/osez/") || pathname.startsWith("/tandem/");
 
@@ -419,8 +413,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <p className="mt-2 text-[11px] leading-5 text-muted">
               {journey.stage.nextAt
-                ? `${journey.remaining} point${journey.remaining > 1 ? "s" : ""} avant le prochain stade.`
-                : "Votre croissance continue."}
+                ? String(journey.remaining) + " →"
+                : m.context.blossom}
             </p>
           </div>
         </aside>

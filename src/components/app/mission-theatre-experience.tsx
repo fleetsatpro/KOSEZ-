@@ -13,7 +13,7 @@ import { AmbientParticles } from "@/components/app/ambient-particles";
 import { BlossomPlant } from "@/components/app/plant";
 import { Eyebrow, Wordmark } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
-import { LEARNER_MEMORY, planAllows, PRONLAB_SETS } from "@/lib/blossom/data";
+import { LEARNER_MEMORY, planAllows, PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
 import {
   journeySnapshot,
   hasSource,
@@ -81,6 +81,7 @@ export function MissionTheatreExperience() {
   const learner = useBlossom((s) => s.learner);
   const log = useBlossom((s) => s.activityLog);
   const plan = useBlossom((s) => s.plan);
+  const languageId = useBlossom((s) => s.languageId);
   const sessions = useBlossom((s) => s.missionSessions);
   const growthEvents = useBlossom((s) => s.growthEvents);
   const minerals = useBlossom((s) => s.mineralSnapshot);
@@ -117,9 +118,10 @@ export function MissionTheatreExperience() {
     growthEvents,
     phonemeLeaves,
     missionSessions: sessions,
-    allItems: PRONLAB_SETS.flatMap((s) => s.items),
+    allItems: setsForLanguage(languageId).flatMap((s) => s.items),
     memory,
     memoryOn,
+    languageId,
   });
   const objective = missionObjective(
     todayMission,
@@ -493,19 +495,20 @@ export function MissionTheatreExperience() {
               </p>
             </header>
             <ReflectionStage
-              reflection={reflection}
+              draft={reflection}
+              run={run}
               onChange={setReflection}
               saved={saved}
               onSave={saveReflection}
               onFinish={finishSession}
-              onReopen={() => {
+              onRedo={() => {
                 reopenMissionSession(todayMission.id);
                 setStep("execute");
                 setSaved(false);
               }}
               history={history}
             />
-            <MissionHistory history={history} />
+            <MissionHistory history={history} runs={session?.runs ?? []} />
           </div>
         ) : null}
       </div>

@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { isLearnLanguageId, isUiLocaleId, uiLocaleDef, type LearnLanguageId, type UiLocaleId } from "@/lib/i18n/locales";
 import { persist } from "zustand/middleware";
 import { track } from "@/lib/analytics";
 import { createMutation, enqueueMutation } from "./sync-client";
@@ -32,6 +33,7 @@ import {
   findPronlabItem,
   findPronlabSet,
   PRONLAB_SETS,
+  setsForLanguage,
   type PlanId,
 } from "./data";
 import {
@@ -139,8 +141,8 @@ type AppState = {
   childMissionDone: boolean;
   childWords: string[];
   waitlistIds: string[];
-  languageId: string;
-  uiLocale: string;
+  languageId: LearnLanguageId;
+  uiLocale: UiLocaleId;
   missionSessions: Record<string, MissionSession>;
   backendMissionRevisions: Record<string, number>;
   syncOwnerUserId: string | null;
@@ -182,8 +184,8 @@ type AppState = {
   completeChildMission: () => void;
   markChildWord: (id: string) => void;
   joinWaitlist: (id: string) => void;
-  setLanguage: (id: string) => void;
-  setUiLocale: (id: string) => void;
+  setLanguage: (id: LearnLanguageId) => void;
+  setUiLocale: (id: UiLocaleId) => void;
   completePulse: (dareId: string, seconds: number, offline: boolean) => void;
   markLeoLetterRead: (id: string) => void;
   refreshOrganism: () => void;
@@ -392,7 +394,11 @@ export const useBlossom = create<AppState>()(
         const ge = growthEventForActivity(type, sourceId, event.createdAt);
         const growthEvents = ge ? pushGrowthEvent(get().growthEvents, ge) : get().growthEvents;
         const mineralSnapshot = computeMinerals(nextLog);
-        const phonemeLeaves = buildPhonemeLeaves(get().pronlabAttempts, PRONLAB_SETS.flatMap((s) => s.items));
+        const current = get();
+        const phonemeLeaves = buildPhonemeLeaves(
+          current.pronlabAttempts,
+          setsForLanguage(current.languageId).flatMap((setDef) => setDef.items),
+        );
         let leoLetters = get().leoLetters;
         const letter = composeLeoLetter(mineralSnapshot, growthEvents, get().learner.firstName);
         if (!leoLetters.some((l) => l.id === letter.id)) leoLetters = [letter, ...leoLetters].slice(0, 12);
@@ -559,25 +565,27 @@ export const useBlossom = create<AppState>()(
         set({ waitlistIds: [...get().waitlistIds, id] });
       },
       setLanguage: (id) => {
+        if (!isLearnLanguageId(id)) return;
         const current = get();
         const learner = { ...current.learner, targetLanguage: id };
-        set({ languageId: id, learner });
+        const phonemeLeaves = buildPhonemeLeaves(
+          current.pronlabAttempts,
+          setsForLanguage(id).flatMap((setDef) => setDef.items),
+        );
+        set({ languageId: id, learner, phonemeLeaves });
         voidProfileSync(learner, id, current.plan, current.warmup, current.exportConsent, current.tandemOpen);
         track("language_changed", { languageId: id });
       },
       setUiLocale: (id) => {
+        if (!isUiLocaleId(id)) return;
+        const current = get();
         set({ uiLocale: id });
         track("ui_locale_changed", { uiLocale: id });
+        voidProfileSync(current.learner, current.languageId, current.plan, current.warmup, current.exportConsent, current.tandemOpen);
         if (typeof document !== "undefined") {
-          const map: Record<string, string> = {
-            fr: "fr-FR",
-            en: "en-GB",
-            es: "es-ES",
-            pt: "pt-PT",
-            de: "de-DE",
-            it: "it-IT",
-          };
-          document.documentElement.lang = map[id] ?? id;
+          const locale = uiLocaleDef(id);
+          document.documentElement.lang = locale.bcp47;
+          document.documentElement.dir = locale.dir;
         }
       },
       completePulse: (dareId, seconds, offline) => {
@@ -587,9 +595,12 @@ export const useBlossom = create<AppState>()(
         set({ leoLetters: get().leoLetters.map((l) => (l.id === id ? { ...l, read: true } : l)) });
       },
       refreshOrganism: () => {
-        const log = get().activityLog;
-        const mineralSnapshot = computeMinerals(log);
-        const phonemeLeaves = buildPhonemeLeaves(get().pronlabAttempts, PRONLAB_SETS.flatMap((s) => s.items));
+        const current = get();
+        const mineralSnapshot = computeMinerals(current.activityLog);
+        const phonemeLeaves = buildPhonemeLeaves(
+          current.pronlabAttempts,
+          setsForLanguage(current.languageId).flatMap((setDef) => setDef.items),
+        );
         set({ mineralSnapshot, phonemeLeaves });
       },
       resetJourney: () => {
@@ -597,14 +608,17 @@ export const useBlossom = create<AppState>()(
           activityLog: [],
           growthEvents: [],
           mineralSnapshot: computeMinerals([]),
-          phonemeLeaves: buildPhonemeLeaves([], PRONLAB_SETS.flatMap((s) => s.items)),
+          phonemeLeaves: buildPhonemeLeaves(
+            [],
+            setsForLanguage(get().languageId).flatMap((setDef) => setDef.items),
+          ),
           leoLetters: [],
           pronlabAttempts: [],
           missionSessions: {},
         });
       },
     }),
-    { name: "kosez-blossom" },
+    { name: "kosez-blossom-v2" },
   ),
 );
 

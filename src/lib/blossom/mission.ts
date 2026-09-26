@@ -1,4 +1,4 @@
-import type { Mission } from "./data";
+import type { Mission, MissionScene } from "./data";
 import type { LearnerMemory } from "./engine";
 import type { MissionInfluence } from "./influence";
 
@@ -354,15 +354,30 @@ export function missionObjective(
       ].slice(0, 4)
     : baseKit;
 
-  const scene = mission.scene
-    ? { ...mission.scene, languageKit }
+  const sceneLanguageKit: MissionScene["languageKit"] = languageKit.map((item) => ({
+    phrase: item.phrase,
+    meaning: String("meaning" in item ? item.meaning : item.use),
+    use: String(item.use),
+  }));
+
+  const scene: MissionScene | null = mission.scene
+    ? { ...mission.scene, languageKit: sceneLanguageKit }
     : influence?.kitFront
       ? {
           time: "Maintenant",
+          atmosphere: "Votre environnement immédiat",
           sensoryCue: "Votre environnement immédiat",
+          people: [],
           pressure: "Utile, pas hostile",
-          languageKit,
-          rescuePhrases: [] as { phrase: string; meaning: string }[],
+          culturalNote: "Scène générique : aucun ancrage supplémentaire n'est injecté sans donnée source.",
+          languageKit: sceneLanguageKit,
+          rescuePhrases: [],
+          conversationTurns: [
+            { label: "Ouverture", goal: "Créer l'ouverture sans attendre la phrase parfaite." },
+            { label: "Choix", goal: "Faire un choix simple et poursuivre l'échange." },
+            { label: "Clôture", goal: "Fermer l'échange naturellement." },
+          ],
+          constraints: ["Un geste utile suffit.", "Ne pas inventer de détail non observé."],
         }
       : null;
 
