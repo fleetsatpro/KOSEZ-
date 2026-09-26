@@ -188,7 +188,7 @@ export function computeInfluence(input: {
   let stretchOverride: string | undefined;
   let adaptationDetail = "Fondation — le geste du jour, sans surcharge.";
 
-  if (recentGrowth) {
+  if (recentGrowth && !friction && outcome !== "repeat") {
     stretchOverride =
       recentGrowth.kind === "flower"
         ? "Transférez le geste vers une nouvelle personne ou un nouveau contexte — sans ajouter de vocabulaire."
