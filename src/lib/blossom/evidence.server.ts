@@ -151,6 +151,7 @@ export async function getEvidenceTimeline(
   const items: EvidenceTimelineItem[] = [];
   for (const row of activities) {
     const desc = activityDescriptor(String(row.event_type));
+    const activityMineral = mineralForActivity(String(row.event_type) as ActivityType);
     const payload = row.payload && typeof row.payload === "object" ? (row.payload as Record<string, unknown>) : {};
     const metadata = payload.metadata && typeof payload.metadata === "object" ? (payload.metadata as Record<string, unknown>) : {};
     items.push({
