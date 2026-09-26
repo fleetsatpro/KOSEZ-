@@ -150,6 +150,21 @@ export async function createTeacherSession(
   const { startsAt, title, durationMinutes, notes } = validation;
 
   const sql = await getSql();
+  const conflicts = await sql.query(
+    `select 1
+     from blossom_teacher_session
+     where status = 'scheduled'
+       and (teacher_user_id = $1 or learner_user_id = $2)
+       and starts_at < $3::timestamptz + ($4::integer * interval '1 minute')
+       and starts_at + (duration_minutes * interval '1 minute') > $3::timestamptz
+     limit 1`,
+    [teacherUserId, input.learnerUserId, startsAt.toISOString(), durationMinutes],
+  );
+  if (conflicts[0]) {
+    throw new BlossomForbiddenError(
+      "Ce créneau chevauche déjà une autre séance de cet enseignant ou de cet apprenant.",
+    );
+  }
   const id = randomUUID();
   const rows = await sql.query(
     `insert into blossom_teacher_session
@@ -172,9 +187,9 @@ export async function createTeacherSession(
   await createNotification(input.learnerUserId, {
     kind: "learning",
     title: "Une séance a été planifiée",
-    body: `${title} · ${new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short", timeZone: "Indian/Reunion" }).format(startsAt)}`,
+    body: `${title} · ouvrez votre espace pour la date et l’heure locales`,
     href: "/moi",
-    metadata: { sessionId: id },
+    metadata: { sessionId: id, startsAt: startsAt.toISOString() },
   });
 
   const guardians = await sql.query(
@@ -185,9 +200,9 @@ export async function createTeacherSession(
     await createNotification(String(guardian.guardian_user_id), {
       kind: "learning",
       title: "Une séance a été planifiée",
-      body: `${title} · ${new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short", timeZone: "Indian/Reunion" }).format(startsAt)}`,
+      body: `${title} · ouvrez votre espace pour la date et l’heure locales`,
       href: "/moi",
-      metadata: { sessionId: id, learnerUserId: input.learnerUserId },
+      metadata: { sessionId: id, learnerUserId: input.learnerUserId, startsAt: startsAt.toISOString() },
     });
   }
 
