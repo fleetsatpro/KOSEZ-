@@ -84,6 +84,10 @@
     animation: plant-sway 7s cubic-bezier(0.22, 1, 0.36, 1) infinite;
   }
 
+  .plant-breathe {
+    animation: plant-breathe 3.2s ease-in-out infinite;
+  }
+
   .stagger-in > * {
     opacity: 0;
     transform: translateY(10px);
@@ -101,6 +105,13 @@
   .wave-bar {
     transform-origin: center bottom;
     animation: wave 1.1s ease-in-out infinite;
+  }
+
+  .magnetic-surface {
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 280ms ease, border-color 200ms ease;
+  }
+  .magnetic-surface:hover {
+    transform: translateY(-3px) scale(1.01);
   }
 
   .child-skin {
@@ -286,10 +297,18 @@
   0%,100% { transform: rotate(-0.6deg) scale(1.02); }
   50% { transform: rotate(0.7deg) scale(1.03); }
 }
+@keyframes plant-breathe {
+  0%, 100% { filter: brightness(1); box-shadow: 0 0 0 0 rgba(217,255,105,0); }
+  50% { filter: brightness(1.08); box-shadow: 0 0 18px -4px rgba(217,255,105,0.35); }
+}
 @keyframes rise-in { to { opacity: 1; transform: translateY(0); } }
 @keyframes wave {
   0%,100% { transform: scaleY(.45); }
   50% { transform: scaleY(1); }
+}
+@keyframes ambient-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 
 @media (max-width: 1023px) {
@@ -297,8 +316,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .plant-sway, .stagger-in > *, .wave-bar {
+  .plant-sway,
+  .plant-breathe,
+  .stagger-in > *,
+  .wave-bar,
+  .magnetic-surface {
     animation: none !important;
+    transition: none !important;
     opacity: 1;
     transform: none;
   }
@@ -494,7 +518,6 @@
   box-shadow: 0 18px 54px -38px rgba(0,0,0,.9);
 }
 
-/* Exploration / social surfaces: stronger imagery, less dashboard repetition. */
 .modern-ui .kosez-feature-page a.overflow-hidden.rounded-xl.bg-surface:hover,
 .modern-ui .kosez-feature-page article.overflow-hidden.rounded-xl.bg-surface:hover {
   transform: translateY(-2px);
@@ -536,21 +559,21 @@
   text-shadow: 0 10px 60px rgba(0,0,0,.24);
 }
 
-.modern-ui .kosez-mission-page .rounded-\[30px\],
-.modern-ui .kosez-mission-page .rounded-\[28px\] {
+.modern-ui .kosez-mission-page .rounded-\\[30px\\],
+.modern-ui .kosez-mission-page .rounded-\\[28px\\] {
   border-color: rgba(237,243,238,.08);
   box-shadow: 0 24px 70px -46px rgba(0,0,0,.95);
 }
 
-.modern-ui .kosez-mission-page .rounded-\[30px\].bg-surface,
-.modern-ui .kosez-mission-page .rounded-\[28px\].bg-surface {
+.modern-ui .kosez-mission-page .rounded-\\[30px\\].bg-surface,
+.modern-ui .kosez-mission-page .rounded-\\[28px\\].bg-surface {
   background:
     radial-gradient(circle at 90% 0%, rgba(217,255,105,.045), transparent 34%),
     linear-gradient(180deg, rgba(20,27,24,.98), rgba(12,17,15,.98));
 }
 
-.modern-ui .kosez-mission-page .rounded-\[24px\],
-.modern-ui .kosez-mission-page .rounded-\[26px\] {
+.modern-ui .kosez-mission-page .rounded-\\[24px\\],
+.modern-ui .kosez-mission-page .rounded-\\[26px\\] {
   border-color: rgba(237,243,238,.07);
 }
 
