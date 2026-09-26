@@ -4,7 +4,9 @@ import { MESSAGES } from "./messages.ts";
 
 const locales = ["fr", "en", "es", "pt", "de", "it"] as const;
 
-function flatten(value: unknown, path = "") {
+type FlatMessage = [path: string, value: string];
+
+function flatten(value: unknown, path = ""): FlatMessage[] {
   if (typeof value === "string") return [[path, value]];
   if (Array.isArray(value)) return value.flatMap((item, index) => flatten(item, path + "[" + index + "]"));
   if (value && typeof value === "object") {
