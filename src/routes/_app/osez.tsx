@@ -15,7 +15,7 @@ import { OrganismMineralsPanel } from "@/components/app/organism-minerals-panel"
 import { Eyebrow, Page } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LEARNER_MEMORY, planAllows, PRONLAB_SETS } from "@/lib/blossom/data";
+import { LEARNER_MEMORY, planAllows, PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
 import { influenceFromState } from "@/lib/blossom/influence";
 import { hasSource } from "@/lib/blossom/engine";
 import {
