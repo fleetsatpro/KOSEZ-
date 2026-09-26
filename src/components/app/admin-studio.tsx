@@ -14,6 +14,9 @@ import { AdminContentStudio } from "./admin-content-studio";
 import { AdminBookingQueue } from "./admin-booking-queue";
 import { AdminRoleStudio } from "./admin-role-studio";
 import { useBlossom } from "@/lib/blossom/store";
+import { SupportInbox, ConversationPanel } from "./conversation-panel";
+import { AdminSafetyQueue } from "./admin-safety-queue";
+import { AdminEventAttendance } from "./admin-event-attendance";
 
 type AdminWorkspace = Awaited<ReturnType<typeof getAdminWorkspaceOnServer>>;
 
@@ -31,6 +34,7 @@ export function AdminStudio() {
   const [safety, setSafety] = useState<Awaited<ReturnType<typeof getAdminSafetySummaryOnServer>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedSupportConversation, setSelectedSupportConversation] = useState<string | null>(null);
 
   function load() {
     setLoading(true);
@@ -118,6 +122,18 @@ export function AdminStudio() {
       </section>
 
       <AdminRoleStudio />
+
+      <SupportInbox
+        selectedId={selectedSupportConversation}
+        onSelect={setSelectedSupportConversation}
+      />
+      {selectedSupportConversation ? (
+        <ConversationPanel
+          conversationId={selectedSupportConversation}
+          kind="support"
+          title="Assistance K’Osez"
+        />
+      ) : null}
 
       <section className="mt-5">
         <Surface>
@@ -222,6 +238,9 @@ export function AdminStudio() {
           )}
         </Surface>
       </section>
+
+      <AdminSafetyQueue />
+      <AdminEventAttendance />
 
       <section className="mt-5">
         <AdminContentStudio />

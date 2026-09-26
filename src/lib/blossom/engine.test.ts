@@ -52,9 +52,9 @@ test("inactivity does not invent points", () => {
 
 test("pronlab mastery: three consecutive >= 75", () => {
   const attempts = [
-    { id: "1", itemId: "x", score: 76, tip: "", createdAt: "", seconds: 2 },
-    { id: "2", itemId: "x", score: 80, tip: "", createdAt: "", seconds: 2 },
-    { id: "3", itemId: "x", score: 84, tip: "", createdAt: "", seconds: 2 },
+    { id: "1", itemId: "x", score: 76, tip: "", createdAt: "", seconds: 2, metadata: { assessment: "phonetic-provider" } },
+    { id: "2", itemId: "x", score: 80, tip: "", createdAt: "", seconds: 2, metadata: { assessment: "phonetic-provider" } },
+    { id: "3", itemId: "x", score: 84, tip: "", createdAt: "", seconds: 2, metadata: { assessment: "phonetic-provider" } },
   ];
   const sum = summarisePronlabItem("x", attempts);
   assert.equal(sum.mastered, true);
@@ -62,9 +62,21 @@ test("pronlab mastery: three consecutive >= 75", () => {
   assert.equal(sum.bestScore, 84);
 });
 
+test("capture-only practice can record rehearsal mastery without becoming verified pronunciation mastery", () => {
+  const attempts = [
+    { id: "1", itemId: "x", score: 0, tip: "", createdAt: "", seconds: 4, metadata: { assessment: "capture-only" } },
+    { id: "2", itemId: "x", score: 0, tip: "", createdAt: "", seconds: 4, metadata: { assessment: "capture-only" } },
+  ];
+  const summary = summarisePronlabItem("x", attempts);
+  assert.equal(summary.bestScore, 0);
+  assert.equal(summary.mastered, true);
+  assert.equal(summary.verifiedMastered, false);
+  assert.equal(summary.struggling, false);
+});
+
 test("pronlab mastery: best >= 90", () => {
   const attempts = [
-    { id: "1", itemId: "x", score: 91, tip: "", createdAt: "", seconds: 2 },
+    { id: "1", itemId: "x", score: 91, tip: "", createdAt: "", seconds: 2, metadata: { assessment: "phonetic-provider" } },
   ];
   assert.equal(summarisePronlabItem("x", attempts).mastered, true);
 });

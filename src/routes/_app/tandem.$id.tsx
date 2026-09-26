@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Eyebrow, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { GrowthCeremony } from "@/components/app/growth-ceremony";
+import { ConversationPanel } from "@/components/app/conversation-panel";
 import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
 import {
   LANGUAGE_MODULES,
@@ -277,6 +278,13 @@ function TandemSession() {
               {reflection.trim().length}/500 · cette phrase devient la mémoire de la rencontre.
             </p>
           </Surface>
+
+          <ConversationPanel
+            kind="tandem"
+            partnerUserId={partner.id}
+            partnerName={partner.name}
+            title={"Avec " + partner.name}
+          />
 
           <Surface className="mt-4">
             <Eyebrow>Débrief</Eyebrow>

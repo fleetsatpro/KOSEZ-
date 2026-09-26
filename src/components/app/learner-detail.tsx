@@ -9,6 +9,9 @@ import type { LearnerDetail } from "@/lib/blossom/domain.server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eyebrow, Surface } from "@/components/app/primitives";
+import { EvidenceTimeline } from "@/components/app/evidence-timeline";
+import { ConversationPanel } from "@/components/app/conversation-panel";
+import { LearningFeedbackPanel } from "@/components/app/learning-feedback";
 
 function relative(value: string) {
   const delta = Math.max(0, Date.now() - new Date(value).getTime());
@@ -136,6 +139,13 @@ export function LearnerDetail({
       </div>
 
       <div className="space-y-4">
+        <EvidenceTimeline
+          learnerUserId={learnerUserId}
+          title="Fil de preuves unifié"
+          description="Activités, productions, observations et réservations, assemblées depuis les données autorisées du serveur."
+          limit={32}
+        />
+
         <Surface>
           <div className="flex items-end justify-between gap-3">
             <div>
@@ -180,6 +190,18 @@ export function LearnerDetail({
             <p className="mt-4 text-sm text-muted">Aucun devoir enregistré.</p>
           )}
         </Surface>
+
+        {role === "teacher" ? (
+          <>
+            <LearningFeedbackPanel learnerUserId={learnerUserId} />
+            <ConversationPanel
+              kind="teacher"
+              partnerUserId={learnerUserId}
+              partnerName={detail.name}
+              title={"Avec " + detail.name}
+            />
+          </>
+        ) : null}
 
         {role === "teacher" && detail.notes.length ? (
           <Surface>

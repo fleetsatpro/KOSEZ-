@@ -79,44 +79,64 @@ export type TeacherWorkspaceLearner = {
   activitiesThisWeek: number;
   speakingMinutes: number;
   pronlabAttempts: number;
+  pronlabScoredAttempts: number;
   pronlabBest: number;
 };
 
 export async function getTeacherWorkspace(userId: string): Promise<TeacherWorkspaceLearner[]> {
   const sql = await getSql();
   const rows = await sql.query(
-    `select
-      tl.learner_user_id as id,
-      coalesce(p.display_name, tl.learner_user_id) as name,
-      p.level,
-      max(a.occurred_at) as last_activity,
-      count(*) filter (
-        where a.occurred_at >= current_timestamp - interval '7 days'
-      )::integer as activities_this_week,
-      coalesce(sum(
-        case
-          when a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
-           and coalesce(a.payload->'metadata'->>'minutes', a.payload->>'minutes','') ~ '^[0-9]+$'
-          then coalesce(
-            (a.payload->'metadata'->>'minutes')::integer,
-            (a.payload->>'minutes')::integer
-          )
-          else 0
-        end
-      ), 0)::integer as speaking_minutes,
-      coalesce(pr.attempts, 0)::integer as pronlab_attempts,
-      coalesce(pr.best_score, 0)::integer as pronlab_best
-    from blossom_teacher_link tl
-    left join blossom_profile p on p.user_id = tl.learner_user_id
-    left join blossom_activity_event a on a.user_id = tl.learner_user_id
-    left join lateral (
-      select count(*) as attempts, max(score) as best_score
-      from blossom_pronlab_attempt
-      where user_id = tl.learner_user_id
-    ) pr on true
-    where tl.teacher_user_id = $1 and tl.status = 'active'
-    group by tl.learner_user_id, p.display_name, p.level, pr.attempts, pr.best_score
-    order by last_activity desc nulls last, name asc`,
+    `with scoped_learners as (
+       select tl.learner_user_id
+       from blossom_teacher_link tl
+       where tl.teacher_user_id = $1 and tl.status = 'active'
+       union
+       select gm.user_id as learner_user_id
+       from blossom_organization_group g
+       join blossom_organization_group_member gm on gm.group_id = g.id
+       where g.teacher_user_id = $1 and g.status = 'active'
+     )
+     select
+       sl.learner_user_id as id,
+       coalesce(p.display_name, sl.learner_user_id) as name,
+       p.level,
+       max(a.occurred_at) as last_activity,
+       count(*) filter (
+         where a.occurred_at >= current_timestamp - interval '7 days'
+       )::integer as activities_this_week,
+       coalesce(sum(
+         case
+           when a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
+            and coalesce(a.payload->'metadata'->>'minutes', a.payload->>'minutes','') ~ '^[0-9]+$'
+           then coalesce(
+             (a.payload->'metadata'->>'minutes')::integer,
+             (a.payload->>'minutes')::integer
+           )
+           else 0
+         end
+       ), 0)::integer as speaking_minutes,
+       coalesce(pr.attempts, 0)::integer as pronlab_attempts,
+       coalesce(pr.scored_attempts, 0)::integer as pronlab_scored_attempts,
+       coalesce(pr.best_score, 0)::integer as pronlab_best
+     from scoped_learners sl
+     left join blossom_profile p on p.user_id = sl.learner_user_id
+     left join blossom_activity_event a on a.user_id = sl.learner_user_id
+     left join lateral (
+       select
+         count(*) as attempts,
+         count(*) filter (
+           where score > 0
+             and coalesce(metadata->>'assessment', '') not in ('capture-only', 'transcript')
+         ) as scored_attempts,
+         max(score) filter (
+           where score > 0
+             and coalesce(metadata->>'assessment', '') not in ('capture-only', 'transcript')
+         ) as best_score
+       from blossom_pronlab_attempt
+       where user_id = sl.learner_user_id
+     ) pr on true
+     group by sl.learner_user_id, p.display_name, p.level, pr.attempts, pr.scored_attempts, pr.best_score
+     order by last_activity desc nulls last, name asc`,
     [userId],
   );
   return rows.map((row) => ({
@@ -129,6 +149,7 @@ export async function getTeacherWorkspace(userId: string): Promise<TeacherWorksp
     activitiesThisWeek: Number(row.activities_this_week ?? 0),
     speakingMinutes: Number(row.speaking_minutes ?? 0),
     pronlabAttempts: Number(row.pronlab_attempts ?? 0),
+    pronlabScoredAttempts: Number(row.pronlab_scored_attempts ?? 0),
     pronlabBest: Number(row.pronlab_best ?? 0),
   }));
 }
@@ -293,6 +314,7 @@ export type ConnectPeer = {
   interests: string[];
   lastSeen: string | null;
   sharedEvents: number;
+  tandemAccepted: boolean;
 };
 
 export async function getConnectPeers(userId: string): Promise<ConnectPeer[]> {
@@ -305,13 +327,21 @@ export async function getConnectPeers(userId: string): Promise<ConnectPeer[]> {
       p.preferences->>'city' as city,
       p.preferences->'interests' as interests,
       max(their.updated_at) as last_seen,
-      count(distinct mine.event_id)::integer as shared_events
+      count(distinct mine.event_id)::integer as shared_events,
+      boolean_or(
+        coalesce(mine_tandem.status = 'accepted', false)
+        and coalesce(their_tandem.status = 'accepted', false)
+      ) as tandem_accepted
     from blossom_event_registration mine
     join blossom_event_registration their
       on their.event_id = mine.event_id
      and their.status = 'joined'
      and their.user_id <> $1
     join blossom_profile p on p.user_id = their.user_id
+    left join blossom_tandem_connection mine_tandem
+      on mine_tandem.user_id = $1 and mine_tandem.partner_user_id = their.user_id
+    left join blossom_tandem_connection their_tandem
+      on their_tandem.user_id = their.user_id and their_tandem.partner_user_id = $1
     where mine.user_id = $1
       and mine.status = 'joined'
       and lower(coalesce(p.preferences->>'tandemOpen', 'false')) = 'true'
@@ -329,6 +359,7 @@ export async function getConnectPeers(userId: string): Promise<ConnectPeer[]> {
     interests: Array.isArray(row.interests) ? row.interests.map(String) : [],
     lastSeen: row.last_seen ? new Date(String(row.last_seen)).toISOString() : null,
     sharedEvents: Number(row.shared_events ?? 0),
+    tandemAccepted: Boolean(row.tandem_accepted),
   }));
 }
 
@@ -432,6 +463,7 @@ export async function getTandemSession(
 export type OrganizationWorkspace = {
   id: string;
   name: string;
+  currentRole: "owner" | "admin" | "teacher";
   city: string | null;
   members: Array<{
     id: string;
@@ -508,9 +540,13 @@ export async function getOrganizationWorkspace(
       ? (rows[0].metadata as Record<string, unknown>)
       : {};
 
+  const currentMember = rows.find((row) => String(row.user_id) === userId);
+  const currentRole = String(currentMember?.role ?? "teacher") as OrganizationWorkspace["currentRole"];
+
   return {
     id: organizationId,
     name: String(rows[0].name),
+    currentRole,
     city: typeof metadata.city === "string" ? metadata.city : null,
     members: rows.map((row) => ({
       id: String(row.user_id),
@@ -953,7 +989,32 @@ async function canActAsOrgStaff(
 ): Promise<boolean> {
   const sql = await getSql();
   const rows = await sql.query(
-    "select 1 from blossom_organization_member staff join blossom_organization_member learner on learner.organization_id = staff.organization_id where staff.user_id = $1 and staff.status = 'active' and staff.role in ('owner','admin','teacher') and learner.user_id = $2 and learner.status = 'active' and learner.role = 'learner' limit 1",
+    `select 1
+     from blossom_organization_member staff
+     join blossom_organization_member learner
+       on learner.organization_id = staff.organization_id
+     where staff.user_id = $1
+       and staff.status = 'active'
+       and learner.user_id = $2
+       and learner.status = 'active'
+       and learner.role = 'learner'
+       and (
+         staff.role in ('owner','admin')
+         or (
+           staff.role = 'teacher'
+           and exists (
+             select 1
+             from blossom_organization_group g
+             join blossom_organization_group_member gm
+               on gm.group_id = g.id
+              and gm.user_id = learner.user_id
+             where g.organization_id = staff.organization_id
+               and g.teacher_user_id = staff.user_id
+               and g.status = 'active'
+           )
+         )
+       )
+     limit 1`,
     [actorUserId, learnerUserId],
   );
   return Boolean(rows[0]);
@@ -1125,7 +1186,7 @@ export async function saveLearningSubmission(
 
 export type BlossomNotification = {
   id: string;
-  kind: "homework" | "booking" | "event" | "tandem" | "learning" | "system";
+  kind: "homework" | "booking" | "event" | "tandem" | "learning" | "system" | "communication";
   title: string;
   body: string;
   href: string | null;
@@ -1134,7 +1195,7 @@ export type BlossomNotification = {
   createdAt: string;
 };
 
-async function createNotification(
+export async function createNotification(
   userId: string,
   input: {
     kind: BlossomNotification["kind"];

@@ -50,7 +50,7 @@ function formatLastActivity(value: string | null) {
 
 function deriveFlags(student: TeacherRow) {
   const flags: string[] = [];
-  if (student.pronlabAttempts >= 2 && student.pronlabBest < 60) {
+  if (student.pronlabScoredAttempts >= 2 && student.pronlabBest < 60) {
     flags.push("Prononciation");
   }
   if (student.activitiesThisWeek === 0) flags.push("Missions manquées");
@@ -77,7 +77,7 @@ function warmupFor(roster: TeacherRow[]) {
 }
 
 function homeworkFor(student: TeacherRow) {
-  const pronunciation = student.pronlabAttempts >= 2 && student.pronlabBest < 60;
+  const pronunciation = student.pronlabScoredAttempts >= 2 && student.pronlabBest < 60;
   return {
     title: pronunciation ? "Reprendre un point de prononciation" : "Une mission cette semaine",
     body: pronunciation
