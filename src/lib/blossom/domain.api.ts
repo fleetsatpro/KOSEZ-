@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { getAdminSafetySummary, updateAdminSafetyReport } from "./safety.server";
+import { getAdminSafetySummary, updateAdminSafetyReport, getAdminMessageReports, updateAdminMessageReport } from "./safety.server";
 import {
   ensureBootstrapAdmin,
   listPlatformUsers,
@@ -35,6 +35,7 @@ import {
   endTandemSession,
 } from "./domain.server";
 import type { JsonObject } from "./backend.server";
+import { getAdminEventAttendance, recordEventAttendance } from "./event-attendance.server";
 import {
   getOrCreateConversation,
   getConversationMessages,
@@ -75,6 +76,22 @@ export const updateAdminSafetyReportOnServer = createServerFn({ method: "POST" }
   )
   .handler(async ({ context, data }) =>
     updateAdminSafetyReport(context.userId, data.reportId, data.status),
+  );
+
+export const getAdminMessageReportsOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getAdminMessageReports(context.userId));
+
+export const updateAdminMessageReportOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      reportId: z.string().uuid(),
+      status: z.enum(["reviewing", "resolved", "dismissed"]),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    updateAdminMessageReport(context.userId, data.reportId, data.status),
   );
 
 export const getAdminSafetySummaryOnServer = createServerFn({ method: "GET" })
@@ -139,6 +156,23 @@ export const getTandemSessionOnServer = createServerFn({ method: "GET" })
   .inputValidator(z.object({ partnerUserId: z.string().trim().min(1).max(200) }))
   .handler(async ({ context, data }) =>
     getTandemSession(context.userId, data.partnerUserId),
+  );
+
+export const getAdminEventAttendanceOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getAdminEventAttendance(context.userId));
+
+export const recordEventAttendanceOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      eventId: z.string().trim().min(1).max(200),
+      learnerUserId: z.string().trim().min(1).max(200),
+      note: z.string().trim().max(500).optional(),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    recordEventAttendance(context.userId, data),
   );
 
 export const getTeacherWorkspaceOnServer = createServerFn({ method: "GET" })
