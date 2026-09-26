@@ -15,6 +15,25 @@ export type EvidenceTimelineItem = {
   metadata: Record<string, string | number | boolean | null>;
 };
 
+export function pronlabEvidenceProjection(input: {
+  score: number;
+  seconds: number;
+  assessment: unknown;
+}) {
+  const assessment = typeof input.assessment === "string" ? input.assessment : null;
+  const verified = assessment === "phonetic-provider" && Number.isFinite(input.score) && input.score > 0;
+  return {
+    verifiedScore: verified ? Number(input.score) : null,
+    summary: assessment === "capture-only"
+      ? `Capture de ${Math.max(0, Number(input.seconds) || 0)} s · aucune note acoustique affirmée.`
+      : assessment === "transcript"
+        ? `Transcription de ${Math.max(0, Number(input.seconds) || 0)} s · aucune note phonétique affirmée.`
+        : verified
+          ? `Observation phonétique ${Number(input.score)}/100 · source vérifiée déclarée.`
+          : `Prise enregistrée · aucune note phonétique vérifiée disponible.`,
+  };
+}
+
 function activityDescriptor(type: string) {
   switch (type) {
     case "MISSION_COMPLETED": return { title: "Mission accomplie", summary: "Une mission réellement clôturée.", evidenceClass: "action" as const, route: "/mission" };
@@ -123,18 +142,26 @@ export async function getEvidenceTimeline(
 
   for (const row of pronlab) {
     const metadata = row.metadata && typeof row.metadata === "object" ? (row.metadata as Record<string, unknown>) : {};
+    const projection = pronlabEvidenceProjection({
+      score: Number(row.score ?? 0),
+      seconds: Number(row.seconds ?? 0),
+      assessment: metadata.assessment,
+    });
     items.push({
       id: "pronlab:" + String(row.id),
       at: new Date(String(row.created_at)).toISOString(),
       kind: "pronlab",
       evidenceClass: "observation",
-      title: "Observation Pron’Lab",
-      summary: metadata.assessment === "capture-only"
-        ? "Capture de " + Number(row.seconds ?? 0) + " s · aucune note acoustique affirmée."
-        : "Observation " + Number(row.score ?? 0) + "/100 · provider déclaré dans les métadonnées.",
+      title: projection.verifiedScore === null ? "Prise Pron’Lab" : "Observation Pron’Lab",
+      summary: projection.summary,
       sourceId: String(row.item_id),
       route: "/pronlab",
-      metadata: { itemId: String(row.item_id), score: Number(row.score ?? 0), seconds: Number(row.seconds ?? 0), assessment: typeof metadata.assessment === "string" ? metadata.assessment : null },
+      metadata: {
+        itemId: String(row.item_id),
+        score: projection.verifiedScore,
+        seconds: Math.max(0, Number(row.seconds ?? 0)),
+        assessment: typeof metadata.assessment === "string" ? metadata.assessment : null,
+      },
     });
   }
   for (const row of homework) {
