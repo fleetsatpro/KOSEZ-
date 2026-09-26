@@ -20,6 +20,7 @@ import type { LearningSubmission, Homework, TeacherNote } from "@/lib/blossom/st
 import type { BackendState, SyncJsonValue, SyncMutation, SyncResult } from "@/lib/blossom/sync-types";
 import { POINTS, type ActivityEvent, type PronlabAttempt } from "@/lib/blossom/engine";
 import { useBlossom } from "@/lib/blossom/store";
+import { isUiLocaleId, isLearnLanguageId } from "@/lib/i18n/locales";
 
 const SYNC_INTERVAL_MS = 45_000;
 const MAX_BATCHES_PER_PASS = 8;
@@ -44,6 +45,7 @@ function mergeBackendState(remote: BackendState): void {
   const profilePlan: typeof current.plan = remote.plan ?? current.plan;
   let profileWarmup = current.warmup;
   let profileLanguageId = current.languageId;
+  let profileUiLocale = current.uiLocale;
   let profileExportConsent = current.exportConsent;
   let profileTandemOpen = current.tandemOpen;
   let profileImmersionPhase = current.immersionPhase;
@@ -60,7 +62,7 @@ function mergeBackendState(remote: BackendState): void {
       };
     }
     if (remote.profile.level) profilePatch.level = remote.profile.level;
-    if (remote.profile.targetLanguage) profileLanguageId = remote.profile.targetLanguage;
+    if (remote.profile.targetLanguage && isLearnLanguageId(remote.profile.targetLanguage)) profileLanguageId = remote.profile.targetLanguage;
     const prefs = remote.profile.preferences;
     if (typeof prefs.warmup === "string" || prefs.warmup === null) {
       profileWarmup = prefs.warmup as string | null;
@@ -75,6 +77,7 @@ function mergeBackendState(remote: BackendState): void {
       profileImmersionPhase = prefs.immersionPhase;
     }
     if (typeof prefs.childMissionDone === "boolean") {
+      if (typeof prefs.uiLocale === "string" && isUiLocaleId(prefs.uiLocale)) profileUiLocale = prefs.uiLocale;
       profileChildMissionDone = profileChildMissionDone || prefs.childMissionDone;
     }
     if (Array.isArray(prefs.childWords)) {
@@ -232,6 +235,7 @@ function mergeBackendState(remote: BackendState): void {
     plan: profilePlan,
     warmup: profileWarmup,
     languageId: profileLanguageId,
+    uiLocale: profileUiLocale,
     exportConsent: profileExportConsent,
     tandemOpen: profileTandemOpen,
     immersionPhase: profileImmersionPhase,
