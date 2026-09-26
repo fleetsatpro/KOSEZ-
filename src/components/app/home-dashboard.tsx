@@ -1,10 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Check, Leaf } from "lucide-react";
+import { ArrowRight, Check, Leaf, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   LEARNER_MEMORY,
   planAllows,
   PLANT_IMAGE,
+  PRONLAB_SETS,
 } from "@/lib/blossom/data";
 import {
   hasSource,
@@ -17,6 +18,7 @@ import {
   courageRibbon,
   organismStatusLine,
   causalNextGesture,
+  strugglingFocus,
 } from "@/lib/blossom/organism";
 import { todayMissionForLevel } from "@/lib/blossom/mission-today";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
@@ -27,6 +29,7 @@ import { cn } from "@/lib/utils";
  * Home is not a dashboard.
  * One living stage. One gesture. Atmosphere, not widgets.
  * Causality is visible: every completed gesture leaves a mark the plant can show.
+ * Pron'Lab struggle surfaces as a living annotation when present.
  */
 export function HomeDashboard() {
   const learner = useBlossom((s) => s.learner);
@@ -52,6 +55,9 @@ export function HomeDashboard() {
     ? learner.firstName.slice(0, 1).toUpperCase()
     : "K";
   const progress = Math.max(4, Math.round(journey.progress * 100));
+
+  const allItems = PRONLAB_SETS.flatMap((s) => s.items);
+  const struggle = strugglingFocus(attempts, allItems);
 
   const recentGrowth = [...growthEvents]
     .sort((a, b) => b.at.localeCompare(a.at))
@@ -132,6 +138,21 @@ export function HomeDashboard() {
               Aucun geste encore — le premier fera germer la graine.
             </p>
           )}
+
+          {struggle ? (
+            <Link
+              to="/pronlab"
+              className="mt-4 inline-flex max-w-md items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-left text-[12px] text-primary backdrop-blur-sm transition-colors hover:bg-primary/15"
+              aria-label={`Son qui résiste : ${struggle.focus || struggle.phrase}. Ouvrir Pron'Lab.`}
+            >
+              <Target className="size-3.5 shrink-0" />
+              <span>
+                <span className="font-semibold">Son qui résiste · </span>
+                {struggle.focus || struggle.phrase}
+              </span>
+              <ArrowRight className="size-3.5 shrink-0 opacity-70" />
+            </Link>
+          ) : null}
         </div>
 
         <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-8 lg:px-12 lg:pb-12">
