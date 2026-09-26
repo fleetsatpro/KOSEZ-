@@ -53,6 +53,7 @@ function TandemSession() {
   const [promptIndex, setPromptIndex] = useState(0);
   const [phase, setPhase] = useState<"live" | "transition" | "complete">("live");
   const [reflection, setReflection] = useState("");
+  const [finishing, setFinishing] = useState(false);
   const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
 
   useEffect(() => {
@@ -175,12 +176,14 @@ function TandemSession() {
   async function finish() {
     const activePartner = partner;
     const note = reflection.trim();
-    if (!activePartner || !sessionId || note.length < 8) return;
+    if (!activePartner || !sessionId || note.length < 8 || finishing) return;
+    setFinishing(true);
     try {
       await endTandemSessionOnServer({
         data: { sessionId, status: "completed" },
       });
     } catch {
+      setFinishing(false);
       toast("La session n’a pas pu être clôturée côté serveur.");
       return;
     }
@@ -197,6 +200,7 @@ function TandemSession() {
         previousMinerals: growth.previousMinerals,
       });
     } else {
+      setFinishing(false);
       toast("Session terminée. Votre participation est enregistrée.");
       navigate({ to: "/tandem" });
     }
@@ -286,10 +290,10 @@ function TandemSession() {
           <Button
             className="mt-8 w-full"
             size="lg"
-            disabled={reflection.trim().length < 8}
+            disabled={reflection.trim().length < 8 || finishing}
             onClick={() => void finish()}
           >
-            Clore la session
+            {finishing ? "Enregistrement…" : "Clore la session"}
             <ArrowRight className="size-4" />
           </Button>
 
