@@ -17,6 +17,7 @@ import {
   Cloud,
   CloudOff,
   LoaderCircle,
+  MessageCircle,
 } from "lucide-react";
 import { Welcome } from "@/components/app/welcome";
 import { ParentView } from "@/components/app/parent-view";
@@ -104,7 +105,9 @@ const CONTEXT_NAV = {
     { to: "/learn/history", label: "Historique", icon: History },
     { to: "/learn/labs", label: "Labs", icon: FlaskConical },
   ],
-  moi: [],
+  moi: [
+    { to: "/inbox", label: "Messages", icon: MessageCircle },
+  ],
 } as const;
 
 function contextKey(pathname: string) {
@@ -381,7 +384,16 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
 
           <div className="mb-4 space-y-2 rounded-2xl">
-            <NotificationCenter />
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1"><NotificationCenter /></div>
+              <Link
+                to="/inbox"
+                aria-label="Messages"
+                className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-bg/85 text-primary transition hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              >
+                <MessageCircle className="size-4" strokeWidth={1.7} />
+              </Link>
+            </div>
             <div className="rounded-2xl border border-border bg-bg/70 px-4 py-3 shadow-[var(--shadow-border)]">
               <SyncStatus />
               <div className="mt-3 border-t border-border pt-3">
@@ -436,6 +448,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ))}
               </div>
             </nav>
+            <Link
+              to="/inbox"
+              aria-label="Messages"
+              className="relative flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-bg/85 text-primary transition hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            >
+              <MessageCircle className="size-4" strokeWidth={1.7} />
+            </Link>
             <NotificationCenter compact />
           </div>
           )}
