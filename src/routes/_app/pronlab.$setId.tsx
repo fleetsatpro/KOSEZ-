@@ -38,7 +38,7 @@ function highlight(phrase: string, segment: string) {
 function PronlabSetPage() {
   const { setId } = Route.useParams();
   const setDef = findPronlabSet(setId);
-  const search = useRouterState({ select: (state) => state.location.search });
+  const search = useRouterState({ select: (state) => state.location.searchStr });
   const focusItemId = new URLSearchParams(search).get("item");
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const assigned = useBlossom((s) => s.assignedSetIds);
