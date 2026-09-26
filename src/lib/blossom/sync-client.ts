@@ -7,6 +7,7 @@ const OUTBOX_FALLBACK_KEY = "kosez-blossom-outbox-v1";
 const DEVICE_KEY = "kosez-blossom-device-id";
 const CHANGE_EVENT = "kosez:sync-needed";
 let activeOwnerId: string | null = null;
+let enqueueTail: Promise<void> = Promise.resolve();
 
 export type StoredMutation = SyncMutation & {
   state: "pending" | "conflict";
@@ -116,7 +117,7 @@ export function createMutation(
   };
 }
 
-export async function enqueueMutation(mutation: SyncMutation): Promise<void> {
+async function enqueueMutationNow(mutation: SyncMutation): Promise<void> {
   const item: StoredMutation = { ...mutation, state: "pending" };
   if (!item.ownerUserId && activeOwnerId) {
     item.ownerUserId = activeOwnerId;
@@ -135,6 +136,16 @@ export async function enqueueMutation(mutation: SyncMutation): Promise<void> {
   items.push(item);
   writeFallback(items);
   emitSyncNeeded();
+}
+
+
+export function enqueueMutation(mutation: SyncMutation): Promise<void> {
+  // Serialize durable writes and their sync-needed signals. Without this,
+  // two immediate causal actions can race at the storage layer: the dependent
+  // mutation may become visible to the bridge before its source mutation.
+  const task = enqueueTail.then(() => enqueueMutationNow(mutation));
+  enqueueTail = task.catch(() => undefined);
+  return task;
 }
 
 export async function listPendingMutations(): Promise<StoredMutation[]> {
