@@ -6,7 +6,7 @@ export type EvidenceClass = "action" | "artifact" | "observation" | "plan";
 export type EvidenceTimelineItem = {
   id: string;
   at: string;
-  kind: "activity" | "submission" | "pronlab" | "homework" | "tandem" | "event" | "booking" | "challenge";
+  kind: "activity" | "submission" | "feedback" | "pronlab" | "homework" | "tandem" | "event" | "booking" | "challenge";
   evidenceClass: EvidenceClass;
   title: string;
   summary: string;
@@ -61,9 +61,10 @@ export async function getEvidenceTimeline(
   await assertEvidenceAccess(actorUserId, learnerUserId);
   const sql = await getSql();
   const bounded = Math.min(120, Math.max(1, Math.round(limit)));
-  const [activities, submissions, pronlab, homework, tandem, events, bookings, challenges] = await Promise.all([
+  const [activities, submissions, feedback, pronlab, homework, tandem, events, bookings, challenges] = await Promise.all([
     sql.query("select id, event_type, source_id, note, payload, occurred_at from blossom_activity_event where user_id = $1 order by occurred_at desc limit " + bounded, [learnerUserId]),
     sql.query("select id, task_id, kind, content, created_at from blossom_learning_submission where user_id = $1 order by created_at desc limit " + Math.min(40, bounded), [learnerUserId]),
+    sql.query("select id, submission_id, teacher_user_id, body, created_at, updated_at from blossom_learning_feedback where learner_user_id = $1 order by updated_at desc limit " + Math.min(30, bounded), [learnerUserId]),
     sql.query("select id, item_id, score, seconds, metadata, created_at from blossom_pronlab_attempt where user_id = $1 order by created_at desc limit " + Math.min(40, bounded), [learnerUserId]),
     sql.query("select id, title, body, status, updated_at from blossom_homework where learner_user_id = $1 order by updated_at desc limit " + Math.min(30, bounded), [learnerUserId]),
     sql.query("select id, user_id, partner_user_id, status, started_at, ended_at from blossom_tandem_session where (user_id = $1 or partner_user_id = $1) order by started_at desc limit " + Math.min(30, bounded), [learnerUserId]),
@@ -102,6 +103,23 @@ export async function getEvidenceTimeline(
       metadata: { taskId: String(row.task_id), kind: String(row.kind) },
     });
   }
+  for (const row of feedback) {
+    items.push({
+      id: "feedback:" + String(row.id),
+      at: new Date(String(row.updated_at ?? row.created_at)).toISOString(),
+      kind: "feedback",
+      evidenceClass: "artifact",
+      title: "Retour enseignant",
+      summary: String(row.body).slice(0, 220),
+      sourceId: String(row.submission_id),
+      route: "/moi",
+      metadata: {
+        submissionId: String(row.submission_id),
+        teacherUserId: String(row.teacher_user_id),
+      },
+    });
+  }
+
   for (const row of pronlab) {
     const metadata = row.metadata && typeof row.metadata === "object" ? (row.metadata as Record<string, unknown>) : {};
     items.push({
