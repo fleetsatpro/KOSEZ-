@@ -42,6 +42,7 @@ function SpeakRoom() {
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
   const learner = useBlossom((s) => s.learner);
+  const languageId = useBlossom((s) => s.languageId);
   const log = useBlossom((s) => s.activityLog);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
@@ -53,9 +54,10 @@ function SpeakRoom() {
     growthEvents,
     phonemeLeaves,
     missionSessions,
-    allItems: PRONLAB_SETS.flatMap((s) => s.items),
+    allItems: PRONLAB_SETS.filter((s) => !s.language || s.language === "English" || s.language === languageId).flatMap((s) => s.items),
     memory: LEARNER_MEMORY,
     memoryOn,
+    languageId,
   });
   const friction = influence.speak.friction ?? (memoryOn ? LEARNER_MEMORY.hesitation : null);
   const kitBoost = influence.speak.kitBoost;
