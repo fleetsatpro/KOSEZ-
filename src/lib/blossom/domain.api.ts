@@ -45,6 +45,7 @@ import {
   listConversations,
 } from "./messaging.server";
 import { getEvidenceTimeline } from "./evidence.server";
+import { getLearningFeedbackBundle, saveLearningFeedback, getLearnerFeedback } from "./learning-feedback.server";
 
 
 const metadataJson = z.string().trim().max(20000).optional();
@@ -284,6 +285,31 @@ export const reportConversationMessageOnServer = createServerFn({ method: "POST"
 export const getSupportInboxOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => getSupportInbox(context.userId));
+
+export const getLearningFeedbackBundleOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ learnerUserId: z.string().trim().min(1).max(200), limit: z.number().int().min(1).max(50).optional() }))
+  .handler(async ({ context, data }) =>
+    getLearningFeedbackBundle(context.userId, data.learnerUserId, data.limit ?? 24),
+  );
+
+export const saveLearningFeedbackOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      submissionId: z.string().uuid(),
+      learnerUserId: z.string().trim().min(1).max(200),
+      body: z.string().trim().min(1).max(4000),
+    }),
+  )
+  .handler(async ({ context, data }) => saveLearningFeedback(context.userId, data));
+
+export const getLearnerFeedbackOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ learnerUserId: z.string().trim().min(1).max(200).optional(), limit: z.number().int().min(1).max(50).optional() }).optional())
+  .handler(async ({ context, data }) =>
+    getLearnerFeedback(context.userId, data?.learnerUserId ?? context.userId, data?.limit ?? 24),
+  );
 
 export const getEvidenceTimelineOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
