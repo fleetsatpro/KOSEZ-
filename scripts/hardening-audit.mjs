@@ -1,12 +1,15 @@
+import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { cwd } from "node:process";
 
 const ROOT = cwd();
 const SELF = "scripts/hardening-audit.mjs";
-const SCAN_DIRS = ["src", "scripts", "server", "migrations", ".github"];
+const SCAN_DIRS = ["src", "scripts", "server", "migrations", ".github", "public"];
 const SKIP = new Set(["node_modules", "dist", ".git", ".next", "coverage"]);
-const TEXT_EXT = /\.(?:ts|tsx|js|mjs|mts|cjs|css|sql|json|yml|yaml)$/i;
+const TEXT_EXT = /\.(?:ts|tsx|js|mjs|mts|cjs|css|sql|json|yml|yaml|html|svg|txt)$/i;
+const ROOT_FILES = ["package.json", "pnpm-lock.yaml", "tsconfig.json", "vite.config.ts", "vite.config.js", "vercel.json", "eslint.config.js"];
+const FORBIDDEN_FILENAME = /(?:^|\/)(?:placeholder|stub|mock|dummy|sample)(?:[-_.]|\/|$)/i;
 const FORBIDDEN = [
   /\bFIXME\b/i,
   /\bTODO\b/i,
@@ -34,13 +37,26 @@ async function walk(dir) {
   return out;
 }
 
-const files = (await Promise.all(SCAN_DIRS.map((dir) => walk(join(ROOT, dir)))).then((rows) => rows.flat())).sort();
+const nestedFiles = (await Promise.all(SCAN_DIRS.map((dir) => walk(join(ROOT, dir)))).then((rows) => rows.flat()));
+const rootFiles = ROOT_FILES
+  .map((name) => join(ROOT, name))
+  .filter((file) => {
+    try {
+      return existsSync(file);
+    } catch {
+      return false;
+    }
+  });
+const files = [...nestedFiles, ...rootFiles].sort();
 const findings = [];
 
 for (const file of files) {
   const relativePath = relative(ROOT, file).replaceAll("\\", "/");
   const text = await readFile(file, "utf8");
   if (relativePath !== SELF) {
+    if (FORBIDDEN_FILENAME.test(relativePath)) {
+      findings.push({ file: relativePath, marker: "forbidden-placeholder-filename" });
+    }
     for (const pattern of FORBIDDEN) {
       const match = text.match(pattern);
       if (match) findings.push({ file: relativePath, marker: match[0] });
