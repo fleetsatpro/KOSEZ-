@@ -1,4 +1,5 @@
 import type { SyncMutation, SyncResult } from "./sync-types";
+import { createSerialQueue } from "./sync-queue";
 
 const DB_NAME = "kosez-blossom-sync";
 const STORE = "outbox";
@@ -7,7 +8,7 @@ const OUTBOX_FALLBACK_KEY = "kosez-blossom-outbox-v1";
 const DEVICE_KEY = "kosez-blossom-device-id";
 const CHANGE_EVENT = "kosez:sync-needed";
 let activeOwnerId: string | null = null;
-let enqueueTail: Promise<void> = Promise.resolve();
+const enqueueQueue = createSerialQueue();
 
 export type StoredMutation = SyncMutation & {
   state: "pending" | "conflict";
@@ -143,9 +144,7 @@ export function enqueueMutation(mutation: SyncMutation): Promise<void> {
   // Serialize durable writes and their sync-needed signals. Without this,
   // two immediate causal actions can race at the storage layer: the dependent
   // mutation may become visible to the bridge before its source mutation.
-  const task = enqueueTail.then(() => enqueueMutationNow(mutation));
-  enqueueTail = task.catch(() => undefined);
-  return task;
+  return enqueueQueue.enqueue(() => enqueueMutationNow(mutation));
 }
 
 export async function listPendingMutations(): Promise<StoredMutation[]> {
