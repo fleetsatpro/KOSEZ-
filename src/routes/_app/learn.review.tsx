@@ -33,7 +33,7 @@ function kindIcon(kind: ReviewItem["kind"]) {
 }
 
 function Review() {
-  const search = useRouterState({ select: (state) => state.location.search });
+  const search = useRouterState({ select: (state) => state.location.searchStr });
   const focusSource = new URLSearchParams(search).get("item");
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
   useEffect(() => {
