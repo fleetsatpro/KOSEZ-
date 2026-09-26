@@ -240,8 +240,8 @@ function MoiPage() {
       <MoiSettings />
 
       <EvidenceTimeline
-        title="Toutes vos preuves, au même endroit"
-        description="Le même fil rassemble vos gestes, productions, observations et engagements. Chaque ligne reste reliée à sa porte quand une porte existe."
+        title="Index des preuves"
+        description="Distinguez ici ce qui a réellement été fait, ce qui a produit une trace et ce qui reste planifié. Quand un geste est rejouable, sa ligne ouvre directement son contexte."
         limit={40}
       />
 
