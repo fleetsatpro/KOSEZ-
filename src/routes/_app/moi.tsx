@@ -37,6 +37,7 @@ import { MoiSettings } from "@/components/app/moi-settings";
 import { EvidenceTimeline } from "@/components/app/evidence-timeline";
 import { ConversationPanel } from "@/components/app/conversation-panel";
 import { ConversationInbox } from "@/components/app/conversation-inbox";
+import { LearnerFeedback } from "@/components/app/learner-feedback";
 
 export const Route = createFileRoute("/_app/moi")({
   component: MoiPage,
@@ -242,6 +243,8 @@ function MoiPage() {
         description="Le même fil rassemble vos gestes, productions, observations et engagements. Chaque ligne reste reliée à sa porte quand une porte existe."
         limit={40}
       />
+
+      <LearnerFeedback />
 
       <ConversationInbox
         selectedId={selectedConversationId}
