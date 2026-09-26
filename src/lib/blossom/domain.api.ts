@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { getAdminSafetySummary, updateAdminSafetyReport, getAdminMessageReports, updateAdminMessageReport } from "./safety.server";
+import { getAdminSafetySummary, updateAdminSafetyReport, getAdminMessageReports, updateAdminMessageReport, getAdminSafetyCases, updateAdminSafetyCase } from "./safety.server";
 import {
   ensureBootstrapAdmin,
   listPlatformUsers,
@@ -78,6 +78,23 @@ export const updateAdminSafetyReportOnServer = createServerFn({ method: "POST" }
   )
   .handler(async ({ context, data }) =>
     updateAdminSafetyReport(context.userId, data.reportId, data.status),
+  );
+
+export const getAdminSafetyCasesOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getAdminSafetyCases(context.userId));
+
+export const updateAdminSafetyCaseOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      caseId: z.string().uuid(),
+      type: z.enum(["tandem", "message"]),
+      status: z.enum(["reviewing", "resolved", "dismissed"]),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    updateAdminSafetyCase(context.userId, data),
   );
 
 export const getAdminMessageReportsOnServer = createServerFn({ method: "GET" })
