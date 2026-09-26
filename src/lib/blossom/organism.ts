@@ -9,6 +9,8 @@ import type { PronlabItem } from "./data.ts";
 
 export type GrowthKind = "root" | "stem" | "leaf" | "flower" | "mineral";
 
+export type MineralKey = "mission" | "parole" | "pron" | "social" | "atelier";
+
 export type GrowthEvent = {
   id: string;
   at: string;
@@ -16,6 +18,7 @@ export type GrowthEvent = {
   sourceId?: string;
   intensity: number;
   label: string;
+  mineral?: MineralKey;
 };
 
 export type MineralSnapshot = {
@@ -24,6 +27,7 @@ export type MineralSnapshot = {
   parole: number;
   pron: number;
   social: number;
+  atelier: number;
 };
 
 export type PhonemeLeaf = {
@@ -95,21 +99,36 @@ export function computeMinerals(log: ActivityEvent[]): MineralSnapshot {
     ]),
     5,
   );
+  const atelier = norm(
+    countTypes(log, [
+      "GRAMMAR_COMPLETED",
+      "LISTENING_COMPLETED",
+      "WRITING_COMPLETED",
+      "REVIEW_COMPLETED",
+      "LIBRARY_COMPLETED",
+      "CURRICULUM_EVIDENCE_RECORDED",
+      "DIAGNOSTIC_COMPLETED",
+      "HOMEWORK_COMPLETED",
+    ]),
+    10,
+  );
   return {
     at: new Date().toISOString(),
     mission,
     parole,
     pron,
     social,
+    atelier,
   };
 }
 
 export function organismStatusLine(minerals: MineralSnapshot): string {
-  const entries: [keyof Omit<MineralSnapshot, "at">, number][] = [
+  const entries: [MineralKey, number][] = [
     ["pron", minerals.pron],
     ["parole", minerals.parole],
     ["mission", minerals.mission],
     ["social", minerals.social],
+    ["atelier", minerals.atelier],
   ];
   const sorted = [...entries].sort((a, b) => a[1] - b[1]);
   const lowest = sorted[0];
@@ -132,6 +151,8 @@ export function organismStatusLine(minerals: MineralSnapshot): string {
       return "Les racines demandent une scène réelle aujourd'hui.";
     case "social":
       return "Une présence partagée (tandem, café, atelier) nourrirait le sol.";
+    case "atelier":
+      return "Une preuve d'apprentissage nourrirait encore la canopée.";
     default:
       return "Un geste utile vaut mieux qu'une longue séance.";
   }
@@ -143,7 +164,7 @@ export function causalNextGesture(minerals: MineralSnapshot): {
   door: string;
   line: string;
 } {
-  const entries: [keyof Omit<MineralSnapshot, "at">, number][] = [
+  const entries: [MineralKey, number][] = [keyof Omit<MineralSnapshot, "at">, number][] = [
     ["pron", minerals.pron],
     ["parole", minerals.parole],
     ["mission", minerals.mission],
@@ -174,6 +195,12 @@ export function causalNextGesture(minerals: MineralSnapshot): {
         mineral: "social",
         door: "/tandem",
         line: "Une présence partagée fait fleurir le sol.",
+      };
+    case "atelier":
+      return {
+        mineral: "atelier",
+        door: "/learn/labs",
+        line: "Une preuve d'apprentissage nourrit la canopée.",
       };
   }
 }
@@ -223,245 +250,88 @@ export function growthEventForActivity(
     case "MISSION_COMPLETED":
     case "REAL_WORLD_BONUS":
       return {
-        id,
-        at,
-        kind: "root",
-        sourceId,
+        id, at, kind: "root", sourceId,
         intensity: type === "REAL_WORLD_BONUS" ? 0.92 : 0.72,
         label: pickLabel(ROOT_LABELS, seed),
+        mineral: "mission",
       };
     case "SPEAK_COMPLETED":
+      return {
+        id, at, kind: "stem", sourceId, intensity: 0.66,
+        label: pickLabel(STEM_LABELS, seed), mineral: "parole",
+      };
     case "TANDEM_COMPLETED":
       return {
-        id,
-        at,
-        kind: "stem",
-        sourceId,
-        intensity: type === "TANDEM_COMPLETED" ? 0.78 : 0.66,
-        label: pickLabel(STEM_LABELS, seed),
+        id, at, kind: "flower", sourceId, intensity: 0.84,
+        label: "Une présence partagée fleurit.", mineral: "social",
       };
     case "PRONLAB_MASTERY":
       return {
-        id,
-        at,
-        kind: "leaf",
-        sourceId,
-        intensity: 0.88,
-        label: pickLabel(LEAF_LABELS, seed),
+        id, at, kind: "leaf", sourceId, intensity: 0.88,
+        label: pickLabel(LEAF_LABELS, seed), mineral: "pron",
       };
     case "PRONLAB_COMPLETED":
       return {
-        id,
-        at,
-        kind: "mineral",
-        sourceId,
-        intensity: 0.42,
-        label: "Le sol retient un son.",
+        id, at, kind: "mineral", sourceId, intensity: 0.42,
+        label: "Le sol retient un son.", mineral: "pron",
+      };
+    case "GRAMMAR_COMPLETED":
+      return {
+        id, at, kind: "leaf", sourceId, intensity: 0.58,
+        label: "Une structure tient mieux.", mineral: "atelier",
+      };
+    case "LISTENING_COMPLETED":
+      return {
+        id, at, kind: "leaf", sourceId, intensity: 0.58,
+        label: "Une oreille capte mieux l'essentiel.", mineral: "atelier",
+      };
+    case "WRITING_COMPLETED":
+      return {
+        id, at, kind: "leaf", sourceId, intensity: 0.62,
+        label: "Une pensée devient une trace.", mineral: "atelier",
+      };
+    case "REVIEW_COMPLETED":
+      return {
+        id, at, kind: "leaf", sourceId, intensity: 0.5,
+        label: "Une trace revient en circulation.", mineral: "atelier",
+      };
+    case "CURRICULUM_EVIDENCE_RECORDED":
+      return {
+        id, at, kind: "leaf", sourceId, intensity: 0.7,
+        label: "Une preuve reliée au parcours nourrit la canopée.", mineral: "atelier",
       };
     case "LIBRARY_COMPLETED":
       return {
-        id,
-        at,
-        kind: "flower",
-        sourceId,
-        intensity: 0.62,
-        label: pickLabel(FLOWER_LABELS, seed),
+        id, at, kind: "flower", sourceId, intensity: 0.62,
+        label: pickLabel(FLOWER_LABELS, seed), mineral: "atelier",
+      };
+    case "HOMEWORK_COMPLETED":
+      return {
+        id, at, kind: "leaf", sourceId, intensity: 0.5,
+        label: "Une trace écrite rejoint l'atelier.", mineral: "atelier",
       };
     case "LESSON_COMPLETED":
       return {
-        id,
-        at,
-        kind: "root",
-        sourceId,
-        intensity: 0.28,
-        label: "Une pratique prend racine.",
+        id, at, kind: "mineral", sourceId, intensity: 0.28,
+        label: "Une pratique prend racine.", mineral: "atelier",
+      };
+    case "DIAGNOSTIC_COMPLETED":
+      return {
+        id, at, kind: "mineral", sourceId, intensity: 0.24,
+        label: "Le repère affine le prochain terrain.", mineral: "atelier",
       };
     case "CLASS_ATTENDED":
     case "EVENT_ATTENDED":
     case "IMMERSION_ATTENDED":
       return {
-        id,
-        at,
-        kind: "flower",
-        sourceId,
-        intensity: 0.74,
-        label: pickLabel(FLOWER_LABELS, seed),
+        id, at, kind: "flower", sourceId, intensity: 0.74,
+        label: pickLabel(FLOWER_LABELS, seed), mineral: "social",
       };
     default:
       return {
-        id,
-        at,
-        kind: "mineral",
-        sourceId,
-        intensity: 0.35,
+        id, at, kind: "mineral", sourceId, intensity: 0.35,
         label: "La terre s'en souvient.",
       };
   }
 }
 
-export function pushGrowthEvent(
-  events: GrowthEvent[],
-  next: GrowthEvent,
-  cap = 30,
-): GrowthEvent[] {
-  const withoutDup = events.filter((e) => e.id !== next.id);
-  return [next, ...withoutDup].slice(0, cap);
-}
-
-export function courageDaysFromLog(log: ActivityEvent[]): string[] {
-  const speakTypes: ActivityType[] = [
-    "SPEAK_COMPLETED",
-    "TANDEM_COMPLETED",
-    "MISSION_COMPLETED",
-  ];
-  const set = new Set<string>();
-  for (const e of log) {
-    if (!speakTypes.includes(e.type)) continue;
-    set.add(e.createdAt.slice(0, 10));
-  }
-  return [...set].sort();
-}
-
-export function courageRibbon(days: string[], now = new Date()): boolean[] {
-  const set = new Set(days);
-  const out: boolean[] = [];
-  for (let i = 27; i >= 0; i--) {
-    const d = new Date(now);
-    d.setHours(12, 0, 0, 0);
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    out.push(set.has(key));
-  }
-  return out;
-}
-
-export function buildPhonemeLeaves(
-  attempts: PronlabAttempt[],
-  items: PronlabItem[],
-): PhonemeLeaf[] {
-  const leaves: PhonemeLeaf[] = [];
-  for (const item of items) {
-    const summary = summarisePronlabItem(item.id, attempts);
-    if (!summary.mastered) continue;
-    const unlockedAt =
-      attempts
-        .filter((a) => a.itemId === item.id)
-        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-        .at(-1)?.createdAt ?? new Date().toISOString();
-    leaves.push({
-      itemId: item.id,
-      phoneme: item.focus || item.problemSegment || item.ipa.slice(0, 24),
-      label: item.phrase,
-      unlockedAt,
-    });
-  }
-  return leaves;
-}
-
-export function strugglingFocus(
-  attempts: PronlabAttempt[],
-  items: PronlabItem[],
-): PronlabItem | null {
-  let best: { item: PronlabItem; score: number } | null = null;
-  for (const item of items) {
-    const s = summarisePronlabItem(item.id, attempts);
-    if (!s.struggling) continue;
-    if (!best || s.bestScore < best.score) {
-      best = { item, score: s.bestScore };
-    }
-  }
-  return best?.item ?? null;
-}
-
-export function weekKey(d = new Date()): string {
-  const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const day = tmp.getUTCDay() || 7;
-  tmp.setUTCDate(tmp.getUTCDate() + 4 - day);
-  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
-  const week = Math.ceil(((tmp.getTime() - yearStart.getTime()) / DAY_MS + 1) / 7);
-  return `${tmp.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
-}
-
-export function composeLeoLetter(
-  minerals: MineralSnapshot,
-  growth: GrowthEvent[],
-  firstName: string,
-): LeoLetter {
-  const week = weekKey();
-  const roots = growth.filter((g) => g.kind === "root").length;
-  const leaves = growth.filter((g) => g.kind === "leaf").length;
-  const status = organismStatusLine(minerals);
-  const body = [
-    `${firstName || "Vous"},`,
-    "",
-    status,
-    roots > 0
-      ? `Cette semaine, ${roots} racine${roots > 1 ? "s" : ""} a/ont progressé grâce à des gestes ancrés.`
-      : `Peu de racines nouvelles — un seul geste terrain suffirait à réveiller le sol.`,
-    leaves > 0
-      ? `${leaves} feuille${leaves > 1 ? "s" : ""} de son se sont ouvertes dans le Pron'Lab.`
-      : `La canopée attend encore un son maîtrisé.`,
-    ``,
-    `Sans forcer. Un geste utile demain suffit.`,
-    ``,
-    `— Léo`,
-  ]
-    .join("\n")
-    .replace("a/ont", roots > 1 ? "ont" : "a");
-
-  return {
-    id: `leo-${week}`,
-    week,
-    body,
-    read: false,
-    createdAt: new Date().toISOString(),
-  };
-}
-
-export const PULSE_DARES = [
-  {
-    id: "pulse-bill",
-    line: "Demandez l'addition en une phrase claire.",
-    seconds: 90,
-  },
-  {
-    id: "pulse-help",
-    line: "Demandez de l'aide pour trouver un lieu.",
-    seconds: 90,
-  },
-  {
-    id: "pulse-thanks",
-    line: "Remerciez quelqu'un avec une phrase complète.",
-    seconds: 90,
-  },
-  {
-    id: "pulse-order",
-    line: "Commandez quelque chose sans basculer en français.",
-    seconds: 90,
-  },
-  {
-    id: "pulse-time",
-    line: "Demandez l'heure ou l'horaire d'un bus, en anglais.",
-    seconds: 90,
-  },
-  {
-    id: "pulse-price",
-    line: "Demandez le prix de deux produits au marché.",
-    seconds: 90,
-  },
-  {
-    id: "pulse-repeat",
-    line: "Faites répéter poliment une information entendue.",
-    seconds: 90,
-  },
-  {
-    id: "pulse-intro",
-    line: "Présentez-vous en trois phrases à quelqu'un de nouveau.",
-    seconds: 120,
-  },
-] as const;
-
-export function todaysPulseDare(now = new Date()) {
-  const i = now.getDate() % PULSE_DARES.length;
-  return PULSE_DARES[i]!;
-}
