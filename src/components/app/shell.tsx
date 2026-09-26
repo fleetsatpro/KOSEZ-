@@ -31,81 +31,86 @@ import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { cn } from "@/lib/utils";
 import { mutationStatusCounts, syncChangeEventName } from "@/lib/blossom/sync-client";
+import { useMessages, useDocumentLocale } from "@/lib/i18n";
 
-const NAV = [
-  {
-    to: "/",
-    label: "BLOSSOM",
-    icon: Sprout,
-    hint: ["/", "/plant", "/mission"],
-    description: "Votre parcours",
-  },
-  {
-    to: "/osez",
-    label: "OSEZ",
-    icon: Mic,
-    hint: ["/osez"],
-    description: "Parler maintenant",
-  },
-  {
-    to: "/explore",
-    label: "EXPLORE",
-    icon: Compass,
-    hint: ["/explore", "/immersion"],
-    description: "Le monde réel",
-  },
-  {
-    to: "/connect",
-    label: "CONNECT",
-    icon: User,
-    hint: ["/connect", "/tandem"],
-    description: "Présences & tandem",
-  },
-  {
-    to: "/learn",
-    label: "LEARN",
-    icon: BookOpen,
-    hint: ["/learn", "/pronlab", "/library"],
-    description: "Pratiquer & ancrer",
-  },
-  {
-    to: "/moi",
-    label: "MOI",
-    icon: UserRound,
-    hint: ["/moi"],
-    description: "Votre espace",
-  },
-] as const;
+function buildNav(m: ReturnType<typeof useMessages>) {
+  return [
+    {
+      to: "/",
+      label: m.nav.blossom,
+      icon: Sprout,
+      hint: ["/", "/plant", "/mission"],
+      description: m.nav.blossomDesc,
+    },
+    {
+      to: "/osez",
+      label: m.nav.osez,
+      icon: Mic,
+      hint: ["/osez"],
+      description: m.nav.osezDesc,
+    },
+    {
+      to: "/explore",
+      label: m.nav.explore,
+      icon: Compass,
+      hint: ["/explore", "/immersion"],
+      description: m.nav.exploreDesc,
+    },
+    {
+      to: "/connect",
+      label: m.nav.connect,
+      icon: User,
+      hint: ["/connect", "/tandem"],
+      description: m.nav.connectDesc,
+    },
+    {
+      to: "/learn",
+      label: m.nav.learn,
+      icon: BookOpen,
+      hint: ["/learn", "/pronlab", "/library"],
+      description: m.nav.learnDesc,
+    },
+    {
+      to: "/moi",
+      label: m.nav.moi,
+      icon: UserRound,
+      hint: ["/moi"],
+      description: m.nav.moiDesc,
+    },
+  ] as const;
+}
 
-const CONTEXT_NAV = {
-  blossom: [
-    { to: "/", label: "BLOSSOM", icon: Sprout },
-    { to: "/plant", label: "Végétal", icon: Sprout },
-    { to: "/mission", label: "Mission terrain", icon: Target },
-  ],
-  osez: [
-    { to: "/osez/pulse", label: "Pulse", icon: Mic },
-    { to: "/mission", label: "Mission terrain", icon: Target },
-  ],
-  explore: [
-    { to: "/explore", label: "Rencontres", icon: Compass },
-    { to: "/immersion", label: "Immersion", icon: MapPin },
-  ],
-  connect: [
-    { to: "/connect", label: "Présences", icon: User },
-    { to: "/tandem", label: "Tandem", icon: Users },
-  ],
-  learn: [
-    { to: "/learn/curriculum", label: "Parcours", icon: Sprout },
-    { to: "/pronlab", label: "Pron'Lab", icon: Mic },
-    { to: "/library", label: "Bibliothèque", icon: BookOpen },
-    { to: "/learn/review", label: "Réviser", icon: RotateCcw },
-    { to: "/learn/progress", label: "Compétences", icon: ChartNoAxesCombined },
-    { to: "/learn/history", label: "Historique", icon: History },
-    { to: "/learn/labs", label: "Labs", icon: FlaskConical },
-  ],
-  moi: [],
-} as const;
+function buildContextNav(m: ReturnType<typeof useMessages>) {
+  return {
+    blossom: [
+      { to: "/", label: m.nav.blossom, icon: Sprout },
+      { to: "/plant", label: m.nav.plant, icon: Sprout },
+      { to: "/mission", label: m.nav.mission, icon: Target },
+    ],
+    osez: [
+      { to: "/osez/pulse", label: m.nav.pulse, icon: Mic },
+      { to: "/mission", label: m.nav.mission, icon: Target },
+    ],
+    explore: [
+      { to: "/explore", label: m.nav.explore, icon: Compass },
+      { to: "/immersion", label: m.nav.immersion, icon: MapPin },
+    ],
+    connect: [
+      { to: "/connect", label: m.nav.presences, icon: User },
+      { to: "/tandem", label: m.nav.tandem, icon: Users },
+    ],
+    learn: [
+      { to: "/learn/curriculum", label: m.nav.curriculum, icon: Sprout },
+      { to: "/pronlab", label: m.nav.pronlab, icon: Mic },
+      { to: "/library", label: m.nav.library, icon: BookOpen },
+      { to: "/learn/review", label: m.nav.review, icon: RotateCcw },
+      { to: "/learn/progress", label: m.nav.progress, icon: ChartNoAxesCombined },
+      { to: "/learn/history", label: m.nav.history, icon: History },
+      { to: "/learn/labs", label: m.nav.labs, icon: FlaskConical },
+    ],
+    moi: [] as { to: string; label: string; icon: typeof Sprout }[],
+  } as const;
+}
 
 function contextKey(pathname: string) {
   if (pathname === "/" || pathname === "/plant" || pathname === "/mission") return "blossom";
@@ -116,8 +121,8 @@ function contextKey(pathname: string) {
   return "moi";
 }
 
-function contextNavFor(pathname: string) {
-  return CONTEXT_NAV[contextKey(pathname)];
+function contextNavFor(pathname: string, m: ReturnType<typeof useMessages>) {
+  return buildContextNav(m)[contextKey(pathname)];
 }
 
 function isActive(pathname: string, hint: readonly string[]) {
@@ -202,8 +207,12 @@ function SyncStatus() {
     </div>
   );
 }
+
 export function AppShell({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
+  const m = useMessages();
+  useDocumentLocale();
+  const NAV = buildNav(m);
   const hasEntered = useBlossom((s) => s.hasEntered);
   const parentMode = useBlossom((s) => s.parentMode);
   const teacherMode = useBlossom((s) => s.teacherMode);
@@ -214,7 +223,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { access, pending: accessPending } = useBlossomWorkspaceAccess();
   const journey = useJourney();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const contextNav = contextNavFor(pathname);
+  const contextNav = contextNavFor(pathname, m);
   const contextLabel =
     contextKey(pathname) === "learn"
       ? "Atelier LEARN"
@@ -301,7 +310,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <nav className="mt-12" aria-label="Navigation principale">
             <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">
-              Votre espace
+              {m.moi.title}
             </p>
             <div className="mt-3 grid gap-1">
               {NAV.map((item) => {
@@ -438,7 +447,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </nav>
             <NotificationCenter compact />
           </div>
-          )}
+        )}
         {children}
       </div>
 
