@@ -15,7 +15,7 @@ import { AdminBookingQueue } from "./admin-booking-queue";
 import { AdminRoleStudio } from "./admin-role-studio";
 import { useBlossom } from "@/lib/blossom/store";
 import { SupportInbox, ConversationPanel } from "./conversation-panel";
-import { AdminMessageReports } from "./admin-message-reports";
+import { AdminSafetyQueue } from "./admin-safety-queue";
 import { AdminEventAttendance } from "./admin-event-attendance";
 
 type AdminWorkspace = Awaited<ReturnType<typeof getAdminWorkspaceOnServer>>;
@@ -239,7 +239,7 @@ export function AdminStudio() {
         </Surface>
       </section>
 
-      <AdminMessageReports />
+      <AdminSafetyQueue />
       <AdminEventAttendance />
 
       <section className="mt-5">
