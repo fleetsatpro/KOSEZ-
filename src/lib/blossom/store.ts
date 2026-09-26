@@ -618,7 +618,7 @@ export const useBlossom = create<AppState>()(
         });
       },
     }),
-    { name: "kosez-blossom" },
+    { name: "kosez-blossom-v2" },
   ),
 );
 
