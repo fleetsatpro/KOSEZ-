@@ -247,7 +247,7 @@ export async function sendMessage(
   );
   for (const recipient of recipients) {
     await createNotification(String(recipient.user_id), {
-      kind: "tandem",
+      kind: "communication",
       title: access.kind === "support" ? "Réponse de K’Osez" : "Nouveau message",
       body: body.length > 120 ? body.slice(0, 117) + "…" : body,
       href: "/connect",
@@ -262,7 +262,7 @@ export async function sendMessage(
     );
     for (const admin of admins) {
       await createNotification(String(admin.user_id), {
-        kind: "system",
+        kind: "communication",
         title: "Nouvelle demande pour K’Osez",
         body: body.length > 120 ? body.slice(0, 117) + "…" : body,
         href: "/moi",
@@ -340,7 +340,7 @@ export async function reportMessage(
   );
   for (const admin of admins) {
     await createNotification(String(admin.user_id), {
-      kind: "system",
+      kind: "communication",
       title: "Signalement de conversation",
       body: "Un message a été signalé et demande une revue.",
       href: "/moi",
