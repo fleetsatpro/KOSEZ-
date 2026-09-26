@@ -62,6 +62,18 @@ test("pronlab mastery: three consecutive >= 75", () => {
   assert.equal(sum.bestScore, 84);
 });
 
+test("capture-only practice cannot become pronunciation mastery", () => {
+  const attempts = [
+    { id: "1", itemId: "x", score: 0, tip: "", createdAt: "", seconds: 4, metadata: { assessment: "capture-only" } },
+    { id: "2", itemId: "x", score: 0, tip: "", createdAt: "", seconds: 4, metadata: { assessment: "capture-only" } },
+    { id: "3", itemId: "x", score: 0, tip: "", createdAt: "", seconds: 4, metadata: { assessment: "capture-only" } },
+  ];
+  const summary = summarisePronlabItem("x", attempts);
+  assert.equal(summary.bestScore, 0);
+  assert.equal(summary.mastered, false);
+  assert.equal(summary.struggling, false);
+});
+
 test("pronlab mastery: best >= 90", () => {
   const attempts = [
     { id: "1", itemId: "x", score: 91, tip: "", createdAt: "", seconds: 2 },
