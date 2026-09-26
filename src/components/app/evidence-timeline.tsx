@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowUpRight, Circle, LoaderCircle } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { MINERAL_DOORS } from "@/lib/blossom/organism";
 import { Eyebrow, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { getEvidenceTimelineOnServer } from "@/lib/blossom/domain.api";
@@ -88,6 +89,7 @@ export function EvidenceTimeline({
                       <p className="font-medium">{item.title}</p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <Badge variant="outline">{CLASS_LABEL[item.evidenceClass]}</Badge>
+                        {item.mineral ? <Badge variant="outline" className="border-primary/20 text-primary">{MINERAL_DOORS[item.mineral].label}</Badge> : null}
                         <span className="text-[11px] text-subtle">
                           {new Date(item.at).toLocaleString("fr-FR", {
                             dateStyle: "medium",
@@ -101,11 +103,12 @@ export function EvidenceTimeline({
                         to={item.route as never}
                         className="inline-flex min-h-8 items-center gap-1 rounded-lg px-2 text-[10px] font-semibold uppercase tracking-[0.13em] text-primary hover:bg-primary/10"
                       >
-                        Ouvrir <ArrowUpRight className="size-3.5" />
+                        {item.mineral ? MINERAL_DOORS[item.mineral].action : "Ouvrir"} <ArrowUpRight className="size-3.5" />
                       </Link>
                     ) : null}
                   </div>
                   <p className="mt-3 text-sm leading-6 text-muted">{item.summary}</p>
+                  {item.mineral ? <p className="mt-2 text-[11px] leading-5 text-subtle">Cette preuve nourrit le minéral <span className="font-medium text-primary">{MINERAL_DOORS[item.mineral].label}</span>.</p> : null}
                   {item.sourceId ? (
                     <p className="mt-2 truncate text-[11px] text-subtle">
                       Source · {item.sourceId}
