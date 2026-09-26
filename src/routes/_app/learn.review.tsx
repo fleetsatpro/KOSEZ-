@@ -101,7 +101,7 @@ function Review() {
         `Preuve curriculum · révision · ${reviewSourceId}`,
         { supportId: reviewSourceId },
       );
-      if (evidence.ok) growth = evidence;
+      if (evidence.ok && evidence.event) growth = evidence;
     }
     if (growth.ok && growth.event && growth.minerals && growth.previousMinerals) {
       setCeremony({
