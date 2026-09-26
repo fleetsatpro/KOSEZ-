@@ -7,6 +7,7 @@ import { EVENTS, planAllows } from "@/lib/blossom/data";
 import { getConnectPeersOnServer } from "@/lib/blossom/domain.api";
 import { useBlossom } from "@/lib/blossom/store";
 import { formatShortDate } from "@/lib/utils";
+import { causalNextGesture } from "@/lib/blossom/organism";
 
 export const Route = createFileRoute("/_app/connect")({
   component: ConnectPage,
@@ -18,7 +19,10 @@ function ConnectPage() {
   const joined = useBlossom((s) => s.joinedEventIds);
   const counts = useBlossom((s) => s.eventRegistrationCounts);
   const plan = useBlossom((s) => s.plan);
+  const minerals = useBlossom((s) => s.mineralSnapshot);
+  const growthEvents = useBlossom((s) => s.growthEvents);
   const tandemOpen = planAllows(plan, "tandem");
+  const socialNext = causalNextGesture(minerals);
   const navigate = useNavigate();
   const [peers, setPeers] = useState<ConnectPeer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +79,42 @@ function ConnectPage() {
           est disponible, le tandem peut prendre le relais.
         </p>
       </header>
+
+      <Surface className="mt-6 overflow-hidden !p-0" aria-label="Trace sociale de l'organisme">
+        <div className="flex flex-col gap-5 p-5 sm:p-6 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <Eyebrow>Trace sociale · organisme</Eyebrow>
+            <h2 className="mt-2 font-display text-2xl tracking-tight">Le tandem ne disparaît pas après la rencontre.</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              Chaque tandem réellement clôturé nourrit le minéral social et laisse une fleur dans votre histoire.
+              Aucune conversation fictive n'est transformée en preuve.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-[11px] text-primary">
+                Minéral social · {minerals.social}/100
+              </span>
+              {growthEvents
+                .filter((event) => event.mineral === "social")
+                .slice(0, 2)
+                .map((event) => (
+                  <span key={event.id} className="rounded-full border border-border bg-surface-2 px-3 py-1.5 text-[11px] text-muted">
+                    {event.label}
+                  </span>
+                ))}
+            </div>
+          </div>
+          <div className="shrink-0 rounded-2xl border border-border bg-surface-2/45 p-4 md:max-w-xs">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">Pourquoi cette porte</p>
+            <p className="mt-2 text-sm leading-6 text-fg">{socialNext.mineral === "social" ? socialNext.line : "Le prochain geste suit actuellement un autre besoin de votre organisme."}</p>
+            <Link
+              to="/tandem"
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
+            >
+              Ouvrir le tandem <ArrowRight className="size-3.5" />
+            </Link>
+          </div>
+        </div>
+      </Surface>
 
       <section className="mt-8 grid gap-3 sm:grid-cols-3" aria-label="Résumé de connexion">
         <Surface className="!p-4">
