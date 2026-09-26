@@ -81,6 +81,7 @@ export function MissionTheatreExperience() {
   const learner = useBlossom((s) => s.learner);
   const log = useBlossom((s) => s.activityLog);
   const plan = useBlossom((s) => s.plan);
+  const languageId = useBlossom((s) => s.languageId);
   const sessions = useBlossom((s) => s.missionSessions);
   const growthEvents = useBlossom((s) => s.growthEvents);
   const minerals = useBlossom((s) => s.mineralSnapshot);
@@ -117,9 +118,10 @@ export function MissionTheatreExperience() {
     growthEvents,
     phonemeLeaves,
     missionSessions: sessions,
-    allItems: PRONLAB_SETS.flatMap((s) => s.items),
+    allItems: PRONLAB_SETS.filter((s) => !s.language || s.language === "English" || s.language === languageId).flatMap((s) => s.items),
     memory,
     memoryOn,
+    languageId,
   });
   const objective = missionObjective(
     todayMission,
