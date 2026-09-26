@@ -65,6 +65,9 @@ export async function recordEventAttendance(
   const { events } = await getPublishedContent();
   const event = events.find((entry) => entry.id === input.eventId);
   if (!event) throw new BlossomForbiddenError("Cet événement n'est plus publié.");
+  if (Date.now() < eventStartEpoch(event)) {
+    throw new BlossomForbiddenError("La présence ne peut pas être pointée avant le début de l’événement.");
+  }
   const note = input.note?.trim() ?? "";
   if (note.length > 500) throw new BlossomForbiddenError("La note de présence est limitée à 500 caractères.");
 
