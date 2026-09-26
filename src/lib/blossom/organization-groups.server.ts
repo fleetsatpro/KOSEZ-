@@ -126,14 +126,20 @@ export async function getOrganizationGroups(
   const groupParams = role === "owner" || role === "admin"
     ? [organizationId]
     : [organizationId, userId];
+  const memberScope = role === "owner" || role === "admin"
+    ? ""
+    : " and g.teacher_user_id = $2";
+  const memberParams = role === "owner" || role === "admin"
+    ? [organizationId]
+    : [organizationId, userId];
   const [groups, members] = await Promise.all([
     sql.query(
       "select g.id, g.name, g.kind, g.status, g.teacher_user_id, coalesce(tp.display_name, g.teacher_user_id) as teacher_name, g.updated_at, (select count(distinct gm2.user_id)::integer from blossom_organization_group_member gm2 join blossom_activity_event a2 on a2.user_id = gm2.user_id where gm2.group_id = g.id and a2.occurred_at >= current_timestamp - interval '7 days') as active_learners_this_week from blossom_organization_group g left join blossom_profile tp on tp.user_id = g.teacher_user_id where g.organization_id = $1::uuid" + groupScope + " order by case when g.status = 'active' then 0 else 1 end, g.name asc",
       groupParams,
     ),
     sql.query(
-      "select gm.group_id, gm.user_id, gm.joined_at, coalesce(p.display_name, gm.user_id) as display_name from blossom_organization_group_member gm join blossom_organization_group g on g.id = gm.group_id left join blossom_profile p on p.user_id = gm.user_id where g.organization_id = $1::uuid order by gm.joined_at asc",
-      [organizationId],
+      "select gm.group_id, gm.user_id, gm.joined_at, coalesce(p.display_name, gm.user_id) as display_name from blossom_organization_group_member gm join blossom_organization_group g on g.id = gm.group_id left join blossom_profile p on p.user_id = gm.user_id where g.organization_id = $1::uuid" + memberScope + " order by gm.joined_at asc",
+      memberParams,
     ),
   ]);
 
