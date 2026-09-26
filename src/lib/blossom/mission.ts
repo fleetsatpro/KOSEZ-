@@ -354,8 +354,14 @@ export function missionObjective(
       ].slice(0, 4)
     : baseKit;
 
+  const sceneLanguageKit: MissionScene["languageKit"] = languageKit.map((item) => ({
+    phrase: item.phrase,
+    meaning: "meaning" in item ? item.meaning : item.use,
+    use: item.use,
+  }));
+
   const scene: MissionScene | null = mission.scene
-    ? { ...mission.scene, languageKit }
+    ? { ...mission.scene, languageKit: sceneLanguageKit }
     : influence?.kitFront
       ? {
           time: "Maintenant",
@@ -364,7 +370,7 @@ export function missionObjective(
           people: [],
           pressure: "Utile, pas hostile",
           culturalNote: "Scène générique : aucun ancrage supplémentaire n'est injecté sans donnée source.",
-          languageKit,
+          languageKit: sceneLanguageKit,
           rescuePhrases: [],
           conversationTurns: [
             { label: "Ouverture", goal: "Créer l'ouverture sans attendre la phrase parfaite." },
