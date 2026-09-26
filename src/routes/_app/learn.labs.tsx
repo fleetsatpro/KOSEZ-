@@ -83,7 +83,7 @@ function GrammarLab({ level }: { level: LabLevel }) {
       let growth = completeActivity("GRAMMAR_COMPLETED", dailyLabSource("grammar", task.id), `Grammaire · ${correct + (isCorrect ? 1 : 0)}/${tasks.length}`);
       if (curriculumLessonId && linkedLessonKind(curriculumLessonId) === "grammar") {
         const evidence = completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · grammaire · ${task.id}`, { supportId: task.id });
-        if (evidence.ok) growth = evidence;
+        if (evidence.ok && evidence.event) growth = evidence;
       }
       if (growth.ok && growth.event && growth.minerals && growth.previousMinerals) {
         setCeremony({
@@ -152,7 +152,7 @@ function ListeningLab({ level }: { level: LabLevel }) {
       let growth = completeActivity("LISTENING_COMPLETED", dailyLabSource("listening", task.id), `Écoute · ${correct + (isCorrect ? 1 : 0)}/${tasks.length}`);
       if (curriculumLessonId && linkedLessonKind(curriculumLessonId) === "listening") {
         const evidence = completeActivity("CURRICULUM_EVIDENCE_RECORDED", curriculumLessonId, `Preuve curriculum · écoute · ${task.id}`, { supportId: task.id });
-        if (evidence.ok) growth = evidence;
+        if (evidence.ok && evidence.event) growth = evidence;
       }
       if (growth.ok && growth.event && growth.minerals && growth.previousMinerals) {
         setCeremony({
@@ -236,7 +236,7 @@ function WritingLab({ level }: { level: LabLevel }) {
         `Preuve curriculum · écrit · ${prompt.id}`,
         { supportId: prompt.id },
       );
-      if (evidence.ok) growth = evidence;
+      if (evidence.ok && evidence.event) growth = evidence;
     }
     if (growth.ok && growth.event && growth.minerals && growth.previousMinerals) {
       setCeremony({
