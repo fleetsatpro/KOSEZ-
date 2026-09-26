@@ -86,7 +86,7 @@ function TandemHub() {
       interests: learner.interests,
       window: learner.practiceWindow,
     }),
-    [languageId, learner.interests, learner.level, learner.nativeLanguage, learner.practiceWindow],
+    [languageId, uiLocale, learner.interests, learner.level, learner.nativeLanguage, learner.practiceWindow],
   );
 
   const load = () => {
@@ -112,7 +112,7 @@ function TandemHub() {
           city: candidate.city ?? "La Réunion",
           speaks: candidate.speaks,
           speaksLevel: candidate.speaksLevel,
-          wants: languageLabel(candidate.wants),
+          wants: languageLabel(candidate.wants, uiLocale),
           wantsLevel: candidate.wantsLevel,
           interests: candidate.interests,
           window: candidate.window,
