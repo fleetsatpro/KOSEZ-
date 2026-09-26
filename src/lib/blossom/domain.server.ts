@@ -1079,9 +1079,20 @@ export async function completeHomeworkForLearner(
   }
   await writeAuditEvent(learnerUserId, {
     action: "homework.completed",
+    subjectUserId: String(rows[0].author_user_id),
     resourceType: "homework",
     resourceId: homeworkId,
   });
+  const teacherUserId = String(rows[0].author_user_id);
+  if (teacherUserId !== learnerUserId) {
+    await createNotification(teacherUserId, {
+      kind: "homework",
+      title: "Devoir terminé",
+      body: String(rows[0].title),
+      href: "/moi",
+      metadata: { homeworkId, learnerUserId },
+    });
+  }
   return rows[0];
 }
 
@@ -1938,6 +1949,7 @@ export async function sendMessage(
   }
 
   let row: Record<string, unknown> | undefined;
+  let insertedFresh = true;
   try {
     const rows = await sql.query(
       `insert into blossom_message
@@ -1967,6 +1979,9 @@ export async function sendMessage(
       throw error;
     }
     row = duplicate[0];
+    // The client idempotency key won the race on another request. Do not
+    // emit a second notification or audit record for the same message.
+    insertedFresh = false;
   }
 
   if (!row) throw new Error("message-write-failed");
@@ -1976,23 +1991,25 @@ export async function sendMessage(
     [input.conversationId, created],
   );
 
-  await createNotification(otherUserId, {
-    kind: "system",
-    title: "Nouveau message",
-    body: body.length > 140 ? body.slice(0, 139) + "…" : body,
-    href: "/inbox",
-    metadata: {
-      conversationId: input.conversationId,
-      senderUserId: userId,
-      kind: String(relation.kind),
-    },
-  });
-  await writeAuditEvent(userId, {
-    subjectUserId: otherUserId,
-    action: "message.sent",
-    resourceType: "conversation",
-    resourceId: input.conversationId,
-  });
+  if (insertedFresh) {
+    await createNotification(otherUserId, {
+      kind: "system",
+      title: "Nouveau message",
+      body: body.length > 140 ? body.slice(0, 139) + "…" : body,
+      href: "/inbox",
+      metadata: {
+        conversationId: input.conversationId,
+        senderUserId: userId,
+        kind: String(relation.kind),
+      },
+    });
+    await writeAuditEvent(userId, {
+      subjectUserId: otherUserId,
+      action: "message.sent",
+      resourceType: "conversation",
+      resourceId: input.conversationId,
+    });
+  }
 
   return {
     id: String(row.id),
