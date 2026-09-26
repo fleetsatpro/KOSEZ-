@@ -250,12 +250,15 @@ export async function sendMessage(
       throw error;
     }
     rows = await sql.query(
-      "select id, sender_user_id, body, created_at
+      "select id, conversation_id, sender_user_id, body, created_at
        from blossom_message
        where sender_user_id = $1 and client_message_id = $2::uuid
        limit 1",
       [userId, input.clientMessageId],
     );
+    if (!rows[0] || String(rows[0].conversation_id) !== input.conversationId) {
+      throw new BlossomForbiddenError("Cette clé de message a déjà été utilisée pour un autre fil.");
+    }
   }
   if (!rows[0]) throw new Error("message-write-failed");
   const duplicateMessage = String(rows[0].id) !== messageId;
@@ -268,15 +271,6 @@ export async function sendMessage(
     "update blossom_conversation_member set last_read_at = current_timestamp where conversation_id = $1::uuid and user_id = $2",
     [input.conversationId, userId],
   );
-
-  if (duplicateMessage) {
-    return {
-      id: String(rows[0].id),
-      senderUserId: String(rows[0].sender_user_id),
-      body: String(rows[0].body),
-      createdAt: new Date(String(rows[0].created_at)).toISOString(),
-    };
-  }
 
   if (duplicateMessage) {
     return {
