@@ -67,7 +67,6 @@ function GrammarLab({ level }: { level: LabLevel }) {
   }, [level, linkedTaskId]);
   const [index, setIndex] = useState(0), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
   const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
-  const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
   const task = tasks[index]!, answered = choice !== null;
   function choose(value: string) { if (choice) return; setChoice(value); if (value === task.answer) setCorrect((v) => v + 1); }
   function next() {
@@ -354,6 +353,7 @@ function DiagnosticLab() {
   const completeActivity = useBlossom((s) => s.completeActivity);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
 
   const score = diagnosticScore(answers);
   const ready = Object.keys(answers).length === DIAGNOSTIC_QUESTIONS.length;
@@ -370,6 +370,15 @@ function DiagnosticLab() {
           <Button asChild><Link to="/learn/curriculum">Ouvrir le parcours <ArrowRight className="size-4" /></Link></Button>
           <Button variant="secondary" onClick={() => setSaved(false)}>Refaire</Button>
         </div>
+        {ceremony ? (
+          <GrowthCeremony
+            event={ceremony.event}
+            minerals={ceremony.minerals}
+            previousMinerals={ceremony.previousMinerals}
+            open
+            onDismiss={() => setCeremony(null)}
+          />
+        ) : null}
       </Surface>
     );
   }
@@ -438,7 +447,14 @@ function DiagnosticLab() {
         disabled={!ready}
         onClick={() => {
           updateLearner({ level });
-          completeActivity("DIAGNOSTIC_COMPLETED", dailyLabSource("diagnostic", "placement"), `Repère indicatif · ${score}/10 · ${level}`);
+          const growth = completeActivity("DIAGNOSTIC_COMPLETED", dailyLabSource("diagnostic", "placement"), `Repère indicatif · ${score}/10 · ${level}`);
+          if (growth.ok && growth.event && growth.minerals && growth.previousMinerals) {
+            setCeremony({
+              event: growth.event,
+              minerals: growth.minerals,
+              previousMinerals: growth.previousMinerals,
+            });
+          }
           setSaved(true);
         }}
       >
