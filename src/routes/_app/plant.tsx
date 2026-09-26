@@ -6,7 +6,7 @@ import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { STAGES, nextStage } from "@/lib/blossom/engine";
-import { causalNextGesture, organismStatusLine } from "@/lib/blossom/organism";
+import { organismStatusLine } from "@/lib/blossom/organism";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 import { OrganismMineralsPanel } from "@/components/app/organism-minerals-panel";
@@ -30,7 +30,7 @@ function PlantPage() {
     },
     {
       label: "Parole",
-      detail: "Speak rooms, Pulse, tandem",
+      detail: "OSEZ, rooms et Pulse réellement clôturés",
       current: journey.speak.current,
       required: journey.speak.required,
     },
