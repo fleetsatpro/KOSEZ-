@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { getPublishedContent } from "./content.server";
 import { BlossomForbiddenError, createNotification, writeAuditEvent } from "./domain.server";
+import { eventStartEpoch } from "./event-attendance";
 
 export type AdminEventAttendanceRow = {
   eventId: string;
