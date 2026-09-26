@@ -362,7 +362,12 @@ export async function reportMessage(
       metadata: { conversationId: input.conversationId, reportId: String(rows[0]?.id ?? "") },
     });
   }
-  return rows[0] ?? null;
+  if (!rows[0]) throw new Error("message-report-write-failed");
+  return {
+    id: String(rows[0].id),
+    status: String(rows[0].status) as "open" | "reviewing" | "resolved" | "dismissed",
+    createdAt: new Date(String(rows[0].created_at)).toISOString(),
+  };
 }
 
 export async function getSupportInbox(userId: string): Promise<SupportConversationSummary[]> {
