@@ -263,22 +263,7 @@ export function HomeDashboard() {
         className="border-t border-border/60 bg-bg px-5 py-6 lg:px-12"
         aria-label="Portes secondaires — chaque porte nourrit un minéral précis"
       >
-        <div className="mx-auto mb-4 max-w-2xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center sm:text-left magnetic-surface">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
-            Prochain geste causal
-          </p>
-          <p className="mt-1 text-sm text-fg/90">{nextGesture.line}</p>
-          <p className="mt-1 text-[11px] text-subtle">
-            Minéral le plus bas : <span className="text-primary">{nextGesture.mineral}</span> — c'est pourquoi cette porte est proposée maintenant.
-          </p>
-          <Link
-            to={nextGesture.door as "/osez" | "/pronlab" | "/mission" | "/tandem"}
-            className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-          >
-            Ouvrir cette porte
-            <ArrowRight className="size-3.5" />
-          </Link>
-        </div>
+/div>
         <ul className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm">
           <li>
             <Link
