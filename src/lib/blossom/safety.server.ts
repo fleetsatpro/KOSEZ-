@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
-import { BlossomForbiddenError, writeAuditEvent } from "./domain.server";
+import { BlossomForbiddenError, createNotification, writeAuditEvent } from "./domain.server";
 
 export async function reportTandem(
   reporterUserId: string,
@@ -43,15 +43,13 @@ export async function reportTandem(
     [reporterUserId],
   );
   for (const admin of admins) {
-    await import("./domain.server").then(({ createNotification }) =>
-      createNotification(String(admin.user_id), {
-        kind: "system",
-        title: "Nouveau signalement tandem",
-        body: reason.slice(0, 140),
-        href: "/moi",
-        metadata: { reportId, partnerUserId },
-      }),
-    );
+    await createNotification(String(admin.user_id), {
+      kind: "system",
+      title: "Nouveau signalement tandem",
+      body: reason.slice(0, 140),
+      href: "/moi",
+      metadata: { reportId, partnerUserId },
+    });
   }
 
   const countRows = await sql.query(
