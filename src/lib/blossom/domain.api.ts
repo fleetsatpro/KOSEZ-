@@ -50,6 +50,13 @@ import {
 } from "./messaging.server";
 import { getEvidenceTimeline } from "./evidence.server";
 import { getLearningFeedbackBundle, saveLearningFeedback, getLearnerFeedback } from "./learning-feedback.server";
+import {
+  getTeacherSessions,
+  getLearnerSessions,
+  getGuardianSessions,
+  createTeacherSession,
+  cancelTeacherSession,
+} from "./teacher-sessions.server";
 
 
 const metadataJson = z.string().trim().max(20000).optional();
@@ -64,6 +71,48 @@ async function resolveUserEmail(userId: string): Promise<string | null> {
     return null;
   }
 }
+
+export const getTeacherSessionsOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ limit: z.number().int().min(1).max(50).optional() }).optional())
+  .handler(async ({ context, data }) => getTeacherSessions(context.userId, data?.limit ?? 20));
+
+export const getLearnerSessionsOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ limit: z.number().int().min(1).max(50).optional() }).optional())
+  .handler(async ({ context, data }) => getLearnerSessions(context.userId, data?.limit ?? 20));
+
+export const getGuardianSessionsOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      learnerUserId: z.string().trim().min(1).max(200),
+      limit: z.number().int().min(1).max(50).optional(),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    getGuardianSessions(context.userId, data.learnerUserId, data.limit ?? 20),
+  );
+
+export const createTeacherSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      learnerUserId: z.string().trim().min(1).max(200),
+      title: z.string().trim().min(1).max(180),
+      startsAt: z.string().datetime(),
+      durationMinutes: z.number().int().min(15).max(180),
+      notes: z.string().trim().max(2000).nullable().optional(),
+    }),
+  )
+  .handler(async ({ context, data }) => createTeacherSession(context.userId, data));
+
+export const cancelTeacherSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ sessionId: z.string().uuid() }))
+  .handler(async ({ context, data }) =>
+    cancelTeacherSession(context.userId, data.sessionId),
+  );
 
 export const getAdminWorkspaceOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
