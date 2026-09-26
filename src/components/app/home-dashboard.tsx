@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Check, Leaf, Target } from "lucide-react";
+import { useMemo } from "react";
 import { AmbientParticles } from "@/components/app/ambient-particles";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,12 +15,10 @@ import {
   personaliseMission,
   resolveMemory,
 } from "@/lib/blossom/engine";
+import { influenceFromState } from "@/lib/blossom/influence";
 import {
   courageDaysFromLog,
   courageRibbon,
-  organismStatusLine,
-  causalNextGesture,
-  strugglingFocus,
 } from "@/lib/blossom/organism";
 import { todayMissionForLevel } from "@/lib/blossom/mission-today";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
@@ -27,28 +26,27 @@ import { todayLabel } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 /**
- * Home is not a dashboard.
- * One living stage. One gesture. Atmosphere, not widgets.
- * Causality is visible: every completed gesture leaves a mark the plant can show.
- * Pron'Lab struggle surfaces as a living annotation when present.
+ * Home is the organism's status surface.
+ * Status line, doors, and annotations come from the influence engine —
+ * Pron'Lab struggle, mission friction, minerals, and phoneme mastery
+ * actually decide what you see and why.
  */
 export function HomeDashboard() {
   const learner = useBlossom((s) => s.learner);
   const log = useBlossom((s) => s.activityLog);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const plan = useBlossom((s) => s.plan);
-  const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
+  const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
+  const missionSessions = useBlossom((s) => s.missionSessions);
   const journey = useJourney();
 
   const todayMission = todayMissionForLevel(learner.level);
   const missionDone = hasSource(log, todayMission.id);
-  const nextGesture = causalNextGesture(minerals);
   const memoryOn = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
   const mission = personaliseMission(todayMission, memory, memoryOn);
   const upcoming = nextStage(journey.stage.id);
-  const leoLine = organismStatusLine(minerals);
   const ribbon = courageRibbon(courageDaysFromLog(log));
   const spoken = ribbon.filter(Boolean).length;
   const plantSrc = PLANT_IMAGE[journey.stage.id];
@@ -58,12 +56,27 @@ export function HomeDashboard() {
   const progress = Math.max(4, Math.round(journey.progress * 100));
   const particleIntensity = Math.min(1, 0.35 + journey.progress * 0.55);
 
-  const allItems = PRONLAB_SETS.flatMap((s) => s.items);
-  const struggle = strugglingFocus(attempts, allItems);
+  const influence = useMemo(
+    () =>
+      influenceFromState({
+        activityLog: log,
+        pronlabAttempts: attempts,
+        growthEvents,
+        phonemeLeaves,
+        missionSessions,
+        allItems: PRONLAB_SETS.flatMap((s) => s.items),
+        memory,
+        memoryOn,
+      }),
+    [log, attempts, growthEvents, phonemeLeaves, missionSessions, memory, memoryOn],
+  );
 
   const recentGrowth = [...growthEvents]
     .sort((a, b) => b.at.localeCompare(a.at))
     .slice(0, 3);
+
+  const primaryDoor = influence.home.doors[0];
+  const struggle = influence.struggle;
 
   return (
     <div data-smoke="blossom-home" className="kosez-home relative min-h-[calc(100dvh-5.5rem)] lg:min-h-dvh">
@@ -120,11 +133,39 @@ export function HomeDashboard() {
             {journey.stage.label}
           </p>
           <p className="mt-4 font-display text-3xl leading-snug tracking-tight text-white sm:text-5xl sm:leading-tight">
-            {leoLine}
+            {influence.home.statusLine}
           </p>
-          <p className="mt-4 max-w-md text-sm leading-6 text-white/55">
-            Un geste utile vaut mieux qu'une longue séance. La plante grandit uniquement parce que vous avez agi.
-          </p>
+          {influence.home.annotation ? (
+            <p className="mt-3 max-w-md text-sm leading-6 text-white/55">
+              {influence.home.annotation}
+            </p>
+          ) : (
+            <p className="mt-4 max-w-md text-sm leading-6 text-white/55">
+              Un geste utile vaut mieux qu'une longue séance. La plante grandit uniquement parce que vous avez agi.
+            </p>
+          )}
+
+          {influence.home.reasons.filter((r) => r.code !== "balanced").length > 0 ? (
+            <ul
+              className="mt-4 max-w-md space-y-1 text-left"
+              aria-label="Signaux de l'organisme"
+            >
+              {influence.home.reasons
+                .filter((r) => r.code !== "balanced")
+                .slice(0, 3)
+                .map((r) => (
+                  <li
+                    key={r.code + r.line.slice(0, 20)}
+                    className="text-[11px] leading-5 text-white/50"
+                  >
+                    <span className="font-semibold text-primary/70">
+                      {r.code.replace(/-/g, " ")} ·{" "}
+                    </span>
+                    {r.line}
+                  </li>
+                ))}
+            </ul>
+          ) : null}
 
           {recentGrowth.length > 0 ? (
             <ul
@@ -156,6 +197,9 @@ export function HomeDashboard() {
               <span>
                 <span className="font-semibold">Son qui résiste · </span>
                 {struggle.focus || struggle.phrase}
+                <span className="mt-0.5 block text-[10px] text-primary/70">
+                  Traverse Mission, OSEZ et Pulse — pas seulement Pron'Lab
+                </span>
               </span>
               <ArrowRight className="size-3.5 shrink-0 opacity-70" />
             </Link>
@@ -260,24 +304,45 @@ export function HomeDashboard() {
 
       <nav
         className="border-t border-border/60 bg-bg px-5 py-6 lg:px-12"
-        aria-label="Portes secondaires — chaque porte nourrit un minéral précis"
+        aria-label="Portes causales — prioritaires selon l'organisme"
       >
-        <div className="mx-auto mb-4 max-w-2xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center sm:text-left magnetic-surface">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
-            Prochain geste causal
-          </p>
-          <p className="mt-1 text-sm text-fg/90">{nextGesture.line}</p>
-          <p className="mt-1 text-[11px] text-subtle">
-            Minéral le plus bas : <span className="text-primary">{nextGesture.mineral}</span> — c'est pourquoi cette porte est proposée maintenant.
-          </p>
-          <Link
-            to={nextGesture.door as "/osez" | "/pronlab" | "/mission" | "/tandem" | "/learn/labs"}
-            className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-          >
-            Ouvrir cette porte
-            <ArrowRight className="size-3.5" />
-          </Link>
-        </div>
+        {primaryDoor ? (
+          <div className="mx-auto mb-4 max-w-2xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center sm:text-left magnetic-surface">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
+              Prochain geste causal · {primaryDoor.mineral}
+            </p>
+            <p className="mt-1 text-sm text-fg/90">{primaryDoor.line}</p>
+            <p className="mt-1 text-[11px] text-subtle">
+              Priorité {primaryDoor.priority} — calculée depuis Pron'Lab, missions et minéraux, pas un classement arbitraire.
+            </p>
+            <Link
+              to={primaryDoor.door as "/osez" | "/pronlab" | "/mission" | "/tandem" | "/learn/labs"}
+              className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+            >
+              Ouvrir cette porte
+              <ArrowRight className="size-3.5" />
+            </Link>
+          </div>
+        ) : null}
+
+        {influence.home.doors.length > 1 ? (
+          <ul className="mx-auto mb-4 flex max-w-2xl flex-wrap justify-center gap-2">
+            {influence.home.doors.slice(1, 4).map((d) => (
+              <li key={d.door}>
+                <Link
+                  to={d.door as "/osez" | "/pronlab" | "/mission" | "/tandem" | "/learn/labs"}
+                  className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-surface px-3 py-1.5 text-[11px] text-muted hover:border-primary/30 hover:text-primary"
+                >
+                  {d.mineral}
+                  <span className="text-subtle">·</span>
+                  {d.line.slice(0, 42)}
+                  {d.line.length > 42 ? "…" : ""}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
         <ul className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm">
           <li>
             <Link
