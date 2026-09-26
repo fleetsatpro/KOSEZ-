@@ -493,19 +493,20 @@ export function MissionTheatreExperience() {
               </p>
             </header>
             <ReflectionStage
-              reflection={reflection}
+              draft={reflection}
+              run={run}
               onChange={setReflection}
               saved={saved}
               onSave={saveReflection}
               onFinish={finishSession}
-              onReopen={() => {
+              onRedo={() => {
                 reopenMissionSession(todayMission.id);
                 setStep("execute");
                 setSaved(false);
               }}
               history={history}
             />
-            <MissionHistory history={history} />
+            <MissionHistory history={history} runs={session?.runs ?? []} />
           </div>
         ) : null}
       </div>
