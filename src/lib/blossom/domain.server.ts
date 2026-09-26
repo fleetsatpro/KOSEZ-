@@ -442,6 +442,7 @@ export async function getTandemSession(
 export type OrganizationWorkspace = {
   id: string;
   name: string;
+  currentRole: "owner" | "admin" | "teacher";
   city: string | null;
   members: Array<{
     id: string;
@@ -518,9 +519,13 @@ export async function getOrganizationWorkspace(
       ? (rows[0].metadata as Record<string, unknown>)
       : {};
 
+  const currentMember = rows.find((row) => String(row.user_id) === userId);
+  const currentRole = String(currentMember?.role ?? "teacher") as OrganizationWorkspace["currentRole"];
+
   return {
     id: organizationId,
     name: String(rows[0].name),
+    currentRole,
     city: typeof metadata.city === "string" ? metadata.city : null,
     members: rows.map((row) => ({
       id: String(row.user_id),
