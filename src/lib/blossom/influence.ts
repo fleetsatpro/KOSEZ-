@@ -9,6 +9,7 @@
  */
 
 import type { PronlabItem } from "./data";
+import type { LearnLanguageId } from "@/lib/i18n/locales";
 import type {
   ActivityEvent,
   LearnerMemory,
@@ -35,6 +36,7 @@ export type InfluenceReason = {
     | "mission-friction"
     | "mission-outcome"
     | "courage-gap"
+    | "recent-growth"
     | "balanced";
   /** Human-readable, French, no jargon */
   line: string;
@@ -163,11 +165,18 @@ export function computeInfluence(input: {
   missionSessions: Record<string, MissionSession>;
   memory: LearnerMemory;
   memoryOn: boolean;
+  languageId: LearnLanguageId;
 }): OrganismInfluence {
   const at = new Date().toISOString();
   const minerals = computeMinerals(input.log);
   const struggle = strugglingFocus(input.attempts, input.allItems);
   const leaves = input.phonemeLeaves;
+  const recentGrowth = [...input.growthEvents]
+    .filter((event) => {
+      const delta = Date.now() - Date.parse(event.at);
+      return Number.isFinite(delta) && delta >= 0 && delta <= 7 * 86_400_000;
+    })
+    .sort((a, b) => b.at.localeCompare(a.at))[0] ?? null;
   const low = lowestMineral(minerals);
   const friction = dominantFriction(input.missionSessions);
   const outcome = latestOutcome(input.missionSessions);
@@ -178,6 +187,21 @@ export function computeInfluence(input: {
   let kitFront: MissionInfluence["kitFront"];
   let stretchOverride: string | undefined;
   let adaptationDetail = "Fondation — le geste du jour, sans surcharge.";
+
+  if (recentGrowth) {
+    stretchOverride =
+      recentGrowth.kind === "flower"
+        ? "Transférez le geste vers une nouvelle personne ou un nouveau contexte — sans ajouter de vocabulaire."
+        : recentGrowth.kind === "leaf"
+          ? "Réutilisez l'acquis récent une fois dans la scène, puis revenez à l'objectif principal."
+          : "Laissez l'acquis récent soutenir le geste principal ; aucune difficulté supplémentaire n'est requise.";
+    missionReasons.push({
+      code: "recent-growth",
+      line: `Une croissance récente (${recentGrowth.label}) devient une consigne de transfert explicite — elle ne reste pas décorative.`,
+      mineral: recentGrowth.mineral,
+    });
+    adaptationDetail = `Transfert après croissance · ${recentGrowth.kind}`;
+  }
 
   if (struggle) {
     const focus = struggle.focus || struggle.problemSegment || struggle.ipa;
@@ -286,9 +310,19 @@ export function computeInfluence(input: {
 
   if (struggle) {
     const focus = struggle.focus || struggle.problemSegment || "ce son";
+    const dareByLanguage: Partial<Record<LearnLanguageId, string>> = {
+      en: "Say one useful sentence containing « " + focus + " » — once, in a real or simulated situation.",
+      fr: "Dites une phrase utile contenant « " + focus + " » — une seule fois, en situation réelle ou simulée.",
+      es: "Di una frase útil que contenga « " + focus + " » — una sola vez, en una situación real o simulada.",
+      pt: "Diga uma frase útil que contenha « " + focus + " » — uma vez, numa situação real ou simulada.",
+      de: "Sage einen nützlichen Satz mit « " + focus + " » — einmal, in einer echten oder simulierten Situation.",
+      it: "Di una frase utile che contenga « " + focus + " » — una sola volta, in una situazione reale o simulata.",
+      cr: "Diz enn fraz itil ek « " + focus + " » — enn sel fwa, dan enn sitiasion reel ousa simile.",
+      lsf: "Montre un signe utile pour « " + focus + " » — une seule fois, en situation réelle ou simulée.",
+    };
     dareOverride = {
       id: `pulse-struggle-${struggle.id}`,
-      line: `Dites une phrase utile qui contient « ${focus} » — une seule fois, en situation réelle ou simulée.`,
+      line: dareByLanguage[input.languageId] ?? dareByLanguage.en!,
       seconds: 90,
     };
     pulseReasons.push({
@@ -435,7 +469,17 @@ export function computeInfluence(input: {
 
   if (struggle) {
     const focus = struggle.focus || struggle.problemSegment || struggle.phrase;
-    openPrompt = `Could you help me with « ${focus} »? I want to hear it once, then try.`;
+    const promptByLanguage: Partial<Record<LearnLanguageId, string>> = {
+      en: "Could you help me with « " + focus + " »? I want to hear it once, then try.",
+      fr: "Tu peux m'aider avec « " + focus + " » ? J'écoute une fois, puis j'essaie.",
+      es: "¿Puedes ayudarme con « " + focus + " »? Lo escucho una vez y luego lo intento.",
+      pt: "Podes ajudar-me com « " + focus + " »? Ouço uma vez e depois tento.",
+      de: "Kannst du mir bei « " + focus + " » helfen? Ich höre es einmal und versuche es dann.",
+      it: "Puoi aiutarmi con « " + focus + " »? Lo ascolto una volta e poi provo.",
+      cr: "Ou peux a m'aider ek « " + focus + " » ? J'écoute enn fwa, apré j'essaie.",
+      lsf: "Montre-moi le signe pour « " + focus + " », puis j'essaie.",
+    };
+    openPrompt = promptByLanguage[input.languageId] ?? promptByLanguage.en!;
     partnerBias = "pron-focus";
     tandemReasons.push({
       code: "pron-struggle",
@@ -505,6 +549,7 @@ export function influenceFromState(state: {
   allItems: PronlabItem[];
   memory: LearnerMemory;
   memoryOn: boolean;
+  languageId: LearnLanguageId;
 }): OrganismInfluence {
   return computeInfluence({
     log: state.activityLog,
@@ -515,5 +560,6 @@ export function influenceFromState(state: {
     missionSessions: state.missionSessions,
     memory: state.memory,
     memoryOn: state.memoryOn,
+    languageId: state.languageId,
   });
 }
