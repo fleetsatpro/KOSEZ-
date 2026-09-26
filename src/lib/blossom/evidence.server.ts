@@ -1,6 +1,7 @@
 import { getSql } from "@/lib/db";
 import { BlossomForbiddenError } from "./domain.server";
 import { pronlabEvidenceProjection } from "./evidence-projection";
+import { MINERAL_DOORS, type MineralKey } from "./organism";
 
 export type EvidenceClass = "action" | "artifact" | "observation" | "plan";
 
@@ -14,29 +15,30 @@ export type EvidenceTimelineItem = {
   sourceId: string | null;
   route: string | null;
   metadata: Record<string, string | number | boolean | null>;
+  mineral: MineralKey | null;
 };
 
 
 function activityDescriptor(type: string) {
-  switch (type) {
-    case "MISSION_COMPLETED": return { title: "Mission accomplie", summary: "Une mission réellement clôturée.", evidenceClass: "action" as const, route: "/mission" };
-    case "REAL_WORLD_BONUS": return { title: "Geste terrain", summary: "Une action réelle enregistrée.", evidenceClass: "action" as const, route: "/mission" };
-    case "SPEAK_COMPLETED": return { title: "Prise de parole", summary: "Une session OSEZ clôturée avec ses métadonnées.", evidenceClass: "observation" as const, route: "/osez" };
-    case "PRONLAB_MASTERY": return { title: "Observation Pron’Lab", summary: "Un item Pron’Lab a franchi le seuil calculé.", evidenceClass: "observation" as const, route: "/pronlab" };
-    case "PRONLAB_COMPLETED": return { title: "Set Pron’Lab terminé", summary: "Le set a été parcouru; aucune note de performance n’est inventée.", evidenceClass: "action" as const, route: "/pronlab" };
-    case "TANDEM_COMPLETED": return { title: "Tandem clôturé", summary: "Un échange tandem a été enregistré avec une réflexion personnelle.", evidenceClass: "action" as const, route: "/tandem" };
-    case "GRAMMAR_COMPLETED": return { title: "Grammaire terminée", summary: "Une preuve d’atelier a été enregistrée.", evidenceClass: "artifact" as const, route: "/learn/labs" };
-    case "LISTENING_COMPLETED": return { title: "Écoute terminée", summary: "Une preuve d’atelier a été enregistrée.", evidenceClass: "artifact" as const, route: "/learn/labs" };
-    case "WRITING_COMPLETED": return { title: "Écriture terminée", summary: "Une preuve d’atelier a été enregistrée.", evidenceClass: "artifact" as const, route: "/learn/labs" };
-    case "REVIEW_COMPLETED": return { title: "Révision terminée", summary: "Une preuve de récupération a été enregistrée.", evidenceClass: "artifact" as const, route: "/learn/review" };
-    case "LIBRARY_COMPLETED": return { title: "Lecture terminée", summary: "La lecture a été enregistrée après la fin du texte.", evidenceClass: "artifact" as const, route: "/library" };
-    case "HOMEWORK_COMPLETED": return { title: "Devoir terminé", summary: "Le devoir a été marqué fait par l’apprenant.", evidenceClass: "artifact" as const, route: "/moi" };
-    case "LESSON_COMPLETED": return { title: "Leçon terminée", summary: "Une activité de curriculum a produit une trace.", evidenceClass: "action" as const, route: "/learn" };
-    case "DIAGNOSTIC_COMPLETED": return { title: "Diagnostic terminé", summary: "Un repère d’apprentissage a été enregistré.", evidenceClass: "observation" as const, route: "/learn/labs" };
-    case "CLASS_ATTENDED": return { title: "Présence en classe", summary: "Une présence a été enregistrée.", evidenceClass: "action" as const, route: "/explore" };
-    case "EVENT_ATTENDED": return { title: "Événement fréquenté", summary: "Une présence à un événement a été enregistrée.", evidenceClass: "action" as const, route: "/explore" };
-    case "IMMERSION_ATTENDED": return { title: "Immersion enregistrée", summary: "Une immersion a été enregistrée.", evidenceClass: "action" as const, route: "/immersion" };
-    default: return { title: type, summary: "Activité enregistrée par K’Osez.", evidenceClass: "action" as const, route: null };
+    case "MISSION_COMPLETED": return { title: "Mission accomplie", summary: "Une mission réellement clôturée.", evidenceClass: "action" as const, route: "/mission", mineral: "mission" as const };
+    case "REAL_WORLD_BONUS": return { title: "Geste terrain", summary: "Une action réelle enregistrée.", evidenceClass: "action" as const, route: "/mission", mineral: "mission" as const };
+    case "SPEAK_COMPLETED": return { title: "Prise de parole", summary: "Une session OSEZ clôturée avec ses métadonnées.", evidenceClass: "observation" as const, route: "/osez", mineral: "parole" as const };
+    case "PRONLAB_MASTERY": return { title: "Observation Pron’Lab", summary: "Un item Pron’Lab a franchi le seuil calculé.", evidenceClass: "observation" as const, route: "/pronlab", mineral: "pron" as const };
+    case "PRONLAB_COMPLETED": return { title: "Set Pron’Lab terminé", summary: "Le set a été parcouru; aucune note de performance n’est inventée.", evidenceClass: "action" as const, route: "/pronlab", mineral: "pron" as const };
+    case "TANDEM_COMPLETED": return { title: "Tandem clôturé", summary: "Un échange tandem a été enregistré avec une réflexion personnelle.", evidenceClass: "action" as const, route: "/tandem", mineral: "social" as const };
+    case "GRAMMAR_COMPLETED": return { title: "Grammaire terminée", summary: "Une preuve d’atelier a été enregistrée.", evidenceClass: "artifact" as const, route: "/learn/labs", mineral: "atelier" as const };
+    case "LISTENING_COMPLETED": return { title: "Écoute terminée", summary: "Une preuve d’atelier a été enregistrée.", evidenceClass: "artifact" as const, route: "/learn/labs", mineral: "atelier" as const };
+    case "WRITING_COMPLETED": return { title: "Écriture terminée", summary: "Une preuve d’atelier a été enregistrée.", evidenceClass: "artifact" as const, route: "/learn/labs", mineral: "atelier" as const };
+    case "REVIEW_COMPLETED": return { title: "Révision terminée", summary: "Une preuve de récupération a été enregistrée.", evidenceClass: "artifact" as const, route: "/learn/review", mineral: "atelier" as const };
+    case "LIBRARY_COMPLETED": return { title: "Lecture terminée", summary: "La lecture a été enregistrée après la fin du texte.", evidenceClass: "artifact" as const, route: "/library", mineral: "atelier" as const };
+    case "HOMEWORK_COMPLETED": return { title: "Devoir terminé", summary: "Le devoir a été marqué fait par l’apprenant.", evidenceClass: "artifact" as const, route: "/moi", mineral: "atelier" as const };
+    case "LESSON_COMPLETED": return { title: "Leçon terminée", summary: "Une activité de curriculum a produit une trace.", evidenceClass: "action" as const, route: "/learn", mineral: null };
+    case "DIAGNOSTIC_COMPLETED": return { title: "Diagnostic terminé", summary: "Un repère d’apprentissage a été enregistré.", evidenceClass: "observation" as const, route: "/learn/labs", mineral: "atelier" as const };
+    case "CLASS_ATTENDED": return { title: "Présence en classe", summary: "Une présence a été enregistrée.", evidenceClass: "action" as const, route: "/explore", mineral: "social" as const };
+    case "EVENT_ATTENDED": return { title: "Événement fréquenté", summary: "Une présence à un événement a été enregistrée.", evidenceClass: "action" as const, route: "/explore", mineral: "social" as const };
+    case "IMMERSION_ATTENDED": return { title: "Immersion enregistrée", summary: "Une immersion a été enregistrée.", evidenceClass: "action" as const, route: "/immersion", mineral: "social" as const };
+    case "CURRICULUM_EVIDENCE_RECORDED": return { title: "Preuve de parcours", summary: "Une activité liée au parcours a produit une trace d’apprentissage.", evidenceClass: "artifact" as const, route: "/learn/labs", mineral: "atelier" as const };
+    default: return { title: type, summary: "Activité enregistrée par K’Osez.", evidenceClass: "action" as const, route: null, mineral: null };
   }
 }
 
@@ -110,6 +112,7 @@ export async function getEvidenceTimeline(
   ]);
 
   const items: EvidenceTimelineItem[] = [];
+  void MINERAL_DOORS;
   for (const row of activities) {
     const desc = activityDescriptor(String(row.event_type));
     const payload = row.payload && typeof row.payload === "object" ? (row.payload as Record<string, unknown>) : {};
@@ -123,6 +126,7 @@ export async function getEvidenceTimeline(
       summary: row.note ? String(row.note) : desc.summary,
       sourceId: row.source_id ? String(row.source_id) : null,
       route: desc.route,
+      mineral: desc.mineral ?? null,
       metadata: { activityType: String(row.event_type), ...Object.fromEntries(Object.entries(metadata).filter(([,v]) => v === null || typeof v === "string" || typeof v === "number" || typeof v === "boolean")) },
     });
   }
