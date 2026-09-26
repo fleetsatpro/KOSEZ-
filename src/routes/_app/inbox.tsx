@@ -44,7 +44,7 @@ function InboxRoute() {
           <ConversationPanel
             conversationId={selectedId}
             kind={selected?.kind}
-            partnerUserId={selected?.peerUserId}
+            partnerUserId={selected?.peerUserId ?? undefined}
             partnerName={selected?.peerName}
             title={selected?.kind === "support" ? "Assistance K’Osez" : selected?.peerName}
           />
