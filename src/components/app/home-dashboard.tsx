@@ -18,6 +18,7 @@ import {
   courageRibbon,
   organismStatusLine,
   causalNextGesture,
+  MINERAL_WINDOW_DAYS,
   strugglingFocus,
 } from "@/lib/blossom/organism";
 import { todayMissionForLevel } from "@/lib/blossom/mission-today";
@@ -257,17 +258,17 @@ export function HomeDashboard() {
       >
         <div className="mx-auto mb-4 max-w-2xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center sm:text-left magnetic-surface">
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
-            Prochain geste causal
+            Prochain geste causal · {MINERAL_WINDOW_DAYS} jours
           </p>
           <p className="mt-1 text-sm text-fg/90">{nextGesture.line}</p>
           <p className="mt-1 text-[11px] text-subtle">
             Minéral le plus bas : <span className="text-primary">{nextGesture.mineral}</span> — c'est pourquoi cette porte est proposée maintenant.
           </p>
           <Link
-            to={nextGesture.door as "/osez" | "/pronlab" | "/mission" | "/tandem"}
+            to={nextGesture.door as "/osez" | "/pronlab" | "/mission" | "/tandem" | "/learn/labs"}
             className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
           >
-            Ouvrir cette porte
+            {nextGesture.action}
             <ArrowRight className="size-3.5" />
           </Link>
         </div>
