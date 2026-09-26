@@ -140,6 +140,7 @@ export async function getEvidenceTimeline(
       summary: String(row.content).slice(0, 180),
       sourceId: String(row.task_id),
       route: String(row.kind) === "review" ? "/learn/review" : "/learn/labs",
+      mineral: ["grammar", "listening", "writing", "review"].includes(String(row.kind)) ? "atelier" : null,
       metadata: { taskId: String(row.task_id), kind: String(row.kind) },
     });
   }
@@ -153,6 +154,7 @@ export async function getEvidenceTimeline(
       summary: String(row.body).slice(0, 220),
       sourceId: String(row.submission_id),
       route: "/moi",
+      mineral: null,
       metadata: {
         submissionId: String(row.submission_id),
         teacherUserId: String(row.teacher_user_id),
@@ -176,6 +178,7 @@ export async function getEvidenceTimeline(
       summary: projection.summary,
       sourceId: String(row.item_id),
       route: "/pronlab",
+      mineral: "pron",
       metadata: {
         itemId: String(row.item_id),
         score: projection.verifiedScore,
@@ -194,6 +197,7 @@ export async function getEvidenceTimeline(
       summary: String(row.status) === "done" ? "Devoir marqué terminé par l’apprenant." : "Devoir envoyé et encore ouvert.",
       sourceId: String(row.id),
       route: "/moi",
+      mineral: "atelier",
       metadata: { status: String(row.status) },
     });
   }
@@ -209,6 +213,7 @@ export async function getEvidenceTimeline(
       summary: status === "completed" ? "Session tandem durablement clôturée." : "Session tandem enregistrée côté serveur.",
       sourceId: partner,
       route: "/tandem",
+      mineral: "social",
       metadata: { status, partnerUserId: partner },
     });
   }
@@ -222,6 +227,7 @@ export async function getEvidenceTimeline(
       summary: "Présence enregistrée par un opérateur K’Osez autorisé.",
       sourceId: String(row.event_id),
       route: "/explore",
+      mineral: "social",
       metadata: {
         eventId: String(row.event_id),
         recordedBy: String(row.recorded_by_user_id),
@@ -240,6 +246,7 @@ export async function getEvidenceTimeline(
       summary: row.status === "joined" ? "Inscription enregistrée; elle ne vaut pas preuve d’assistance." : "Inscription " + String(row.status) + ".",
       sourceId: String(row.event_id),
       route: "/explore",
+      mineral: null,
       metadata: { eventId: String(row.event_id), status: String(row.status), seatNo: row.seat_no == null ? null : Number(row.seat_no) },
     });
   }
@@ -253,6 +260,7 @@ export async function getEvidenceTimeline(
       summary: "État réservation · " + String(row.status) + " · paiement · " + String(row.payment_status) + ".",
       sourceId: String(row.catalogue_item_id),
       route: "/explore",
+      mineral: null,
       metadata: { bookingId: String(row.id), status: String(row.status), paymentStatus: String(row.payment_status), providerReference: row.provider_reference ? String(row.provider_reference) : null },
     });
   }
@@ -266,6 +274,7 @@ export async function getEvidenceTimeline(
       summary: "Un geste d’immersion a été enregistré.",
       sourceId: String(row.challenge_id),
       route: "/immersion",
+      mineral: null,
       metadata: { challengeId: String(row.challenge_id) },
     });
   }
