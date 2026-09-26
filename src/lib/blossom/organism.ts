@@ -29,6 +29,48 @@ export type MineralSnapshot = {
   atelier: number;
 };
 
+export const MINERAL_WINDOW_DAYS = 14;
+
+export type MineralDoor = {
+  key: MineralKey;
+  label: string;
+  shortLabel: string;
+  door: string;
+  action: string;
+  plain: string;
+  proof: string;
+  fallbackDoor?: string;
+  fallbackLabel?: string;
+};
+
+export const MINERAL_ORDER: readonly MineralKey[] = [
+  "mission",
+  "parole",
+  "social",
+  "atelier",
+  "pron",
+];
+
+export const MINERAL_DOORS: Record<MineralKey, MineralDoor> = {
+  mission: { key: "mission", label: "Mission", shortLabel: "Terrain", door: "/mission", action: "Faire une mission", plain: "agir dans une scène réelle", proof: "mission clôturée ou bonus terrain" },
+  parole: { key: "parole", label: "Parole", shortLabel: "Parler", door: "/osez", action: "Prendre la parole", plain: "dire quelque chose malgré l’hésitation", proof: "session OSEZ clôturée" },
+  pron: { key: "pron", label: "Pron’Lab", shortLabel: "Son", door: "/pronlab", action: "Travailler un son", plain: "répéter jusqu’à plus de tenue", proof: "tentative ou maîtrise Pron’Lab" },
+  social: { key: "social", label: "Social", shortLabel: "Lien", door: "/tandem", action: "Rencontrer en tandem", plain: "pratiquer avec d’autres personnes", proof: "tandem, classe, événement ou immersion", fallbackDoor: "/explore", fallbackLabel: "Voir EXPLORE" },
+  atelier: { key: "atelier", label: "Atelier", shortLabel: "Apprendre", door: "/learn/labs", action: "Ouvrir les Labs", plain: "transformer l’étude en trace", proof: "grammaire, écoute, écriture, révision, lecture ou devoir" },
+};
+
+export type CausalNextGesture = {
+  mineral: MineralKey;
+  door: string;
+  line: string;
+  label: string;
+  action: string;
+  proof: string;
+  value: number;
+  tied: MineralKey[];
+  alternate?: { mineral: MineralKey; door: string; label: string; action: string };
+};
+
 export type PhonemeLeaf = {
   itemId: string;
   phoneme: string;
@@ -45,7 +87,7 @@ export type LeoLetter = {
 };
 
 const DAY_MS = 86_400_000;
-const ROLLING_DAYS = 14;
+const ROLLING_DAYS = MINERAL_WINDOW_DAYS;
 
 function daysAgoIso(days: number): string {
   return new Date(Date.now() - days * DAY_MS).toISOString();
@@ -107,6 +149,7 @@ export function computeMinerals(log: ActivityEvent[]): MineralSnapshot {
       "LIBRARY_COMPLETED",
       "DIAGNOSTIC_COMPLETED",
       "HOMEWORK_COMPLETED",
+      "CURRICULUM_EVIDENCE_RECORDED",
     ]),
     10,
   );
@@ -122,11 +165,7 @@ export function computeMinerals(log: ActivityEvent[]): MineralSnapshot {
 
 export function organismStatusLine(minerals: MineralSnapshot): string {
   const entries: [MineralKey, number][] = [
-    ["pron", minerals.pron],
-    ["parole", minerals.parole],
-    ["mission", minerals.mission],
-    ["social", minerals.social],
-    ["atelier", minerals.atelier],
+    ...MINERAL_ORDER.map((key) => [key, minerals[key]] as [MineralKey, number]),
   ];
   const sorted = [...entries].sort((a, b) => a[1] - b[1]);
   const lowest = sorted[0];
@@ -156,52 +195,43 @@ export function organismStatusLine(minerals: MineralSnapshot): string {
   }
 }
 
-/** Causal next-gesture hint for plant / home — lowest mineral maps to a door. */
-export function causalNextGesture(minerals: MineralSnapshot): {
-  mineral: MineralKey;
-  door: string;
-  line: string;
-} {
-  const entries: [MineralKey, number][] = [
-    ["pron", minerals.pron],
-    ["parole", minerals.parole],
-    ["mission", minerals.mission],
-    ["social", minerals.social],
-    ["atelier", minerals.atelier],
-  ];
-  const lowest = [...entries].sort((a, b) => a[1] - b[1])[0]!;
-  switch (lowest[0]) {
-    case "pron":
-      return {
-        mineral: "pron",
-        door: "/pronlab",
-        line: "Un son répété jusqu'à tenue nourrit la canopée.",
-      };
-    case "parole":
-      return {
-        mineral: "parole",
-        door: "/osez",
-        line: "Une prise de parole ancrée épaissit la tige.",
-      };
-    case "mission":
-      return {
-        mineral: "mission",
-        door: "/mission",
-        line: "Un geste terrain enfonce une racine.",
-      };
-    case "social":
-      return {
-        mineral: "social",
-        door: "/tandem",
-        line: "Une présence partagée fait fleurir le sol.",
-      };
-    case "atelier":
-      return {
-        mineral: "atelier",
-        door: "/learn/labs",
-        line: "Une preuve d'apprentissage nourrit la canopée.",
-      };
+/** One transparent causal rule shared by every organism surface. */
+export function causalNextGesture(minerals: MineralSnapshot): CausalNextGesture {
+  const entries = MINERAL_ORDER.map((key) => [key, minerals[key]] as const);
+  const minValue = Math.min(...entries.map(([, value]) => value));
+  const tied = entries.filter(([, value]) => value === minValue).map(([key]) => key);
+  const selected = tied.length === entries.length ? "mission" : tied[0]!;
+  const meta = MINERAL_DOORS[selected];
+  const alternateKey = tied.find((key) => key !== selected);
+  const alternate = alternateKey
+    ? {
+        mineral: alternateKey,
+        door: MINERAL_DOORS[alternateKey].door,
+        label: MINERAL_DOORS[alternateKey].label,
+        action: MINERAL_DOORS[alternateKey].action,
+      }
+    : undefined;
+
+  let line = meta.label + " est le moins nourri à " + minValue + "/100. " +
+    meta.action + " : " + meta.plain + ".";
+  if (tied.length === entries.length) {
+    line = "Tout est encore à égalité. Je commence par une mission : une action concrète donne un premier repère à l’organisme.";
+  } else if (tied.length > 1) {
+    const others = tied.filter((key) => key !== selected).map((key) => MINERAL_DOORS[key].label).join(" et ");
+    line = meta.label + " et " + others + " sont à égalité à " + minValue + "/100. Je vous propose " + meta.action.toLowerCase() + " maintenant.";
   }
+
+  return {
+    mineral: selected,
+    door: meta.door,
+    line,
+    label: meta.label,
+    action: meta.action,
+    proof: meta.proof,
+    value: minValue,
+    tied,
+    alternate,
+  };
 }
 
 /** Causal labels — each activity writes a specific mark on the organism. */
@@ -338,7 +368,15 @@ export function growthEventForActivity(
         mineral: "atelier",
       };
     case "CURRICULUM_EVIDENCE_RECORDED":
-      return null;
+      return {
+        id,
+        at,
+        kind: "mineral",
+        sourceId,
+        intensity: 0.45,
+        label: "Une preuve de parcours rejoint l’atelier.",
+        mineral: "atelier",
+      };
     case "LIBRARY_COMPLETED":
       return {
         id,
