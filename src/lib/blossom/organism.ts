@@ -160,15 +160,16 @@ export function organismStatusLine(minerals: MineralSnapshot): string {
 
 /** Causal next-gesture hint for plant / home — lowest mineral maps to a door. */
 export function causalNextGesture(minerals: MineralSnapshot): {
-  mineral: keyof Omit<MineralSnapshot, "at">;
+  mineral: MineralKey;
   door: string;
   line: string;
 } {
-  const entries: [MineralKey, number][] = [keyof Omit<MineralSnapshot, "at">, number][] = [
+  const entries: [MineralKey, number][] = [
     ["pron", minerals.pron],
     ["parole", minerals.parole],
     ["mission", minerals.mission],
     ["social", minerals.social],
+    ["atelier", minerals.atelier],
   ];
   const lowest = [...entries].sort((a, b) => a[1] - b[1])[0]!;
   switch (lowest[0]) {
