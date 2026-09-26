@@ -90,6 +90,21 @@ async function assertGroupAccess(
   };
 }
 
+async function assertGroupMemberManager(userId: string, groupId: string) {
+  const group = await assertGroupAccess(userId, groupId, false);
+  const role = await organizationRole(userId, group.organizationId);
+  if (role === "owner" || role === "admin") return group;
+  const sql = await getSql();
+  const rows = await sql.query(
+    "select 1 from blossom_organization_group where id = $1::uuid and teacher_user_id = $2 and status = 'active' limit 1",
+    [groupId, userId],
+  );
+  if (!rows[0]) {
+    throw new BlossomForbiddenError("Un enseignant ne peut modifier que ses propres groupes.");
+  }
+  return group;
+}
+
 function mapMember(row: Record<string, unknown>): OrganizationGroupMember {
   return {
     id: String(row.user_id),
@@ -104,10 +119,17 @@ export async function getOrganizationGroups(
 ): Promise<OrganizationGroup[]> {
   await organizationRole(userId, organizationId);
   const sql = await getSql();
+  const role = await organizationRole(userId, organizationId);
+  const groupScope = role === "owner" || role === "admin"
+    ? ""
+    : " and g.teacher_user_id = $2";
+  const groupParams = role === "owner" || role === "admin"
+    ? [organizationId]
+    : [organizationId, userId];
   const [groups, members] = await Promise.all([
     sql.query(
-      "select g.id, g.name, g.kind, g.status, g.teacher_user_id, coalesce(tp.display_name, g.teacher_user_id) as teacher_name, g.updated_at, (select count(distinct gm2.user_id)::integer from blossom_organization_group_member gm2 join blossom_activity_event a2 on a2.user_id = gm2.user_id where gm2.group_id = g.id and a2.occurred_at >= current_timestamp - interval '7 days') as active_learners_this_week from blossom_organization_group g left join blossom_profile tp on tp.user_id = g.teacher_user_id where g.organization_id = $1::uuid order by case when g.status = 'active' then 0 else 1 end, g.name asc",
-      [organizationId],
+      "select g.id, g.name, g.kind, g.status, g.teacher_user_id, coalesce(tp.display_name, g.teacher_user_id) as teacher_name, g.updated_at, (select count(distinct gm2.user_id)::integer from blossom_organization_group_member gm2 join blossom_activity_event a2 on a2.user_id = gm2.user_id where gm2.group_id = g.id and a2.occurred_at >= current_timestamp - interval '7 days') as active_learners_this_week from blossom_organization_group g left join blossom_profile tp on tp.user_id = g.teacher_user_id where g.organization_id = $1::uuid" + groupScope + " order by case when g.status = 'active' then 0 else 1 end, g.name asc",
+      groupParams,
     ),
     sql.query(
       "select gm.group_id, gm.user_id, gm.joined_at, coalesce(p.display_name, gm.user_id) as display_name from blossom_organization_group_member gm join blossom_organization_group g on g.id = gm.group_id left join blossom_profile p on p.user_id = gm.user_id where g.organization_id = $1::uuid order by gm.joined_at asc",
@@ -250,12 +272,8 @@ export async function addOrganizationGroupMember(
   userId: string,
   input: { groupId: string; learnerUserId: string },
 ) {
-  const group = await assertGroupAccess(userId, input.groupId, false);
+  const group = await assertGroupMemberManager(userId, input.groupId);
   if (group.status !== "active") throw new BlossomForbiddenError("Une classe archivée ne peut plus recevoir d'apprenants.");
-  const actorRole = await organizationRole(userId, group.organizationId);
-  if (actorRole !== "owner" && actorRole !== "admin" && actorRole !== "teacher") {
-    throw new BlossomForbiddenError("Vous n'avez pas le droit d'ajouter des membres à cette classe.");
-  }
   await assertOrganizationMember(group.organizationId, input.learnerUserId, "learner");
   const sql = await getSql();
   await sql.query(
@@ -279,7 +297,7 @@ export async function removeOrganizationGroupMember(
   userId: string,
   input: { groupId: string; learnerUserId: string },
 ) {
-  const group = await assertGroupAccess(userId, input.groupId, false);
+  const group = await assertGroupMemberManager(userId, input.groupId);
   const sql = await getSql();
   const rows = await sql.query(
     "delete from blossom_organization_group_member where group_id = $1::uuid and user_id = $2 returning group_id, user_id",
