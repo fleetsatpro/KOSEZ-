@@ -86,38 +86,57 @@ export type TeacherWorkspaceLearner = {
 export async function getTeacherWorkspace(userId: string): Promise<TeacherWorkspaceLearner[]> {
   const sql = await getSql();
   const rows = await sql.query(
-    `select
-      tl.learner_user_id as id,
-      coalesce(p.display_name, tl.learner_user_id) as name,
-      p.level,
-      max(a.occurred_at) as last_activity,
-      count(*) filter (
-        where a.occurred_at >= current_timestamp - interval '7 days'
-      )::integer as activities_this_week,
-      coalesce(sum(
-        case
-          when a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
-           and coalesce(a.payload->'metadata'->>'minutes', a.payload->>'minutes','') ~ '^[0-9]+$'
-          then coalesce(
-            (a.payload->'metadata'->>'minutes')::integer,
-            (a.payload->>'minutes')::integer
-          )
-          else 0
-        end
-      ), 0)::integer as speaking_minutes,
-      coalesce(pr.attempts, 0)::integer as pronlab_attempts,
-      coalesce(pr.best_score, 0)::integer as pronlab_best
-    from blossom_teacher_link tl
-    left join blossom_profile p on p.user_id = tl.learner_user_id
-    left join blossom_activity_event a on a.user_id = tl.learner_user_id
-    left join lateral (
-      select count(*) as attempts, max(score) as best_score
-      from blossom_pronlab_attempt
-      where user_id = tl.learner_user_id
-    ) pr on true
-    where tl.teacher_user_id = $1 and tl.status = 'active'
-    group by tl.learner_user_id, p.display_name, p.level, pr.attempts, pr.best_score
-    order by last_activity desc nulls last, name asc`,
+    `with scoped_learners as (
+       select tl.learner_user_id
+       from blossom_teacher_link tl
+       where tl.teacher_user_id = $1 and tl.status = 'active'
+       union
+       select gm.user_id as learner_user_id
+       from blossom_organization_group g
+       join blossom_organization_group_member gm on gm.group_id = g.id
+       where g.teacher_user_id = $1 and g.status = 'active'
+     )
+     select
+       sl.learner_user_id as id,
+       coalesce(p.display_name, sl.learner_user_id) as name,
+       p.level,
+       max(a.occurred_at) as last_activity,
+       count(*) filter (
+         where a.occurred_at >= current_timestamp - interval '7 days'
+       )::integer as activities_this_week,
+       coalesce(sum(
+         case
+           when a.event_type in ('SPEAK_COMPLETED','TANDEM_COMPLETED')
+            and coalesce(a.payload->'metadata'->>'minutes', a.payload->>'minutes','') ~ '^[0-9]+$'
+           then coalesce(
+             (a.payload->'metadata'->>'minutes')::integer,
+             (a.payload->>'minutes')::integer
+           )
+           else 0
+         end
+       ), 0)::integer as speaking_minutes,
+       coalesce(pr.attempts, 0)::integer as pronlab_attempts,
+       coalesce(pr.scored_attempts, 0)::integer as pronlab_scored_attempts,
+       coalesce(pr.best_score, 0)::integer as pronlab_best
+     from scoped_learners sl
+     left join blossom_profile p on p.user_id = sl.learner_user_id
+     left join blossom_activity_event a on a.user_id = sl.learner_user_id
+     left join lateral (
+       select
+         count(*) as attempts,
+         count(*) filter (
+           where score > 0
+             and coalesce(metadata->>'assessment', '') not in ('capture-only', 'transcript')
+         ) as scored_attempts,
+         max(score) filter (
+           where score > 0
+             and coalesce(metadata->>'assessment', '') not in ('capture-only', 'transcript')
+         ) as best_score
+       from blossom_pronlab_attempt
+       where user_id = sl.learner_user_id
+     ) pr on true
+     group by sl.learner_user_id, p.display_name, p.level, pr.attempts, pr.scored_attempts, pr.best_score
+     order by last_activity desc nulls last, name asc`,
     [userId],
   );
   return rows.map((row) => ({
