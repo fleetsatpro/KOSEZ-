@@ -44,7 +44,7 @@ function mapSession(row: Record<string, unknown>): TeacherSession {
   return {
     id: String(row.id),
     teacherUserId: String(row.teacher_user_id),
-    teacherName: String(row.teacher_name),
+    teacherName: String(row.teacher_name ?? row.teacher_user_id),
     learnerUserId: String(row.learner_user_id),
     learnerName: String(row.learner_name),
     title: String(row.title),
