@@ -4,7 +4,7 @@ import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   NOTIFICATION_PREFERENCE_KINDS,
   normalizeNotificationPreferences,
-} from "./notification-preferences.server.ts";
+} from "./notification-preferences.ts";
 
 test("all optional in-app notification categories default to enabled", () => {
   assert.deepEqual(
