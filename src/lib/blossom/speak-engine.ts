@@ -4,11 +4,12 @@
  * Agents (composition pipeline, not parallel chatbots):
  *  1. WorldAgent     — picks place + real-world event anchor
  *  2. CastAgent      — assigns interlocutor from place roles
- *  3. PressureAgent  — selects time/social pressure pattern
+ *  3. PressureAgent  — selects time/social pressure pattern (influence-aware)
  *  4. BeatAgent      — sequences dialogue beats (never fixed 5-turn scripts)
  *  5. VoiceAgent     — materialises AI lines + you-hints with level kit
  *  6. DebriefAgent   — builds private post-session feedback
  *  7. MemoryAgent    — injects learner friction without interrupting
+ *  8. InfluenceAgent — merges organism kitBoost into room kit (causal, not cosmetic)
  *
  * Output is a LivingRoom: unique every seed, grounded in Reunion /
  * Indian Ocean context, expandable to live open-source LLM backends.
@@ -56,6 +57,8 @@ export type LivingRoom = {
   protocol: string[];
   debrief: { strength: string; improvement: string; model: string };
   memoryWhisper: string | null;
+  /** Why this room was composed this way — from organism influence */
+  influenceNotes: string[];
   generatedAt: string;
 };
 
@@ -67,6 +70,12 @@ export type GenerateInput = {
   interests?: string[];
   entropy?: string;
   now?: Date;
+  /** Organism influence: soft | steady | firm */
+  pressureHint?: "soft" | "steady" | "firm";
+  /** Organism influence: phrases prepended to kit (struggle + mastered leaves) */
+  kitBoost?: Array<{ phrase: string; use: string }>;
+  /** Human-readable reasons for influenceNotes */
+  influenceReasons?: string[];
 };
 
 function hashSeed(parts: string[]): string {
@@ -139,7 +148,17 @@ function castAgent(rng: () => number, place: PlaceNode) {
   return { role: roleDef.role, name, stance: roleDef.stance };
 }
 
-function pressureAgent(rng: () => number, place: PlaceNode): PressurePattern {
+/**
+ * Pressure selection is influence-aware:
+ * - soft  → prefer friendly / low social risk
+ * - firm  → prefer stakes / time-short / high social risk
+ * - steady → place bias as before
+ */
+function pressureAgent(
+  rng: () => number,
+  place: PlaceNode,
+  pressureHint?: "soft" | "steady" | "firm",
+): PressurePattern {
   const bias: Record<string, string[]> = {
     airport: ["stakes", "time-short", "queue-watching"],
     clinic: ["stakes", "first-meeting"],
@@ -154,6 +173,20 @@ function pressureAgent(rng: () => number, place: PlaceNode): PressurePattern {
     transit: ["time-short", "stakes", "noise"],
     home: ["friendly"],
   };
+
+  if (pressureHint === "soft") {
+    const soft = PRESSURES.filter(
+      (p) => p.socialRisk !== "high" && p.timePressure !== "high",
+    );
+    if (soft.length) return pick(rng, soft);
+  }
+  if (pressureHint === "firm") {
+    const firm = PRESSURES.filter(
+      (p) => p.socialRisk === "high" || p.timePressure === "high",
+    );
+    if (firm.length) return pick(rng, firm);
+  }
+
   const preferred = bias[place.archetype] ?? ["friendly"];
   const pool = PRESSURES.filter((p) => preferred.includes(p.id));
   return pick(rng, pool.length ? pool : PRESSURES);
@@ -165,6 +198,7 @@ function beatAgent(
   pressure: PressurePattern,
   hasEvent: boolean,
   level: string,
+  pressureHint?: "soft" | "steady" | "firm",
 ): DialogueBeat[] {
   const openPool =
     place.archetype === "social"
@@ -191,11 +225,19 @@ function beatAgent(
     sequence.push(pick(rng, BEAT_LIBRARY.challenge));
   }
 
-  if (pressure.timePressure === "high" || pressure.socialRisk === "high") {
+  // Soft pressure: skip challenge beat injection even for B1/B2 if soft
+  const allowPressureBeat =
+    pressureHint !== "soft" &&
+    (pressure.timePressure === "high" || pressure.socialRisk === "high");
+
+  if (allowPressureBeat) {
     if (rng() < 0.85) sequence.push(pick(rng, BEAT_LIBRARY.pressure));
   }
   if (rng() < 0.9) sequence.push(clarify);
-  if (rng() < 0.75) sequence.push(relance);
+  // Firm: always relance; soft: rarer relance
+  const relanceChance =
+    pressureHint === "firm" ? 0.95 : pressureHint === "soft" ? 0.45 : 0.75;
+  if (rng() < relanceChance) sequence.push(relance);
 
   if (hasEvent && rng() < 0.8) {
     sequence.push({
@@ -335,6 +377,7 @@ function kitFor(
   place: PlaceNode,
   event: EventAnchor | null,
   rng: () => number,
+  kitBoost?: Array<{ phrase: string; use: string }>,
 ): LivingRoom["kit"] {
   const core = [
     { phrase: "What do you recommend?", use: "Ouvrir un choix." },
@@ -352,7 +395,14 @@ function kitFor(
   if (place.archetype === "airport") {
     core.push({ phrase: "Window or aisle?", use: "Preference siege." });
   }
-  return shuffle(rng, core).slice(0, 5);
+
+  // Influence kitBoost goes first — organism tools, not random kit
+  const boosted = kitBoost ?? [];
+  const seen = new Set(boosted.map((k) => k.phrase.toLowerCase()));
+  const rest = shuffle(rng, core).filter(
+    (k) => !seen.has(k.phrase.toLowerCase()),
+  );
+  return [...boosted, ...rest].slice(0, 6);
 }
 
 function durationFor(turns: SpeakTurn[], pressure: PressurePattern): number {
@@ -372,6 +422,8 @@ export function generateLivingRoom(input: GenerateInput = {}): LivingRoom {
     input.friction ?? "",
     (input.interests ?? []).join(","),
     input.entropy ?? "",
+    input.pressureHint ?? "steady",
+    (input.kitBoost ?? []).map((k) => k.phrase).join(","),
     dayKey,
   ]);
   const seedNum = parseInt(seedStr, 36) || 1;
@@ -382,11 +434,37 @@ export function generateLivingRoom(input: GenerateInput = {}): LivingRoom {
 
   const { place, event } = worldAgent(rng, input, now);
   const cast = castAgent(rng, place);
-  const pressure = pressureAgent(rng, place);
-  const beats = beatAgent(rng, place, pressure, Boolean(event), level);
+  const pressure = pressureAgent(rng, place, input.pressureHint);
+  const beats = beatAgent(
+    rng,
+    place,
+    pressure,
+    Boolean(event),
+    level,
+    input.pressureHint,
+  );
   const turns = voiceAgent(rng, beats, cast, event, level);
   const debrief = debriefAgent(rng, place, pressure, cast, event);
   const memoryWhisper = memoryAgent(input.friction, firstName);
+  const kit = kitFor(place, event, rng, input.kitBoost);
+
+  const influenceNotes: string[] = [];
+  if (input.friction) {
+    influenceNotes.push(`Friction active : ${input.friction}`);
+  }
+  if (input.pressureHint && input.pressureHint !== "steady") {
+    influenceNotes.push(
+      `Pression ${input.pressureHint === "soft" ? "adoucie" : "affermie"} par l'organisme.`,
+    );
+  }
+  if (input.kitBoost && input.kitBoost.length > 0) {
+    influenceNotes.push(
+      `Kit enrichi : ${input.kitBoost.map((k) => k.phrase).join(" · ")}`,
+    );
+  }
+  for (const line of input.influenceReasons ?? []) {
+    if (!influenceNotes.includes(line)) influenceNotes.push(line);
+  }
 
   const title =
     event && rng() < 0.55
@@ -401,6 +479,11 @@ export function generateLivingRoom(input: GenerateInput = {}): LivingRoom {
       ? `Le monde entre dans la room : ${event.title}.`
       : "Le bilan arrive apres — jamais pendant.",
   ];
+  if (input.kitBoost?.[0]) {
+    protocol.push(
+      `Outil organismique : « ${input.kitBoost[0].phrase} » — ${input.kitBoost[0].use}`,
+    );
+  }
 
   return {
     id: `room-${seedStr}`,
@@ -432,11 +515,12 @@ export function generateLivingRoom(input: GenerateInput = {}): LivingRoom {
       description: pressure.description,
     },
     culturalNote: culturalNoteFor(place, event, rng),
-    kit: kitFor(place, event, rng),
+    kit,
     turns,
     protocol,
     debrief,
     memoryWhisper,
+    influenceNotes,
     generatedAt: now.toISOString(),
   };
 }
@@ -487,6 +571,9 @@ export function roomBriefForLlm(room: LivingRoom): string {
     room.event ? `Today's world: ${room.event.atmosphere}` : "",
     `Pressure: ${room.pressure.description}`,
     `Level: ${room.level}. Keep lines short, natural, no teaching voice.`,
+    room.influenceNotes.length
+      ? `Organism notes: ${room.influenceNotes.join(" | ")}`
+      : "",
     `Goals in order: ${room.turns
       .filter((t) => t.speaker === "ai")
       .map((t) => t.goal)
