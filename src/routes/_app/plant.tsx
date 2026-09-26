@@ -1,12 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, Sprout } from "lucide-react";
 import { BlossomPlant } from "@/components/app/plant";
+import { OrganismMineralsPanel } from "@/components/app/organism-minerals-panel";
 import { SceneReel } from "@/components/app/scene-reel";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { STAGES, nextStage } from "@/lib/blossom/engine";
-import { causalNextGesture, organismStatusLine } from "@/lib/blossom/organism";
+import { organismStatusLine } from "@/lib/blossom/organism";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
@@ -23,33 +24,24 @@ function PlantPage() {
   const reqs = [
     {
       label: "Missions",
-      detail: "Gestes ancrés, y compris terrain",
+      detail: "Gestes ancrés, y compris terrain — minéral mission",
       current: journey.missions.current,
       required: journey.missions.required,
     },
     {
       label: "Parole",
-      detail: "Speak rooms, Pulse, tandem",
+      detail: "Speak rooms, Pulse, tandem — minéral parole",
       current: journey.speak.current,
       required: journey.speak.required,
     },
     {
       label: "Pron'Lab",
-      detail: "Sons répétés jusqu'à tenue",
+      detail: "Sons répétés jusqu'à tenue — minéral pron",
       current: journey.pronlab.current,
       required: journey.pronlab.required,
     },
   ];
   const stageProgress = Math.round(journey.progress * 100);
-  const mineralRows = [
-    { key: "mission", label: "Mission", value: minerals.mission },
-    { key: "parole", label: "Parole", value: minerals.parole },
-    { key: "pron", label: "Pron", value: minerals.pron },
-    { key: "social", label: "Lien", value: minerals.social },
-  ] as const;
-
-  const lowest = mineralRows.reduce((a, b) => (a.value <= b.value ? a : b));
-  const causal = causalNextGesture(minerals);
 
   return (
     <Page className="kosez-feature-page max-w-4xl">
@@ -70,7 +62,7 @@ function PlantPage() {
           une mission — nourrit la plante. Pas de course : une croissance
           visible, mesurable, ancrée dans ce que vous osez vraiment dire.
         </p>
-        <p className="mt-4 rounded-xl border border-border/60 bg-surface-2/40 px-4 py-3 text-sm leading-6 text-fg">
+        <p className="mt-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm leading-6 text-fg magnetic-surface">
           {leoLine}
         </p>
       </header>
@@ -83,9 +75,11 @@ function PlantPage() {
           nextAt={journey.stage.nextAt}
           remaining={journey.remaining}
           linked={false}
+          growthEvents={growthEvents}
+          showCausal
         />
 
-        <Surface className="flex h-full min-h-0 flex-col">
+        <Surface className="flex h-full min-h-0 flex-col magnetic-surface">
           <div className="flex items-start justify-between gap-4">
             <div>
               <Eyebrow>Stade actuel</Eyebrow>
@@ -115,7 +109,7 @@ function PlantPage() {
             <p className="font-display text-xl tabular-nums">{stageProgress}%</p>
           </div>
           <Progress
-            className="mt-2 h-2"
+            className="mt-2 h-2 plant-breathe"
             value={stageProgress}
             aria-label={`Progression du stade ${journey.stage.label}`}
           />
@@ -166,55 +160,11 @@ function PlantPage() {
         </Surface>
       </div>
 
-      {/* Minerals — soil of the organism */}
-      <Surface className="mt-8">
-        <Eyebrow>Minéraux · 14 jours</Eyebrow>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-          Quatre nutriments. Le plus bas oriente le prochain geste utile — sans
-          culpabiliser. Aujourd'hui, le sol demande un peu plus de{" "}
-          <span className="font-medium text-fg">{lowest.label.toLowerCase()}</span>.
-        </p>
-        <p className="mt-3 max-w-xl text-sm leading-6 text-fg/90">
-          {causal.line}{" "}
-          <Link
-            to={causal.door as "/mission" | "/osez" | "/pronlab" | "/tandem"}
-            className="font-semibold text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary"
-          >
-            Ouvrir la porte
-          </Link>
-          .
-        </p>
-        <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {mineralRows.map((m) => (
-            <div
-              key={m.key}
-              className={cn(
-                "rounded-xl border px-3 py-4 text-center",
-                m.key === lowest.key
-                  ? "border-primary/40 bg-primary/5"
-                  : "border-border/60 bg-surface-2/40",
-              )}
-            >
-              <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-subtle">
-                {m.label}
-              </dt>
-              <dd className="mt-1 font-display text-2xl tabular-nums text-primary">
-                {m.value}
-              </dd>
-              <div className="mx-auto mt-2 h-1 max-w-[4rem] overflow-hidden rounded-full bg-border/50">
-                <div
-                  className="h-full rounded-full bg-primary/80"
-                  style={{ width: `${Math.max(4, m.value)}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </dl>
-      </Surface>
+      <OrganismMineralsPanel minerals={minerals} growthEvents={growthEvents} />
 
       <SceneReel events={growthEvents} className="mt-6" limit={10} />
 
-      <Surface className="mt-8">
+      <Surface className="mt-8 magnetic-surface">
         <Eyebrow>Les cinq stades</Eyebrow>
         <p className="mt-2 max-w-xl text-sm text-muted">
           Graine → croissance → épanouissement → fleurs → indépendance. Chaque
