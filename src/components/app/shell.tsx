@@ -176,26 +176,23 @@ function SyncStatus() {
   ) : (
     <Cloud className="size-3.5 text-primary" strokeWidth={1.7} />
   );
+  const m = useMessages();
   const label = conflicts
-    ? "Conflit à résoudre"
+    ? m.sync.conflict
     : !online
-      ? "Hors connexion"
+      ? m.sync.offline
       : pending
-        ? "Synchronisation"
-        : "Synchronisé";
+        ? m.sync.syncing
+        : m.sync.synced;
   const detail = conflicts
     ? conflicts === 1
-      ? "1 modification nécessite votre attention"
-      : conflicts + " modifications nécessitent votre attention"
-    : !online
+      ? m.sync.conflictDetailOne
+      : m.sync.conflictDetailMany.replace("{n}", String(conflicts))
+    : pending
       ? pending === 1
-        ? "1 changement en attente"
-        : pending + " changements en attente"
-      : pending
-        ? pending === 1
-          ? "1 changement en attente"
-          : pending + " changements en attente"
-        : "Aucun changement en attente";
+        ? m.sync.pendingOne
+        : m.sync.pendingMany.replace("{n}", String(pending))
+      : m.sync.nonePending;
 
   return (
     <div className="flex items-center gap-2" aria-live="polite">
