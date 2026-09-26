@@ -8,6 +8,7 @@ import {
   planAllows,
   PLANT_IMAGE,
   PRONLAB_SETS,
+  setsForLanguage,
 } from "@/lib/blossom/data";
 import {
   hasSource,
@@ -36,6 +37,7 @@ export function HomeDashboard() {
   const log = useBlossom((s) => s.activityLog);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const plan = useBlossom((s) => s.plan);
+  const languageId = useBlossom((s) => s.languageId);
   const growthEvents = useBlossom((s) => s.growthEvents);
   const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
   const missionSessions = useBlossom((s) => s.missionSessions);
@@ -64,11 +66,12 @@ export function HomeDashboard() {
         growthEvents,
         phonemeLeaves,
         missionSessions,
-        allItems: PRONLAB_SETS.flatMap((s) => s.items),
+        allItems: setsForLanguage(languageId).flatMap((s) => s.items),
         memory,
         memoryOn,
+        languageId,
       }),
-    [log, attempts, growthEvents, phonemeLeaves, missionSessions, memory, memoryOn],
+    [log, attempts, growthEvents, phonemeLeaves, missionSessions, memory, memoryOn, languageId],
   );
 
   const recentGrowth = [...growthEvents]
