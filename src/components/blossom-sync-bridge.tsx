@@ -547,8 +547,14 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
       return;
     }
 
+    let rerunAfterSync = false;
+
     const run = async () => {
-      if (disposed || syncingRef.current || !navigator.onLine) return;
+      if (disposed || !navigator.onLine) return;
+      if (syncingRef.current) {
+        rerunAfterSync = true;
+        return;
+      }
       syncingRef.current = true;
       try {
         const remote = await getBlossomBackendState();
@@ -566,6 +572,10 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
         }
       } finally {
         syncingRef.current = false;
+        if (!disposed && rerunAfterSync && navigator.onLine) {
+          rerunAfterSync = false;
+          queueMicrotask(() => void run());
+        }
       }
     };
 
