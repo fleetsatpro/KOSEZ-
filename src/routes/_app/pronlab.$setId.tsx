@@ -111,7 +111,7 @@ function PronlabSetPage() {
         memoryOn: true,
         languageId,
       }),
-    [log, attempts, growthEvents, phonemeLeaves, missionSessions],
+    [log, attempts, growthEvents, phonemeLeaves, missionSessions, languageId],
   );
 
   if (!setDef) {
