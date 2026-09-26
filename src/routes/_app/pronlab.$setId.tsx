@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Volume2 } from "lucide-react";
 import { RecordControl } from "@/components/app/record-control";
@@ -38,10 +38,13 @@ function highlight(phrase: string, segment: string) {
 function PronlabSetPage() {
   const { setId } = Route.useParams();
   const setDef = findPronlabSet(setId);
+  const search = useRouterState({ select: (state) => state.location.search });
+  const focusItemId = new URLSearchParams(search).get("item");
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const assigned = useBlossom((s) => s.assignedSetIds);
   const record = useBlossom((s) => s.recordPronlabAttempt);
-  const [index, setIndex] = useState(0);
+  const focusedIndex = setDef ? setDef.items.findIndex((item) => item.id === focusItemId) : -1;
+  const [index, setIndex] = useState(focusedIndex >= 0 ? focusedIndex : 0);
   const [heard, setHeard] = useState(false);
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
   useEffect(() => {
