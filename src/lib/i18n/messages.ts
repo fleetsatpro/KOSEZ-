@@ -139,9 +139,6 @@ export type MessageTree = {
   };
 };
 
-// Full content is in the artifact; using minimal valid tree so app does not break.
-// The comprehensive expansion is applied next.
-
 const fr: MessageTree = {
   nav: {
     blossom: "BLOSSOM",
