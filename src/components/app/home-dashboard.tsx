@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Check, Leaf, Target } from "lucide-react";
+import { AmbientParticles } from "@/components/app/ambient-particles";
 import { Button } from "@/components/ui/button";
 import {
   LEARNER_MEMORY,
@@ -55,6 +56,7 @@ export function HomeDashboard() {
     ? learner.firstName.slice(0, 1).toUpperCase()
     : "K";
   const progress = Math.max(4, Math.round(journey.progress * 100));
+  const particleIntensity = Math.min(1, 0.35 + journey.progress * 0.55);
 
   const allItems = PRONLAB_SETS.flatMap((s) => s.items);
   const struggle = strugglingFocus(attempts, allItems);
@@ -71,12 +73,17 @@ export function HomeDashboard() {
           alt=""
           className="plant-sway absolute inset-0 h-full w-full object-cover object-center scale-[1.02]"
         />
+        <AmbientParticles
+          stageId={journey.stage.id}
+          intensity={particleIntensity}
+          className="pointer-events-none absolute inset-0 z-[1] opacity-80"
+        />
         <div
-          className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/25"
+          className="absolute inset-0 z-[2] bg-gradient-to-t from-black via-black/55 to-black/25"
           aria-hidden
         />
         <div
-          className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent"
+          className="absolute inset-0 z-[2] bg-gradient-to-r from-black/50 via-transparent to-transparent"
           aria-hidden
         />
 
@@ -264,7 +271,7 @@ export function HomeDashboard() {
             Minéral le plus bas : <span className="text-primary">{nextGesture.mineral}</span> — c'est pourquoi cette porte est proposée maintenant.
           </p>
           <Link
-            to={nextGesture.door as "/osez" | "/pronlab" | "/mission" | "/tandem"}
+            to={nextGesture.door as "/osez" | "/pronlab" | "/mission" | "/tandem" | "/learn/labs"}
             className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
           >
             Ouvrir cette porte
