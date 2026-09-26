@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, LibraryBig, Mic2, RotateCcw, Target } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { GrowthCeremony } from "@/components/app/growth-ceremony";
+import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,6 +57,7 @@ function Review() {
   const [done, setDone] = useState(false);
   const [reviewed, setReviewed] = useState(0);
   const [misses, setMisses] = useState<Record<string, number>>({});
+  const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
 
   const current = queue[0];
   const total = sessionTotal;
@@ -86,14 +89,26 @@ function Review() {
   function finish() {
     const day = new Date().toISOString().slice(0, 10);
     const reviewSourceId = `review-${day}`;
-    completeActivity("REVIEW_COMPLETED", reviewSourceId, `Révision · ${reviewed} passages · ${plan.due.length} dues au départ`);
+    let growth = completeActivity(
+      "REVIEW_COMPLETED",
+      reviewSourceId,
+      `Révision · ${reviewed} passages · ${plan.due.length} dues au départ`,
+    );
     if (curriculumLessonId) {
-      completeActivity(
+      const evidence = completeActivity(
         "CURRICULUM_EVIDENCE_RECORDED",
         curriculumLessonId,
         `Preuve curriculum · révision · ${reviewSourceId}`,
         { supportId: reviewSourceId },
       );
+      if (evidence.ok) growth = evidence;
+    }
+    if (growth.ok && growth.event && growth.minerals && growth.previousMinerals) {
+      setCeremony({
+        event: growth.event,
+        minerals: growth.minerals,
+        previousMinerals: growth.previousMinerals,
+      });
     }
     setDone(true);
   }
@@ -118,6 +133,15 @@ function Review() {
               <Link to="/learn/progress">Voir mes preuves</Link>
             </Button>
           </div>
+          {ceremony ? (
+            <GrowthCeremony
+              event={ceremony.event}
+              minerals={ceremony.minerals}
+              previousMinerals={ceremony.previousMinerals}
+              open
+              onDismiss={() => setCeremony(null)}
+            />
+          ) : null}
         </Surface>
       </Page>
     );
