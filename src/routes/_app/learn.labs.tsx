@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, GraduationCap, Headphones, PenLine, RotateCcw, Sparkles, Target } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
@@ -38,7 +38,15 @@ function dailyLabSource(kind: string, taskId: string) {
 function LearningLabs() {
   const learnerLevel = useBlossom((s) => s.learner.level);
   const activeLevel: LabLevel = learnerLevel === "B1" ? "B1" : "A2";
-  const [lab, setLab] = useState<Lab>("grammar");
+  const search = useRouterState({ select: (state) => state.location.search });
+  const params = new URLSearchParams(search);
+  const requestedLab = params.get("lab");
+  const focusTaskId = params.get("task");
+  const initialLab: Lab =
+    requestedLab === "listening" || requestedLab === "writing" || requestedLab === "diagnostic"
+      ? requestedLab
+      : "grammar";
+  const [lab, setLab] = useState<Lab>(initialLab);
   return <Page className="kosez-feature-page">
     <Link to="/learn" className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted hover:text-primary"><ArrowLeft className="size-3.5" /> Atelier</Link>
     <header className="mt-6 overflow-hidden rounded-[28px] bg-fg p-6 text-primary-foreground shadow-[var(--shadow-border)] sm:p-8">
@@ -49,16 +57,16 @@ function LearningLabs() {
     <div className="mt-6 grid gap-2 sm:grid-cols-3">{LABS.map((item) => <button key={item.id} type="button" onClick={() => setLab(item.id)} className={`rounded-2xl border p-4 text-left transition ${lab === item.id ? "border-primary/30 bg-primary/8 text-fg" : "border-border bg-surface text-muted hover:bg-surface-2/60 hover:text-fg"}`}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.16em]">{item.label}</p><p className="mt-2 font-display text-xl tracking-tight">{item.detail}</p>
     </button>)}</div>
-    {lab === "grammar" ? <GrammarLab level={activeLevel} /> : null}{lab === "listening" ? <ListeningLab level={activeLevel} /> : null}{lab === "writing" ? <WritingLab level={activeLevel} /> : null}{lab === "diagnostic" ? <DiagnosticLab /> : null}
+    {lab === "grammar" ? <GrammarLab level={activeLevel} focusTaskId={focusTaskId} /> : null}{lab === "listening" ? <ListeningLab level={activeLevel} focusTaskId={focusTaskId} /> : null}{lab === "writing" ? <WritingLab level={activeLevel} focusTaskId={focusTaskId} /> : null}{lab === "diagnostic" ? <DiagnosticLab /> : null}
   </Page>;
 }
 
-function GrammarLab({ level }: { level: LabLevel }) {
+function GrammarLab({ level, focusTaskId }: { level: LabLevel; focusTaskId: string | null }) {
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
   useEffect(() => {
     if (curriculumLessonId) clearCurriculumLessonContext();
   }, [curriculumLessonId]);
-  const linkedTaskId = linkedLessonTask(curriculumLessonId, "grammar");
+  const linkedTaskId = focusTaskId ?? linkedLessonTask(curriculumLessonId, "grammar");
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const tasks = useMemo(() => {
@@ -122,12 +130,12 @@ function GrammarLab({ level }: { level: LabLevel }) {
   </Surface>;
 }
 
-function ListeningLab({ level }: { level: LabLevel }) {
+function ListeningLab({ level, focusTaskId }: { level: LabLevel; focusTaskId: string | null }) {
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
   useEffect(() => {
     if (curriculumLessonId) clearCurriculumLessonContext();
   }, [curriculumLessonId]);
-  const linkedTaskId = linkedLessonTask(curriculumLessonId, "listening");
+  const linkedTaskId = focusTaskId ?? linkedLessonTask(curriculumLessonId, "listening");
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const tasks = useMemo(() => {
@@ -190,12 +198,12 @@ function ListeningLab({ level }: { level: LabLevel }) {
   </Surface>;
 }
 
-function WritingLab({ level }: { level: LabLevel }) {
+function WritingLab({ level, focusTaskId }: { level: LabLevel; focusTaskId: string | null }) {
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
   useEffect(() => {
     if (curriculumLessonId) clearCurriculumLessonContext();
   }, [curriculumLessonId]);
-  const linkedTaskId = linkedLessonTask(curriculumLessonId, "writing");
+  const linkedTaskId = focusTaskId ?? linkedLessonTask(curriculumLessonId, "writing");
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const prompts = useMemo(() => {
