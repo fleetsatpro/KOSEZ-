@@ -38,6 +38,7 @@ import { EvidenceTimeline } from "@/components/app/evidence-timeline";
 import { ConversationPanel } from "@/components/app/conversation-panel";
 import { ConversationInbox } from "@/components/app/conversation-inbox";
 import { LearnerFeedback } from "@/components/app/learner-feedback";
+import { getLearnerSessionsOnServer } from "@/lib/blossom/domain.api";
 
 export const Route = createFileRoute("/_app/moi")({
   component: MoiPage,
@@ -49,6 +50,8 @@ export const Route = createFileRoute("/_app/moi")({
  */
 function MoiPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<Awaited<ReturnType<typeof getLearnerSessionsOnServer>>>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
   const [selectedConversationKind, setSelectedConversationKind] = useState<"support" | "tandem" | "teacher">("support");
   const [selectedConversationPeerId, setSelectedConversationPeerId] = useState<string | null>(null);
   const [selectedConversationPeerName, setSelectedConversationPeerName] = useState<string | null>(null);
@@ -235,6 +238,41 @@ function MoiPage() {
           </p>
         </Surface>
       </div>
+
+      <Surface className="mt-4">
+        <div className="flex items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <CalendarClock className="size-4" />
+          </span>
+          <div>
+            <Eyebrow>Planning</Eyebrow>
+            <h2 className="mt-1 font-display text-2xl tracking-tight">Vos prochaines séances</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              Dates réellement programmées par votre enseignant. Une programmation
+              n’est pas une preuve de présence.
+            </p>
+          </div>
+        </div>
+        {sessionsLoading ? (
+          <p className="mt-4 text-sm text-muted">Lecture du planning…</p>
+        ) : sessions.length === 0 ? (
+          <p className="mt-4 text-sm text-subtle">Aucune séance programmée pour le moment.</p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {sessions.slice(0, 6).map((session) => (
+              <li key={session.id} className="rounded-xl border border-border bg-surface-2/30 p-4">
+                <p className="font-medium">{session.title}</p>
+                <p className="mt-1 text-xs text-muted">
+                  {new Date(session.startsAt).toLocaleString("fr-FR", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })} · {session.durationMinutes} min · {session.teacherName}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Surface>
 
       <MoiSettings />
 
