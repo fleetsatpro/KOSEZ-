@@ -65,6 +65,7 @@ function OsezHub() {
   const log = useBlossom((s) => s.activityLog);
   const plan = useBlossom((s) => s.plan);
   const learner = useBlossom((s) => s.learner);
+  const growthEvents = useBlossom((s) => s.growthEvents);
   const memoryOn = planAllows(plan, "memory");
   const dare = todaysPulseDare();
   const courageDays = courageDaysFromLog(log);
@@ -72,6 +73,7 @@ function OsezHub() {
   const spoken = cells.filter(Boolean).length;
   const minerals = useMemo(() => computeMinerals(log), [log]);
   const nextGesture = causalNextGesture(minerals);
+  const recentGrowth = growthEvents.slice(0, 2);
 
   const [topic, setTopic] = useState("");
   const [building, setBuilding] = useState(false);
@@ -115,7 +117,7 @@ function OsezHub() {
         </h1>
         <p className="mt-3 text-sm leading-7 text-muted sm:text-base">
           Rooms vivantes — recomposées à chaque entrée. Sujet libre, lieu,
-          pression, monde réel. Le bilan vient après, jamais pendant.
+          pression, monde réel. Chaque prise de parole écrite une tige sur votre BLOSSOM.
           {memoryOn ? (
             <>
               {" "}
@@ -123,18 +125,30 @@ function OsezHub() {
             </>
           ) : null}
         </p>
+        {recentGrowth.length > 0 ? (
+          <ul className="mt-4 flex flex-wrap gap-2" aria-label="Gestes récents">
+            {recentGrowth.map((g) => (
+              <li
+                key={g.id}
+                className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[11px] text-primary"
+              >
+                {g.label}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </header>
 
       <section
         className="mt-8 rounded-2xl border border-border/70 bg-surface/80 p-4 sm:p-5"
-        aria-label="Ruban de courage"
+        aria-label="Ruban de courage — 28 jours, sans flamme"
       >
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">
             Ruban de courage
           </p>
           <p className="text-xs tabular-nums text-muted">
-            {spoken} / 28 · sans flamme
+            {spoken} / 28 · sans flamme, sans anxiété
           </p>
         </div>
         <ul className="mt-3 flex flex-wrap gap-1" aria-label="28 derniers jours">
@@ -143,7 +157,7 @@ function OsezHub() {
               key={i}
               title={on ? "Geste ce jour-là" : "Terre en jachère"}
               className={cn(
-                "size-2 rounded-full sm:size-2.5",
+                "size-2 rounded-full sm:size-2.5 transition-shadow duration-300",
                 on
                   ? "bg-primary shadow-[0_0_6px_rgba(217,255,105,0.4)]"
                   : "bg-surface-2 ring-1 ring-border/70",
@@ -151,20 +165,26 @@ function OsezHub() {
             />
           ))}
         </ul>
+        <p className="mt-3 text-[11px] leading-5 text-subtle">
+          Un point allumé = un jour où vous avez parlé. Rien d'autre. Pas de série à briser.
+        </p>
       </section>
 
       <section
-        className="mt-8 rounded-2xl border border-border/70 bg-surface p-5 shadow-[var(--shadow-border)] sm:p-6"
+        className="mt-8 rounded-2xl border border-primary/25 bg-primary/8 p-5 shadow-[var(--shadow-border)] sm:p-6 magnetic-surface"
         aria-label="Prochain geste causal"
       >
         <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/80">
-          Prochain geste · {nextGesture.mineral}
+          Prochain geste · minéral {nextGesture.mineral}
         </p>
         <p className="mt-2 font-display text-xl tracking-tight text-fg sm:text-2xl">
           {nextGesture.line}
         </p>
+        <p className="mt-2 text-[11px] text-muted">
+          Cette porte est proposée parce que le minéral « {nextGesture.mineral} » est le plus bas cette semaine.
+        </p>
         <Link
-          to={nextGesture.door as "/osez"}
+          to={nextGesture.door as "/osez" | "/pronlab" | "/mission" | "/tandem"}
           className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary hover:underline"
         >
           Ouvrir la porte
@@ -172,7 +192,7 @@ function OsezHub() {
         </Link>
       </section>
 
-      <section className="mt-8 rounded-2xl border border-primary/25 bg-primary/8 p-5 sm:p-6">
+      <section className="mt-8 rounded-2xl border border-primary/25 bg-primary/8 p-5 sm:p-6 magnetic-surface">
         <div className="flex flex-wrap items-center gap-2">
           <Wand2 className="size-4 text-primary" />
           <Eyebrow className="text-primary">Sujet libre</Eyebrow>
@@ -182,7 +202,7 @@ function OsezHub() {
         </h2>
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
           Écrivez ce que vous voulez travailler. Une room unique se compose
-          autour de votre sujet — interlocuteur, lieu, pression.
+          autour de votre sujet — interlocuteur, lieu, pression. La prise compte comme SPEAK.
         </p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
           <input
@@ -228,7 +248,7 @@ function OsezHub() {
         <button
           type="button"
           onClick={() => launchTopic(dare.line)}
-          className="group relative flex flex-col overflow-hidden rounded-2xl border border-primary/25 bg-primary/8 p-5 text-left shadow-[var(--shadow-border)] transition-transform hover:-translate-y-0.5 sm:p-6"
+          className="group relative flex flex-col overflow-hidden rounded-2xl border border-primary/25 bg-primary/8 p-5 text-left shadow-[var(--shadow-border)] magnetic-surface sm:p-6"
         >
           <div className="flex items-start justify-between gap-3">
             <span className="flex size-11 items-center justify-center rounded-xl bg-primary/20 text-primary">
@@ -254,7 +274,7 @@ function OsezHub() {
           </div>
         </button>
 
-        <div className="flex flex-col rounded-2xl border border-border/70 bg-surface p-5 shadow-[var(--shadow-border)] sm:p-6">
+        <div className="flex flex-col rounded-2xl border border-border/70 bg-surface p-5 shadow-[var(--shadow-border)] magnetic-surface sm:p-6">
           <span className="flex size-11 items-center justify-center rounded-xl bg-surface-2 text-primary">
             <MapPin className="size-4" strokeWidth={1.7} />
           </span>
@@ -262,7 +282,7 @@ function OsezHub() {
             Street
           </h2>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Le monde réel. Vous parlez, puis vous notez.
+            Le monde réel. Vous parlez, puis vous notez. Écrit une racine terrain.
           </p>
           <ol className="mt-4 space-y-2 border-t border-border/60 pt-4">
             {STREET_PROTOCOL.map((step, i) => (
@@ -285,7 +305,7 @@ function OsezHub() {
 
         <Link
           to="/tandem"
-          className="group flex flex-col rounded-2xl border border-border/70 bg-surface p-5 shadow-[var(--shadow-border)] transition-transform hover:-translate-y-0.5 sm:p-6"
+          className="group flex flex-col rounded-2xl border border-border/70 bg-surface p-5 shadow-[var(--shadow-border)] magnetic-surface sm:p-6"
         >
           <span className="flex size-11 items-center justify-center rounded-xl bg-surface-2 text-primary">
             <Mic className="size-4" strokeWidth={1.7} />
@@ -294,7 +314,7 @@ function OsezHub() {
             Tandem
           </h2>
           <p className="mt-2 flex-1 text-sm leading-6 text-muted">
-            Une constellation de présences — pas un feed.
+            Une constellation de présences — pas un feed. Nourrit le minéral social.
           </p>
           <p className="mt-5 inline-flex items-center gap-1 border-t border-border/60 pt-4 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
             Ouvrir
@@ -309,7 +329,7 @@ function OsezHub() {
             Speak Rooms
           </h2>
           <p className="mt-2 max-w-lg text-sm text-muted">
-            Catalogue du jour — lieu, pression, événement réel.
+            Catalogue du jour — lieu, pression, événement réel. Chaque room ancrée écrit une tige.
           </p>
         </div>
         <p className="text-xs tabular-nums text-subtle">
@@ -338,7 +358,7 @@ function OsezHub() {
           <Link
             to="/osez/$id"
             params={{ id: "live" }}
-            className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-primary/25 bg-primary/8 p-5 transition-transform hover:-translate-y-0.5"
+            className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-primary/25 bg-primary/8 p-5 magnetic-surface"
           >
             <div className="flex items-start gap-3">
               <span className="flex size-10 items-center justify-center rounded-xl bg-primary/20 text-primary">
@@ -362,7 +382,7 @@ function OsezHub() {
                   key={scene.id}
                   to="/osez/$id"
                   params={{ id: scene.place.archetype }}
-                  className="group overflow-hidden rounded-2xl border border-border/50 bg-surface shadow-[var(--shadow-border)] transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5"
+                  className="group overflow-hidden rounded-2xl border border-border/50 bg-surface shadow-[var(--shadow-border)] magnetic-surface"
                 >
                   <div className="relative aspect-[16/10] overflow-hidden">
                     <img
