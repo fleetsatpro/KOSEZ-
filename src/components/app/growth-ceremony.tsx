@@ -168,7 +168,7 @@ export function GrowthCeremony({
                 Minéral nourri · {MINERAL_LABEL[event.mineral]}
               </p>
               <p className="mt-1 text-sm leading-5 text-fg">
-                Ce geste écrit « ${MINERAL_DEFINITIONS[event.mineral].label} » dans l’organisme. La porte suivante répond au minéral actuellement le plus en retrait.
+                Ce geste écrit « {MINERAL_DEFINITIONS[event.mineral].label} » dans l’organisme. La porte suivante répond au minéral actuellement le plus en retrait.
               </p>
             </div>
           ) : null}
