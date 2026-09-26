@@ -42,6 +42,19 @@ describe("organism minerals", () => {
     assert.equal(m.atelier, 0);
   });
 
+  it("counts Pron’Lab attempts as pron nourishment", () => {
+    const m = computeMinerals([
+      {
+        id: "p1",
+        type: "PRONLAB_ATTEMPTED",
+        createdAt: new Date().toISOString(),
+        sourceId: "attempt-1",
+      },
+    ]);
+    assert.ok(m.pron > 0);
+    assert.equal(mineralForActivity("PRONLAB_ATTEMPTED"), "pron");
+  });
+
   it("increases mission mineral after mission events", () => {
     const log: ActivityEvent[] = [
       {
