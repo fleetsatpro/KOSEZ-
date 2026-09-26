@@ -311,5 +311,18 @@ export async function getEvidenceTimeline(
       mineral: "social", actionLabel: "Reprendre le geste", actionKind: "replay",
     });
   }
-  return items.map((item) => ({ ...item, route: exactRoute(item.kind, item.sourceId, item.metadata) ?? item.route })).sort((a,b) => b.at.localeCompare(a.at)).slice(0, bounded);
+  return items.map((item) => {
+    const exact = exactRoute(item.kind, item.sourceId, item.metadata);
+    const replayableActivity =
+      item.kind === "activity" &&
+      ["GRAMMAR_COMPLETED", "LISTENING_COMPLETED", "WRITING_COMPLETED", "LIBRARY_COMPLETED"].includes(
+        String(item.metadata.activityType ?? ""),
+      );
+    return {
+      ...item,
+      route: exact ?? item.route,
+      actionLabel: replayableActivity ? "Reprendre le geste" : item.actionLabel,
+      actionKind: replayableActivity ? "replay" : item.actionKind,
+    };
+  }).sort((a,b) => b.at.localeCompare(a.at)).slice(0, bounded);
 }
