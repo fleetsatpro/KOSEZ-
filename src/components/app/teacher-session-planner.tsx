@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CalendarClock, Clock3, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { calendarFilename, teacherSessionToIcs } from "@/lib/blossom/calendar";
 import { Eyebrow, Surface } from "@/components/app/primitives";
 import {
   cancelTeacherSessionOnServer,
@@ -21,6 +22,17 @@ function localDateTime(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   });
+}
+
+function downloadCalendar(session: Session) {
+  const ics = teacherSessionToIcs(session);
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = calendarFilename(session.title);
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export function TeacherSessionPlanner({ roster }: { roster: TeacherRow[] }) {
@@ -193,15 +205,25 @@ export function TeacherSessionPlanner({ roster }: { roster: TeacherRow[] }) {
                   </p>
                   {session.notes ? <p className="mt-2 text-xs leading-5 text-subtle">{session.notes}</p> : null}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void cancel(session.id)}
-                  disabled={busy}
-                >
-                  <X className="size-4" />
-                  Annuler
-                </Button>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => downloadCalendar(session)}
+                    disabled={busy}
+                  >
+                    Calendrier
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void cancel(session.id)}
+                    disabled={busy}
+                  >
+                    <X className="size-4" />
+                    Annuler
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
