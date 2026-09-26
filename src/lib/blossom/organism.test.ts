@@ -75,6 +75,14 @@ describe("growth events", () => {
     assert.equal(grammar?.mineral, "atelier");
     assert.equal(tandem?.mineral, "social");
     assert.equal(tandem?.kind, "flower");
+    assert.equal(
+      growthEventForActivity(
+        "CURRICULUM_EVIDENCE_RECORDED",
+        "u1-l1",
+        "2026-09-22T00:00:00.000Z",
+      ),
+      null,
+    );
   });
 
   it("routes the weakest atelier mineral to Learn labs", () => {
