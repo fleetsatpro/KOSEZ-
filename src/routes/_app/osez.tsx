@@ -68,6 +68,7 @@ function OsezHub() {
   const log = useBlossom((s) => s.activityLog);
   const plan = useBlossom((s) => s.plan);
   const learner = useBlossom((s) => s.learner);
+  const languageId = useBlossom((s) => s.languageId);
   const growthEvents = useBlossom((s) => s.growthEvents);
   const journey = useJourney();
   const memoryOn = planAllows(plan, "memory");
@@ -78,9 +79,10 @@ function OsezHub() {
     growthEvents,
     phonemeLeaves: useBlossom.getState().phonemeLeaves,
     missionSessions: useBlossom.getState().missionSessions,
-    allItems: PRONLAB_SETS.flatMap((s) => s.items),
+    allItems: PRONLAB_SETS.filter((s) => !s.language || s.language === "English" || s.language === languageId).flatMap((s) => s.items),
     memory: LEARNER_MEMORY,
     memoryOn,
+    languageId,
   });
   const dare = influence.pulse.dareOverride ?? baseDare;
   const pulseOverridden = Boolean(influence.pulse.dareOverride);
