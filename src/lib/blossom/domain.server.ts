@@ -5,6 +5,8 @@ import { IMMERSION, PRONLAB_SETS } from "./data";
 import type { JsonObject } from "./backend.server";
 
 import { getPublishedContent } from "./content.server";
+import { conversationKey, type MessageKind } from "./communication";
+import { proofFromActivity, proofFromSubmission, type ProofTimelineItem } from "./proof-timeline";
 
 export class BlossomForbiddenError extends Error {
   readonly status = 403;
@@ -1573,4 +1575,565 @@ export async function endTandemSession(
     resourceId: sessionId,
   });
   return { id: String(rows[0].id), status: String(rows[0].status), endedAt: new Date(String(rows[0].ended_at)).toISOString() };
+}
+
+
+export type MessageContact = {
+  id: string;
+  name: string;
+  level: string | null;
+  city: string | null;
+  kinds: MessageKind[];
+};
+
+async function assertMessageablePair(
+  userId: string,
+  targetUserId: string,
+  kind: MessageKind,
+) {
+  if (userId === targetUserId) {
+    throw new BlossomForbiddenError("Une conversation exige deux comptes différents.");
+  }
+  const sql = await getSql();
+  const table =
+    kind === "teacher"
+      ? "blossom_teacher_link"
+      : kind === "guardian"
+        ? "blossom_guardian_link"
+        : "blossom_tandem_connection";
+  let allowed = false;
+
+  if (kind === "teacher") {
+    const rows = await sql.query(
+      `select 1 from blossom_teacher_link
+       where status = 'active'
+         and ((teacher_user_id = $1 and learner_user_id = $2)
+           or (teacher_user_id = $2 and learner_user_id = $1))
+       limit 1`,
+      [userId, targetUserId],
+    );
+    allowed = Boolean(rows[0]);
+  } else if (kind === "guardian") {
+    const rows = await sql.query(
+      `select 1 from blossom_guardian_link
+       where status = 'active'
+         and ((guardian_user_id = $1 and learner_user_id = $2)
+           or (guardian_user_id = $2 and learner_user_id = $1))
+       limit 1`,
+      [userId, targetUserId],
+    );
+    allowed = Boolean(rows[0]);
+  } else {
+    const rows = await sql.query(
+      `select 1
+       from blossom_tandem_connection mine
+       join blossom_tandem_connection theirs
+         on theirs.user_id = mine.partner_user_id
+        and theirs.partner_user_id = mine.user_id
+        and theirs.status = 'accepted'
+       where mine.user_id = $1
+         and mine.partner_user_id = $2
+         and mine.status = 'accepted'
+       limit 1`,
+      [userId, targetUserId],
+    );
+    allowed = Boolean(rows[0]);
+  }
+
+  if (!allowed) {
+    throw new BlossomForbiddenError(
+      "Cette relation ne permet pas une conversation pour le moment.",
+    );
+  }
+
+  return table;
+}
+
+export async function getMessageContacts(userId: string): Promise<MessageContact[]> {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `select
+       r.user_id,
+       r.kind,
+       coalesce(nullif(p.display_name, ''), r.user_id) as display_name,
+       p.level,
+       p.preferences->>'city' as city
+     from (
+       select learner_user_id as user_id, 'teacher'::text as kind
+       from blossom_teacher_link
+       where teacher_user_id = $1 and status = 'active'
+       union
+       select teacher_user_id as user_id, 'teacher'::text as kind
+       from blossom_teacher_link
+       where learner_user_id = $1 and status = 'active'
+       union
+       select learner_user_id as user_id, 'guardian'::text as kind
+       from blossom_guardian_link
+       where guardian_user_id = $1 and status = 'active'
+       union
+       select guardian_user_id as user_id, 'guardian'::text as kind
+       from blossom_guardian_link
+       where learner_user_id = $1 and status = 'active'
+       union
+       select mine.partner_user_id as user_id, 'tandem'::text as kind
+       from blossom_tandem_connection mine
+       join blossom_tandem_connection theirs
+         on theirs.user_id = mine.partner_user_id
+        and theirs.partner_user_id = mine.user_id
+        and theirs.status = 'accepted'
+       where mine.user_id = $1 and mine.status = 'accepted'
+     ) r
+     join blossom_profile p on p.user_id = r.user_id
+     order by display_name asc`,
+    [userId],
+  );
+
+  const byUser = new Map<string, MessageContact>();
+  for (const row of rows) {
+    const id = String(row.user_id);
+    const kind = String(row.kind) as MessageKind;
+    const existing = byUser.get(id);
+    if (existing) {
+      if (!existing.kinds.includes(kind)) existing.kinds.push(kind);
+      continue;
+    }
+    byUser.set(id, {
+      id,
+      name: String(row.display_name),
+      level: row.level ? String(row.level) : null,
+      city: row.city ? String(row.city) : null,
+      kinds: [kind],
+    });
+  }
+  return [...byUser.values()];
+}
+
+export type ConversationSummary = {
+  id: string;
+  kind: MessageKind;
+  otherUserId: string;
+  otherName: string;
+  otherLevel: string | null;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+  unreadCount: number;
+  updatedAt: string;
+};
+
+export async function getConversations(
+  userId: string,
+): Promise<ConversationSummary[]> {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `select
+       c.id,
+       c.kind,
+       op.user_id as other_user_id,
+       coalesce(nullif(p.display_name, ''), op.user_id) as other_name,
+       p.level as other_level,
+       lm.body as last_message,
+       lm.created_at as last_message_at,
+       (
+         select count(*)::integer
+         from blossom_message m
+         where m.conversation_id = c.id
+           and m.sender_user_id <> $1
+           and (cp.last_read_at is null or m.created_at > cp.last_read_at)
+           and m.deleted_at is null
+       ) as unread_count,
+       c.updated_at
+     from blossom_conversation c
+     join blossom_conversation_participant cp
+       on cp.conversation_id = c.id and cp.user_id = $1
+     join blossom_conversation_participant op
+       on op.conversation_id = c.id and op.user_id <> $1
+     left join blossom_profile p on p.user_id = op.user_id
+     left join lateral (
+       select body, created_at
+       from blossom_message m
+       where m.conversation_id = c.id and m.deleted_at is null
+       order by created_at desc
+       limit 1
+     ) lm on true
+     order by c.updated_at desc
+     limit 80`,
+    [userId],
+  );
+  return rows.map((row) => ({
+    id: String(row.id),
+    kind: String(row.kind) as MessageKind,
+    otherUserId: String(row.other_user_id),
+    otherName: String(row.other_name),
+    otherLevel: row.other_level ? String(row.other_level) : null,
+    lastMessage: row.last_message ? String(row.last_message) : null,
+    lastMessageAt: row.last_message_at
+      ? new Date(String(row.last_message_at)).toISOString()
+      : null,
+    unreadCount: Number(row.unread_count ?? 0),
+    updatedAt: new Date(String(row.updated_at)).toISOString(),
+  }));
+}
+
+export type ConversationDetail = {
+  id: string;
+  kind: MessageKind;
+  otherUserId: string;
+  otherName: string;
+  messages: Array<{
+    id: string;
+    senderUserId: string;
+    body: string;
+    createdAt: string;
+    mine: boolean;
+  }>;
+};
+
+export async function getConversation(
+  userId: string,
+  conversationId: string,
+): Promise<ConversationDetail> {
+  const sql = await getSql();
+  const participants = await sql.query(
+    `select c.kind, cp.user_id, op.user_id as other_user_id,
+            coalesce(nullif(p.display_name, ''), op.user_id) as other_name
+     from blossom_conversation c
+     join blossom_conversation_participant cp
+       on cp.conversation_id = c.id and cp.user_id = $1
+     join blossom_conversation_participant op
+       on op.conversation_id = c.id and op.user_id <> $1
+     left join blossom_profile p on p.user_id = op.user_id
+     where c.id = $2::uuid
+     limit 1`,
+    [userId, conversationId],
+  );
+  const row = participants[0];
+  if (!row) {
+    throw new BlossomForbiddenError("Cette conversation n'est pas disponible.");
+  }
+  await assertMessageablePair(
+    userId,
+    String(row.other_user_id),
+    String(row.kind) as MessageKind,
+  );
+  const messages = await sql.query(
+    `select id, sender_user_id, body, created_at
+     from blossom_message
+     where conversation_id = $1::uuid and deleted_at is null
+     order by created_at asc
+     limit 200`,
+    [conversationId],
+  );
+  return {
+    id: String(conversationId),
+    kind: String(row.kind) as MessageKind,
+    otherUserId: String(row.other_user_id),
+    otherName: String(row.other_name),
+    messages: messages.map((message) => ({
+      id: String(message.id),
+      senderUserId: String(message.sender_user_id),
+      body: String(message.body),
+      createdAt: new Date(String(message.created_at)).toISOString(),
+      mine: String(message.sender_user_id) === userId,
+    })),
+  };
+}
+
+export async function startConversation(
+  userId: string,
+  input: { kind: MessageKind; targetUserId: string },
+): Promise<string> {
+  await assertMessageablePair(userId, input.targetUserId, input.kind);
+  const sql = await getSql();
+  const key = conversationKey(input.kind, userId, input.targetUserId);
+  const inserted = await sql.query(
+    `insert into blossom_conversation
+       (id, kind, conversation_key, created_by)
+     values ($1::uuid, $2, $3, $4)
+     on conflict (conversation_key) do nothing
+     returning id`,
+    [randomUUID(), input.kind, key, userId],
+  );
+  let conversationId = inserted[0]?.id ? String(inserted[0].id) : "";
+  if (!conversationId) {
+    const existing = await sql.query(
+      "select id from blossom_conversation where conversation_key = $1 limit 1",
+      [key],
+    );
+    if (!existing[0]) throw new Error("conversation-create-failed");
+    conversationId = String(existing[0].id);
+  }
+
+  await sql.query(
+    `insert into blossom_conversation_participant (conversation_id, user_id)
+     values ($1::uuid, $2), ($1::uuid, $3)
+     on conflict (conversation_id, user_id) do nothing`,
+    [conversationId, userId, input.targetUserId],
+  );
+
+  if (inserted[0]) {
+    await writeAuditEvent(userId, {
+      subjectUserId: input.targetUserId,
+      action: "message.conversation.started",
+      resourceType: "conversation",
+      resourceId: conversationId,
+      metadata: { kind: input.kind },
+    });
+  }
+  return conversationId;
+}
+
+export type SentMessage = {
+  id: string;
+  senderUserId: string;
+  body: string;
+  createdAt: string;
+  mine: true;
+};
+
+export async function sendMessage(
+  userId: string,
+  input: { conversationId: string; body: string; clientMessageId?: string | null },
+): Promise<SentMessage> {
+  const body = input.body.trim();
+  if (!body || body.length > 4000) {
+    throw new BlossomForbiddenError("Un message doit contenir entre 1 et 4000 caractères.");
+  }
+
+  const sql = await getSql();
+  const participants = await sql.query(
+    `select c.kind, op.user_id as other_user_id
+     from blossom_conversation c
+     join blossom_conversation_participant me
+       on me.conversation_id = c.id and me.user_id = $1
+     join blossom_conversation_participant op
+       on op.conversation_id = c.id and op.user_id <> $1
+     where c.id = $2::uuid
+     limit 1`,
+    [userId, input.conversationId],
+  );
+  const relation = participants[0];
+  if (!relation) {
+    throw new BlossomForbiddenError("Cette conversation n'est pas disponible.");
+  }
+  const otherUserId = String(relation.other_user_id);
+  await assertMessageablePair(userId, otherUserId, String(relation.kind) as MessageKind);
+
+  if (input.clientMessageId) {
+    const duplicate = await sql.query(
+      `select id, sender_user_id, body, created_at, conversation_id
+       from blossom_message
+       where sender_user_id = $1 and client_message_id = $2::uuid
+       limit 1`,
+      [userId, input.clientMessageId],
+    );
+    if (duplicate[0] && String(duplicate[0].conversation_id) === input.conversationId) {
+      return {
+        id: String(duplicate[0].id),
+        senderUserId: String(duplicate[0].sender_user_id),
+        body: String(duplicate[0].body),
+        createdAt: new Date(String(duplicate[0].created_at)).toISOString(),
+        mine: true,
+      };
+    }
+  }
+
+  let row: Record<string, unknown> | undefined;
+  try {
+    const rows = await sql.query(
+      `insert into blossom_message
+         (id, conversation_id, sender_user_id, client_message_id, body)
+       values ($1::uuid, $2::uuid, $3, $4::uuid, $5)
+       returning id, sender_user_id, body, created_at`,
+      [
+        randomUUID(),
+        input.conversationId,
+        userId,
+        input.clientMessageId ?? null,
+        body,
+      ],
+    );
+    row = rows[0];
+  } catch (error) {
+    if ((error as { code?: string })?.code !== "23505") throw error;
+    if (!input.clientMessageId) throw error;
+    const duplicate = await sql.query(
+      `select id, sender_user_id, body, created_at, conversation_id
+       from blossom_message
+       where sender_user_id = $1 and client_message_id = $2::uuid
+       limit 1`,
+      [userId, input.clientMessageId],
+    );
+    if (!duplicate[0] || String(duplicate[0].conversation_id) !== input.conversationId) {
+      throw error;
+    }
+    row = duplicate[0];
+  }
+
+  if (!row) throw new Error("message-write-failed");
+  const created = new Date(String(row.created_at)).toISOString();
+  await sql.query(
+    "update blossom_conversation set updated_at = $2::timestamptz where id = $1::uuid",
+    [input.conversationId, created],
+  );
+
+  await createNotification(otherUserId, {
+    kind: "system",
+    title: "Nouveau message",
+    body: body.length > 140 ? body.slice(0, 139) + "…" : body,
+    href: "/inbox",
+    metadata: {
+      conversationId: input.conversationId,
+      senderUserId: userId,
+      kind: String(relation.kind),
+    },
+  });
+  await writeAuditEvent(userId, {
+    subjectUserId: otherUserId,
+    action: "message.sent",
+    resourceType: "conversation",
+    resourceId: input.conversationId,
+  });
+
+  return {
+    id: String(row.id),
+    senderUserId: String(row.sender_user_id),
+    body: String(row.body),
+    createdAt: created,
+    mine: true,
+  };
+}
+
+export async function markConversationRead(
+  userId: string,
+  conversationId: string,
+) {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `update blossom_conversation_participant
+     set last_read_at = current_timestamp
+     where conversation_id = $1::uuid and user_id = $2
+     returning conversation_id, last_read_at`,
+    [conversationId, userId],
+  );
+  if (!rows[0]) {
+    throw new BlossomForbiddenError("Cette conversation n'est pas disponible.");
+  }
+  return {
+    conversationId: String(rows[0].conversation_id),
+    readAt: new Date(String(rows[0].last_read_at)).toISOString(),
+  };
+}
+
+export async function getProofTimeline(
+  userId: string,
+  limit = 40,
+): Promise<ProofTimelineItem[]> {
+  const bounded = Math.min(100, Math.max(1, Math.round(limit)));
+  const sql = await getSql();
+  const [activities, submissions, pronlab, homework, challenges] = await Promise.all([
+    sql.query(
+      `select id, event_type, source_id, note, occurred_at
+       from blossom_activity_event
+       where user_id = $1
+       order by occurred_at desc
+       limit 100`,
+      [userId],
+    ),
+    sql.query(
+      `select id, task_id, kind, created_at
+       from blossom_learning_submission
+       where user_id = $1
+       order by created_at desc
+       limit 60`,
+      [userId],
+    ),
+    sql.query(
+      `select id, item_id, score, seconds, metadata, created_at
+       from blossom_pronlab_attempt
+       where user_id = $1
+       order by created_at desc
+       limit 60`,
+      [userId],
+    ),
+    sql.query(
+      `select id, title, updated_at
+       from blossom_homework
+       where learner_user_id = $1 and status = 'done'
+       order by updated_at desc
+       limit 40`,
+      [userId],
+    ),
+    sql.query(
+      `select challenge_id, completed_at
+       from blossom_challenge_completion
+       where user_id = $1
+       order by completed_at desc
+       limit 40`,
+      [userId],
+    ),
+  ]);
+
+  const items: ProofTimelineItem[] = [];
+  for (const row of activities) {
+    const item = proofFromActivity({
+      id: String(row.id),
+      type: String(row.event_type) as ActivityEvent["type"],
+      createdAt: new Date(String(row.occurred_at)).toISOString(),
+      sourceId: row.source_id ? String(row.source_id) : null,
+      note: row.note ? String(row.note) : null,
+    });
+    if (item) items.push(item);
+  }
+  for (const row of submissions) {
+    items.push(
+      proofFromSubmission({
+        id: String(row.id),
+        kind: String(row.kind) as "grammar" | "listening" | "writing" | "review",
+        taskId: String(row.task_id),
+        createdAt: new Date(String(row.created_at)).toISOString(),
+      }),
+    );
+  }
+  for (const row of pronlab) {
+    const metadata =
+      row.metadata && typeof row.metadata === "object"
+        ? (row.metadata as Record<string, unknown>)
+        : {};
+    const assessment = String(metadata.assessment ?? "capture-only");
+    items.push({
+      id: `pronlab:${String(row.id)}`,
+      kind: "pronunciation",
+      label: assessment === "transcript" ? "Prise Pron’Lab transcrite" : "Prise Pron’Lab enregistrée",
+      detail: `Item ${String(row.item_id)} · ${Math.max(0, Number(row.seconds ?? 0))} s`,
+      sourceId: String(row.item_id),
+      href: "/pronlab",
+      occurredAt: new Date(String(row.created_at)).toISOString(),
+    });
+  }
+  for (const row of homework) {
+    items.push({
+      id: `homework:${String(row.id)}`,
+      kind: "homework",
+      label: "Devoir terminé",
+      detail: String(row.title),
+      sourceId: String(row.id),
+      href: "/moi",
+      occurredAt: new Date(String(row.updated_at)).toISOString(),
+    });
+  }
+  for (const row of challenges) {
+    items.push({
+      id: `challenge:${String(row.challenge_id)}`,
+      kind: "immersion",
+      label: "Geste d’immersion",
+      detail: String(row.challenge_id),
+      sourceId: String(row.challenge_id),
+      href: "/immersion",
+      occurredAt: new Date(String(row.completed_at)).toISOString(),
+    });
+  }
+
+  return items
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+    .slice(0, bounded);
 }
