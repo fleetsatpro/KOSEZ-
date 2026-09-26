@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { pronlabEvidenceProjection } from "./evidence.server.ts";
+import { pronlabEvidenceProjection } from "./evidence-projection.ts";
 
 test("Pron’Lab capture-only never becomes a numeric score", () => {
   const value = pronlabEvidenceProjection({
