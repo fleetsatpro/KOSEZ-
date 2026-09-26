@@ -7,7 +7,6 @@ import {
   LEARNER_MEMORY,
   planAllows,
   PLANT_IMAGE,
-  PRONLAB_SETS,
   setsForLanguage,
 } from "@/lib/blossom/data";
 import {
