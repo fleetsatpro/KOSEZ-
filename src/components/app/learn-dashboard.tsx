@@ -31,6 +31,7 @@ import { buildReviewPlan } from "@/lib/blossom/review-scheduler";
 import { buildLearningIntelligence, buildWeeklyLearningBrief } from "@/lib/blossom/learning-intelligence";
 import { isSetUnlocked, useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
+import { causalNextGesture } from "@/lib/blossom/organism";
 
 const PILLARS = [
   {
@@ -88,6 +89,10 @@ export function LearnDashboard() {
   const assigned = useBlossom((s) => s.assignedSetIds);
   const plan = useBlossom((s) => s.plan);
   const journey = useJourney();
+  const minerals = useBlossom((s) => s.mineralSnapshot);
+  const growthEvents = useBlossom((s) => s.growthEvents);
+  const nextGesture = causalNextGesture(minerals);
+  const atelierGrowth = growthEvents.filter((event) => event.mineral === "atelier").slice(0, 3);
   const skillProfile = buildSkillProfile(log, attempts, vocab);
   const reviewPlan = buildReviewPlan(submissions, attempts, vocab);
   const intelligence = buildLearningIntelligence(
@@ -164,6 +169,50 @@ export function LearnDashboard() {
           </div>
         </div>
       </header>
+
+      <section className="mt-5 overflow-hidden rounded-2xl border border-primary/20 bg-primary/5 shadow-[var(--shadow-border)]" aria-label="LEARN et organisme">
+        <div className="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <Eyebrow>LEARN · trace vivante</Eyebrow>
+            <h2 className="mt-2 max-w-3xl font-display text-2xl tracking-tight sm:text-3xl">
+              Ce que vous apprenez laisse aussi une marque.
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              Une séance terminée écrit dans l’Atelier de votre BLOSSOM. Le minéral indique la place de l’apprentissage dans l’organisme ; il ne remplace pas les preuves détaillées ci-dessous.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="rounded-full border border-primary/25 bg-primary/8 px-3 py-1.5 text-[11px] font-semibold text-primary">
+                Minéral atelier · {minerals.atelier}/100
+              </span>
+              {atelierGrowth.map((event) => (
+                <span
+                  key={event.id}
+                  className="rounded-full border border-border bg-surface px-3 py-1.5 text-[11px] text-muted"
+                >
+                  {event.label}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="shrink-0 rounded-2xl border border-border bg-surface p-4 lg:max-w-sm">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">
+              Prochaine porte
+            </p>
+            <p className="mt-2 text-sm leading-6 text-fg">
+              {nextGesture.mineral === "atelier"
+                ? "Votre organisme propose de rester ici et de créer une preuve d’apprentissage."
+                : nextGesture.line}
+            </p>
+            <Link
+              to={nextGesture.mineral === "atelier" ? "/learn/labs" : nextGesture.door as "/pronlab" | "/osez" | "/mission" | "/tandem"}
+              className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
+            >
+              {nextGesture.mineral === "atelier" ? "Ouvrir les labs" : "Suivre la prochaine porte"}
+              <ArrowRight className="size-3.5" />
+            </Link>
+          </div>
+        </div>
+      </section>
 
       <section className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]">
         <article className="rounded-2xl bg-fg p-5 text-primary-foreground shadow-[var(--shadow-border)] sm:p-6">
