@@ -42,16 +42,6 @@ function PlantPage() {
     },
   ];
   const stageProgress = Math.round(journey.progress * 100);
-  const mineralRows = [
-    { key: "mission", label: "Mission", value: minerals.mission },
-    { key: "parole", label: "Parole", value: minerals.parole },
-    { key: "pron", label: "Pron", value: minerals.pron },
-    { key: "social", label: "Lien", value: minerals.social },
-  ] as const;
-
-  const lowest = mineralRows.reduce((a, b) => (a.value <= b.value ? a : b));
-  const causal = causalNextGesture(minerals);
-
   return (
     <Page className="kosez-feature-page max-w-4xl">
       <Button variant="ghost" size="sm" asChild className="-ml-2">
