@@ -36,6 +36,7 @@ import {
 } from "./domain.server";
 import type { JsonObject } from "./backend.server";
 import { getAdminEventAttendance, recordEventAttendance } from "./event-attendance.server";
+import { getOrganizationGroups, createOrganizationGroup, setOrganizationGroupTeacher, addOrganizationGroupMember, removeOrganizationGroupMember, archiveOrganizationGroup } from "./organization-groups.server";
 import {
   getOrCreateConversation,
   getConversationMessages,
@@ -182,6 +183,70 @@ export const getTeacherWorkspaceOnServer = createServerFn({ method: "GET" })
 export const getGuardianWorkspaceOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => getGuardianWorkspace(context.userId));
+
+export const getOrganizationGroupsOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ organizationId: z.string().uuid() }))
+  .handler(async ({ context, data }) =>
+    getOrganizationGroups(context.userId, data.organizationId),
+  );
+
+export const createOrganizationGroupOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      organizationId: z.string().uuid(),
+      name: z.string().trim().min(2).max(100),
+      kind: z.enum(["class", "cohort"]),
+      teacherUserId: z.string().trim().min(1).max(200).nullable().optional(),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    createOrganizationGroup(context.userId, data),
+  );
+
+export const setOrganizationGroupTeacherOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      groupId: z.string().uuid(),
+      teacherUserId: z.string().trim().min(1).max(200).nullable(),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    setOrganizationGroupTeacher(context.userId, data),
+  );
+
+export const addOrganizationGroupMemberOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      groupId: z.string().uuid(),
+      learnerUserId: z.string().trim().min(1).max(200),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    addOrganizationGroupMember(context.userId, data),
+  );
+
+export const removeOrganizationGroupMemberOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      groupId: z.string().uuid(),
+      learnerUserId: z.string().trim().min(1).max(200),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    removeOrganizationGroupMember(context.userId, data),
+  );
+
+export const archiveOrganizationGroupOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ groupId: z.string().uuid() }))
+  .handler(async ({ context, data }) =>
+    archiveOrganizationGroup(context.userId, data.groupId),
+  );
 
 export const getOrganizationWorkspaceOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
