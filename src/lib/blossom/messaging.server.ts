@@ -1,6 +1,7 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { BlossomForbiddenError, createNotification, writeAuditEvent } from "./domain.server";
+import { conversationIdForRelationship } from "./communication";
 
 export type ConversationKind = "tandem" | "teacher" | "support";
 
@@ -108,31 +109,6 @@ async function assertRelationship(
   }
 }
 
-export function deterministicConversationId(
-  kind: Exclude<ConversationKind, "support">,
-  userA: string,
-  userB: string,
-) {
-  const [left, right] = [userA, userB].sort();
-  const digest = createHash("sha256")
-    .update("kosez-conversation:")
-    .update(kind)
-    .update(":")
-    .update(left)
-    .update(":")
-    .update(right)
-    .digest("hex")
-    .slice(0, 32);
-  return [
-    digest.slice(0, 8),
-    digest.slice(8, 12),
-    "5" + digest.slice(13, 16),
-    ((parseInt(digest.slice(16, 18), 16) & 0x3f) | 0x80).toString(16).padStart(2, "0") +
-      digest.slice(18, 20),
-    digest.slice(20),
-  ].join("-");
-}
-
 async function assertConversationAccess(userId: string, conversationId: string) {
   const sql = await getSql();
   const rows = await sql.query(
@@ -201,7 +177,7 @@ export async function getOrCreateConversation(
   await assertRelationship(userId, partnerUserId, input.kind);
 
   const sql = await getSql();
-  const id = deterministicConversationId(input.kind, userId, partnerUserId);
+  const id = conversationIdForRelationship(input.kind, userId, partnerUserId);
   await sql.query(
     "insert into blossom_conversation (id, kind, created_by_user_id) values ($1::uuid, $2, $3) on conflict (id) do nothing",
     [id, input.kind, userId],
