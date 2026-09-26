@@ -8,6 +8,7 @@ export type StageId =
 export type ActivityType =
   | "MISSION_COMPLETED"
   | "SPEAK_COMPLETED"
+  | "PRONLAB_ATTEMPTED"
   | "PRONLAB_COMPLETED"
   | "PRONLAB_MASTERY"
   | "CLASS_ATTENDED"
@@ -36,6 +37,7 @@ export type ActivityEvent = {
 export const POINTS: Record<ActivityType, number> = {
   MISSION_COMPLETED: 4,
   SPEAK_COMPLETED: 10,
+  PRONLAB_ATTEMPTED: 0,
   PRONLAB_COMPLETED: 8,
   PRONLAB_MASTERY: 6,
   CLASS_ATTENDED: 12,
