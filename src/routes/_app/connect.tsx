@@ -7,7 +7,7 @@ import { EVENTS, planAllows } from "@/lib/blossom/data";
 import { getConnectPeersOnServer } from "@/lib/blossom/domain.api";
 import { useBlossom } from "@/lib/blossom/store";
 import { formatShortDate } from "@/lib/utils";
-import { causalNextGesture } from "@/lib/blossom/organism";
+import { causalNextGesture, MINERAL_DEFINITIONS } from "@/lib/blossom/organism";
 import { ConversationPanel } from "@/components/app/conversation-panel";
 
 export const Route = createFileRoute("/_app/connect")({
@@ -107,7 +107,7 @@ function ConnectPage() {
           </div>
           <div className="shrink-0 rounded-2xl border border-border bg-surface-2/45 p-4 md:max-w-xs">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">Pourquoi cette porte</p>
-            <p className="mt-2 text-sm leading-6 text-fg">{socialNext.mineral === "social" ? socialNext.line : `Le prochain geste suit actuellement « ${socialNext.mineral} ». Le social reste lisible ici sans être présenté comme votre priorité actuelle.`}</p>
+            <p className="mt-2 text-sm leading-6 text-fg">{socialNext.mineral === "social" ? socialNext.line : `Le prochain geste suit actuellement « ${MINERAL_DEFINITIONS[socialNext.mineral].label} ». Le social reste lisible ici sans être présenté comme votre priorité actuelle.`}</p>
             <Link
               to="/tandem"
               className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
