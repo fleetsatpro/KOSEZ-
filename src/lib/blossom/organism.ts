@@ -20,14 +20,16 @@ export type MineralDefinition = {
   purpose: string;
   gesture: string;
   windowLabel: string;
+  writtenByLabel: string;
+  scoreMeaning: string;
 };
 
 export const MINERAL_DEFINITIONS: Record<MineralKey, MineralDefinition> = {
-  mission: { label: "Mission", door: "/mission", doorLabel: "Mission", writtenBy: ["MISSION_COMPLETED", "REAL_WORLD_BONUS"], purpose: "Agir dans une situation réelle.", gesture: "Un geste terrain réellement clôturé.", windowLabel: "14 jours" },
-  parole: { label: "Parole", door: "/osez", doorLabel: "OSEZ", writtenBy: ["SPEAK_COMPLETED"], purpose: "Prendre la parole, ici et maintenant.", gesture: "Une prise de parole réellement clôturée.", windowLabel: "14 jours" },
-  pron: { label: "Pron", door: "/pronlab", doorLabel: "Pron’Lab", writtenBy: ["PRONLAB_COMPLETED", "PRONLAB_MASTERY"], purpose: "Rendre un son plus disponible.", gesture: "Une pratique Pron’Lab ou une maîtrise observée.", windowLabel: "14 jours" },
-  social: { label: "Social", door: "/tandem", doorLabel: "Tandem", writtenBy: ["TANDEM_COMPLETED", "CLASS_ATTENDED", "EVENT_ATTENDED", "IMMERSION_ATTENDED"], purpose: "Créer du lien dans un cadre réel.", gesture: "Un tandem clôturé, une présence ou une immersion réellement enregistrée.", windowLabel: "14 jours" },
-  atelier: { label: "Atelier", door: "/learn/labs", doorLabel: "LEARN · Labs", writtenBy: ["GRAMMAR_COMPLETED", "LISTENING_COMPLETED", "WRITING_COMPLETED", "REVIEW_COMPLETED", "LIBRARY_COMPLETED", "HOMEWORK_COMPLETED"], purpose: "Consolider ce que vous apprenez.", gesture: "Une trace d’atelier terminée.", windowLabel: "14 jours" },
+  mission: { label: "Mission", door: "/mission", doorLabel: "Mission", writtenBy: ["MISSION_COMPLETED", "REAL_WORLD_BONUS"], purpose: "Agir dans une situation réelle.", gesture: "Un geste terrain réellement clôturé.", windowLabel: "14 jours", writtenByLabel: "Mission clôturée · bonus terrain", scoreMeaning: "Activité mission récente, plafonnée à l’échelle 100." },
+  parole: { label: "Parole", door: "/osez", doorLabel: "OSEZ", writtenBy: ["SPEAK_COMPLETED"], purpose: "Prendre la parole, ici et maintenant.", gesture: "Une prise de parole réellement clôturée.", windowLabel: "14 jours", writtenByLabel: "OSEZ clôturé", scoreMeaning: "Activité de prise de parole récente, plafonnée à l’échelle 100." },
+  pron: { label: "Pron", door: "/pronlab", doorLabel: "Pron’Lab", writtenBy: ["PRONLAB_COMPLETED", "PRONLAB_MASTERY"], purpose: "Rendre un son plus disponible.", gesture: "Une pratique Pron’Lab ou une maîtrise observée.", windowLabel: "14 jours", writtenByLabel: "Pron’Lab · maîtrise observée", scoreMeaning: "Pratique récente de Pron’Lab, plafonnée à l’échelle 100." },
+  social: { label: "Social", door: "/tandem", doorLabel: "Tandem", writtenBy: ["TANDEM_COMPLETED", "CLASS_ATTENDED", "EVENT_ATTENDED", "IMMERSION_ATTENDED"], purpose: "Créer du lien dans un cadre réel.", gesture: "Un tandem clôturé, une présence ou une immersion réellement enregistrée.", windowLabel: "14 jours", writtenByLabel: "Tandem · classe · événement · immersion", scoreMeaning: "Présences sociales récentes, plafonnées à l’échelle 100." },
+  atelier: { label: "Atelier", door: "/learn/labs", doorLabel: "LEARN · Labs", writtenBy: ["GRAMMAR_COMPLETED", "LISTENING_COMPLETED", "WRITING_COMPLETED", "REVIEW_COMPLETED", "LIBRARY_COMPLETED", "HOMEWORK_COMPLETED"], purpose: "Consolider ce que vous apprenez.", gesture: "Une trace d’atelier terminée.", windowLabel: "14 jours", writtenByLabel: "Grammaire · écoute · écrit · révision · bibliothèque · devoir", scoreMeaning: "Pratique d’atelier récente, plafonnée à l’échelle 100." },
 };
 
 export function mineralForActivity(type: ActivityType): MineralKey | null {
