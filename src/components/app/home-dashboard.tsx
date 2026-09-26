@@ -24,6 +24,8 @@ import { todayMissionForLevel } from "@/lib/blossom/mission-today";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { todayLabel } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { OrganismMineralsPanel } from "@/components/app/organism-minerals-panel";
+import { AmbientOrganismField } from "@/components/app/ambient-organism-field";
 
 /**
  * Home is not a dashboard.
@@ -66,6 +68,7 @@ export function HomeDashboard() {
   return (
     <div data-smoke="blossom-home" className="kosez-home relative min-h-[calc(100dvh-5.5rem)] lg:min-h-dvh">
       <div className="relative isolate min-h-[72dvh] overflow-hidden lg:min-h-dvh">
+        <AmbientOrganismField minerals={minerals} growthEvents={growthEvents} />
         <img
           src={plantSrc}
           alt=""
@@ -250,6 +253,10 @@ export function HomeDashboard() {
           </div>
         </div>
       </div>
+
+      <section className="border-t border-border/60 bg-bg px-5 lg:px-12">
+        <OrganismMineralsPanel minerals={minerals} growthEvents={growthEvents} title="L’organisme en une vue" />
+      </section>
 
       <nav
         className="border-t border-border/60 bg-bg px-5 py-6 lg:px-12"
