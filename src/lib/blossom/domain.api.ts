@@ -42,6 +42,7 @@ import {
   markConversationRead,
   reportMessage,
   getSupportInbox,
+  listConversations,
 } from "./messaging.server";
 import { getEvidenceTimeline } from "./evidence.server";
 
@@ -220,6 +221,10 @@ export const endTandemSessionOnServer = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) =>
     endTandemSession(context.userId, data.sessionId, data.status),
   );
+
+export const listConversationsOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => listConversations(context.userId));
 
 export const getOrCreateConversationOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
