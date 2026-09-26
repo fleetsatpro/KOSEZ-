@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Circle, LoaderCircle } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Eyebrow, Surface } from "@/components/app/primitives";
 import { MINERAL_DEFINITIONS, type MineralKey } from "@/lib/blossom/organism";
 import { Badge } from "@/components/ui/badge";
