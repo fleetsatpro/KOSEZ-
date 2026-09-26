@@ -62,7 +62,25 @@ async function assertRelationship(
   }
 
   const rows = await sql.query(
-    "select 1 from blossom_teacher_link where status = 'active' and ((teacher_user_id = $1 and learner_user_id = $2) or (teacher_user_id = $2 and learner_user_id = $1)) limit 1",
+    `select 1
+     from blossom_teacher_link
+     where status = 'active'
+       and ((teacher_user_id = $1 and learner_user_id = $2)
+         or (teacher_user_id = $2 and learner_user_id = $1))
+     union all
+     select 1
+     from blossom_organization_group g
+     join blossom_organization_group_member gm
+       on gm.group_id = g.id
+      and gm.user_id = $2
+     join blossom_organization_member staff
+       on staff.organization_id = g.organization_id
+      and staff.user_id = $1
+      and staff.status = 'active'
+      and staff.role = 'teacher'
+     where g.teacher_user_id = $1
+       and g.status = 'active'
+     limit 1`,
     [userId, partnerUserId],
   );
   if (!rows[0]) {
