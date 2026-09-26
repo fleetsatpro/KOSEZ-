@@ -268,10 +268,10 @@ export async function sendMessage(
       throw error;
     }
     rows = await sql.query(
-      "select id, conversation_id, sender_user_id, body, created_at
+      `select id, conversation_id, sender_user_id, body, created_at
        from blossom_message
        where sender_user_id = $1 and client_message_id = $2::uuid
-       limit 1",
+       limit 1`,
       [userId, input.clientMessageId],
     );
     if (!rows[0] || String(rows[0].conversation_id) !== input.conversationId) {
