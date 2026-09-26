@@ -6,7 +6,7 @@ import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { STAGES, nextStage } from "@/lib/blossom/engine";
-import { causalNextGesture, organismStatusLine } from "@/lib/blossom/organism";
+import { causalNextGesture, MINERAL_DOORS, MINERAL_ORDER, MINERAL_WINDOW_DAYS, organismStatusLine } from "@/lib/blossom/organism";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
@@ -41,15 +41,13 @@ function PlantPage() {
     },
   ];
   const stageProgress = Math.round(journey.progress * 100);
-  const mineralRows = [
-    { key: "mission", label: "Mission", value: minerals.mission },
-    { key: "parole", label: "Parole", value: minerals.parole },
-    { key: "pron", label: "Pron", value: minerals.pron },
-    { key: "social", label: "Lien", value: minerals.social },
-  ] as const;
-
-  const lowest = mineralRows.reduce((a, b) => (a.value <= b.value ? a : b));
   const causal = causalNextGesture(minerals);
+  const mineralRows = MINERAL_ORDER.map((key) => ({
+    key,
+    label: MINERAL_DOORS[key].label,
+    value: minerals[key],
+  }));
+  const lowest = mineralRows.find((row) => row.key === causal.mineral)!;
 
   return (
     <Page className="kosez-feature-page max-w-4xl">
@@ -168,23 +166,21 @@ function PlantPage() {
 
       {/* Minerals — soil of the organism */}
       <Surface className="mt-8">
-        <Eyebrow>Minéraux · 14 jours</Eyebrow>
+        <Eyebrow>Minéraux · {MINERAL_WINDOW_DAYS} jours</Eyebrow>
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-          Quatre nutriments. Le plus bas oriente le prochain geste utile — sans
-          culpabiliser. Aujourd'hui, le sol demande un peu plus de{" "}
-          <span className="font-medium text-fg">{lowest.label.toLowerCase()}</span>.
+          Cinq repères décrivent ce que vous avez réellement nourri. Le plus bas oriente le prochain geste utile — sans note ni niveau CEFR.
         </p>
         <p className="mt-3 max-w-xl text-sm leading-6 text-fg/90">
           {causal.line}{" "}
           <Link
-            to={causal.door as "/mission" | "/osez" | "/pronlab" | "/tandem"}
+            to={causal.door as "/mission" | "/osez" | "/pronlab" | "/tandem" | "/learn/labs"}
             className="font-semibold text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary"
           >
-            Ouvrir la porte
+            {causal.action}
           </Link>
           .
         </p>
-        <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
           {mineralRows.map((m) => (
             <div
               key={m.key}
