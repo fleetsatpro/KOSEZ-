@@ -17,8 +17,6 @@ import {
   courageDaysFromLog,
   courageRibbon,
   organismStatusLine,
-  causalNextGesture,
-  MINERAL_DEFINITIONS,
   strugglingFocus,
 } from "@/lib/blossom/organism";
 import { todayMissionForLevel } from "@/lib/blossom/mission-today";
@@ -45,7 +43,6 @@ export function HomeDashboard() {
 
   const todayMission = todayMissionForLevel(learner.level);
   const missionDone = hasSource(log, todayMission.id);
-  const nextGesture = causalNextGesture(minerals);
   const memoryOn = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
   const mission = personaliseMission(todayMission, memory, memoryOn);
