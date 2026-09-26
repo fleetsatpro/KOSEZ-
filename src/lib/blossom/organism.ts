@@ -328,7 +328,6 @@ export function growthEventForActivity(
       // Linkage/trace event only: the concrete lab or review event is the mineral writer.
       // Counting this event too would double-nourish one real gesture.
       return null;
-      };
     case "LIBRARY_COMPLETED":
       return {
         id,
