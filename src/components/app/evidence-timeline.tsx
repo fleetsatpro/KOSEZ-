@@ -130,11 +130,9 @@ export function EvidenceTimeline({
                   </div>
                   <p className="mt-3 text-sm leading-6 text-muted">{item.summary}</p>
                   {item.mineral ? <p className="mt-2 text-[11px] leading-5 text-subtle">Nourrit · {MINERAL_DEFINITIONS[item.mineral].label} · {MINERAL_DEFINITIONS[item.mineral].purpose}</p> : null}
-                  {item.sourceId ? (
-                    <p className="mt-2 truncate text-[11px] text-subtle">
-                      Source · {item.sourceId}
-                    </p>
-                  ) : null}
+                  <p className="mt-2 text-[11px] text-subtle">
+                    {item.actionKind === "replay" ? "Cette trace peut être reprise dans la porte ci-dessus." : "Cette trace est consultable ; elle n’est pas présentée comme une séance rejouable."}
+                  </p>
                 </div>
               </div>
             </li>
