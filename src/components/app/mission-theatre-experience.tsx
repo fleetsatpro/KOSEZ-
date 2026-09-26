@@ -13,7 +13,7 @@ import { AmbientParticles } from "@/components/app/ambient-particles";
 import { BlossomPlant } from "@/components/app/plant";
 import { Eyebrow, Wordmark } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
-import { LEARNER_MEMORY, planAllows } from "@/lib/blossom/data";
+import { LEARNER_MEMORY, planAllows, PRONLAB_SETS } from "@/lib/blossom/data";
 import {
   journeySnapshot,
   hasSource,
@@ -40,6 +40,7 @@ import {
   clearCurriculumLessonContext,
   readCurriculumLessonContext,
 } from "@/lib/blossom/curriculum-context";
+import { influenceFromState } from "@/lib/blossom/influence";
 import { causalNextGesture } from "@/lib/blossom/organism";
 import { MissionHistory, ProgressRail } from "./mission-theatre-panels";
 import {
@@ -83,6 +84,8 @@ export function MissionTheatreExperience() {
   const sessions = useBlossom((s) => s.missionSessions);
   const growthEvents = useBlossom((s) => s.growthEvents);
   const minerals = useBlossom((s) => s.mineralSnapshot);
+  const attempts = useBlossom((s) => s.pronlabAttempts);
+  const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
   const startMissionRun = useBlossom((s) => s.startMissionRun);
   const recordMissionAttempt = useBlossom((s) => s.recordMissionAttempt);
   const recordMissionSupport = useBlossom((s) => s.recordMissionSupport);
@@ -106,13 +109,24 @@ export function MissionTheatreExperience() {
   const recommendedChallenge = nextMissionChallenge(previousEvaluation?.outcome);
   const already = hasSource(log, todayMission.id);
   const memoryOn = planAllows(plan, "memory");
-  const memory = resolveMemory(useBlossom.getState().pronlabAttempts, LEARNER_MEMORY);
+  const memory = resolveMemory(attempts, LEARNER_MEMORY);
   const personalised = personaliseMission(todayMission, memory, memoryOn);
+  const influence = influenceFromState({
+    activityLog: log,
+    pronlabAttempts: attempts,
+    growthEvents,
+    phonemeLeaves,
+    missionSessions: sessions,
+    allItems: PRONLAB_SETS.flatMap((s) => s.items),
+    memory,
+    memoryOn,
+  });
   const objective = missionObjective(
     todayMission,
     memory,
     memoryOn,
     previousEvaluation?.outcome,
+    influence.mission,
   );
 
   const [step, setStep] = useState<MissionStep>(() => missionStepFromRun(run));
@@ -291,6 +305,7 @@ export function MissionTheatreExperience() {
   }
 
   if (step === "brief") {
+    const activeReasons = influence.mission.reasons.filter((r) => r.code !== "balanced");
     return (
       <div className="min-h-dvh bg-bg">
         <CinematicTop step={step} language={todayMission.language} />
@@ -315,6 +330,23 @@ export function MissionTheatreExperience() {
                 {personalised.title}
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-7 text-white/75 sm:text-lg">{personalised.prompt}</p>
+              {activeReasons.length > 0 ? (
+                <ul className="mt-4 max-w-2xl space-y-1.5" aria-label="Pourquoi cette scène s'adapte">
+                  {activeReasons.map((r) => (
+                    <li key={r.code + r.line.slice(0, 24)} className="text-xs leading-5 text-primary/85">
+                      <span className="font-semibold uppercase tracking-[0.12em] text-primary/60">
+                        {r.code.replace(/-/g, " ")} ·{" "}
+                      </span>
+                      {r.line}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {objective.adaptationDetail ? (
+                <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-white/50">
+                  Adaptation · {objective.adaptationDetail}
+                </p>
+              ) : null}
               <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3 text-xs text-white/65">
                 <span className="inline-flex items-center gap-2">
                   <MapPin className="size-3.5 text-primary" />
@@ -461,24 +493,19 @@ export function MissionTheatreExperience() {
               </p>
             </header>
             <ReflectionStage
-              draft={reflection}
+              reflection={reflection}
               onChange={setReflection}
               saved={saved}
-              run={run}
               onSave={saveReflection}
-              onRedo={() => {
-                const reopened = reopenMissionSession(todayMission.id);
-                if (!reopened) {
-                  toast("Impossible de reprendre cette session.");
-                  return;
-                }
+              onFinish={finishSession}
+              onReopen={() => {
+                reopenMissionSession(todayMission.id);
                 setStep("execute");
                 setSaved(false);
               }}
-              onFinish={finishSession}
               history={history}
             />
-            <MissionHistory history={history} runs={session?.runs ?? []} />
+            <MissionHistory history={history} />
           </div>
         ) : null}
       </div>
