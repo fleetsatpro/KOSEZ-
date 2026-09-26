@@ -187,14 +187,12 @@ export function summarisePronlabItem(
   const lastThree = scores.slice(-3);
   const bestScore = scores.length ? Math.max(...scores) : 0;
   const lastScore = scores.length ? scores[scores.length - 1]! : 0;
-  const practiceAttempts = mine.filter((a) => a.seconds >= 2);
-  const practiceMastered =
-    practiceAttempts.length >= 2 ||
-    (mine.length >= 3 && mine.reduce((s, a) => s + a.seconds, 0) >= 6);
   const scoreMastered =
     bestScore >= 90 ||
     (lastThree.length >= 3 && lastThree.every((s) => s >= 75));
-  const mastered = scoreMastered || (scored.length === 0 && practiceMastered);
+  // Rehearsal duration is practice evidence, not evidence of pronunciation
+  // mastery. Without a verified phonetic score, the learner remains unscored.
+  const mastered = scoreMastered;
   const struggling =
     scored.length >= 2 && bestScore < 60
       ? true
