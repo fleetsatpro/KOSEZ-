@@ -29,7 +29,7 @@ export const MINERAL_DEFINITIONS: Record<MineralKey, MineralDefinition> = {
   parole: { label: "Parole", door: "/osez", doorLabel: "OSEZ", writtenBy: ["SPEAK_COMPLETED"], purpose: "Prendre la parole, ici et maintenant.", gesture: "Une prise de parole réellement clôturée.", windowLabel: "14 jours", writtenByLabel: "OSEZ clôturé", scoreMeaning: "Activité de prise de parole récente, plafonnée à l’échelle 100." },
   pron: { label: "Pron", door: "/pronlab", doorLabel: "Pron’Lab", writtenBy: ["PRONLAB_COMPLETED", "PRONLAB_MASTERY"], purpose: "Rendre un son plus disponible.", gesture: "Une pratique Pron’Lab ou une maîtrise observée.", windowLabel: "14 jours", writtenByLabel: "Pron’Lab · maîtrise observée", scoreMeaning: "Pratique récente de Pron’Lab, plafonnée à l’échelle 100." },
   social: { label: "Social", door: "/tandem", doorLabel: "Tandem", writtenBy: ["TANDEM_COMPLETED", "CLASS_ATTENDED", "EVENT_ATTENDED", "IMMERSION_ATTENDED"], purpose: "Créer du lien dans un cadre réel.", gesture: "Un tandem clôturé, une présence ou une immersion réellement enregistrée.", windowLabel: "14 jours", writtenByLabel: "Tandem · classe · événement · immersion", scoreMeaning: "Présences sociales récentes, plafonnées à l’échelle 100." },
-  atelier: { label: "Atelier", door: "/learn/labs", doorLabel: "LEARN · Labs", writtenBy: ["GRAMMAR_COMPLETED", "LISTENING_COMPLETED", "WRITING_COMPLETED", "REVIEW_COMPLETED", "LIBRARY_COMPLETED", "HOMEWORK_COMPLETED"], purpose: "Consolider ce que vous apprenez.", gesture: "Une trace d’atelier terminée.", windowLabel: "14 jours", writtenByLabel: "Grammaire · écoute · écrit · révision · bibliothèque · devoir", scoreMeaning: "Pratique d’atelier récente, plafonnée à l’échelle 100." },
+  atelier: { label: "Atelier", door: "/learn/labs", doorLabel: "LEARN · Labs", writtenBy: ["GRAMMAR_COMPLETED", "LISTENING_COMPLETED", "WRITING_COMPLETED", "REVIEW_COMPLETED", "LIBRARY_COMPLETED", "HOMEWORK_COMPLETED", "CURRICULUM_EVIDENCE_RECORDED"], purpose: "Consolider ce que vous apprenez.", gesture: "Une trace d’atelier terminée.", windowLabel: "14 jours", writtenByLabel: "Grammaire · écoute · écrit · révision · bibliothèque · devoir", scoreMeaning: "Pratique d’atelier récente, plafonnée à l’échelle 100." },
 };
 
 export function mineralForActivity(type: ActivityType): MineralKey | null {
@@ -156,7 +156,7 @@ export function organismStatusLine(minerals: MineralSnapshot): string {
   const needs = order.filter((key) => minerals[key] === lowest);
   if (lowest >= 40) return "Les cinq minéraux restent en mouvement. Aucun n’est en retrait marqué.";
   if (needs.length > 1) {
-    return `Deux besoins sont à égalité : ${needs.map(mineralLabel).join(" · ")}. Un geste utile sur l’un des deux suffit.`;
+    return `Plusieurs besoins sont à égalité : ${needs.map(mineralLabel).join(" · ")}. Un geste utile sur l’un d’eux suffit.`;
   }
   switch (needs[0]) {
     case "pron": return "Pron’Lab peut remettre un son précis en circulation — une pratique courte suffit.";
@@ -325,7 +325,15 @@ export function growthEventForActivity(
         mineral: "atelier",
       };
     case "CURRICULUM_EVIDENCE_RECORDED":
-      return null;
+      return {
+        id,
+        at,
+        kind: "mineral",
+        sourceId,
+        intensity: 0.45,
+        label: "Une preuve de parcours rejoint l’atelier.",
+        mineral: "atelier",
+      };
     case "LIBRARY_COMPLETED":
       return {
         id,
