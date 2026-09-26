@@ -547,6 +547,10 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
       return;
     }
 
+    // Keep a second pass when mutations arrive during an active pass.
+    // This is important for causal chains such as LIBRARY_COMPLETED ->
+    // CURRICULUM_EVIDENCE_RECORDED: the dependent evidence must never be
+    // allowed to outrun the source mutation on the server.
     let rerunAfterSync = false;
 
     const run = async () => {
