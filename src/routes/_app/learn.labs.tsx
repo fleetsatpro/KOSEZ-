@@ -71,7 +71,7 @@ function GrammarLab({ level, focusTaskId }: { level: LabLevel; focusTaskId: stri
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const tasks = useMemo(() => {
     const all = GRAMMAR_TASKS.filter((item) => item.level === level);
-    return linkedTaskId ? all.filter((item) => item.id === linkedTaskId) : all;
+    return linkedTaskId && all.some((item) => item.id === linkedTaskId) ? all.filter((item) => item.id === linkedTaskId) : all;
   }, [level, linkedTaskId]);
   const [index, setIndex] = useState(0), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
   const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
@@ -140,7 +140,7 @@ function ListeningLab({ level, focusTaskId }: { level: LabLevel; focusTaskId: st
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const tasks = useMemo(() => {
     const all = LISTENING_TASKS.filter((item) => item.level === level);
-    return linkedTaskId ? all.filter((item) => item.id === linkedTaskId) : all;
+    return linkedTaskId && all.some((item) => item.id === linkedTaskId) ? all.filter((item) => item.id === linkedTaskId) : all;
   }, [level, linkedTaskId]);
   const [index, setIndex] = useState(0), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
   const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
