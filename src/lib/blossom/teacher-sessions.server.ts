@@ -40,7 +40,7 @@ async function assertTeacherLearnerRelation(teacherUserId: string, learnerUserId
   }
 }
 
-function mapSession(row: Record<string, unknown>): TeacherSession {
+function mapSession(row: Record<string, unknown>, includePrivateNotes: boolean): TeacherSession {
   return {
     id: String(row.id),
     teacherUserId: String(row.teacher_user_id),
@@ -50,7 +50,7 @@ function mapSession(row: Record<string, unknown>): TeacherSession {
     title: String(row.title),
     startsAt: new Date(String(row.starts_at)).toISOString(),
     durationMinutes: Number(row.duration_minutes),
-    notes: row.notes ? String(row.notes) : null,
+    notes: includePrivateNotes && row.notes ? String(row.notes) : null,
     status: String(row.status) as TeacherSession["status"],
     createdAt: new Date(String(row.created_at)).toISOString(),
     updatedAt: new Date(String(row.updated_at)).toISOString(),
@@ -61,6 +61,7 @@ async function loadTeacherSessions(
   whereSql: string,
   params: unknown[],
   limit: number,
+  includePrivateNotes: boolean,
 ): Promise<TeacherSession[]> {
   const sql = await getSql();
   const bounded = Math.min(50, Math.max(1, Math.round(limit)));
@@ -79,7 +80,7 @@ async function loadTeacherSessions(
      limit ${bounded}`,
     params,
   );
-  return rows.map(mapSession);
+  return rows.map((row) => mapSession(row, includePrivateNotes));
 }
 
 export async function getTeacherSessions(teacherUserId: string, limit = 20) {
@@ -87,6 +88,7 @@ export async function getTeacherSessions(teacherUserId: string, limit = 20) {
     "s.teacher_user_id = $1 and s.status = 'scheduled' and s.starts_at >= current_timestamp - interval '1 day'",
     [teacherUserId],
     limit,
+    true,
   );
 }
 
@@ -95,6 +97,7 @@ export async function getLearnerSessions(learnerUserId: string, limit = 20) {
     "s.learner_user_id = $1 and s.status = 'scheduled' and s.starts_at >= current_timestamp - interval '1 day'",
     [learnerUserId],
     limit,
+    false,
   );
 }
 
@@ -113,7 +116,12 @@ export async function getGuardianSessions(
   if (!access[0]) {
     throw new BlossomForbiddenError("Cette programmation n'est pas disponible pour ce compte.");
   }
-  return getLearnerSessions(learnerUserId, limit);
+  return loadTeacherSessions(
+    "s.learner_user_id = $1 and s.status = 'scheduled' and s.starts_at >= current_timestamp - interval '1 day'",
+    [learnerUserId],
+    limit,
+    false,
+  );
 }
 
 export async function createTeacherSession(
@@ -213,7 +221,10 @@ export async function cancelTeacherSession(teacherUserId: string, sessionId: str
     "select coalesce(nullif(display_name, ''), user_id) as name from blossom_profile where user_id = $1 limit 1",
     [String(rows[0].learner_user_id)],
   );
-  const session = mapSession({ ...rows[0], learner_name: String(profile[0]?.name ?? rows[0].learner_user_id) });
+  const session = mapSession(
+    { ...rows[0], learner_name: String(profile[0]?.name ?? rows[0].learner_user_id) },
+    true,
+  );
 
   await createNotification(session.learnerUserId, {
     kind: "learning",
