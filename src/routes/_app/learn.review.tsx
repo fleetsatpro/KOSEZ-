@@ -14,6 +14,12 @@ import {
   readCurriculumLessonContext,
 } from "@/lib/blossom/curriculum-context";
 
+type CeremonyState = {
+  event: GrowthEvent;
+  minerals: MineralSnapshot;
+  previousMinerals: MineralSnapshot;
+};
+
 export const Route = createFileRoute("/_app/learn/review")({
   component: Review,
 });
