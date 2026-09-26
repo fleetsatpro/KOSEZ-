@@ -53,7 +53,7 @@ function TandemHub() {
   const minerals = useMemo(() => computeMinerals(log), [log]);
   const nextGesture = causalNextGesture(minerals);
   const socialGrowth = growthEvents
-    .filter((g) => g.mineral === "social" || g.kind === "flower")
+    .filter((g) => g.mineral === "social")
     .slice(0, 3);
 
   const me = useMemo(
