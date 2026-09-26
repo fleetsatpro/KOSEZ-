@@ -36,7 +36,7 @@ test("recent growth creates an explicit transfer consequence", () => {
 });
 
 test("tandem struggle prompt follows the selected learning language", () => {
-  const base = {
+  const base: Omit<Parameters<typeof computeInfluence>[0], "languageId"> = {
     log: [],
     attempts: [{
       id: "a1",
@@ -66,7 +66,7 @@ test("tandem struggle prompt follows the selected learning language", () => {
     memory: neutralMemory,
     memoryOn: false,
   };
-  const strugglingBase = {
+  const strugglingBase: Omit<Parameters<typeof computeInfluence>[0], "languageId"> = {
     ...base,
     attempts: [
       {
