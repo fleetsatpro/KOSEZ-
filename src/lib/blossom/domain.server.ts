@@ -79,6 +79,7 @@ export type TeacherWorkspaceLearner = {
   activitiesThisWeek: number;
   speakingMinutes: number;
   pronlabAttempts: number;
+  pronlabScoredAttempts: number;
   pronlabBest: number;
 };
 
@@ -129,6 +130,7 @@ export async function getTeacherWorkspace(userId: string): Promise<TeacherWorksp
     activitiesThisWeek: Number(row.activities_this_week ?? 0),
     speakingMinutes: Number(row.speaking_minutes ?? 0),
     pronlabAttempts: Number(row.pronlab_attempts ?? 0),
+    pronlabScoredAttempts: Number(row.pronlab_scored_attempts ?? 0),
     pronlabBest: Number(row.pronlab_best ?? 0),
   }));
 }
