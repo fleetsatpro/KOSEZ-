@@ -162,7 +162,11 @@ export function LearnerDetail({
                 <li key={attempt.id} className="flex items-center justify-between gap-3 rounded-xl bg-surface-2/40 px-3 py-3 text-sm">
                   <span className="min-w-0 truncate">{attempt.itemId}</span>
                   <span className="shrink-0 text-xs text-muted">
-                    {attempt.assessment === "capture-only" ? `Capture · ${attempt.seconds}s` : `${attempt.score}/100`}
+                    {attempt.assessment === "capture-only"
+                      ? `Capture · ${attempt.seconds}s`
+                      : attempt.assessment === "transcript"
+                        ? `Transcription · ${attempt.seconds}s`
+                        : `${attempt.score}/100`}
                   </span>
                 </li>
               ))}
