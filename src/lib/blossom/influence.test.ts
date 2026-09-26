@@ -66,8 +66,16 @@ test("tandem struggle prompt follows the selected learning language", () => {
     memory: neutralMemory,
     memoryOn: false,
   };
-  const es = computeInfluence({ ...base, languageId: "es" });
-  const fr = computeInfluence({ ...base, languageId: "fr" });
+  const strugglingBase = {
+    ...base,
+    attempts: [{
+      ...base.attempts[0],
+      score: 20,
+      createdAt: new Date().toISOString(),
+    }],
+  };
+  const es = computeInfluence({ ...strugglingBase, languageId: "es" });
+  const fr = computeInfluence({ ...strugglingBase, languageId: "fr" });
   assert.match(es.tandem.openPrompt ?? "", /¿Puedes/);
   assert.match(fr.tandem.openPrompt ?? "", /Tu peux/);
 });
