@@ -10,6 +10,9 @@ import {
   causalNextGesture,
   pushGrowthEvent,
   weekKey,
+  MINERAL_DEFINITIONS,
+  MINERAL_ORDER,
+  mineralForActivity,
 } from "./organism.ts";
 
 describe("organism minerals", () => {
@@ -59,6 +62,20 @@ describe("organism minerals", () => {
   });
 });
 
+describe("mineral contract", () => {
+  it("has one owner mineral for every declared writer event", () => {
+    const owners = new Map<string, string>();
+    for (const mineral of MINERAL_ORDER) {
+      for (const type of MINERAL_DEFINITIONS[mineral].writtenBy) {
+        const prior = owners.get(type);
+        assert.equal(prior, undefined, "duplicate mineral writer: " + type);
+        owners.set(type, mineral);
+        assert.equal(mineralForActivity(type), mineral);
+      }
+    }
+    assert.equal(mineralForActivity("CURRICULUM_EVIDENCE_RECORDED"), null);
+  });
+});
 describe("growth events", () => {
   it("maps mission to root", () => {
     const g = growthEventForActivity(
