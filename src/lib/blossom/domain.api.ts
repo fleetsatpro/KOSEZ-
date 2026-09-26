@@ -33,6 +33,13 @@ import {
   startTandemSession,
   logTandemPrompt,
   endTandemSession,
+  getMessageContacts,
+  getConversations,
+  getConversation,
+  startConversation,
+  sendMessage,
+  markConversationRead,
+  getProofTimeline,
 } from "./domain.server";
 import type { JsonObject } from "./backend.server";
 import { getAdminEventAttendance, recordEventAttendance } from "./event-attendance.server";
@@ -169,6 +176,60 @@ export const getConnectPeersOnServer = createServerFn({ method: "GET" })
 export const getTandemCandidatesOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => getTandemCandidates(context.userId));
+
+export const getMessageContactsOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getMessageContacts(context.userId));
+
+export const getConversationsOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getConversations(context.userId));
+
+export const getConversationOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ conversationId: z.string().uuid() }))
+  .handler(async ({ context, data }) =>
+    getConversation(context.userId, data.conversationId),
+  );
+
+export const startConversationOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      kind: z.enum(["teacher", "guardian", "tandem"]),
+      targetUserId: z.string().trim().min(1).max(200),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    startConversation(context.userId, data),
+  );
+
+export const sendMessageOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      conversationId: z.string().uuid(),
+      body: z.string().trim().min(1).max(4000),
+      clientMessageId: z.string().uuid().optional(),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    sendMessage(context.userId, data),
+  );
+
+export const markConversationReadOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ conversationId: z.string().uuid() }))
+  .handler(async ({ context, data }) =>
+    markConversationRead(context.userId, data.conversationId),
+  );
+
+export const getProofTimelineOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ limit: z.number().int().min(1).max(100).optional() }).optional())
+  .handler(async ({ context, data }) =>
+    getProofTimeline(context.userId, data?.limit ?? 40),
+  );
 
 export const getTandemSessionOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
