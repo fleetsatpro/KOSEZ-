@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 /**
  * Home is not a dashboard.
  * One living stage. One gesture. Atmosphere, not widgets.
+ * Causality is visible: every completed gesture leaves a mark the plant can show.
  */
 export function HomeDashboard() {
   const learner = useBlossom((s) => s.learner);
@@ -33,6 +34,7 @@ export function HomeDashboard() {
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const plan = useBlossom((s) => s.plan);
   const minerals = useBlossom((s) => s.mineralSnapshot);
+  const growthEvents = useBlossom((s) => s.growthEvents);
   const journey = useJourney();
 
   const todayMission = todayMissionForLevel(learner.level);
@@ -50,6 +52,10 @@ export function HomeDashboard() {
     ? learner.firstName.slice(0, 1).toUpperCase()
     : "K";
   const progress = Math.max(4, Math.round(journey.progress * 100));
+
+  const recentGrowth = [...growthEvents]
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, 3);
 
   return (
     <div data-smoke="blossom-home" className="kosez-home relative min-h-[calc(100dvh-5.5rem)] lg:min-h-dvh">
@@ -74,12 +80,12 @@ export function HomeDashboard() {
               {todayLabel()}
             </p>
             <h1 className="mt-2 font-display text-3xl tracking-tight text-white sm:text-4xl">
-              {learner.firstName}
+              {learner.firstName || "Votre espace"}
             </h1>
           </div>
           <Link
             to="/moi"
-            aria-label="Ouvrir MOI"
+            aria-label="Ouvrir MOI — identité, plan et preuves"
             className="shrink-0 overflow-hidden rounded-full p-0.5 ring-1 ring-white/20 transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:ring-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
           >
             {learner.avatar ? (
@@ -96,7 +102,7 @@ export function HomeDashboard() {
           </Link>
         </header>
 
-        <div className="relative z-10 mx-auto flex max-w-2xl flex-col items-center px-5 pt-[12vh] text-center lg:pt-[18vh]">
+        <div className="relative z-10 mx-auto flex max-w-2xl flex-col items-center px-5 pt-[10vh] text-center lg:pt-[15vh]">
           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-primary/90">
             {journey.stage.label}
           </p>
@@ -104,23 +110,45 @@ export function HomeDashboard() {
             {leoLine}
           </p>
           <p className="mt-4 max-w-md text-sm leading-6 text-white/55">
-            Un geste utile vaut mieux qu'une longue séance.
+            Un geste utile vaut mieux qu'une longue séance. La plante grandit uniquement parce que vous avez agi.
           </p>
+
+          {recentGrowth.length > 0 ? (
+            <ul
+              className="mt-5 flex flex-wrap justify-center gap-2"
+              aria-label="Gestes récents qui ont nourri la plante"
+            >
+              {recentGrowth.map((g) => (
+                <li
+                  key={g.id}
+                  className="rounded-full border border-white/15 bg-black/40 px-3 py-1 text-[11px] text-white/75 backdrop-blur-sm"
+                >
+                  {g.label}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-5 text-[11px] text-white/40">
+              Aucun geste encore — le premier fera germer la graine.
+            </p>
+          )}
         </div>
 
         <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-8 lg:px-12 lg:pb-12">
           <div className="mb-6 flex flex-col items-center gap-2">
             <ul
               className="flex flex-wrap justify-center gap-1"
-              aria-label={`${spoken} jours de parole sur 28`}
+              aria-label={`${spoken} jours de parole sur 28 — sans flamme, sans anxiété`}
             >
               {ribbon.map((on, i) => (
                 <li
                   key={i}
                   title={on ? "Geste ce jour-là" : "Terre en jachère"}
                   className={cn(
-                    "size-1.5 rounded-full sm:size-2",
-                    on ? "bg-primary shadow-[0_0_8px_rgba(217,255,105,0.55)]" : "bg-white/15",
+                    "size-1.5 rounded-full sm:size-2 transition-shadow duration-300",
+                    on
+                      ? "bg-primary shadow-[0_0_8px_rgba(217,255,105,0.55)]"
+                      : "bg-white/15",
                   )}
                 />
               ))}
@@ -130,7 +158,7 @@ export function HomeDashboard() {
             </p>
           </div>
 
-          <div className="mx-auto max-w-lg rounded-3xl border border-white/10 bg-black/40 p-5 shadow-[0_24px_80px_-24px_rgba(0,0,0,0.8)] backdrop-blur-md sm:p-6">
+          <div className="mx-auto max-w-lg rounded-3xl border border-white/10 bg-black/40 p-5 shadow-[0_24px_80px_-24px_rgba(0,0,0,0.8)] backdrop-blur-md sm:p-6 magnetic-surface">
             <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
               <Leaf className="size-3 text-primary" />
               <span>Geste du jour</span>
@@ -142,7 +170,7 @@ export function HomeDashboard() {
               {mission.title}
             </h2>
             <p className="mt-2 text-sm leading-6 text-white/65">{mission.prompt}</p>
-            {memoryOn ? (
+            {memoryOn && memory.hesitation ? (
               <p className="mt-3 text-xs leading-5 text-white/40">
                 Léo retient : {memory.hesitation}
               </p>
@@ -162,9 +190,13 @@ export function HomeDashboard() {
             {missionDone ? (
               <p className="mt-3 flex items-center gap-2 text-sm text-primary/90">
                 <Check className="size-3.5" />
-                Noté. La terre s'en souvient.
+                Noté. La terre s'en souvient — la plante a déjà bougé.
               </p>
-            ) : null}
+            ) : (
+              <p className="mt-3 text-xs text-white/35">
+                Ce geste écrira une racine visible sur votre BLOSSOM.
+              </p>
+            )}
           </div>
 
           <div className="mx-auto mt-5 max-w-lg">
@@ -178,7 +210,7 @@ export function HomeDashboard() {
               <span>
                 {upcoming
                   ? `${journey.remaining} avant ${upcoming.label.toLowerCase()}`
-                  : "Stade ultime"}
+                  : "Stade ultime — rayonnez"}
               </span>
             </div>
             <div
@@ -187,10 +219,10 @@ export function HomeDashboard() {
               aria-valuenow={progress}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-label="Progression BLOSSOM"
+              aria-label="Progression BLOSSOM — points gagnés uniquement par des gestes réels"
             >
               <div
-                className="h-full rounded-full bg-primary/90 transition-[width] duration-500"
+                className="h-full rounded-full bg-primary/90 transition-[width] duration-500 plant-breathe"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -200,19 +232,21 @@ export function HomeDashboard() {
 
       <nav
         className="border-t border-border/60 bg-bg px-5 py-6 lg:px-12"
-        aria-label="Portes secondaires"
+        aria-label="Portes secondaires — chaque porte nourrit un minéral précis"
       >
-        <div className="mx-auto mb-4 max-w-2xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center sm:text-left">
+        <div className="mx-auto mb-4 max-w-2xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center sm:text-left magnetic-surface">
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
             Prochain geste causal
           </p>
           <p className="mt-1 text-sm text-fg/90">{nextGesture.line}</p>
+          <p className="mt-1 text-[11px] text-subtle">
+            Minéral le plus bas : <span className="text-primary">{nextGesture.mineral}</span> — c'est pourquoi cette porte est proposée maintenant.
+          </p>
           <Link
             to={nextGesture.door as "/osez" | "/pronlab" | "/mission" | "/tandem"}
             className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
           >
-            Ouvrir
-            <span className="text-subtle">· {nextGesture.mineral}</span>
+            Ouvrir cette porte
             <ArrowRight className="size-3.5" />
           </Link>
         </div>
@@ -247,7 +281,7 @@ export function HomeDashboard() {
               className="inline-flex items-center gap-1.5 text-muted transition-colors hover:text-primary"
             >
               Végétal
-              <span className="text-subtle">· le parcours</span>
+              <span className="text-subtle">· le parcours causal</span>
             </Link>
           </li>
           <li className="hidden text-border sm:inline" aria-hidden>
