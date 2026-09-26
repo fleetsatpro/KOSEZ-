@@ -642,9 +642,13 @@ export const useBlossom = create<AppState>()(
         if (!item) return null;
         const before = summarisePronlabItem(itemId, get().pronlabAttempts);
         const score = 0;
+        const requestedAssessment =
+          evidenceMetadata?.assessment === "transcript"
+            ? "transcript"
+            : "capture-only";
         const metadata = {
           ...(evidenceMetadata ?? {}),
-          assessment: "capture-only",
+          assessment: requestedAssessment,
           provider: "speech-evidence",
         };
         const mutation = createMutation({
