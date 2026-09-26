@@ -31,7 +31,7 @@ export const MINERAL_ORDER: readonly MineralKey[] = ["mission", "parole", "pron"
 export const MINERAL_DEFINITIONS: Record<MineralKey, MineralDefinition> = {
   mission: { label: "Mission", door: "/mission", doorLabel: "Mission", writtenBy: ["MISSION_COMPLETED", "REAL_WORLD_BONUS"], cap: 8, terrainBonus: true, purpose: "Agir dans une situation réelle.", gesture: "Un geste terrain réellement clôturé.", windowLabel: "14 jours", writtenByLabel: "Mission clôturée · bonus terrain", scoreMeaning: "Activité mission récente, plafonnée à l’échelle 100." },
   parole: { label: "Parole", door: "/osez", doorLabel: "OSEZ", writtenBy: ["SPEAK_COMPLETED"], cap: 6, purpose: "Prendre la parole, ici et maintenant.", gesture: "Une prise de parole réellement clôturée.", windowLabel: "14 jours", writtenByLabel: "OSEZ clôturé", scoreMeaning: "Activité de prise de parole récente, plafonnée à l’échelle 100." },
-  pron: { label: "Pron", door: "/pronlab", doorLabel: "Pron’Lab", writtenBy: ["PRONLAB_COMPLETED", "PRONLAB_MASTERY"], cap: 8, purpose: "Rendre un son plus disponible.", gesture: "Une pratique Pron’Lab ou une maîtrise observée.", windowLabel: "14 jours", writtenByLabel: "Pron’Lab · maîtrise observée", scoreMeaning: "Pratique récente de Pron’Lab, plafonnée à l’échelle 100." },
+  pron: { label: "Pron", door: "/pronlab", doorLabel: "Pron’Lab", writtenBy: ["PRONLAB_ATTEMPTED", "PRONLAB_COMPLETED", "PRONLAB_MASTERY"], cap: 8, purpose: "Rendre un son plus disponible.", gesture: "Une tentative Pron’Lab, un set terminé ou une maîtrise observée.", windowLabel: "14 jours", writtenByLabel: "Tentative · set terminé · maîtrise observée", scoreMeaning: "Pratique récente de Pron’Lab, plafonnée à l’échelle 100." },
   social: { label: "Social", door: "/tandem", doorLabel: "Tandem", writtenBy: ["TANDEM_COMPLETED", "CLASS_ATTENDED", "EVENT_ATTENDED", "IMMERSION_ATTENDED"], cap: 5, purpose: "Créer du lien dans un cadre réel.", gesture: "Un tandem clôturé, une présence ou une immersion réellement enregistrée.", windowLabel: "14 jours", writtenByLabel: "Tandem · classe · événement · immersion", scoreMeaning: "Présences sociales récentes, plafonnées à l’échelle 100." },
   atelier: { label: "Atelier", door: "/learn/labs", doorLabel: "LEARN · Labs", writtenBy: ["GRAMMAR_COMPLETED", "LISTENING_COMPLETED", "WRITING_COMPLETED", "REVIEW_COMPLETED", "LIBRARY_COMPLETED", "HOMEWORK_COMPLETED"], cap: 10, purpose: "Consolider ce que vous apprenez.", gesture: "Une trace d’atelier terminée.", windowLabel: "14 jours", writtenByLabel: "Grammaire · écoute · écrit · révision · bibliothèque · devoir", scoreMeaning: "Pratique d’atelier récente, plafonnée à l’échelle 100." },
 };
@@ -252,6 +252,16 @@ export function growthEventForActivity(
         sourceId,
         intensity: 0.88,
         label: pickLabel(LEAF_LABELS, seed),
+        mineral: "pron",
+      };
+    case "PRONLAB_ATTEMPTED":
+      return {
+        id,
+        at,
+        kind: "leaf",
+        sourceId,
+        intensity: 0.28,
+        label: "Une tentative Pron’Lab nourrit le son.",
         mineral: "pron",
       };
     case "PRONLAB_COMPLETED":
