@@ -19,7 +19,7 @@ export type EvidenceTimelineItem = {
 };
 
 
-function activityDescriptor(type: string) {
+export function activityDescriptor(type: string) {
   switch (type) {
     case "MISSION_COMPLETED": return { title: "Mission accomplie", summary: "Une mission réellement clôturée.", evidenceClass: "action" as const, route: "/mission", mineral: "mission" as const };
     case "REAL_WORLD_BONUS": return { title: "Geste terrain", summary: "Une action réelle enregistrée.", evidenceClass: "action" as const, route: "/mission", mineral: "mission" as const };
