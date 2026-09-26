@@ -69,7 +69,7 @@ export function HomeDashboard() {
   return (
     <div data-smoke="blossom-home" className="kosez-home relative min-h-[calc(100dvh-5.5rem)] lg:min-h-dvh">
       <div className="relative isolate min-h-[72dvh] overflow-hidden lg:min-h-dvh">
-        <AmbientOrganismField minerals={minerals} growthEvents={growthEvents} />
+        <AmbientOrganismField minerals={minerals} />
         <img
           src={plantSrc}
           alt=""
