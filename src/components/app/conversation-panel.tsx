@@ -3,7 +3,7 @@ import { Flag, LoaderCircle, MessageCircle, Send } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Eyebrow, Surface } from "@/components/app/primitives";
-import { getConversationMessagesOnServer, getOrCreateConversationOnServer, markConversationReadOnServer, reportConversationMessageOnServer, sendConversationMessageOnServer } from "@/lib/blossom/domain.api";
+import { getConversationMessagesOnServer, getOrCreateConversationOnServer, markConversationReadOnServer, reportConversationMessageOnServer, sendConversationMessageOnServer, getSupportInboxOnServer } from "@/lib/blossom/domain.api";
 import type { ConversationKind, ConversationMessage } from "@/lib/blossom/messaging.server";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 
@@ -132,6 +132,83 @@ export function ConversationPanel({
             <p className="mt-2 text-[11px] leading-5 text-subtle">Les messages sont enregistrés côté serveur uniquement après confirmation de l’envoi.</p>
           </div>
         </>
+      )}
+    </Surface>
+  );
+}
+
+
+export function SupportInbox({
+  selectedId,
+  onSelect,
+}: {
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const [items, setItems] = useState<Awaited<ReturnType<typeof getSupportInboxOnServer>>>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    try {
+      setItems(await getSupportInboxOnServer());
+    } catch {
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void load();
+    const timer = window.setInterval(() => void load(), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <Surface className="mt-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <Eyebrow>Support</Eyebrow>
+          <h2 className="mt-2 font-display text-2xl">Demandes réelles</h2>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => void load()}>
+          Actualiser
+        </Button>
+      </div>
+
+      {loading ? (
+        <p className="mt-5 text-sm text-muted">Chargement…</p>
+      ) : items.length === 0 ? (
+        <p className="mt-5 text-sm text-muted">Aucune conversation d’assistance ouverte.</p>
+      ) : (
+        <div className="mt-5 space-y-2">
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelect(item.id)}
+              className={
+                selectedId === item.id
+                  ? "flex min-h-12 w-full items-center gap-3 rounded-xl bg-primary/10 px-3 text-left"
+                  : "flex min-h-12 w-full items-center gap-3 rounded-xl bg-surface-2/50 px-3 text-left hover:bg-surface-2"
+              }
+            >
+              <span className="size-2 shrink-0 rounded-full bg-primary" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">{item.peerName}</span>
+                <span className="mt-0.5 block truncate text-xs text-muted">
+                  {item.lastMessageBody ?? "Aucun message"}
+                </span>
+              </span>
+              {item.unreadCount ? (
+                <span className="rounded-full bg-primary px-2 py-1 text-[10px] font-bold text-primary-foreground">
+                  {item.unreadCount}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </div>
       )}
     </Surface>
   );
