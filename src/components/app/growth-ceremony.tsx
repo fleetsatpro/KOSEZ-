@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
-import { causalNextGesture, MINERAL_DEFINITIONS } from "@/lib/blossom/organism";
+import { causalNextGesture, MINERAL_DEFINITIONS, MINERAL_ORDER } from "@/lib/blossom/organism";
 import { cn } from "@/lib/utils";
 
 
@@ -79,7 +79,7 @@ export function GrowthCeremony({
 
   const deltas = useMemo(() => {
     if (!previousMinerals) return null;
-    const keys = ["mission", "parole", "pron", "social", "atelier"] as const;
+    const keys = MINERAL_ORDER;
     return keys
       .map((k) => ({
         key: k,
@@ -145,7 +145,7 @@ export function GrowthCeremony({
           </div>
 
           <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.22em] text-subtle">
-            {meta.title} · intensité {Math.round(event.intensity * 100)}%
+            {meta.title}
           </p>
           <h2 className="mt-2 font-display text-2xl tracking-tight text-fg">
             {event.label}
@@ -174,7 +174,7 @@ export function GrowthCeremony({
                   className="rounded-full border border-border/70 bg-surface-2/80 px-3 py-1 text-[11px] tabular-nums text-fg"
                 >
                   <span className="uppercase tracking-[0.12em] text-subtle">
-                    {d.key}
+                    {MINERAL_DEFINITIONS[d.key].label}
                   </span>{" "}
                   <span className="ml-1 font-semibold text-primary">
                     {d.delta > 0 ? `+${d.delta}` : d.delta}
