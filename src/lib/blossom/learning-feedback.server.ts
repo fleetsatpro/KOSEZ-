@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
+import type { JsonObject } from "./backend.server";
 import {
   BlossomForbiddenError,
   createNotification,
@@ -23,7 +24,7 @@ export type LearningFeedbackBundle = {
   kind: "grammar" | "listening" | "writing" | "review";
   content: string;
   checks: string[];
-  result: Record<string, unknown>;
+  result: JsonObject;
   createdAt: string;
   feedback: LearningFeedbackRow | null;
 };
