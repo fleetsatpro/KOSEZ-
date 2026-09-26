@@ -39,6 +39,7 @@ import {
   clearCurriculumLessonContext,
   readCurriculumLessonContext,
 } from "@/lib/blossom/curriculum-context";
+import { causalNextGesture } from "@/lib/blossom/organism";
 import { MissionHistory, ProgressRail } from "./mission-theatre-panels";
 import {
   ExecuteStage,
@@ -79,6 +80,8 @@ export function MissionTheatreExperience() {
   const log = useBlossom((s) => s.activityLog);
   const plan = useBlossom((s) => s.plan);
   const sessions = useBlossom((s) => s.missionSessions);
+  const growthEvents = useBlossom((s) => s.growthEvents);
+  const minerals = useBlossom((s) => s.mineralSnapshot);
   const startMissionRun = useBlossom((s) => s.startMissionRun);
   const recordMissionAttempt = useBlossom((s) => s.recordMissionAttempt);
   const recordMissionSupport = useBlossom((s) => s.recordMissionSupport);
@@ -181,6 +184,9 @@ export function MissionTheatreExperience() {
     const pointDelta = growth.after.points - growth.before.points;
     const stageChanged = growth.after.stage.id !== growth.before.stage.id;
     const progressDelta = Math.round((growth.after.progress - growth.before.progress) * 100);
+    const latestGrowth = growthEvents[0] ?? null;
+    const nextDoor = causalNextGesture(minerals);
+
     return (
       <div className="min-h-[100svh] bg-bg px-5 py-8 sm:px-8 lg:px-12">
         <div className="mx-auto flex min-h-[calc(100svh-4rem)] max-w-5xl flex-col justify-center">
@@ -192,8 +198,13 @@ export function MissionTheatreExperience() {
               Un geste. Une racine.
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-muted sm:text-base">
-              Votre action vient d'être enregistrée. Voici la conséquence — sans score à jouer.
+              Votre action vient d'être enregistrée. Voici la conséquence exacte — sans score à jouer, sans flamme à protéger.
             </p>
+            {latestGrowth ? (
+              <p className="mx-auto mt-3 max-w-md rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm text-primary">
+                {latestGrowth.label}
+              </p>
+            ) : null}
           </div>
           <div className="mt-10 grid gap-4 md:grid-cols-2">
             <div className="rounded-[26px] border border-border bg-surface p-4">
@@ -209,9 +220,10 @@ export function MissionTheatreExperience() {
                 points={growth.before.points}
                 nextAt={growth.before.stage.nextAt}
                 remaining={growth.before.remaining}
+                showCausal={false}
               />
             </div>
-            <div className="rounded-[26px] border border-primary/15 bg-surface p-4">
+            <div className="rounded-[26px] border border-primary/15 bg-surface p-4 magnetic-surface">
               <div className="flex items-center justify-between px-1 pb-3">
                 <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Après</span>
                 <span className="text-xs tabular-nums text-primary">+{pointDelta} pts</span>
@@ -224,6 +236,8 @@ export function MissionTheatreExperience() {
                 points={growth.after.points}
                 nextAt={growth.after.stage.nextAt}
                 remaining={growth.after.remaining}
+                growthEvents={growthEvents}
+                showCausal
               />
             </div>
           </div>
@@ -244,10 +258,22 @@ export function MissionTheatreExperience() {
                   ? "Le geste tient. Maintenant, on le rend plus disponible."
                   : "On garde la même cible et on la rend plus facile."}
             </p>
+            <p className="mt-4 text-[11px] leading-5 text-subtle">
+              Minéral le plus bas maintenant : <span className="text-primary">{nextDoor.mineral}</span> — {nextDoor.line}
+            </p>
           </div>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Button size="lg" onClick={() => navigate({ to: "/" })} className="w-full sm:w-auto">
               Retour à l'accueil
+              <ArrowRight className="size-4" />
+            </Button>
+            <Button
+              size="lg"
+              variant="secondary"
+              onClick={() => navigate({ to: nextDoor.door as "/" })}
+              className="w-full sm:w-auto"
+            >
+              Ouvrir la porte suivante
               <ArrowRight className="size-4" />
             </Button>
           </div>
@@ -423,45 +449,23 @@ export function MissionTheatreExperience() {
                 Gardez le geste. Laissez tomber le reste.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-muted sm:text-lg">
-                Trois repères honnêtes. Puis BLOSSOM choisit la prochaine petite pression.
+                Trois repères honnêtes. Puis BLOSSOM choisit la prochaine petite pression — et écrit la racine.
               </p>
             </header>
             <ReflectionStage
-              draft={reflection}
+              reflection={reflection}
+              onChange={setReflection}
               saved={saved}
-              run={run}
-              history={history}
-              onChange={(next) => {
-                setReflection(next);
-                setSaved(false);
-              }}
               onSave={saveReflection}
-              onRedo={() => {
-                const reopened = reopenMissionSession(todayMission.id);
-                if (!reopened) {
-                  toast("Cette session ne peut plus être reprise.");
-                  return;
-                }
-                setSaved(false);
-                setReflection(DEFAULT_REFLECTION);
-                setStep("execute");
-              }}
               onFinish={finishSession}
+              onReopen={() => {
+                reopenMissionSession(todayMission.id);
+                setStep("execute");
+                setSaved(false);
+              }}
+              history={history}
             />
-            {saved ? (
-              <details className="rounded-2xl border border-border bg-surface shadow-[var(--shadow-border)]">
-                <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 px-4 [&::-webkit-details-marker]:hidden">
-                  <span className="flex size-7 items-center justify-center rounded-lg bg-surface-2 text-primary">
-                    <Check className="size-3.5" />
-                  </span>
-                  <span className="flex-1 text-sm font-semibold">Voir le journal de cette mission</span>
-                  <ChevronDown className="size-4 text-subtle" />
-                </summary>
-                <div className="border-t border-border p-4">
-                  <MissionHistory history={history} runs={session?.runs ?? []} />
-                </div>
-              </details>
-            ) : null}
+            <MissionHistory history={history} />
           </div>
         ) : null}
       </div>
