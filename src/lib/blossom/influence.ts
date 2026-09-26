@@ -9,7 +9,7 @@
  */
 
 import type { PronlabItem } from "./data";
-import type { LearnLanguageId } from "@/lib/i18n/locales";
+import type { LearnLanguageId } from "../i18n/locales";
 import type {
   ActivityEvent,
   LearnerMemory,
