@@ -1,6 +1,7 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { BlossomForbiddenError, createNotification, writeAuditEvent } from "./domain.server";
+import { conversationIdForRelationship } from "./communication";
 
 export type ConversationKind = "tandem" | "teacher" | "support";
 
@@ -80,37 +81,32 @@ async function assertRelationship(
       and staff.role = 'teacher'
      where g.teacher_user_id = $1
        and g.status = 'active'
+     union all
+     select 1
+     from blossom_guardian_link guardian
+     join blossom_teacher_link teacher
+       on teacher.learner_user_id = guardian.learner_user_id
+      and teacher.status = 'active'
+     where guardian.guardian_user_id = $1
+       and guardian.status = 'active'
+       and teacher.teacher_user_id = $2
+     union all
+     select 1
+     from blossom_guardian_link guardian
+     join blossom_organization_group_member gm
+       on gm.user_id = guardian.learner_user_id
+     join blossom_organization_group g
+       on g.id = gm.group_id
+      and g.status = 'active'
+      and g.teacher_user_id = $2
+     where guardian.guardian_user_id = $1
+       and guardian.status = 'active'
      limit 1`,
     [userId, partnerUserId],
   );
   if (!rows[0]) {
     throw new BlossomForbiddenError("La conversation enseignant–apprenant exige un lien actif.");
   }
-}
-
-function deterministicConversationId(
-  kind: Exclude<ConversationKind, "support">,
-  userA: string,
-  userB: string,
-) {
-  const [left, right] = [userA, userB].sort();
-  const digest = createHash("sha256")
-    .update("kosez-conversation:")
-    .update(kind)
-    .update(":")
-    .update(left)
-    .update(":")
-    .update(right)
-    .digest("hex")
-    .slice(0, 32);
-  return [
-    digest.slice(0, 8),
-    digest.slice(8, 12),
-    "5" + digest.slice(13, 16),
-    ((parseInt(digest.slice(16, 18), 16) & 0x3f) | 0x80).toString(16).padStart(2, "0") +
-      digest.slice(18, 20),
-    digest.slice(20),
-  ].join("-");
 }
 
 async function assertConversationAccess(userId: string, conversationId: string) {
@@ -181,7 +177,7 @@ export async function getOrCreateConversation(
   await assertRelationship(userId, partnerUserId, input.kind);
 
   const sql = await getSql();
-  const id = deterministicConversationId(input.kind, userId, partnerUserId);
+  const id = conversationIdForRelationship(input.kind, userId, partnerUserId);
   await sql.query(
     "insert into blossom_conversation (id, kind, created_by_user_id) values ($1::uuid, $2, $3) on conflict (id) do nothing",
     [id, input.kind, userId],
@@ -416,6 +412,58 @@ export async function reportMessage(
     status: String(rows[0].status) as "open" | "reviewing" | "resolved" | "dismissed",
     createdAt: new Date(String(rows[0].created_at)).toISOString(),
   };
+}
+
+export type GuardianTeacherContact = {
+  teacherUserId: string;
+  teacherName: string;
+  learnerUserId: string;
+  learnerName: string;
+};
+
+export async function getGuardianTeacherContacts(
+  guardianUserId: string,
+): Promise<GuardianTeacherContact[]> {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `select distinct
+       teacher.teacher_user_id,
+       coalesce(nullif(tp.display_name, ''), teacher.teacher_user_id) as teacher_name,
+       guardian.learner_user_id,
+       coalesce(nullif(lp.display_name, ''), guardian.learner_user_id) as learner_name
+     from blossom_guardian_link guardian
+     join blossom_profile lp on lp.user_id = guardian.learner_user_id
+     join blossom_teacher_link teacher
+       on teacher.learner_user_id = guardian.learner_user_id
+      and teacher.status = 'active'
+     join blossom_profile tp on tp.user_id = teacher.teacher_user_id
+     where guardian.guardian_user_id = $1
+       and guardian.status = 'active'
+     union
+     select distinct
+       g.teacher_user_id,
+       coalesce(nullif(tp.display_name, ''), g.teacher_user_id) as teacher_name,
+       guardian.learner_user_id,
+       coalesce(nullif(lp.display_name, ''), guardian.learner_user_id) as learner_name
+     from blossom_guardian_link guardian
+     join blossom_profile lp on lp.user_id = guardian.learner_user_id
+     join blossom_organization_group_member gm on gm.user_id = guardian.learner_user_id
+     join blossom_organization_group g
+       on g.id = gm.group_id
+      and g.status = 'active'
+      and g.teacher_user_id is not null
+     join blossom_profile tp on tp.user_id = g.teacher_user_id
+     where guardian.guardian_user_id = $1
+       and guardian.status = 'active'
+     order by teacher_name asc, learner_name asc`,
+    [guardianUserId],
+  );
+  return rows.map((row) => ({
+    teacherUserId: String(row.teacher_user_id),
+    teacherName: String(row.teacher_name),
+    learnerUserId: String(row.learner_user_id),
+    learnerName: String(row.learner_name),
+  }));
 }
 
 export async function getSupportInbox(userId: string): Promise<SupportConversationSummary[]> {

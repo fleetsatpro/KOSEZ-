@@ -46,6 +46,7 @@ import {
   reportMessage,
   getSupportInbox,
   listConversations,
+  getGuardianTeacherContacts,
 } from "./messaging.server";
 import { getEvidenceTimeline } from "./evidence.server";
 import { getLearningFeedbackBundle, saveLearningFeedback, getLearnerFeedback } from "./learning-feedback.server";
@@ -353,6 +354,10 @@ export const endTandemSessionOnServer = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) =>
     endTandemSession(context.userId, data.sessionId, data.status),
   );
+
+export const getGuardianTeacherContactsOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getGuardianTeacherContacts(context.userId));
 
 export const listConversationsOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])

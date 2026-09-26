@@ -14,6 +14,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppConnectRouteImport } from './routes/_app/connect'
 import { Route as AppExploreRouteImport } from './routes/_app/explore'
 import { Route as AppImmersionRouteImport } from './routes/_app/immersion'
+import { Route as AppInboxRouteImport } from './routes/_app/inbox'
 import { Route as AppLearnRouteImport } from './routes/_app/learn'
 import { Route as AppLibraryRouteImport } from './routes/_app/library'
 import { Route as AppMissionRouteImport } from './routes/_app/mission'
@@ -68,6 +69,11 @@ const AppLearnRoute = AppLearnRouteImport.update({
 const AppLibraryRoute = AppLibraryRouteImport.update({
   id: '/library',
   path: '/library',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppInboxRoute = AppInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMissionRoute = AppMissionRouteImport.update({
@@ -180,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/learn/labs': typeof AppLearnLabsRoute
   '/library': typeof AppLibraryRouteWithChildren
   '/mission': typeof AppMissionRoute
+  '/inbox': typeof AppInboxRoute
   '/moi': typeof AppMoiRoute
   '/osez': typeof AppOsezRouteWithChildren
   '/osez/pulse': typeof AppOsezPulseRoute
@@ -234,6 +241,7 @@ export interface FileRoutesById {
   '/_app/learn/labs': typeof AppLearnLabsRoute
   '/_app/library': typeof AppLibraryRouteWithChildren
   '/_app/mission': typeof AppMissionRoute
+  '/_app/inbox': typeof AppInboxRoute
   '/_app/moi': typeof AppMoiRoute
   '/_app/osez': typeof AppOsezRouteWithChildren
   '/_app/osez/pulse': typeof AppOsezPulseRoute
@@ -262,6 +270,7 @@ export interface FileRouteTypes {
     | '/learn'
     | '/library'
     | '/mission'
+    | '/inbox'
     | '/moi'
     | '/osez'
     | '/osez/pulse'
@@ -322,6 +331,7 @@ export interface FileRouteTypes {
     | '/_app/learn/labs'
     | '/_app/library'
     | '/_app/mission'
+    | '/_app/inbox'
     | '/_app/moi'
     | '/_app/osez'
     | '/_app/osez/pulse'
@@ -440,6 +450,13 @@ declare module '@tanstack/react-router' {
       path: '/mission'
       fullPath: '/mission'
       preLoaderRoute: typeof AppMissionRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/inbox': {
+      id: '/_app/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof AppInboxRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/moi': {
@@ -617,6 +634,7 @@ interface AppRouteChildren {
   AppLearnRoute: typeof AppLearnRouteWithChildren
   AppLibraryRoute: typeof AppLibraryRouteWithChildren
   AppMissionRoute: typeof AppMissionRoute
+  AppInboxRoute: typeof AppInboxRoute
   AppMoiRoute: typeof AppMoiRoute
   AppOsezRoute: typeof AppOsezRouteWithChildren
   AppPlantRoute: typeof AppPlantRoute
@@ -632,6 +650,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppLearnRoute: AppLearnRouteWithChildren,
   AppLibraryRoute: AppLibraryRouteWithChildren,
   AppMissionRoute: AppMissionRoute,
+  AppInboxRoute: AppInboxRoute,
   AppMoiRoute: AppMoiRoute,
   AppOsezRoute: AppOsezRouteWithChildren,
   AppPlantRoute: AppPlantRoute,
