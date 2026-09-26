@@ -4,7 +4,22 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Eyebrow, Surface } from "@/components/app/primitives";
 import { LANGUAGE_MODULES } from "@/lib/blossom/data";
+import {
+  getNotificationPreferencesOnServer,
+  setNotificationPreferenceOnServer,
+} from "@/lib/blossom/domain.api";
 import { useBlossom } from "@/lib/blossom/store";
+
+const NOTIFICATION_LABELS = {
+  homework: "Devoirs",
+  booking: "Réservations",
+  event: "Rencontres & événements",
+  tandem: "Tandem",
+  learning: "Apprentissage",
+  communication: "Messages",
+} as const;
+
+type NotificationKey = keyof typeof NOTIFICATION_LABELS;
 
 export function MoiSettings() {
   const learner = useBlossom((s) => s.learner);
@@ -16,9 +31,52 @@ export function MoiSettings() {
   const exportConsent = useBlossom((s) => s.exportConsent);
   const setExportConsent = useBlossom((s) => s.setExportConsent);
   const [draft, setDraft] = useState(learner);
+  const [notificationPreferences, setNotificationPreferences] = useState<Record<NotificationKey, boolean>>({
+    homework: true,
+    booking: true,
+    event: true,
+    tandem: true,
+    learning: true,
+    communication: true,
+  });
+  const [notificationLoading, setNotificationLoading] = useState(true);
+  const [notificationBusy, setNotificationBusy] = useState<NotificationKey | null>(null);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => setDraft(learner), [learner]);
+
+  useEffect(() => {
+    let disposed = false;
+    void getNotificationPreferencesOnServer()
+      .then((prefs) => {
+        if (!disposed) setNotificationPreferences(prefs);
+      })
+      .catch(() => {
+        // Defaults remain enabled when preference storage is unavailable.
+      })
+      .finally(() => {
+        if (!disposed) setNotificationLoading(false);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  async function toggleNotification(kind: NotificationKey) {
+    if (notificationBusy) return;
+    const next = !notificationPreferences[kind];
+    setNotificationBusy(kind);
+    try {
+      const prefs = await setNotificationPreferenceOnServer({
+        data: { kind, enabled: next },
+      });
+      setNotificationPreferences(prefs);
+    } catch {
+      // Keep the confirmed server state; do not render a failed toggle as saved.
+    } finally {
+      setNotificationBusy(null);
+    }
+  }
 
   function save() {
     updateLearner({
@@ -73,6 +131,39 @@ export function MoiSettings() {
           <Field label="Coach" value={draft.coach} onChange={(value) => setDraft({ ...draft, coach: value })} />
           <Field label="Voix du coach" value={draft.coachVoice} multiline onChange={(value) => setDraft({ ...draft, coachVoice: value })} />
           <Field label="Avatar (URL)" value={draft.avatar} placeholder="https://…" onChange={(value) => setDraft({ ...draft, avatar: value })} />
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-border bg-surface-2/25 p-4 sm:p-5">
+          <Eyebrow>Notifications dans K’Osez</Eyebrow>
+          <h3 className="mt-1 font-display text-xl tracking-tight">Choisissez ce qui mérite de vous interrompre.</h3>
+          <p className="mt-2 text-xs leading-5 text-muted">
+            Ces réglages concernent uniquement les notifications in-app actuellement disponibles.
+            Les alertes système liées à la sécurité et au compte restent toujours actives.
+          </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {(Object.keys(NOTIFICATION_LABELS) as NotificationKey[]).map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                role="switch"
+                aria-checked={notificationPreferences[kind]}
+                aria-busy={notificationBusy === kind}
+                disabled={notificationLoading || notificationBusy !== null}
+                onClick={() => void toggleNotification(kind)}
+                className="flex min-h-12 items-center justify-between gap-3 rounded-xl border border-border bg-bg/55 px-3 py-3 text-left transition hover:bg-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-60"
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium">{NOTIFICATION_LABELS[kind]}</span>
+                  <span className="mt-0.5 block text-[11px] text-subtle">
+                    {notificationPreferences[kind] ? "Activées" : "Désactivées"}
+                  </span>
+                </span>
+                <span className={notificationPreferences[kind] ? "h-6 w-11 rounded-full bg-primary p-1" : "h-6 w-11 rounded-full bg-border p-1"}>
+                  <span className={notificationPreferences[kind] ? "block size-4 translate-x-5 rounded-full bg-primary-foreground transition-transform" : "block size-4 rounded-full bg-bg transition-transform"} />
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">

@@ -3,6 +3,9 @@ import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
 import { IMMERSION, PRONLAB_SETS } from "./data";
 import type { JsonObject } from "./backend.server";
+import {
+  shouldDeliverNotification,
+} from "./notification-preferences.server";
 
 import { getPublishedContent } from "./content.server";
 
@@ -1205,6 +1208,9 @@ export async function createNotification(
     metadata?: Record<string, unknown>;
   },
 ) {
+  if (!(await shouldDeliverNotification(userId, input.kind))) {
+    return null;
+  }
   const sql = await getSql();
   const rows = await sql.query(
     `insert into blossom_notification (id, user_id, kind, title, body, href, metadata)
