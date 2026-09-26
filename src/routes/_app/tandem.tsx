@@ -6,7 +6,6 @@ import { Eyebrow, Initials, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  LANGUAGE_MODULES,
   LEARNER_MEMORY,
   PRONLAB_SETS,
   planAllows,
@@ -20,6 +19,7 @@ import {
 } from "@/lib/blossom/organism";
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
+import { describeLearnLanguage } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_app/tandem")({
   component: TandemPage,
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_app/tandem")({
 type Candidate = Awaited<ReturnType<typeof getTandemCandidatesOnServer>>[number];
 
 function languageLabel(id: string) {
-  return LANGUAGE_MODULES.find((language) => language.id === id)?.name ?? id;
+  return describeLearnLanguage(id, "fr").label;
 }
 
 function TandemPage() {
