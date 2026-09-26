@@ -49,6 +49,16 @@ async function assertTeacherRelation(teacherUserId: string, learnerUserId: strin
   }
 }
 
+function jsonObject(value: unknown): JsonObject {
+  try {
+    const parsed = JSON.parse(JSON.stringify(value));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return parsed as JsonObject;
+  } catch {
+    return {};
+  }
+}
+
 function mapFeedback(row: Record<string, unknown>): LearningFeedbackRow {
   const rubric =
     row.rubric && typeof row.rubric === "object"
@@ -92,10 +102,7 @@ export async function getLearningFeedbackBundle(
     kind: String(row.kind) as LearningFeedbackBundle["kind"],
     content: String(row.content),
     checks: Array.isArray(row.checks) ? row.checks.map(String) : [],
-    result:
-      row.result && typeof row.result === "object"
-        ? (row.result as Record<string, unknown>)
-        : {},
+    result: jsonObject(row.result),
     createdAt: new Date(String(row.created_at)).toISOString(),
     feedback: row.id ? mapFeedback({
       id: row.id,
