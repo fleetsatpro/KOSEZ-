@@ -8,6 +8,7 @@ import { getConnectPeersOnServer } from "@/lib/blossom/domain.api";
 import { useBlossom } from "@/lib/blossom/store";
 import { formatShortDate } from "@/lib/utils";
 import { causalNextGesture } from "@/lib/blossom/organism";
+import { ConversationPanel } from "@/components/app/conversation-panel";
 
 export const Route = createFileRoute("/_app/connect")({
   component: ConnectPage,
@@ -25,6 +26,7 @@ function ConnectPage() {
   const socialNext = causalNextGesture(minerals);
   const navigate = useNavigate();
   const [peers, setPeers] = useState<ConnectPeer[]>([]);
+  const [conversationPeerId, setConversationPeerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -153,6 +155,18 @@ function ConnectPage() {
         </div>
       </Surface>
 
+      {conversationPeerId ? (
+        <ConversationPanel
+          kind="tandem"
+          partnerUserId={conversationPeerId}
+          partnerName={peers.find((peer) => peer.id === conversationPeerId)?.name}
+          title={
+            "Avec " +
+            (peers.find((peer) => peer.id === conversationPeerId)?.name ?? "votre tandem")
+          }
+        />
+      ) : null}
+
       {tandemOpen ? (
         <Link
           to="/tandem"
@@ -231,6 +245,18 @@ function ConnectPage() {
                     </p>
                   </div>
                 </div>
+                {peer.tandemAccepted ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="mt-4"
+                    onClick={() => setConversationPeerId(peer.id)}
+                  >
+                    Parler avec {peer.name}
+                  </Button>
+                ) : null}
+
                 <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-muted">
                   <span className="rounded-full border border-border px-3 py-1.5">
                     {peer.sharedEvents} rencontre{peer.sharedEvents > 1 ? "s" : ""} partagée{peer.sharedEvents > 1 ? "s" : ""}
