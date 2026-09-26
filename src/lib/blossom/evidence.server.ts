@@ -1,6 +1,9 @@
 import { getSql } from "@/lib/db";
 import { BlossomForbiddenError } from "./domain.server";
 import { pronlabEvidenceProjection } from "./evidence-projection";
+import { PRONLAB_SETS } from "./data";
+import { MINERAL_DEFINITIONS, mineralForActivity, type MineralKey } from "./organism";
+import type { ActivityType } from "./engine";
 
 export type EvidenceClass = "action" | "artifact" | "observation" | "plan";
 
@@ -14,6 +17,9 @@ export type EvidenceTimelineItem = {
   sourceId: string | null;
   route: string | null;
   metadata: Record<string, string | number | boolean | null>;
+  mineral: MineralKey | null;
+  actionLabel: string;
+  actionKind: "replay" | "context";
 };
 
 
@@ -21,7 +27,8 @@ function activityDescriptor(type: string) {
   switch (type) {
     case "MISSION_COMPLETED": return { title: "Mission accomplie", summary: "Une mission réellement clôturée.", evidenceClass: "action" as const, route: "/mission" };
     case "REAL_WORLD_BONUS": return { title: "Geste terrain", summary: "Une action réelle enregistrée.", evidenceClass: "action" as const, route: "/mission" };
-    case "SPEAK_COMPLETED": return { title: "Prise de parole", summary: "Une session OSEZ clôturée avec ses métadonnées.", evidenceClass: "observation" as const, route: "/osez" };
+    case "SPEAK_COMPLETED": return { title: "Prise de parole", summary: "Une session OSEZ clôturée avec ses métadonnées.", evidenceClass: "action" as const, route: "/osez" };
+    case "PRONLAB_ATTEMPTED": return { title: "Tentative Pron’Lab", summary: "Une tentative a été enregistrée. Sans moteur phonétique, K’Osez ne fabrique pas de note.", evidenceClass: "action" as const, route: "/pronlab" };
     case "PRONLAB_MASTERY": return { title: "Observation Pron’Lab", summary: "Un item Pron’Lab a franchi le seuil calculé.", evidenceClass: "observation" as const, route: "/pronlab" };
     case "PRONLAB_COMPLETED": return { title: "Set Pron’Lab terminé", summary: "Le set a été parcouru; aucune note de performance n’est inventée.", evidenceClass: "action" as const, route: "/pronlab" };
     case "TANDEM_COMPLETED": return { title: "Tandem clôturé", summary: "Un échange tandem a été enregistré avec une réflexion personnelle.", evidenceClass: "action" as const, route: "/tandem" };
@@ -31,6 +38,7 @@ function activityDescriptor(type: string) {
     case "REVIEW_COMPLETED": return { title: "Révision terminée", summary: "Une preuve de récupération a été enregistrée.", evidenceClass: "artifact" as const, route: "/learn/review" };
     case "LIBRARY_COMPLETED": return { title: "Lecture terminée", summary: "La lecture a été enregistrée après la fin du texte.", evidenceClass: "artifact" as const, route: "/library" };
     case "HOMEWORK_COMPLETED": return { title: "Devoir terminé", summary: "Le devoir a été marqué fait par l’apprenant.", evidenceClass: "artifact" as const, route: "/moi" };
+    case "CURRICULUM_EVIDENCE_RECORDED": return { title: "Parcours lié", summary: "Cette trace relie une activité à une étape du parcours. Elle ne compte pas comme un geste supplémentaire.", evidenceClass: "artifact" as const, route: "/learn/curriculum" };
     case "LESSON_COMPLETED": return { title: "Leçon terminée", summary: "Une activité de curriculum a produit une trace.", evidenceClass: "action" as const, route: "/learn" };
     case "DIAGNOSTIC_COMPLETED": return { title: "Diagnostic terminé", summary: "Un repère d’apprentissage a été enregistré.", evidenceClass: "observation" as const, route: "/learn/labs" };
     case "CLASS_ATTENDED": return { title: "Présence en classe", summary: "Une présence a été enregistrée.", evidenceClass: "action" as const, route: "/explore" };
@@ -38,6 +46,38 @@ function activityDescriptor(type: string) {
     case "IMMERSION_ATTENDED": return { title: "Immersion enregistrée", summary: "Une immersion a été enregistrée.", evidenceClass: "action" as const, route: "/immersion" };
     default: return { title: type, summary: "Activité enregistrée par K’Osez.", evidenceClass: "action" as const, route: null };
   }
+}
+
+function exactRoute(kind: EvidenceTimelineItem["kind"], sourceId: string | null, metadata: Record<string, unknown>): string | null {
+  if (!sourceId) return null;
+  if (kind === "activity") {
+    const type = typeof metadata.activityType === "string" ? metadata.activityType : "";
+    if (type === "PRONLAB_ATTEMPTED") {
+      const itemId = typeof metadata.itemId === "string" ? metadata.itemId : "";
+      const set = PRONLAB_SETS.find((entry) => entry.items.some((item) => item.id === itemId));
+      return itemId && set ? `/pronlab/${encodeURIComponent(set.id)}?item=${encodeURIComponent(itemId)}` : "/pronlab";
+    }
+    if (type === "LIBRARY_COMPLETED") return `/library/${encodeURIComponent(sourceId)}`;
+    if (type === "GRAMMAR_COMPLETED" || type === "LISTENING_COMPLETED" || type === "WRITING_COMPLETED") {
+      const parts = sourceId.split(":");
+      const lab = type === "GRAMMAR_COMPLETED" ? "grammar" : type === "LISTENING_COMPLETED" ? "listening" : "writing";
+      const task = parts[2] ?? "";
+      if (task) return `/learn/labs?lab=${lab}&task=${encodeURIComponent(task)}`;
+    }
+  }
+  if (kind === "submission") {
+    const lab = typeof metadata.kind === "string" ? metadata.kind : "grammar";
+    return `/learn/labs?lab=${encodeURIComponent(lab)}&task=${encodeURIComponent(sourceId)}`;
+  }
+  if (kind === "pronlab") {
+    const set = PRONLAB_SETS.find((entry) => entry.items.some((item) => item.id === sourceId));
+    return set ? `/pronlab/${encodeURIComponent(set.id)}?item=${encodeURIComponent(sourceId)}` : "/pronlab";
+  }
+  if (kind === "homework") return `/moi#homework-${encodeURIComponent(sourceId)}`;
+  if (kind === "booking") return `/explore#catalogue-${encodeURIComponent(sourceId)}`;
+  if (kind === "event") return `/explore#event-${encodeURIComponent(sourceId)}`;
+  if (kind === "challenge") return `/immersion?challenge=${encodeURIComponent(sourceId)}`;
+  return null;
 }
 
 async function assertEvidenceAccess(actorUserId: string, learnerUserId: string) {
@@ -112,6 +152,7 @@ export async function getEvidenceTimeline(
   const items: EvidenceTimelineItem[] = [];
   for (const row of activities) {
     const desc = activityDescriptor(String(row.event_type));
+    const activityMineral = mineralForActivity(String(row.event_type) as ActivityType);
     const payload = row.payload && typeof row.payload === "object" ? (row.payload as Record<string, unknown>) : {};
     const metadata = payload.metadata && typeof payload.metadata === "object" ? (payload.metadata as Record<string, unknown>) : {};
     items.push({
@@ -124,6 +165,8 @@ export async function getEvidenceTimeline(
       sourceId: row.source_id ? String(row.source_id) : null,
       route: desc.route,
       metadata: { activityType: String(row.event_type), ...Object.fromEntries(Object.entries(metadata).filter(([,v]) => v === null || typeof v === "string" || typeof v === "number" || typeof v === "boolean")) },
+      mineral: mineralForActivity(String(row.event_type) as ActivityType),
+      actionLabel: "Voir la porte", actionKind: "context",
     });
   }
   for (const row of submissions) {
@@ -137,6 +180,7 @@ export async function getEvidenceTimeline(
       sourceId: String(row.task_id),
       route: String(row.kind) === "review" ? "/learn/review" : "/learn/labs",
       metadata: { taskId: String(row.task_id), kind: String(row.kind) },
+      mineral: "atelier", actionLabel: "Reprendre le geste", actionKind: "replay",
     });
   }
   for (const row of feedback) {
@@ -153,6 +197,7 @@ export async function getEvidenceTimeline(
         submissionId: String(row.submission_id),
         teacherUserId: String(row.teacher_user_id),
       },
+      mineral: null, actionLabel: "Voir la trace", actionKind: "context",
     });
   }
 
@@ -178,6 +223,7 @@ export async function getEvidenceTimeline(
         seconds: Math.max(0, Number(row.seconds ?? 0)),
         assessment: typeof metadata.assessment === "string" ? metadata.assessment : null,
       },
+      mineral: "pron", actionLabel: "Reprendre le geste", actionKind: "replay",
     });
   }
   for (const row of homework) {
@@ -191,6 +237,8 @@ export async function getEvidenceTimeline(
       sourceId: String(row.id),
       route: "/moi",
       metadata: { status: String(row.status) },
+      mineral: String(row.status) === "done" ? "atelier" : null,
+      actionLabel: String(row.status) === "done" ? "Voir le devoir" : "Voir le contexte", actionKind: "context",
     });
   }
   for (const row of tandem) {
@@ -206,6 +254,8 @@ export async function getEvidenceTimeline(
       sourceId: partner,
       route: "/tandem",
       metadata: { status, partnerUserId: partner },
+      mineral: status === "completed" ? "social" : null,
+      actionLabel: status === "completed" ? "Voir Tandem" : "Voir le contexte", actionKind: "context",
     });
   }
   for (const row of attendance) {
@@ -223,6 +273,7 @@ export async function getEvidenceTimeline(
         recordedBy: String(row.recorded_by_user_id),
         note: row.note ? String(row.note) : null,
       },
+      mineral: "social", actionLabel: "Voir la rencontre", actionKind: "context",
     });
   }
 
@@ -237,6 +288,7 @@ export async function getEvidenceTimeline(
       sourceId: String(row.event_id),
       route: "/explore",
       metadata: { eventId: String(row.event_id), status: String(row.status), seatNo: row.seat_no == null ? null : Number(row.seat_no) },
+      mineral: null, actionLabel: "Voir l’inscription", actionKind: "context",
     });
   }
   for (const row of bookings) {
@@ -250,6 +302,7 @@ export async function getEvidenceTimeline(
       sourceId: String(row.catalogue_item_id),
       route: "/explore",
       metadata: { bookingId: String(row.id), status: String(row.status), paymentStatus: String(row.payment_status), providerReference: row.provider_reference ? String(row.provider_reference) : null },
+      mineral: null, actionLabel: "Voir la réservation", actionKind: "context",
     });
   }
   for (const row of challenges) {
@@ -263,7 +316,21 @@ export async function getEvidenceTimeline(
       sourceId: String(row.challenge_id),
       route: "/immersion",
       metadata: { challengeId: String(row.challenge_id) },
+      mineral: "social", actionLabel: "Reprendre le geste", actionKind: "replay",
     });
   }
-  return items.sort((a,b) => b.at.localeCompare(a.at)).slice(0, bounded);
+  return items.map((item) => {
+    const exact = exactRoute(item.kind, item.sourceId, item.metadata);
+    const replayableActivity =
+      item.kind === "activity" &&
+      ["GRAMMAR_COMPLETED", "LISTENING_COMPLETED", "WRITING_COMPLETED", "LIBRARY_COMPLETED", "PRONLAB_ATTEMPTED"].includes(
+        String(item.metadata.activityType ?? ""),
+      );
+    return {
+      ...item,
+      route: exact ?? item.route,
+      actionLabel: replayableActivity ? "Reprendre le geste" : item.actionLabel,
+      actionKind: replayableActivity ? "replay" : item.actionKind,
+    };
+  }).sort((a,b) => b.at.localeCompare(a.at)).slice(0, bounded);
 }

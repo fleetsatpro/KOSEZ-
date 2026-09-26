@@ -10,6 +10,9 @@ import {
   causalNextGesture,
   pushGrowthEvent,
   weekKey,
+  MINERAL_DEFINITIONS,
+  MINERAL_ORDER,
+  mineralForActivity,
 } from "./organism.ts";
 
 describe("organism minerals", () => {
@@ -18,6 +21,38 @@ describe("organism minerals", () => {
     assert.equal(m.mission, 0);
     assert.equal(m.parole, 0);
     assert.equal(m.atelier, 0);
+  });
+
+  it("keeps tandem in social rather than silently adding to parole", () => {
+    const now = new Date().toISOString();
+    const m = computeMinerals([
+      { id: "t", type: "TANDEM_COMPLETED", createdAt: now, sourceId: "t1" },
+    ]);
+    assert.equal(m.parole, 0);
+    assert.ok(m.social > 0);
+  });
+
+  it("counts only concrete atelier events, not curriculum linkage records", () => {
+    const now = new Date().toISOString();
+    const m = computeMinerals([
+      { id: "d", type: "DIAGNOSTIC_COMPLETED", createdAt: now },
+      { id: "l", type: "LESSON_COMPLETED", createdAt: now },
+      { id: "c", type: "CURRICULUM_EVIDENCE_RECORDED", createdAt: now, sourceId: "lesson-1" },
+    ]);
+    assert.equal(m.atelier, 0);
+  });
+
+  it("counts Pron’Lab attempts as pron nourishment", () => {
+    const m = computeMinerals([
+      {
+        id: "p1",
+        type: "PRONLAB_ATTEMPTED",
+        createdAt: new Date().toISOString(),
+        sourceId: "attempt-1",
+      },
+    ]);
+    assert.ok(m.pron > 0);
+    assert.equal(mineralForActivity("PRONLAB_ATTEMPTED"), "pron");
   });
 
   it("increases mission mineral after mission events", () => {
@@ -40,6 +75,20 @@ describe("organism minerals", () => {
   });
 });
 
+describe("mineral contract", () => {
+  it("has one owner mineral for every declared writer event", () => {
+    const owners = new Map<string, string>();
+    for (const mineral of MINERAL_ORDER) {
+      for (const type of MINERAL_DEFINITIONS[mineral].writtenBy) {
+        const prior = owners.get(type);
+        assert.equal(prior, undefined, "duplicate mineral writer: " + type);
+        owners.set(type, mineral);
+        assert.equal(mineralForActivity(type), mineral);
+      }
+    }
+    assert.equal(mineralForActivity("CURRICULUM_EVIDENCE_RECORDED"), null);
+  });
+});
 describe("growth events", () => {
   it("maps mission to root", () => {
     const g = growthEventForActivity(
@@ -75,14 +124,26 @@ describe("growth events", () => {
     assert.equal(grammar?.mineral, "atelier");
     assert.equal(tandem?.mineral, "social");
     assert.equal(tandem?.kind, "flower");
-    assert.equal(
-      growthEventForActivity(
-        "CURRICULUM_EVIDENCE_RECORDED",
-        "u1-l1",
-        "2026-09-22T00:00:00.000Z",
-      ),
-      null,
+    const curriculum = growthEventForActivity(
+      "CURRICULUM_EVIDENCE_RECORDED",
+      "u1-l1",
+      "2026-09-22T00:00:00.000Z",
     );
+    assert.equal(curriculum, null);
+  });
+
+  it("makes ties explicit instead of hiding the second need", () => {
+    const next = causalNextGesture({
+      at: "",
+      mission: 20,
+      parole: 20,
+      pron: 20,
+      social: 50,
+      atelier: 80,
+    });
+    assert.deepEqual(next.tiedWith, ["mission", "parole", "pron"]);
+    assert.equal(next.value, 20);
+    assert.match(next.line, /Également à 20\/100/);
   });
 
   it("routes the weakest atelier mineral to Learn labs", () => {

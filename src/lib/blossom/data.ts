@@ -1215,13 +1215,13 @@ export const PLANS: Array<{
 ];
 
 export const LANGUAGE_MODULES = [
-  { id: "en", name: "English", status: "actif" },
-  { id: "cr", name: "Créole réunionnais", status: "module centre" },
-  { id: "es", name: "Español", status: "même moteur" },
-  { id: "pt", name: "Português", status: "même moteur" },
-  { id: "it", name: "Italiano", status: "même moteur" },
-  { id: "de", name: "Deutsch", status: "même moteur" },
-  { id: "lsf", name: "LSF", status: "même moteur" },
+  { id: "en", name: "English", status: "actif", blurb: "Parler, écouter et agir dans les scènes du quotidien." },
+  { id: "cr", name: "Créole réunionnais", status: "module centre", blurb: "Un module ancré dans les usages et les voix de La Réunion." },
+  { id: "es", name: "Español", status: "même moteur", blurb: "Le même cadre BLOSSOM, avec des situations concrètes." },
+  { id: "pt", name: "Português", status: "même moteur", blurb: "Le même cadre BLOSSOM, avec des situations concrètes." },
+  { id: "it", name: "Italiano", status: "même moteur", blurb: "Le même cadre BLOSSOM, avec des situations concrètes." },
+  { id: "de", name: "Deutsch", status: "même moteur", blurb: "Le même cadre BLOSSOM, avec des situations concrètes." },
+  { id: "lsf", name: "LSF", status: "même moteur", blurb: "Une voie visuelle, sans prétendre la convertir en voix." },
 ];
 
 export const MARKETPLACE = [

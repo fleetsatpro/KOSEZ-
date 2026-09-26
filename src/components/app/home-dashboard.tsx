@@ -17,13 +17,14 @@ import {
   courageDaysFromLog,
   courageRibbon,
   organismStatusLine,
-  causalNextGesture,
   strugglingFocus,
 } from "@/lib/blossom/organism";
 import { todayMissionForLevel } from "@/lib/blossom/mission-today";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { todayLabel } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { OrganismMineralsPanel } from "@/components/app/organism-minerals-panel";
+import { AmbientOrganismField } from "@/components/app/ambient-organism-field";
 
 /**
  * Home is not a dashboard.
@@ -42,7 +43,6 @@ export function HomeDashboard() {
 
   const todayMission = todayMissionForLevel(learner.level);
   const missionDone = hasSource(log, todayMission.id);
-  const nextGesture = causalNextGesture(minerals);
   const memoryOn = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
   const mission = personaliseMission(todayMission, memory, memoryOn);
@@ -66,6 +66,7 @@ export function HomeDashboard() {
   return (
     <div data-smoke="blossom-home" className="kosez-home relative min-h-[calc(100dvh-5.5rem)] lg:min-h-dvh">
       <div className="relative isolate min-h-[72dvh] overflow-hidden lg:min-h-dvh">
+        <AmbientOrganismField minerals={minerals} />
         <img
           src={plantSrc}
           alt=""
@@ -251,26 +252,14 @@ export function HomeDashboard() {
         </div>
       </div>
 
+      <section className="border-t border-border/60 bg-bg px-5 lg:px-12">
+        <OrganismMineralsPanel minerals={minerals} growthEvents={growthEvents} title="L’organisme en une vue" />
+      </section>
+
       <nav
         className="border-t border-border/60 bg-bg px-5 py-6 lg:px-12"
         aria-label="Portes secondaires — chaque porte nourrit un minéral précis"
       >
-        <div className="mx-auto mb-4 max-w-2xl rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center sm:text-left magnetic-surface">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
-            Prochain geste causal
-          </p>
-          <p className="mt-1 text-sm text-fg/90">{nextGesture.line}</p>
-          <p className="mt-1 text-[11px] text-subtle">
-            Minéral le plus bas : <span className="text-primary">{nextGesture.mineral}</span> — c'est pourquoi cette porte est proposée maintenant.
-          </p>
-          <Link
-            to={nextGesture.door as "/osez" | "/pronlab" | "/mission" | "/tandem"}
-            className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-          >
-            Ouvrir cette porte
-            <ArrowRight className="size-3.5" />
-          </Link>
-        </div>
         <ul className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm">
           <li>
             <Link

@@ -9,6 +9,7 @@ import { STAGES, nextStage } from "@/lib/blossom/engine";
 import { causalNextGesture, organismStatusLine } from "@/lib/blossom/organism";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
+import { OrganismMineralsPanel } from "@/components/app/organism-minerals-panel";
 
 export const Route = createFileRoute("/_app/plant")({
   component: PlantPage,
@@ -29,7 +30,7 @@ function PlantPage() {
     },
     {
       label: "Parole",
-      detail: "Speak rooms, Pulse, tandem",
+      detail: "OSEZ, rooms et Pulse réellement clôturés",
       current: journey.speak.current,
       required: journey.speak.required,
     },
@@ -41,16 +42,6 @@ function PlantPage() {
     },
   ];
   const stageProgress = Math.round(journey.progress * 100);
-  const mineralRows = [
-    { key: "mission", label: "Mission", value: minerals.mission },
-    { key: "parole", label: "Parole", value: minerals.parole },
-    { key: "pron", label: "Pron", value: minerals.pron },
-    { key: "social", label: "Lien", value: minerals.social },
-  ] as const;
-
-  const lowest = mineralRows.reduce((a, b) => (a.value <= b.value ? a : b));
-  const causal = causalNextGesture(minerals);
-
   return (
     <Page className="kosez-feature-page max-w-4xl">
       <Button variant="ghost" size="sm" asChild className="-ml-2">
@@ -166,51 +157,7 @@ function PlantPage() {
         </Surface>
       </div>
 
-      {/* Minerals — soil of the organism */}
-      <Surface className="mt-8">
-        <Eyebrow>Minéraux · 14 jours</Eyebrow>
-        <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
-          Quatre nutriments. Le plus bas oriente le prochain geste utile — sans
-          culpabiliser. Aujourd'hui, le sol demande un peu plus de{" "}
-          <span className="font-medium text-fg">{lowest.label.toLowerCase()}</span>.
-        </p>
-        <p className="mt-3 max-w-xl text-sm leading-6 text-fg/90">
-          {causal.line}{" "}
-          <Link
-            to={causal.door as "/mission" | "/osez" | "/pronlab" | "/tandem"}
-            className="font-semibold text-primary underline decoration-primary/30 underline-offset-4 hover:decoration-primary"
-          >
-            Ouvrir la porte
-          </Link>
-          .
-        </p>
-        <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {mineralRows.map((m) => (
-            <div
-              key={m.key}
-              className={cn(
-                "rounded-xl border px-3 py-4 text-center",
-                m.key === lowest.key
-                  ? "border-primary/40 bg-primary/5"
-                  : "border-border/60 bg-surface-2/40",
-              )}
-            >
-              <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-subtle">
-                {m.label}
-              </dt>
-              <dd className="mt-1 font-display text-2xl tabular-nums text-primary">
-                {m.value}
-              </dd>
-              <div className="mx-auto mt-2 h-1 max-w-[4rem] overflow-hidden rounded-full bg-border/50">
-                <div
-                  className="h-full rounded-full bg-primary/80"
-                  style={{ width: `${Math.max(4, m.value)}%` }}
-                />
-              </div>
-            </div>
-          ))}
-        </dl>
-      </Surface>
+      <OrganismMineralsPanel minerals={minerals} growthEvents={growthEvents} title="Le sol de votre organisme" />
 
       <SceneReel events={growthEvents} className="mt-6" limit={10} />
 

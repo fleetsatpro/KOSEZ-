@@ -1,16 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
-import { causalNextGesture, type MineralKey } from "@/lib/blossom/organism";
+import { causalNextGesture, MINERAL_DEFINITIONS, MINERAL_ORDER } from "@/lib/blossom/organism";
 import { cn } from "@/lib/utils";
 
-const MINERAL_LABEL: Record<MineralKey, string> = {
-  mission: "mission",
-  parole: "parole",
-  pron: "prononciation",
-  social: "social",
-  atelier: "atelier",
-};
 
 const KIND_META: Record<
   GrowthEvent["kind"],
@@ -86,7 +79,7 @@ export function GrowthCeremony({
 
   const deltas = useMemo(() => {
     if (!previousMinerals) return null;
-    const keys = ["mission", "parole", "pron", "social", "atelier"] as const;
+    const keys = MINERAL_ORDER;
     return keys
       .map((k) => ({
         key: k,
@@ -152,7 +145,7 @@ export function GrowthCeremony({
           </div>
 
           <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.22em] text-subtle">
-            {meta.title} · intensité {Math.round(event.intensity * 100)}%
+            {meta.title}
           </p>
           <h2 className="mt-2 font-display text-2xl tracking-tight text-fg">
             {event.label}
@@ -165,10 +158,10 @@ export function GrowthCeremony({
           {event.mineral ? (
             <div className="mt-6 rounded-2xl border border-primary/25 bg-primary/6 px-4 py-3 text-left">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/80">
-                Minéral nourri · {MINERAL_LABEL[event.mineral]}
+                Minéral nourri · {MINERAL_DEFINITIONS[event.mineral].label}
               </p>
               <p className="mt-1 text-sm leading-5 text-fg">
-                Ce geste laisse une trace dans votre organisme — et la porte suivante reste liée à ce qu’il vient de nourrir.
+                Ce geste écrit « {MINERAL_DEFINITIONS[event.mineral].label} » dans l’organisme. La porte suivante répond au minéral actuellement le plus en retrait.
               </p>
             </div>
           ) : null}
@@ -181,7 +174,7 @@ export function GrowthCeremony({
                   className="rounded-full border border-border/70 bg-surface-2/80 px-3 py-1 text-[11px] tabular-nums text-fg"
                 >
                   <span className="uppercase tracking-[0.12em] text-subtle">
-                    {d.key}
+                    {MINERAL_DEFINITIONS[d.key].label}
                   </span>{" "}
                   <span className="ml-1 font-semibold text-primary">
                     {d.delta > 0 ? `+${d.delta}` : d.delta}
@@ -220,15 +213,16 @@ function CausalDoor({
   return (
     <div className="mt-6 rounded-2xl border border-primary/25 bg-primary/5 px-4 py-3 text-left">
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/80">
-        Prochain geste · {next.mineral}
+        Prochain geste · {MINERAL_DEFINITIONS[next.mineral].label} · {next.value}/100
       </p>
       <p className="mt-1 text-sm leading-5 text-fg/90">{next.line}</p>
+      <p className="mt-1 text-[11px] leading-5 text-muted">{next.basis}</p>
       <Link
-        to={next.door as "/osez" | "/pronlab" | "/mission" | "/tandem"}
+        to={next.door as never}
         onClick={onNavigate}
         className="mt-3 inline-flex text-sm font-semibold text-primary hover:underline"
       >
-        Ouvrir la porte →
+        Ouvrir {MINERAL_DEFINITIONS[next.mineral].doorLabel} →
       </Link>
     </div>
   );

@@ -53,7 +53,7 @@ function TandemHub() {
   const minerals = useMemo(() => computeMinerals(log), [log]);
   const nextGesture = causalNextGesture(minerals);
   const socialGrowth = growthEvents
-    .filter((g) => g.mineral === "social" || g.kind === "flower")
+    .filter((g) => g.mineral === "social")
     .slice(0, 3);
 
   const me = useMemo(
@@ -160,7 +160,7 @@ function TandemHub() {
             <p className="mt-1 text-sm leading-6 text-fg/90">
               {nextGesture.mineral === "social"
                 ? nextGesture.line
-                : "Une présence partagée (tandem, café, atelier) fait fleurir le sol. Double accord obligatoire."}
+                : "Une présence sociale réelle — tandem, classe, événement ou immersion — fait fleurir le sol. Double accord obligatoire."}
             </p>
           </div>
         </div>

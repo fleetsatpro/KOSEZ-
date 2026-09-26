@@ -10,6 +10,40 @@ import type { PronlabItem } from "./data.ts";
 export type GrowthKind = "root" | "stem" | "leaf" | "flower" | "mineral";
 export type MineralKey = "mission" | "parole" | "pron" | "social" | "atelier";
 
+export const MINERAL_WINDOW_DAYS = 14;
+
+export type MineralDefinition = {
+  label: string;
+  door: string;
+  doorLabel: string;
+  writtenBy: readonly ActivityType[];
+  cap: number;
+  terrainBonus?: boolean;
+  purpose: string;
+  gesture: string;
+  windowLabel: string;
+  writtenByLabel: string;
+  scoreMeaning: string;
+};
+
+export const MINERAL_ORDER: readonly MineralKey[] = ["mission", "parole", "pron", "social", "atelier"];
+
+export const MINERAL_DEFINITIONS: Record<MineralKey, MineralDefinition> = {
+  mission: { label: "Mission", door: "/mission", doorLabel: "Mission", writtenBy: ["MISSION_COMPLETED", "REAL_WORLD_BONUS"], cap: 8, terrainBonus: true, purpose: "Agir dans une situation réelle.", gesture: "Un geste terrain réellement clôturé.", windowLabel: "14 jours", writtenByLabel: "Mission clôturée · bonus terrain", scoreMeaning: "Activité mission récente, plafonnée à l’échelle 100." },
+  parole: { label: "Parole", door: "/osez", doorLabel: "OSEZ", writtenBy: ["SPEAK_COMPLETED"], cap: 6, purpose: "Prendre la parole, ici et maintenant.", gesture: "Une prise de parole réellement clôturée.", windowLabel: "14 jours", writtenByLabel: "OSEZ clôturé", scoreMeaning: "Activité de prise de parole récente, plafonnée à l’échelle 100." },
+  pron: { label: "Pron", door: "/pronlab", doorLabel: "Pron’Lab", writtenBy: ["PRONLAB_ATTEMPTED", "PRONLAB_COMPLETED", "PRONLAB_MASTERY"], cap: 8, purpose: "Rendre un son plus disponible.", gesture: "Une tentative Pron’Lab, un set terminé ou une maîtrise observée.", windowLabel: "14 jours", writtenByLabel: "Tentative · set terminé · maîtrise observée", scoreMeaning: "Pratique récente de Pron’Lab, plafonnée à l’échelle 100." },
+  social: { label: "Social", door: "/tandem", doorLabel: "Tandem", writtenBy: ["TANDEM_COMPLETED", "CLASS_ATTENDED", "EVENT_ATTENDED", "IMMERSION_ATTENDED"], cap: 5, purpose: "Créer du lien dans un cadre réel.", gesture: "Un tandem clôturé, une présence ou une immersion réellement enregistrée.", windowLabel: "14 jours", writtenByLabel: "Tandem · classe · événement · immersion", scoreMeaning: "Présences sociales récentes, plafonnées à l’échelle 100." },
+  atelier: { label: "Atelier", door: "/learn/labs", doorLabel: "LEARN · Labs", writtenBy: ["GRAMMAR_COMPLETED", "LISTENING_COMPLETED", "WRITING_COMPLETED", "REVIEW_COMPLETED", "LIBRARY_COMPLETED", "HOMEWORK_COMPLETED"], cap: 10, purpose: "Consolider ce que vous apprenez.", gesture: "Une trace d’atelier terminée.", windowLabel: "14 jours", writtenByLabel: "Grammaire · écoute · écrit · révision · bibliothèque · devoir", scoreMeaning: "Pratique d’atelier récente, plafonnée à l’échelle 100." },
+};
+
+export function mineralForActivity(type: ActivityType): MineralKey | null {
+  return MINERAL_ORDER.find((key) => MINERAL_DEFINITIONS[key].writtenBy.includes(type)) ?? null;
+}
+
+export function mineralLabel(key: MineralKey): string {
+  return MINERAL_DEFINITIONS[key].label;
+}
+
 export type GrowthEvent = {
   id: string;
   at: string;
@@ -45,7 +79,7 @@ export type LeoLetter = {
 };
 
 const DAY_MS = 86_400_000;
-const ROLLING_DAYS = 14;
+const ROLLING_DAYS = MINERAL_WINDOW_DAYS;
 
 function daysAgoIso(days: number): string {
   return new Date(Date.now() - days * DAY_MS).toISOString();
@@ -57,7 +91,7 @@ function inRollingWindow(iso: string, days = ROLLING_DAYS): boolean {
 
 function countTypes(
   log: ActivityEvent[],
-  types: ActivityType[],
+  types: readonly ActivityType[],
   terrainBonus = false,
 ): number {
   return log.reduce((sum, e) => {
@@ -77,133 +111,66 @@ function norm(raw: number, cap: number): number {
 }
 
 export function computeMinerals(log: ActivityEvent[]): MineralSnapshot {
-  const mission = norm(
-    countTypes(log, ["MISSION_COMPLETED", "REAL_WORLD_BONUS"], true),
-    8,
-  );
-  const parole = norm(
-    countTypes(log, ["SPEAK_COMPLETED", "TANDEM_COMPLETED"]),
-    6,
-  );
-  const pron = norm(
-    countTypes(log, ["PRONLAB_COMPLETED", "PRONLAB_MASTERY"]),
-    8,
-  );
-  const social = norm(
-    countTypes(log, [
-      "TANDEM_COMPLETED",
-      "CLASS_ATTENDED",
-      "EVENT_ATTENDED",
-      "IMMERSION_ATTENDED",
-    ]),
-    5,
-  );
-  const atelier = norm(
-    countTypes(log, [
-      "GRAMMAR_COMPLETED",
-      "LISTENING_COMPLETED",
-      "WRITING_COMPLETED",
-      "REVIEW_COMPLETED",
-      "LIBRARY_COMPLETED",
-      "DIAGNOSTIC_COMPLETED",
-      "HOMEWORK_COMPLETED",
-    ]),
-    10,
-  );
+  const values = Object.fromEntries(
+    MINERAL_ORDER.map((key) => {
+      const definition = MINERAL_DEFINITIONS[key];
+      return [
+        key,
+        norm(
+          countTypes(log, definition.writtenBy, definition.terrainBonus === true),
+          definition.cap,
+        ),
+      ];
+    }),
+  ) as Record<MineralKey, number>;
+
   return {
     at: new Date().toISOString(),
-    mission,
-    parole,
-    pron,
-    social,
-    atelier,
+    ...values,
   };
 }
 
 export function organismStatusLine(minerals: MineralSnapshot): string {
-  const entries: [MineralKey, number][] = [
-    ["pron", minerals.pron],
-    ["parole", minerals.parole],
-    ["mission", minerals.mission],
-    ["social", minerals.social],
-    ["atelier", minerals.atelier],
-  ];
-  const sorted = [...entries].sort((a, b) => a[1] - b[1]);
-  const lowest = sorted[0];
-  const highest = sorted[sorted.length - 1];
-  if (!lowest || lowest[1] >= 40) {
-    if (minerals.mission >= 60 && minerals.parole >= 50) {
-      return "Racines profondes cette semaine — la tige peut s'élancer.";
-    }
-    if (highest && highest[1] >= 70) {
-      return `Le ${highest[0]} est fort. Un geste ailleurs équilibre le sol.`;
-    }
-    return "La terre est stable. Un geste suffit encore.";
+  const order = MINERAL_ORDER;
+  const lowest = Math.min(...order.map((key) => minerals[key]));
+  const needs = order.filter((key) => minerals[key] === lowest);
+  if (lowest >= 40) return "Les cinq minéraux restent en mouvement. Aucun n’est en retrait marqué.";
+  if (needs.length > 1) {
+    return `Plusieurs besoins sont à égalité : ${needs.map(mineralLabel).join(" · ")}. Un geste utile sur l’un d’eux suffit.`;
   }
-  switch (lowest[0]) {
-    case "pron":
-      return "La canopée attend un son — Pron'Lab, une minute.";
-    case "parole":
-      return "Soif de parole — une room ou un Pulse suffit.";
-    case "mission":
-      return "Les racines demandent une scène réelle aujourd'hui.";
-    case "social":
-      return "Une présence partagée (tandem, café, atelier) nourrirait le sol.";
-    case "atelier":
-      return "Une preuve d'apprentissage nourrirait encore la canopée.";
-    default:
-      return "Un geste utile vaut mieux qu'une longue séance.";
+  switch (needs[0]) {
+    case "pron": return "Pron’Lab peut remettre un son précis en circulation — une pratique courte suffit.";
+    case "parole": return "OSEZ peut remettre la parole en mouvement — une room courte suffit.";
+    case "mission": return "Une Mission peut remettre le réel au centre — un seul geste suffit.";
+    case "social": return "Tandem, classe, événement ou immersion peuvent recréer du lien réel.";
+    case "atelier": return "LEARN · Labs peut consolider une trace d’apprentissage sans vous faire changer de parcours.";
+    default: return "Un geste utile vaut mieux qu’une longue séance.";
   }
 }
-
 /** Causal next-gesture hint for plant / home — lowest mineral maps to a door. */
 export function causalNextGesture(minerals: MineralSnapshot): {
   mineral: MineralKey;
   door: string;
   line: string;
+  value: number;
+  tiedWith: MineralKey[];
+  basis: string;
 } {
-  const entries: [MineralKey, number][] = [
-    ["pron", minerals.pron],
-    ["parole", minerals.parole],
-    ["mission", minerals.mission],
-    ["social", minerals.social],
-    ["atelier", minerals.atelier],
-  ];
-  const lowest = [...entries].sort((a, b) => a[1] - b[1])[0]!;
-  switch (lowest[0]) {
-    case "pron":
-      return {
-        mineral: "pron",
-        door: "/pronlab",
-        line: "Un son répété jusqu'à tenue nourrit la canopée.",
-      };
-    case "parole":
-      return {
-        mineral: "parole",
-        door: "/osez",
-        line: "Une prise de parole ancrée épaissit la tige.",
-      };
-    case "mission":
-      return {
-        mineral: "mission",
-        door: "/mission",
-        line: "Un geste terrain enfonce une racine.",
-      };
-    case "social":
-      return {
-        mineral: "social",
-        door: "/tandem",
-        line: "Une présence partagée fait fleurir le sol.",
-      };
-    case "atelier":
-      return {
-        mineral: "atelier",
-        door: "/learn/labs",
-        line: "Une preuve d'apprentissage nourrit la canopée.",
-      };
-  }
+  const order: MineralKey[] = ["mission", "parole", "pron", "social", "atelier"];
+  const value = Math.min(...order.map((key) => minerals[key]));
+  const tiedWith = order.filter((key) => minerals[key] === value);
+  const mineral = tiedWith[0]!;
+  const definition = MINERAL_DEFINITIONS[mineral];
+  const tieText = tiedWith.length > 1 ? ` Également à ${value}/100 : ${tiedWith.slice(1).map(mineralLabel).join(" · ")}.` : "";
+  return {
+    mineral,
+    door: definition.door,
+    value,
+    tiedWith,
+    line: `${definition.purpose} ${definition.gesture}${tieText}`,
+    basis: `${definition.label} · ${value}/100 · fenêtre glissante de ${definition.windowLabel}.`,
+  };
 }
-
 /** Causal labels — each activity writes a specific mark on the organism. */
 const ROOT_LABELS = [
   "Un geste. Une racine.",
@@ -287,6 +254,16 @@ export function growthEventForActivity(
         label: pickLabel(LEAF_LABELS, seed),
         mineral: "pron",
       };
+    case "PRONLAB_ATTEMPTED":
+      return {
+        id,
+        at,
+        kind: "leaf",
+        sourceId,
+        intensity: 0.28,
+        label: "Une tentative Pron’Lab nourrit le son.",
+        mineral: "pron",
+      };
     case "PRONLAB_COMPLETED":
       return {
         id,
@@ -338,6 +315,8 @@ export function growthEventForActivity(
         mineral: "atelier",
       };
     case "CURRICULUM_EVIDENCE_RECORDED":
+      // Linkage/trace event only: the concrete lab or review event is the mineral writer.
+      // Counting this event too would double-nourish one real gesture.
       return null;
     case "LIBRARY_COMPLETED":
       return {
@@ -366,8 +345,7 @@ export function growthEventForActivity(
         kind: "mineral",
         sourceId,
         intensity: 0.28,
-        label: "Une pratique prend racine.",
-        mineral: "atelier",
+        label: "Une pratique produit une trace de curriculum.",
       };
     case "DIAGNOSTIC_COMPLETED":
       return {
@@ -377,7 +355,6 @@ export function growthEventForActivity(
         sourceId,
         intensity: 0.24,
         label: "Le repère affine le prochain terrain.",
-        mineral: "atelier",
       };
     case "CLASS_ATTENDED":
     case "EVENT_ATTENDED":
