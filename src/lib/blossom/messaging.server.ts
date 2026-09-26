@@ -104,7 +104,17 @@ async function assertConversationAccess(userId: string, conversationId: string) 
   const row = rows[0];
   if (!row) throw new BlossomForbiddenError("Cette conversation n'existe plus.");
   const kind = String(row.kind) as ConversationKind;
-  if (row.user_id) return { kind };
+  if (row.user_id) {
+    if (kind === "support") return { kind };
+    const peerRows = await sql.query(
+      "select user_id from blossom_conversation_member where conversation_id = $1::uuid and user_id <> $2 limit 1",
+      [conversationId, userId],
+    );
+    const peerUserId = peerRows[0]?.user_id ? String(peerRows[0].user_id) : "";
+    if (!peerUserId) throw new BlossomForbiddenError("Cette conversation est incomplète.");
+    await assertRelationship(userId, peerUserId, kind);
+    return { kind };
+  }
 
   if (kind === "support" && (await isAdmin(userId))) {
     await sql.query(
@@ -245,8 +255,11 @@ export async function sendMessage(
     "select user_id from blossom_conversation_member where conversation_id = $1::uuid and user_id <> $2",
     [input.conversationId, userId],
   );
+  const notified = new Set<string>();
   for (const recipient of recipients) {
-    await createNotification(String(recipient.user_id), {
+    const recipientId = String(recipient.user_id);
+    notified.add(recipientId);
+    await createNotification(recipientId, {
       kind: "communication",
       title: access.kind === "support" ? "Réponse de K’Osez" : "Nouveau message",
       body: body.length > 120 ? body.slice(0, 117) + "…" : body,
@@ -255,13 +268,15 @@ export async function sendMessage(
     });
   }
 
-  if (access.kind === "support" && recipients.length === 0) {
+  if (access.kind === "support") {
     const admins = await sql.query(
       "select user_id from blossom_platform_admin where status = 'active' and user_id <> $1",
       [userId],
     );
     for (const admin of admins) {
-      await createNotification(String(admin.user_id), {
+      const adminId = String(admin.user_id);
+      if (notified.has(adminId)) continue;
+      await createNotification(adminId, {
         kind: "communication",
         title: "Nouvelle demande pour K’Osez",
         body: body.length > 120 ? body.slice(0, 117) + "…" : body,
