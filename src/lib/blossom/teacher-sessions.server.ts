@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { BlossomForbiddenError, createNotification, writeAuditEvent } from "./domain.server";
+import { validateTeacherSessionDraft } from "./teacher-session-rules";
 
 export type TeacherSession = {
   id: string;
@@ -135,21 +136,18 @@ export async function createTeacherSession(
   },
 ): Promise<TeacherSession> {
   await assertTeacherLearnerRelation(teacherUserId, input.learnerUserId);
-  const startsAt = new Date(input.startsAt);
-  if (Number.isNaN(startsAt.getTime()) || startsAt.getTime() < Date.now() - 60_000) {
-    throw new BlossomForbiddenError("Une nouvelle séance doit être planifiée dans le futur.");
+  const validation = validateTeacherSessionDraft(input);
+  if (!validation.ok) {
+    const messages = {
+      "invalid-start": "La date de séance n'est pas valide.",
+      "past-start": "Une nouvelle séance doit être planifiée dans le futur.",
+      "invalid-title": "Le titre de séance est requis.",
+      "invalid-duration": "La durée doit être comprise entre 15 et 180 minutes.",
+      "invalid-notes": "Les notes de séance sont trop longues.",
+    } as const;
+    throw new BlossomForbiddenError(messages[validation.reason]);
   }
-  const title = input.title.trim();
-  if (!title || title.length > 180) {
-    throw new BlossomForbiddenError("Le titre de séance est requis.");
-  }
-  if (input.durationMinutes < 15 || input.durationMinutes > 180) {
-    throw new BlossomForbiddenError("La durée doit être comprise entre 15 et 180 minutes.");
-  }
-  const notes = input.notes?.trim() || null;
-  if (notes && notes.length > 2000) {
-    throw new BlossomForbiddenError("Les notes de séance sont trop longues.");
-  }
+  const { startsAt, title, durationMinutes, notes } = validation;
 
   const sql = await getSql();
   const id = randomUUID();
