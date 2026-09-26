@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   LEARNER_MEMORY,
   PRONLAB_SETS,
+  setsForLanguage,
   planAllows,
 } from "@/lib/blossom/data";
 import { influenceFromState } from "@/lib/blossom/influence";
@@ -19,7 +20,7 @@ import {
 } from "@/lib/blossom/organism";
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
-import { describeLearnLanguage } from "@/lib/i18n";
+import { describeLearnLanguage, useUiLocale } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_app/tandem")({
   component: TandemPage,
@@ -27,8 +28,8 @@ export const Route = createFileRoute("/_app/tandem")({
 
 type Candidate = Awaited<ReturnType<typeof getTandemCandidatesOnServer>>[number];
 
-function languageLabel(id: string) {
-  return describeLearnLanguage(id, "fr").label;
+function languageLabel(id: string, uiLocale: string) {
+  return describeLearnLanguage(id, uiLocale).label;
 }
 
 function TandemPage() {
@@ -40,6 +41,7 @@ function TandemPage() {
 
 function TandemHub() {
   const learner = useBlossom((s) => s.learner);
+  const uiLocale = useUiLocale();
   const languageId = useBlossom((s) => s.languageId);
   const statusMap = useBlossom((s) => s.tandemStatus);
   const setStatus = useBlossom((s) => s.setTandemStatus);
@@ -79,7 +81,7 @@ function TandemHub() {
   const me = useMemo(
     () => ({
       speaks: learner.nativeLanguage,
-      wants: languageLabel(languageId),
+      wants: languageLabel(languageId, uiLocale),
       level: learner.level,
       interests: learner.interests,
       window: learner.practiceWindow,
