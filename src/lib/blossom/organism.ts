@@ -106,7 +106,6 @@ export function computeMinerals(log: ActivityEvent[]): MineralSnapshot {
       "WRITING_COMPLETED",
       "REVIEW_COMPLETED",
       "LIBRARY_COMPLETED",
-      "CURRICULUM_EVIDENCE_RECORDED",
       "DIAGNOSTIC_COMPLETED",
       "HOMEWORK_COMPLETED",
     ]),
@@ -297,10 +296,9 @@ export function growthEventForActivity(
         label: "Une trace revient en circulation.", mineral: "atelier",
       };
     case "CURRICULUM_EVIDENCE_RECORDED":
-      return {
-        id, at, kind: "leaf", sourceId, intensity: 0.7,
-        label: "Une preuve reliée au parcours nourrit la canopée.", mineral: "atelier",
-      };
+      // Curriculum evidence links the learning act to an objective; it is not
+      // a second learner gesture and therefore must not create duplicate growth.
+      return null;
     case "LIBRARY_COMPLETED":
       return {
         id, at, kind: "flower", sourceId, intensity: 0.62,
