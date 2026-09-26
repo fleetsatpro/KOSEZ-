@@ -17,6 +17,8 @@ export type MineralDefinition = {
   door: string;
   doorLabel: string;
   writtenBy: readonly ActivityType[];
+  cap: number;
+  terrainBonus?: boolean;
   purpose: string;
   gesture: string;
   windowLabel: string;
@@ -27,11 +29,11 @@ export type MineralDefinition = {
 export const MINERAL_ORDER: readonly MineralKey[] = ["mission", "parole", "pron", "social", "atelier"];
 
 export const MINERAL_DEFINITIONS: Record<MineralKey, MineralDefinition> = {
-  mission: { label: "Mission", door: "/mission", doorLabel: "Mission", writtenBy: ["MISSION_COMPLETED", "REAL_WORLD_BONUS"], purpose: "Agir dans une situation réelle.", gesture: "Un geste terrain réellement clôturé.", windowLabel: "14 jours", writtenByLabel: "Mission clôturée · bonus terrain", scoreMeaning: "Activité mission récente, plafonnée à l’échelle 100." },
-  parole: { label: "Parole", door: "/osez", doorLabel: "OSEZ", writtenBy: ["SPEAK_COMPLETED"], purpose: "Prendre la parole, ici et maintenant.", gesture: "Une prise de parole réellement clôturée.", windowLabel: "14 jours", writtenByLabel: "OSEZ clôturé", scoreMeaning: "Activité de prise de parole récente, plafonnée à l’échelle 100." },
-  pron: { label: "Pron", door: "/pronlab", doorLabel: "Pron’Lab", writtenBy: ["PRONLAB_COMPLETED", "PRONLAB_MASTERY"], purpose: "Rendre un son plus disponible.", gesture: "Une pratique Pron’Lab ou une maîtrise observée.", windowLabel: "14 jours", writtenByLabel: "Pron’Lab · maîtrise observée", scoreMeaning: "Pratique récente de Pron’Lab, plafonnée à l’échelle 100." },
-  social: { label: "Social", door: "/tandem", doorLabel: "Tandem", writtenBy: ["TANDEM_COMPLETED", "CLASS_ATTENDED", "EVENT_ATTENDED", "IMMERSION_ATTENDED"], purpose: "Créer du lien dans un cadre réel.", gesture: "Un tandem clôturé, une présence ou une immersion réellement enregistrée.", windowLabel: "14 jours", writtenByLabel: "Tandem · classe · événement · immersion", scoreMeaning: "Présences sociales récentes, plafonnées à l’échelle 100." },
-  atelier: { label: "Atelier", door: "/learn/labs", doorLabel: "LEARN · Labs", writtenBy: ["GRAMMAR_COMPLETED", "LISTENING_COMPLETED", "WRITING_COMPLETED", "REVIEW_COMPLETED", "LIBRARY_COMPLETED", "HOMEWORK_COMPLETED"], purpose: "Consolider ce que vous apprenez.", gesture: "Une trace d’atelier terminée.", windowLabel: "14 jours", writtenByLabel: "Grammaire · écoute · écrit · révision · bibliothèque · devoir", scoreMeaning: "Pratique d’atelier récente, plafonnée à l’échelle 100." },
+  mission: { label: "Mission", door: "/mission", doorLabel: "Mission", writtenBy: ["MISSION_COMPLETED", "REAL_WORLD_BONUS"], cap: 8, terrainBonus: true, purpose: "Agir dans une situation réelle.", gesture: "Un geste terrain réellement clôturé.", windowLabel: "14 jours", writtenByLabel: "Mission clôturée · bonus terrain", scoreMeaning: "Activité mission récente, plafonnée à l’échelle 100." },
+  parole: { label: "Parole", door: "/osez", doorLabel: "OSEZ", writtenBy: ["SPEAK_COMPLETED"], cap: 6, purpose: "Prendre la parole, ici et maintenant.", gesture: "Une prise de parole réellement clôturée.", windowLabel: "14 jours", writtenByLabel: "OSEZ clôturé", scoreMeaning: "Activité de prise de parole récente, plafonnée à l’échelle 100." },
+  pron: { label: "Pron", door: "/pronlab", doorLabel: "Pron’Lab", writtenBy: ["PRONLAB_COMPLETED", "PRONLAB_MASTERY"], cap: 8, purpose: "Rendre un son plus disponible.", gesture: "Une pratique Pron’Lab ou une maîtrise observée.", windowLabel: "14 jours", writtenByLabel: "Pron’Lab · maîtrise observée", scoreMeaning: "Pratique récente de Pron’Lab, plafonnée à l’échelle 100." },
+  social: { label: "Social", door: "/tandem", doorLabel: "Tandem", writtenBy: ["TANDEM_COMPLETED", "CLASS_ATTENDED", "EVENT_ATTENDED", "IMMERSION_ATTENDED"], cap: 5, purpose: "Créer du lien dans un cadre réel.", gesture: "Un tandem clôturé, une présence ou une immersion réellement enregistrée.", windowLabel: "14 jours", writtenByLabel: "Tandem · classe · événement · immersion", scoreMeaning: "Présences sociales récentes, plafonnées à l’échelle 100." },
+  atelier: { label: "Atelier", door: "/learn/labs", doorLabel: "LEARN · Labs", writtenBy: ["GRAMMAR_COMPLETED", "LISTENING_COMPLETED", "WRITING_COMPLETED", "REVIEW_COMPLETED", "LIBRARY_COMPLETED", "HOMEWORK_COMPLETED"], cap: 10, purpose: "Consolider ce que vous apprenez.", gesture: "Une trace d’atelier terminée.", windowLabel: "14 jours", writtenByLabel: "Grammaire · écoute · écrit · révision · bibliothèque · devoir", scoreMeaning: "Pratique d’atelier récente, plafonnée à l’échelle 100." },
 };
 
 export function mineralForActivity(type: ActivityType): MineralKey | null {
@@ -90,7 +92,7 @@ function inRollingWindow(iso: string, days = ROLLING_DAYS): boolean {
 
 function countTypes(
   log: ActivityEvent[],
-  types: ActivityType[],
+  types: readonly ActivityType[],
   terrainBonus = false,
 ): number {
   return log.reduce((sum, e) => {
@@ -110,45 +112,22 @@ function norm(raw: number, cap: number): number {
 }
 
 export function computeMinerals(log: ActivityEvent[]): MineralSnapshot {
-  const mission = norm(
-    countTypes(log, ["MISSION_COMPLETED", "REAL_WORLD_BONUS"], true),
-    8,
-  );
-  const parole = norm(
-    countTypes(log, ["SPEAK_COMPLETED"]),
-    6,
-  );
-  const pron = norm(
-    countTypes(log, ["PRONLAB_COMPLETED", "PRONLAB_MASTERY"]),
-    8,
-  );
-  const social = norm(
-    countTypes(log, [
-      "TANDEM_COMPLETED",
-      "CLASS_ATTENDED",
-      "EVENT_ATTENDED",
-      "IMMERSION_ATTENDED",
-    ]),
-    5,
-  );
-  const atelier = norm(
-    countTypes(log, [
-      "GRAMMAR_COMPLETED",
-      "LISTENING_COMPLETED",
-      "WRITING_COMPLETED",
-      "REVIEW_COMPLETED",
-      "LIBRARY_COMPLETED",
-      "HOMEWORK_COMPLETED",
-    ]),
-    10,
-  );
+  const values = Object.fromEntries(
+    MINERAL_ORDER.map((key) => {
+      const definition = MINERAL_DEFINITIONS[key];
+      return [
+        key,
+        norm(
+          countTypes(log, definition.writtenBy, definition.terrainBonus === true),
+          definition.cap,
+        ),
+      ];
+    }),
+  ) as Record<MineralKey, number>;
+
   return {
     at: new Date().toISOString(),
-    mission,
-    parole,
-    pron,
-    social,
-    atelier,
+    ...values,
   };
 }
 
