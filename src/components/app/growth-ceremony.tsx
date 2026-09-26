@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
-import { causalNextGesture, MINERAL_DOORS, type MineralKey } from "@/lib/blossom/organism";
+import { causalNextGesture, MINERAL_DOORS } from "@/lib/blossom/organism";
 import { cn } from "@/lib/utils";
-
 
 const KIND_META: Record<
   GrowthEvent["kind"],
