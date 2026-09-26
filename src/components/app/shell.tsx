@@ -221,18 +221,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const journey = useJourney();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const contextNav = contextNavFor(pathname, m);
-  const contextLabel =
-    contextKey(pathname) === "learn"
-      ? "Atelier LEARN"
-      : contextKey(pathname) === "osez"
-        ? "Parler"
-        : contextKey(pathname) === "explore"
-          ? "Sortir"
-          : contextKey(pathname) === "connect"
-            ? "Présences"
-            : contextKey(pathname) === "blossom"
-              ? m.context.blossom
-              : m.context.moi;
+  const contextLabels = {
+    learn: m.context.learn,
+    osez: m.context.osez,
+    explore: m.context.explore,
+    connect: m.context.connect,
+    blossom: m.context.blossom,
+    moi: m.context.moi,
+  } as const;
+  const contextLabel = contextLabels[contextKey(pathname)];
   const hideChrome =
     pathname === "/mission" || pathname.startsWith("/osez/") || pathname.startsWith("/tandem/");
 
