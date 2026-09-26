@@ -1,7 +1,7 @@
 /**
  * Cross-surface influence engine.
  *
- * This is the depth layer: every door (Mission, OSEZ, Pulse, Home) reads the same
+ * This is the depth layer: every door (Mission, OSEZ, Pulse, Home, Tandem) reads the same
  * organism state and adapts behavior — not copy, not particles.
  *
  * Inputs: pronlab attempts, activity log, minerals, growth, mission sessions.
@@ -43,40 +43,37 @@ export type InfluenceReason = {
 };
 
 export type MissionInfluence = {
-  /** Injected into the support phrase display when a phoneme is resisting */
   emphasis?: string;
-  /** Extra kit line forced to the front */
   kitFront?: { phrase: string; use: string };
-  /** Stretch rewritten from mission friction history */
   stretchOverride?: string;
-  /** Adaptation label beyond Foundation/Stabiliser/… */
   adaptationDetail: string;
   reasons: InfluenceReason[];
 };
 
 export type SpeakInfluence = {
-  /** Friction string passed into room composition */
   friction: string | null;
-  /** Kit phrases prepended (mastered phonemes become available tools) */
   kitBoost: { phrase: string; use: string }[];
-  /** Pressure bias for room composition entropy */
   pressureHint: "soft" | "steady" | "firm";
   reasons: InfluenceReason[];
 };
 
 export type PulseInfluence = {
-  /** Override or bias today's dare when a mineral is critically low */
   dareOverride: { id: string; line: string; seconds: number } | null;
   reasons: InfluenceReason[];
 };
 
 export type HomeInfluence = {
-  /** Primary status line (replaces generic organismStatusLine when deeper) */
   statusLine: string;
-  /** Secondary causal annotation under the status */
   annotation: string | null;
-  /** Ordered doors with reasons — not just lowest mineral */
   doors: { door: string; mineral: MineralKey; line: string; priority: number }[];
+  reasons: InfluenceReason[];
+};
+
+export type TandemInfluence = {
+  /** Opening prompt when a son resists or social mineral is low */
+  openPrompt: string | null;
+  /** Partner ranking bias */
+  partnerBias: "social-recover" | "pron-focus" | "balanced";
   reasons: InfluenceReason[];
 };
 
@@ -89,6 +86,7 @@ export type OrganismInfluence = {
   speak: SpeakInfluence;
   pulse: PulseInfluence;
   home: HomeInfluence;
+  tandem: TandemInfluence;
 };
 
 function lowestMineral(m: MineralSnapshot): { key: MineralKey; value: number } {
@@ -245,7 +243,6 @@ export function computeInfluence(input: {
     pressureHint = "soft";
   }
 
-  // Mastered leaves become available tools (up to 2 most recent)
   const recentLeaves = [...leaves]
     .sort((a, b) => b.unlockedAt.localeCompare(a.unlockedAt))
     .slice(0, 2);
@@ -334,7 +331,6 @@ export function computeInfluence(input: {
   const homeReasons: InfluenceReason[] = [];
   const doors: HomeInfluence["doors"] = [];
 
-  // Priority doors from multiple signals, not just lowest mineral
   if (struggle) {
     const focus = struggle.focus || struggle.problemSegment || struggle.phrase;
     doors.push({
@@ -392,12 +388,11 @@ export function computeInfluence(input: {
     });
   }
 
-  // Dedupe doors by path, keep highest priority
-  const doorMap = new Map<string, HomeInfluence["doors"][number]>();
+  const doorMapDedup = new Map<string, HomeInfluence["doors"][number]>();
   for (const d of doors.sort((a, b) => b.priority - a.priority)) {
-    if (!doorMap.has(d.door)) doorMap.set(d.door, d);
+    if (!doorMapDedup.has(d.door)) doorMapDedup.set(d.door, d);
   }
-  const orderedDoors = [...doorMap.values()].sort((a, b) => b.priority - a.priority);
+  const orderedDoors = [...doorMapDedup.values()].sort((a, b) => b.priority - a.priority);
 
   let statusLine: string;
   let annotation: string | null = null;
@@ -433,6 +428,37 @@ export function computeInfluence(input: {
     });
   }
 
+  // ── Tandem influence ───────────────────────────────────────────────
+  const tandemReasons: InfluenceReason[] = [];
+  let openPrompt: string | null = null;
+  let partnerBias: TandemInfluence["partnerBias"] = "balanced";
+
+  if (struggle) {
+    const focus = struggle.focus || struggle.problemSegment || struggle.phrase;
+    openPrompt = `Could you help me with « ${focus} »? I want to hear it once, then try.`;
+    partnerBias = "pron-focus";
+    tandemReasons.push({
+      code: "pron-struggle",
+      line: `Le tandem ouvre sur « ${focus} » — un échange court, pas un cours.`,
+      mineral: "pron",
+    });
+  } else if (low.key === "social" && low.value < 40) {
+    openPrompt = "How has your week been? One real answer is enough.";
+    partnerBias = "social-recover";
+    tandemReasons.push({
+      code: "mineral-low",
+      line: `Minéral social à ${low.value}/100 — le tandem priorise un échange simple, sans performance.`,
+      mineral: "social",
+    });
+  }
+
+  if (tandemReasons.length === 0) {
+    tandemReasons.push({
+      code: "balanced",
+      line: "Tandem libre — aucune friction dominante à injecter.",
+    });
+  }
+
   return {
     at,
     minerals,
@@ -460,6 +486,11 @@ export function computeInfluence(input: {
       annotation,
       doors: orderedDoors,
       reasons: homeReasons,
+    },
+    tandem: {
+      openPrompt,
+      partnerBias,
+      reasons: tandemReasons,
     },
   };
 }
