@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
-import { causalNextGesture, type MineralKey } from "@/lib/blossom/organism";
+import { causalNextGesture, MINERAL_DEFINITIONS, type MineralKey } from "@/lib/blossom/organism";
 import { cn } from "@/lib/utils";
 
 const MINERAL_LABEL: Record<MineralKey, string> = {
@@ -168,7 +168,7 @@ export function GrowthCeremony({
                 Minéral nourri · {MINERAL_LABEL[event.mineral]}
               </p>
               <p className="mt-1 text-sm leading-5 text-fg">
-                Ce geste laisse une trace dans votre organisme — et la porte suivante reste liée à ce qu’il vient de nourrir.
+                Ce geste écrit « ${MINERAL_DEFINITIONS[event.mineral].label} » dans l’organisme. La porte suivante répond au minéral actuellement le plus en retrait.
               </p>
             </div>
           ) : null}
@@ -223,8 +223,9 @@ function CausalDoor({
         Prochain geste · {next.mineral}
       </p>
       <p className="mt-1 text-sm leading-5 text-fg/90">{next.line}</p>
+      <p className="mt-1 text-[11px] leading-5 text-muted">{next.basis}</p>
       <Link
-        to={next.door as "/osez" | "/pronlab" | "/mission" | "/tandem"}
+        to={next.door as never}
         onClick={onNavigate}
         className="mt-3 inline-flex text-sm font-semibold text-primary hover:underline"
       >
