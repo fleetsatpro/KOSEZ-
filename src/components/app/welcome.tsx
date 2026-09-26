@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMessages } from "@/lib/i18n";
 import {
   ArrowLeft,
@@ -63,9 +64,9 @@ export function Welcome() {
     { id: "18:00 – 19:00", ...m.welcome.rhythms.evening },
   ] as const;
   const coaches = [
-    { id: "Posé", ...m.welcome.coaches.calm },
-    { id: "Direct", ...m.welcome.coaches.direct },
-    { id: "Chaleureux", ...m.welcome.coaches.warm },
+    { ...m.welcome.coaches.calm, id: "Posé" },
+    { ...m.welcome.coaches.direct, id: "Direct" },
+    { ...m.welcome.coaches.warm, id: "Chaleureux" },
   ];
   const step = steps[stepIndex]!;
   const isLast = stepIndex === steps.length - 1;
@@ -144,7 +145,7 @@ export function Welcome() {
                 {step.detail}
               </p>
 
-              <div className="mt-8 grid gap-2" aria-label="Progression de configuration">
+              <div className="mt-8 grid gap-2" aria-label={m.welcome.configTitle}>
                 {steps.map((item, index) => {
                   const active = index === stepIndex;
                   const complete = index < stepIndex;
@@ -172,13 +173,7 @@ export function Welcome() {
                             active ? "text-primary-foreground" : "text-primary-foreground/45",
                           ].join(" ")}
                         >
-                          {item.id === "identity"
-                            ? "Identité"
-                            : item.id === "level"
-                              ? "Repère"
-                              : item.id === "goal"
-                                ? "Intention"
-                                : "Rythme"}
+                          {item.short}
                         </span>
                       </span>
                     </div>
@@ -187,8 +182,7 @@ export function Welcome() {
               </div>
 
               <p className="mt-8 text-xs leading-5 text-primary-foreground/35">
-                Vos choix restent modifiables dans MOI. L’objectif est de rendre les
-                premières pratiques plus justes, pas de vous enfermer dans un profil.
+                {m.welcome.footerNote}
               </p>
             </section>
 
@@ -230,16 +224,23 @@ export function Welcome() {
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-foreground/48">
                       {m.welcome.todayMission}
                     </p>
-                    <div className="mt-3 rounded-2xl border border-primary-foreground/10 bg-primary-foreground/5 p-4">
-                      <div className="flex items-center gap-2 text-xs text-primary-foreground/42">
-                        <Sparkles className="size-3.5 text-primary" />
-                        {todayMission.durationMin} min · {todayMission.level}
+                    {todayMission ? (
+                      <div className="mt-3 rounded-2xl border border-primary-foreground/10 bg-primary-foreground/5 p-4">
+                        <div className="flex items-center gap-2 text-xs text-primary-foreground/42">
+                          <Sparkles className="size-3.5 text-primary" />
+                          {todayMission.durationMin} min · {todayMission.level}
+                        </div>
+                        <p className="mt-3 font-display text-xl">{todayMission.title}</p>
+                        <p className="mt-2 text-sm leading-6 text-primary-foreground/52">
+                          {todayMission.prompt}
+                        </p>
                       </div>
-                      <p className="mt-3 font-display text-xl">{todayMission.title}</p>
-                      <p className="mt-2 text-sm leading-6 text-primary-foreground/52">
-                        {todayMission.prompt}
-                      </p>
-                    </div>
+                    ) : (
+                      <div className="mt-3 rounded-2xl border border-primary-foreground/10 bg-primary-foreground/5 p-4">
+                        <p className="font-medium text-primary-foreground/85">{m.languages.packsEmpty}</p>
+                        <p className="mt-2 text-sm leading-6 text-primary-foreground/52">{m.languages.impactMission}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : null}
@@ -315,7 +316,7 @@ export function Welcome() {
                       onChange={(event) => setGoal(event.target.value)}
                       maxLength={140}
                       className="mt-3 h-12 w-full rounded-xl border border-primary-foreground/12 bg-primary-foreground/5 px-4 text-sm text-primary-foreground outline-none placeholder:text-primary-foreground/30 focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
-                      placeholder="{m.welcome.goalPlaceholder}"
+                      placeholder={m.welcome.goalPlaceholder}
                     />
                   </label>
 
@@ -454,7 +455,7 @@ export function Welcome() {
         </div>
 
         <footer className="mt-auto flex items-center justify-between gap-4 pt-6 text-[10px] uppercase tracking-[0.16em] text-primary-foreground/30">
-          <span>Configuration · 4 étapes</span>
+          <span>{m.welcome.configTitle}</span>
           <span>K’Osez · Saint-Pierre</span>
         </footer>
       </div>
