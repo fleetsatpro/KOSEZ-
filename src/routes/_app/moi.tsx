@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Leaf,
   Shield,
   BookOpen,
   Calendar,
+  CalendarClock,
   Sparkles,
   ChevronRight,
 } from "lucide-react";
