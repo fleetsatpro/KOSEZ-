@@ -9,15 +9,15 @@
  */
 
 import type { PronlabItem } from "./data";
-import type { LearnLanguageId } from "../i18n/locales";
+import type { LearnLanguageId } from "../i18n/locales.ts";
 import type {
   ActivityEvent,
   LearnerMemory,
   PronlabAttempt,
-} from "./engine";
-import { summarisePronlabItem } from "./engine";
-import type { MissionOutcome, MissionSession } from "./mission";
-import { evaluateMission, summariseMissionHistory } from "./mission";
+} from "./engine.ts";
+import { summarisePronlabItem } from "./engine.ts";
+import type { MissionOutcome, MissionSession } from "./mission.ts";
+import { evaluateMission, summariseMissionHistory } from "./mission.ts";
 import {
   computeMinerals,
   strugglingFocus,
@@ -25,7 +25,7 @@ import {
   type MineralKey,
   type MineralSnapshot,
   type PhonemeLeaf,
-} from "./organism";
+} from "./organism.ts";
 
 export type InfluenceReason = {
   /** Machine key for analytics / tests */
