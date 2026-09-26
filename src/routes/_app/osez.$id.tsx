@@ -7,7 +7,8 @@ import { RecordControl, Waveform } from "@/components/app/record-control";
 import { Eyebrow, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LEARNER_MEMORY, planAllows } from "@/lib/blossom/data";
+import { LEARNER_MEMORY, planAllows, PRONLAB_SETS } from "@/lib/blossom/data";
+import { influenceFromState } from "@/lib/blossom/influence";
 import type { LivingRoom } from "@/lib/blossom/speak-engine";
 import { reshuffleRoom } from "@/lib/blossom/speak-engine";
 import { buildSpeakRoom } from "@/lib/blossom/speak-llm";
@@ -41,8 +42,27 @@ function SpeakRoom() {
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
   const learner = useBlossom((s) => s.learner);
+  const log = useBlossom((s) => s.activityLog);
+  const attempts = useBlossom((s) => s.pronlabAttempts);
+  const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
+  const missionSessions = useBlossom((s) => s.missionSessions);
   const memoryOn = planAllows(plan, "memory");
-  const friction = memoryOn ? LEARNER_MEMORY.hesitation : null;
+  const influence = influenceFromState({
+    activityLog: log,
+    pronlabAttempts: attempts,
+    growthEvents,
+    phonemeLeaves,
+    missionSessions,
+    allItems: PRONLAB_SETS.flatMap((s) => s.items),
+    memory: LEARNER_MEMORY,
+    memoryOn,
+  });
+  const friction = influence.speak.friction ?? (memoryOn ? LEARNER_MEMORY.hesitation : null);
+  const kitBoost = influence.speak.kitBoost;
+  const pressureHint = influence.speak.pressureHint;
+  const influenceReasons = influence.speak.reasons
+    .filter((r) => r.code !== "balanced")
+    .map((r) => r.line);
 
   const [room, setRoom] = useState<LivingRoom | null>(null);
   const [source, setSource] = useState<"llm" | "swarm">("swarm");
@@ -92,6 +112,9 @@ function SpeakRoom() {
         friction,
         interests: learner.interests,
         entropy: sessionEntropy(id + (topic ?? "")),
+        pressureHint,
+        kitBoost,
+        influenceReasons,
       });
 
       if (cancelled) return;
@@ -103,7 +126,7 @@ function SpeakRoom() {
     return () => {
       cancelled = true;
     };
-  }, [id, learner.level, learner.firstName, learner.interests, friction]);
+  }, [id, learner.level, learner.firstName, learner.interests, friction, pressureHint, kitBoost, influenceReasons]);
 
   useEffect(() => {
     if (!started || done) return;
@@ -143,6 +166,9 @@ function SpeakRoom() {
         friction,
         interests: learner.interests,
         entropy: `reshuffle-${Date.now()}`,
+        pressureHint,
+        kitBoost,
+        influenceReasons,
       });
       setRoom(result.room);
       setSource(result.source);
@@ -152,6 +178,9 @@ function SpeakRoom() {
         firstName: learner.firstName,
         friction,
         interests: learner.interests,
+        pressureHint,
+        kitBoost,
+        influenceReasons,
       });
       setRoom(next);
       setSource("swarm");
@@ -301,6 +330,22 @@ function SpeakRoom() {
 
             {room.memoryWhisper ? (
               <p className="mt-4 text-xs leading-5 text-white/40">{room.memoryWhisper}</p>
+            ) : null}
+
+            {room.influenceNotes && room.influenceNotes.length > 0 ? (
+              <ul
+                className="mt-4 space-y-1.5 rounded-2xl border border-primary/20 bg-primary/10 p-4 text-left"
+                aria-label="Pourquoi cette room est composée ainsi"
+              >
+                <li className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary/80">
+                  Organisme · composition
+                </li>
+                {room.influenceNotes.map((note) => (
+                  <li key={note} className="text-xs leading-5 text-white/70">
+                    {note}
+                  </li>
+                ))}
+              </ul>
             ) : null}
 
             <Button
