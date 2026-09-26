@@ -179,9 +179,10 @@ export function summarisePronlabItem(
   const mine = attempts.filter((a) => a.itemId === itemId);
   const scored = mine.filter(
     (attempt) =>
-      attempt.metadata?.assessment === "phonetic-provider" &&
       typeof attempt.score === "number" &&
-      attempt.score > 0,
+      attempt.score > 0 &&
+      attempt.metadata?.assessment !== "capture-only" &&
+      attempt.metadata?.assessment !== "transcript",
   );
   const practiceAttempts = mine.filter(
     (attempt) =>
