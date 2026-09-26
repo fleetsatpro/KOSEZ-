@@ -293,6 +293,7 @@ export type ConnectPeer = {
   interests: string[];
   lastSeen: string | null;
   sharedEvents: number;
+  tandemAccepted: boolean;
 };
 
 export async function getConnectPeers(userId: string): Promise<ConnectPeer[]> {
@@ -305,13 +306,21 @@ export async function getConnectPeers(userId: string): Promise<ConnectPeer[]> {
       p.preferences->>'city' as city,
       p.preferences->'interests' as interests,
       max(their.updated_at) as last_seen,
-      count(distinct mine.event_id)::integer as shared_events
+      count(distinct mine.event_id)::integer as shared_events,
+      boolean_or(
+        coalesce(mine_tandem.status = 'accepted', false)
+        and coalesce(their_tandem.status = 'accepted', false)
+      ) as tandem_accepted
     from blossom_event_registration mine
     join blossom_event_registration their
       on their.event_id = mine.event_id
      and their.status = 'joined'
      and their.user_id <> $1
     join blossom_profile p on p.user_id = their.user_id
+    left join blossom_tandem_connection mine_tandem
+      on mine_tandem.user_id = $1 and mine_tandem.partner_user_id = their.user_id
+    left join blossom_tandem_connection their_tandem
+      on their_tandem.user_id = their.user_id and their_tandem.partner_user_id = $1
     where mine.user_id = $1
       and mine.status = 'joined'
       and lower(coalesce(p.preferences->>'tandemOpen', 'false')) = 'true'
@@ -329,6 +338,7 @@ export async function getConnectPeers(userId: string): Promise<ConnectPeer[]> {
     interests: Array.isArray(row.interests) ? row.interests.map(String) : [],
     lastSeen: row.last_seen ? new Date(String(row.last_seen)).toISOString() : null,
     sharedEvents: Number(row.shared_events ?? 0),
+    tandemAccepted: Boolean(row.tandem_accepted),
   }));
 }
 
