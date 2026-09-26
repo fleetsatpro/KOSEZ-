@@ -32,6 +32,7 @@ import {
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { LeoLetterCard } from "@/components/app/leo-letter-card";
 import { formatShortDate } from "@/lib/utils";
+import { calendarFilename, teacherSessionToIcs } from "@/lib/blossom/calendar";
 import { cn } from "@/lib/utils";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { MoiSettings } from "@/components/app/moi-settings";
@@ -49,6 +50,24 @@ export const Route = createFileRoute("/_app/moi")({
  * MOI is not a settings dump.
  * Identity stage · Léo's private memory · preuves · courage atmosphere.
  */
+function downloadSessionCalendar(session: {
+  id: string;
+  title: string;
+  startsAt: string;
+  durationMinutes: number;
+  teacherName: string;
+  learnerName: string;
+}) {
+  const ics = teacherSessionToIcs(session);
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = calendarFilename(session.title);
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 function MoiPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Awaited<ReturnType<typeof getLearnerSessionsOnServer>>>([]);
@@ -269,6 +288,13 @@ function MoiPage() {
                     timeStyle: "short",
                   })} · {session.durationMinutes} min · {session.teacherName}
                 </p>
+                        <button
+                          type="button"
+                          onClick={() => downloadSessionCalendar(session)}
+                          className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary hover:underline"
+                        >
+                          Ajouter au calendrier
+                        </button>
               </li>
             ))}
           </ul>
