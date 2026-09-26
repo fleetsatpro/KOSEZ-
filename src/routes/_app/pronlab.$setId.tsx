@@ -106,9 +106,10 @@ function PronlabSetPage() {
         growthEvents,
         phonemeLeaves,
         missionSessions,
-        allItems: PRONLAB_SETS.flatMap((s) => s.items),
+        allItems: PRONLAB_SETS.filter((s) => !s.language || s.language === "English" || s.language === languageId).flatMap((s) => s.items),
         memory: LEARNER_MEMORY,
         memoryOn: true,
+        languageId,
       }),
     [log, attempts, growthEvents, phonemeLeaves, missionSessions],
   );
