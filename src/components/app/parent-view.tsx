@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { HeartHandshake, Users } from "lucide-react";
+import { HeartHandshake, MessageCircle, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Eyebrow, Initials, Page, Surface } from "./primitives";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
-import { getGuardianWorkspaceOnServer } from "@/lib/blossom/domain.api";
+import { getGuardianTeacherContactsOnServer, getGuardianWorkspaceOnServer } from "@/lib/blossom/domain.api";
 import { useBlossom } from "@/lib/blossom/store";
 import { LearnerDetail } from "./learner-detail";
+import { ConversationPanel } from "./conversation-panel";
 
 type GuardianRow = Awaited<ReturnType<typeof getGuardianWorkspaceOnServer>>[number];
+type GuardianTeacherContact = Awaited<ReturnType<typeof getGuardianTeacherContactsOnServer>>[number];
 
 function relative(value: string | null) {
   if (!value) return "Aucune activité enregistrée";
@@ -22,6 +24,8 @@ export function ParentView() {
   const { access, pending: accessPending } = useBlossomWorkspaceAccess();
   const [children, setChildren] = useState<GuardianRow[]>([]);
   const [selectedId, setSelectedId] = useState("");
+  const [teacherContacts, setTeacherContacts] = useState<GuardianTeacherContact[]>([]);
+  const [selectedTeacher, setSelectedTeacher] = useState<GuardianTeacherContact | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,14 +38,22 @@ export function ParentView() {
     }
     setLoading(true);
     setError(null);
-    void getGuardianWorkspaceOnServer()
-      .then((rows) => {
+    void Promise.all([
+      getGuardianWorkspaceOnServer(),
+      getGuardianTeacherContactsOnServer(),
+    ])
+      .then(([rows, contacts]) => {
         if (disposed) return;
         setChildren(rows);
         setSelectedId((current) => current || rows[0]?.id || "");
+        setTeacherContacts(contacts);
+        setSelectedTeacher(null);
       })
       .catch(() => {
-        if (!disposed) setError("Impossible de charger les apprenants liés à ce compte.");
+        if (!disposed) {
+          setError("Impossible de charger les apprenants liés à ce compte.");
+          setTeacherContacts([]);
+        }
       })
       .finally(() => {
         if (!disposed) setLoading(false);
@@ -175,6 +187,67 @@ export function ParentView() {
               </Surface>
             </section>
             <LearnerDetail learnerUserId={selected.id} role="guardian" />
+
+            <Surface className="mt-4">
+              <div className="flex items-start gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <MessageCircle className="size-4" />
+                </span>
+                <div>
+                  <Eyebrow>Communication avec l’enseignant</Eyebrow>
+                  <h2 className="mt-1 font-display text-2xl tracking-tight">
+                    Une ligne directe quand le lien existe.
+                  </h2>
+                  <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+                    Les enseignants apparaissent uniquement lorsqu’ils sont réellement
+                    liés à {selected.name} par K’Osez. Le même contrôle de relation
+                    est revérifié côté serveur à chaque message.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-2">
+                {teacherContacts.filter((contact) => contact.learnerUserId === selected.id).length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-border p-4 text-sm leading-6 text-muted">
+                    Aucun enseignant lié à cet apprenant pour le moment.
+                  </p>
+                ) : (
+                  teacherContacts
+                    .filter((contact) => contact.learnerUserId === selected.id)
+                    .map((contact) => (
+                      <button
+                        key={contact.teacherUserId + ":" + contact.learnerUserId}
+                        type="button"
+                        onClick={() => setSelectedTeacher(contact)}
+                        className={
+                          selectedTeacher?.teacherUserId === contact.teacherUserId &&
+                          selectedTeacher.learnerUserId === contact.learnerUserId
+                            ? "flex w-full items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-left"
+                            : "flex w-full items-center gap-3 rounded-xl border border-border bg-surface-2/30 p-4 text-left hover:bg-surface-2"
+                        }
+                      >
+                        <Initials letters={contact.teacherName.slice(0, 1)} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-medium">{contact.teacherName}</span>
+                          <span className="mt-0.5 block text-xs text-muted">
+                            Enseignant de {contact.learnerName}
+                          </span>
+                        </span>
+                        <MessageCircle className="size-4 shrink-0 text-primary" />
+                      </button>
+                    ))
+                )}
+              </div>
+
+              {selectedTeacher && selectedTeacher.learnerUserId === selected.id ? (
+                <ConversationPanel
+                  kind="teacher"
+                  partnerUserId={selectedTeacher.teacherUserId}
+                  partnerName={selectedTeacher.teacherName}
+                  title={"Enseignant · " + selectedTeacher.learnerName}
+                />
+              ) : null}
+            </Surface>
             </>
           ) : null}
         </>
