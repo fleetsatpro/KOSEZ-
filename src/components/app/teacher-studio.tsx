@@ -9,6 +9,7 @@ import { getTeacherWorkspaceOnServer } from "@/lib/blossom/domain.api";
 import { TEACHER_TAGS } from "@/lib/blossom/data";
 import { useBlossom } from "@/lib/blossom/store";
 import { LearnerDetail } from "./learner-detail";
+import { TeacherSessionPlanner } from "./teacher-session-planner";
 
 type Tab = "prep" | "roster" | "lecture";
 type TeacherRow = Awaited<ReturnType<typeof getTeacherWorkspaceOnServer>>[number];
@@ -444,6 +445,8 @@ export function TeacherStudio() {
                   </ul>
                 ) : null}
               </Surface>
+
+              <TeacherSessionPlanner roster={roster.map((student) => ({ id: student.id, name: student.name }))} />
 
               <Surface>
                 <Eyebrow>Devoir · brouillon contrôlé</Eyebrow>
