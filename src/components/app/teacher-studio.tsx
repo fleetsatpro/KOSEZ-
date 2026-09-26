@@ -9,6 +9,7 @@ import { getTeacherWorkspaceOnServer } from "@/lib/blossom/domain.api";
 import { TEACHER_TAGS } from "@/lib/blossom/data";
 import { useBlossom } from "@/lib/blossom/store";
 import { LearnerDetail } from "./learner-detail";
+import { TeacherSessionPlanner } from "./teacher-session-planner";
 import { ConversationInbox } from "./conversation-inbox";
 import { ConversationPanel } from "./conversation-panel";
 import type { ConversationSummary } from "@/lib/blossom/messaging.server";
@@ -449,6 +450,8 @@ export function TeacherStudio() {
                   </ul>
                 ) : null}
               </Surface>
+
+              <TeacherSessionPlanner roster={roster.map((student) => ({ id: student.id, name: student.name }))} />
 
               <Surface>
                 <Eyebrow>Devoir · brouillon contrôlé</Eyebrow>
