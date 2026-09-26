@@ -107,7 +107,7 @@ function ConnectPage() {
           </div>
           <div className="shrink-0 rounded-2xl border border-border bg-surface-2/45 p-4 md:max-w-xs">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">Pourquoi cette porte</p>
-            <p className="mt-2 text-sm leading-6 text-fg">{socialNext.mineral === "social" ? socialNext.line : "Le prochain geste suit actuellement un autre besoin de votre organisme."}</p>
+            <p className="mt-2 text-sm leading-6 text-fg">{socialNext.mineral === "social" ? socialNext.line : `Le prochain geste suit actuellement « ${socialNext.mineral} ». Le social reste lisible ici sans être présenté comme votre priorité actuelle.`}</p>
             <Link
               to="/tandem"
               className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary"
