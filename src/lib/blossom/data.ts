@@ -1,5 +1,5 @@
 import type { StageId } from "./engine";
-import { LEARN_LANGUAGES, isLearnLanguageId } from "@/lib/i18n/locales";
+import { LEARN_LANGUAGES, isLearnLanguageId } from "../i18n/locales";
 type PronlabKind = "word" | "sentence" | "phoneme" | "spontaneous";
 
 export const PLANT_IMAGE: Record<StageId, string> = {
