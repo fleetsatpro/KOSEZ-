@@ -260,7 +260,6 @@ export function HomeDashboard() {
         className="border-t border-border/60 bg-bg px-5 py-6 lg:px-12"
         aria-label="Portes secondaires — chaque porte nourrit un minéral précis"
       >
-/div>
         <ul className="mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm">
           <li>
             <Link
