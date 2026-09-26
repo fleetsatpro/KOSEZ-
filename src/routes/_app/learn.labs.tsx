@@ -38,7 +38,7 @@ function dailyLabSource(kind: string, taskId: string) {
 function LearningLabs() {
   const learnerLevel = useBlossom((s) => s.learner.level);
   const activeLevel: LabLevel = learnerLevel === "B1" ? "B1" : "A2";
-  const search = useRouterState({ select: (state) => state.location.search });
+  const search = useRouterState({ select: (state) => state.location.searchStr });
   const params = new URLSearchParams(search);
   const requestedLab = params.get("lab");
   const focusTaskId = params.get("task");
