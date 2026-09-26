@@ -279,7 +279,7 @@ function TandemSession() {
             <p className="mt-3 text-sm leading-7 text-muted">
               K’Osez n’invente pas un débrief vocal lorsqu’aucune transcription
               ou analyse audio fiable n’a été produite. Votre réflexion textuelle
-              reste privée dans l'historique de votre organisme ; la session n’est ni notée ni publiée.
+              reste dans votre historique de pratique ; la session n’est ni notée ni publiée.
             </p>
           </Surface>
 
