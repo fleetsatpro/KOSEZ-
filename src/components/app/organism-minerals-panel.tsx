@@ -52,7 +52,7 @@ export function OrganismMineralsPanel({
       </div>
       <div className="mt-5 border-t border-primary/15 pt-4">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">Traçabilité récente</p>
-        {recent.length > 0 ? <ul className="mt-3 flex flex-wrap gap-2" aria-label="Gestes récents qui ont nourri l’organisme">{recent.map((g) => <li key={g.id} className="rounded-full border border-border/70 bg-surface px-3 py-1.5 text-[11px] text-muted">{g.label}{g.mineral ? <span className="ml-1 text-primary/80">· {MINERAL_DEFINITIONS[g.mineral].label}</span> : null}</li>)}</ul> : <p className="mt-2 text-[11px] text-subtle">Aucune trace encore. Le premier geste écrira la première trace, puis son minéral sera lisible ici.</p>}
+        {recent.length > 0 ? <ul className="mt-3 flex flex-wrap gap-2" aria-label="Gestes récents qui ont nourri l’organisme">{recent.map((g) => <li key={g.id}><Link to={g.mineral ? (MINERAL_DEFINITIONS[g.mineral].door as never) : ("/moi" as never)} className="inline-flex rounded-full border border-border/70 bg-surface px-3 py-1.5 text-[11px] text-muted transition-colors hover:border-primary/25 hover:text-fg">{g.label}{g.mineral ? <span className="ml-1 text-primary/80">· {MINERAL_DEFINITIONS[g.mineral].label}</span> : null}</Link></li>)}</ul> : <p className="mt-2 text-[11px] text-subtle">Aucune trace encore. Le premier geste écrira la première trace, puis son minéral sera lisible ici.</p>}
       </div>
     </section>
   );
