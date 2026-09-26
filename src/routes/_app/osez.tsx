@@ -70,15 +70,18 @@ function OsezHub() {
   const learner = useBlossom((s) => s.learner);
   const languageId = useBlossom((s) => s.languageId);
   const growthEvents = useBlossom((s) => s.growthEvents);
+  const attempts = useBlossom((s) => s.pronlabAttempts);
+  const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
+  const missionSessions = useBlossom((s) => s.missionSessions);
   const journey = useJourney();
   const memoryOn = planAllows(plan, "memory");
   const baseDare = todaysPulseDare();
   const influence = influenceFromState({
     activityLog: log,
-    pronlabAttempts: useBlossom.getState().pronlabAttempts,
+    pronlabAttempts: attempts,
     growthEvents,
-    phonemeLeaves: useBlossom.getState().phonemeLeaves,
-    missionSessions: useBlossom.getState().missionSessions,
+    phonemeLeaves,
+    missionSessions,
     allItems: PRONLAB_SETS.filter((s) => !s.language || s.language === "English" || s.language === languageId).flatMap((s) => s.items),
     memory: LEARNER_MEMORY,
     memoryOn,
