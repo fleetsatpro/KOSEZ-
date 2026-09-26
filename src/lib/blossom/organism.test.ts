@@ -88,6 +88,16 @@ describe("growth events", () => {
     assert.equal(curriculum?.kind, "mineral");
   });
 
+  it("keeps tandem exclusively on the social mineral", () => {
+    const m = computeMinerals([{
+      id: "t1",
+      type: "TANDEM_COMPLETED",
+      createdAt: new Date().toISOString(),
+      sourceId: "tandem-1",
+    }]);
+    assert.equal(m.social > 0, true);
+    assert.equal(m.parole, 0);
+  });
   it("counts curriculum evidence as atelier nourishment", () => {
     const m = computeMinerals([{
       id: "e1",
