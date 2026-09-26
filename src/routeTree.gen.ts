@@ -634,6 +634,7 @@ interface AppRouteChildren {
   AppLearnRoute: typeof AppLearnRouteWithChildren
   AppLibraryRoute: typeof AppLibraryRouteWithChildren
   AppMissionRoute: typeof AppMissionRoute
+  AppInboxRoute: typeof AppInboxRoute
   AppMoiRoute: typeof AppMoiRoute
   AppOsezRoute: typeof AppOsezRouteWithChildren
   AppPlantRoute: typeof AppPlantRoute
@@ -649,6 +650,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppLearnRoute: AppLearnRouteWithChildren,
   AppLibraryRoute: AppLibraryRouteWithChildren,
   AppMissionRoute: AppMissionRoute,
+  AppInboxRoute: AppInboxRoute,
   AppMoiRoute: AppMoiRoute,
   AppOsezRoute: AppOsezRouteWithChildren,
   AppPlantRoute: AppPlantRoute,
