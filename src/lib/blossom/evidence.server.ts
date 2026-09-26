@@ -48,6 +48,16 @@ function activityDescriptor(type: string) {
 
 function exactRoute(kind: EvidenceTimelineItem["kind"], sourceId: string | null, metadata: Record<string, unknown>): string | null {
   if (!sourceId) return null;
+  if (kind === "activity") {
+    const type = typeof metadata.activityType === "string" ? metadata.activityType : "";
+    if (type === "LIBRARY_COMPLETED") return `/library/${encodeURIComponent(sourceId)}`;
+    if (type === "GRAMMAR_COMPLETED" || type === "LISTENING_COMPLETED" || type === "WRITING_COMPLETED") {
+      const parts = sourceId.split(":");
+      const lab = type === "GRAMMAR_COMPLETED" ? "grammar" : type === "LISTENING_COMPLETED" ? "listening" : "writing";
+      const task = parts[2] ?? "";
+      if (task) return `/learn/labs?lab=${lab}&task=${encodeURIComponent(task)}`;
+    }
+  }
   if (kind === "submission") {
     const lab = typeof metadata.kind === "string" ? metadata.kind : "grammar";
     return `/learn/labs?lab=${encodeURIComponent(lab)}&task=${encodeURIComponent(sourceId)}`;
