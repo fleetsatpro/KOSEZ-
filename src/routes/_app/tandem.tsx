@@ -28,10 +28,6 @@ export const Route = createFileRoute("/_app/tandem")({
 
 type Candidate = Awaited<ReturnType<typeof getTandemCandidatesOnServer>>[number];
 
-function languageLabel(id: string, uiLocale: string) {
-  return describeLearnLanguage(id, uiLocale).label;
-}
-
 function TandemPage() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
@@ -43,6 +39,7 @@ function TandemHub() {
   const learner = useBlossom((s) => s.learner);
   const uiLocale = useUiLocale();
   const languageId = useBlossom((s) => s.languageId);
+  const languageLabel = (id: string) => describeLearnLanguage(id, uiLocale).label;
   const statusMap = useBlossom((s) => s.tandemStatus);
   const setStatus = useBlossom((s) => s.setTandemStatus);
   const tandemOpen = useBlossom((s) => s.tandemOpen);
@@ -81,7 +78,7 @@ function TandemHub() {
   const me = useMemo(
     () => ({
       speaks: learner.nativeLanguage,
-      wants: languageLabel(languageId, uiLocale),
+      wants: languageLabel(languageId),
       level: learner.level,
       interests: learner.interests,
       window: learner.practiceWindow,
@@ -112,7 +109,7 @@ function TandemHub() {
           city: candidate.city ?? "La Réunion",
           speaks: candidate.speaks,
           speaksLevel: candidate.speaksLevel,
-          wants: languageLabel(candidate.wants, uiLocale),
+          wants: languageLabel(candidate.wants),
           wantsLevel: candidate.wantsLevel,
           interests: candidate.interests,
           window: candidate.window,
