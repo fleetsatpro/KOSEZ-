@@ -1134,7 +1134,7 @@ export type BlossomNotification = {
   createdAt: string;
 };
 
-async function createNotification(
+export async function createNotification(
   userId: string,
   input: {
     kind: BlossomNotification["kind"];
