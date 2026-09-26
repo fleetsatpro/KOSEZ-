@@ -19,6 +19,8 @@ import type { MissionSession } from "@/lib/blossom/mission";
 import type { LearningSubmission, Homework, TeacherNote } from "@/lib/blossom/store";
 import type { BackendState, SyncJsonValue, SyncMutation, SyncResult } from "@/lib/blossom/sync-types";
 import { POINTS, type ActivityEvent, type PronlabAttempt } from "@/lib/blossom/engine";
+import { buildPhonemeLeaves } from "@/lib/blossom/organism";
+import { setsForLanguage } from "@/lib/blossom/data";
 import { useBlossom } from "@/lib/blossom/store";
 import { isUiLocaleId, isLearnLanguageId } from "@/lib/i18n/locales";
 
@@ -76,8 +78,8 @@ function mergeBackendState(remote: BackendState): void {
     if (prefs.immersionPhase === "pre" || prefs.immersionPhase === "during" || prefs.immersionPhase === "post") {
       profileImmersionPhase = prefs.immersionPhase;
     }
+    if (typeof prefs.uiLocale === "string" && isUiLocaleId(prefs.uiLocale)) profileUiLocale = prefs.uiLocale;
     if (typeof prefs.childMissionDone === "boolean") {
-      if (typeof prefs.uiLocale === "string" && isUiLocaleId(prefs.uiLocale)) profileUiLocale = prefs.uiLocale;
       profileChildMissionDone = profileChildMissionDone || prefs.childMissionDone;
     }
     if (Array.isArray(prefs.childWords)) {
@@ -246,6 +248,10 @@ function mergeBackendState(remote: BackendState): void {
     ),
     pronlabAttempts: [...pronlabById.values()].sort(
       (a, b) => timestamp(a.createdAt) - timestamp(b.createdAt),
+    ),
+    phonemeLeaves: buildPhonemeLeaves(
+      [...pronlabById.values()],
+      setsForLanguage(profileLanguageId).flatMap((s) => s.items),
     ),
     vocabulary: [...vocabularyByWord.values()],
     missionSessions,
