@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { AmbientParticles } from "@/components/app/ambient-particles";
 import { BlossomPlant } from "@/components/app/plant";
 import { Eyebrow, Wordmark } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
@@ -187,10 +188,16 @@ export function MissionTheatreExperience() {
     const progressDelta = Math.round((growth.after.progress - growth.before.progress) * 100);
     const latestGrowth = growthEvents[0] ?? null;
     const nextDoor = causalNextGesture(minerals);
+    const intensity = Math.min(1, 0.4 + Math.max(0, progressDelta) / 100);
 
     return (
-      <div className="min-h-[100svh] bg-bg px-5 py-8 sm:px-8 lg:px-12">
-        <div className="mx-auto flex min-h-[calc(100svh-4rem)] max-w-5xl flex-col justify-center">
+      <div className="relative min-h-[100svh] overflow-hidden bg-bg px-5 py-8 sm:px-8 lg:px-12">
+        <AmbientParticles
+          stageId={growth.after.stage.id}
+          intensity={intensity}
+          className="pointer-events-none absolute inset-0 z-0 opacity-70"
+        />
+        <div className="relative z-10 mx-auto flex min-h-[calc(100svh-4rem)] max-w-5xl flex-col justify-center">
           <div className="text-center">
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">
               Post-crédit · BLOSSOM
@@ -454,20 +461,19 @@ export function MissionTheatreExperience() {
               </p>
             </header>
             <ReflectionStage
-              draft={reflection}
-              run={run}
-              saved={saved}
+              reflection={reflection}
               onChange={setReflection}
+              saved={saved}
               onSave={saveReflection}
-              onRedo={() => {
+              onFinish={finishSession}
+              onReopen={() => {
                 reopenMissionSession(todayMission.id);
                 setStep("execute");
                 setSaved(false);
               }}
-              onFinish={finishSession}
               history={history}
             />
-            <MissionHistory history={history} runs={session?.runs ?? []} />
+            <MissionHistory history={history} />
           </div>
         ) : null}
       </div>
