@@ -213,7 +213,6 @@ export interface FileRoutesByTo {
   '/learn/labs': typeof AppLearnLabsRoute
   '/library': typeof AppLibraryRouteWithChildren
   '/mission': typeof AppMissionRoute
-  '/inbox': typeof AppInboxRoute
   '/moi': typeof AppMoiRoute
   '/osez': typeof AppOsezRouteWithChildren
   '/osez/pulse': typeof AppOsezPulseRoute
@@ -298,7 +297,6 @@ export interface FileRouteTypes {
     | '/learn'
     | '/library'
     | '/mission'
-    | '/inbox'
     | '/moi'
     | '/osez'
     | '/osez/pulse'
