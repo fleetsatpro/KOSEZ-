@@ -8,19 +8,19 @@ const SCAN_DIRS = ["src", "scripts", "server", "migrations", ".github"];
 const SKIP = new Set(["node_modules", "dist", ".git", ".next", "coverage"]);
 const TEXT_EXT = /\.(?:ts|tsx|js|mjs|mts|cjs|css|sql|json|yml|yaml)$/i;
 const FORBIDDEN = [
-  /\\bPLACEHOLDER\\b/i,
-  /\\bFIXME\\b/i,
-  /\\bTODO\\b/i,
-  /\\bWIP\\b/i,
-  /\\bTBD\\b/i,
-  /\\bSTUB\\b/i,
-  /COMING\\s+SOON/i,
-  /NOT\\s+IMPLEMENTED/i,
-  /IMPLEMENT\\s+(?:THIS|LATER)/i,
-  /LOREM\\s+IPSUM/i,
-  /^<<<<<<<\\s+HEAD/m,
-  /^=======\\s*$/m,
-  /^>>>>>>>\\s+/m,
+  /\bPLACEHOLDER\b/i,
+  /\bFIXME\b/i,
+  /\bTODO\b/i,
+  /\bWIP\b/i,
+  /\bTBD\b/i,
+  /\bSTUB\b/i,
+  /COMING\s+SOON/i,
+  /NOT\s+IMPLEMENTED/i,
+  /IMPLEMENT\s+(?:THIS|LATER)/i,
+  /LOREM\s+IPSUM/i,
+  /^<<<<<<<\s+HEAD/m,
+  /^=======\s*$/m,
+  /^>>>>>>>\s+/m,
 ];
 
 async function walk(dir) {
@@ -45,7 +45,7 @@ for (const file of files) {
       const match = text.match(pattern);
       if (match) findings.push({ file: relativePath, marker: match[0] });
     }
-    if (/^\\s*PLACEHOLDER\\s*$/i.test(text)) {
+    if (/^\s*PLACEHOLDER\s*$/i.test(text)) {
       findings.push({ file: relativePath, marker: "file-is-placeholder" });
     }
   }
@@ -55,10 +55,10 @@ for (const file of files) {
 }
 
 const messagesSource = await readFile(join(ROOT, "src/lib/i18n/messages.ts"), "utf8");
-if (/const\\s+(?:es|pt|de|it)\\s*=\\s*\\{\\s*\\.\\.\\.en/i.test(messagesSource)) {
+if (/const\s+(?:es|pt|de|it)\s*=\s*\{\s*\.\.\.en/i.test(messagesSource)) {
   findings.push({ file: "src/lib/i18n/messages.ts", marker: "locale-inherits-en" });
 }
-if (/const\\s+(?:es|pt|de|it)\\s*=\\s*\\{\\s*\\.\\.\\.fr/i.test(messagesSource)) {
+if (/const\s+(?:es|pt|de|it)\s*=\s*\{\s*\.\.\.fr/i.test(messagesSource)) {
   findings.push({ file: "src/lib/i18n/messages.ts", marker: "locale-inherits-fr" });
 }
 
