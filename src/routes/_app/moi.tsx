@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { useState } from "react";
 import {
   Leaf,
   Shield,
@@ -35,6 +36,7 @@ import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { MoiSettings } from "@/components/app/moi-settings";
 import { EvidenceTimeline } from "@/components/app/evidence-timeline";
 import { ConversationPanel } from "@/components/app/conversation-panel";
+import { ConversationInbox } from "@/components/app/conversation-inbox";
 
 export const Route = createFileRoute("/_app/moi")({
   component: MoiPage,
@@ -45,6 +47,10 @@ export const Route = createFileRoute("/_app/moi")({
  * Identity stage · Léo's private memory · preuves · courage atmosphere.
  */
 function MoiPage() {
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [selectedConversationKind, setSelectedConversationKind] = useState<"support" | "tandem" | "teacher">("support");
+  const [selectedConversationPeerId, setSelectedConversationPeerId] = useState<string | null>(null);
+  const [selectedConversationPeerName, setSelectedConversationPeerName] = useState<string | null>(null);
   const learner = useBlossom((s) => s.learner);
   const joined = useBlossom((s) => s.joinedEventIds);
   const enrolled = useBlossom((s) => s.enrolledIds);
@@ -237,10 +243,30 @@ function MoiPage() {
         limit={40}
       />
 
-      <ConversationPanel
-        kind="support"
-        title="Parler à K’Osez"
+      <ConversationInbox
+        selectedId={selectedConversationId}
+        onSelect={(id, summary) => {
+          setSelectedConversationId(id);
+          if (summary) {
+            setSelectedConversationKind(summary.kind);
+            setSelectedConversationPeerId(summary.peerUserId);
+            setSelectedConversationPeerName(summary.peerName);
+          } else {
+            setSelectedConversationKind("support");
+            setSelectedConversationPeerId(null);
+            setSelectedConversationPeerName("K’Osez");
+          }
+        }}
       />
+
+      {selectedConversationId ? (
+        <ConversationPanel
+          kind={selectedConversationKind}
+          partnerUserId={selectedConversationPeerId ?? undefined}
+          partnerName={selectedConversationPeerName ?? undefined}
+          conversationId={selectedConversationId}
+        />
+      ) : null}
 
       {/* Léo memory — denser */}
       {memoryOn ? (
