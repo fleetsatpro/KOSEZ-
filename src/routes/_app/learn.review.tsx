@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, LibraryBig, Mic2, RotateCcw, Target } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { GrowthCeremony } from "@/components/app/growth-ceremony";
@@ -33,6 +33,8 @@ function kindIcon(kind: ReviewItem["kind"]) {
 }
 
 function Review() {
+  const search = useRouterState({ select: (state) => state.location.search });
+  const focusSource = new URLSearchParams(search).get("item");
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
   useEffect(() => {
     if (curriculumLessonId) clearCurriculumLessonContext();
@@ -57,7 +59,12 @@ function Review() {
     }))),
     [plan.due, fallback],
   );
-  const [queue, setQueue] = useState<ScheduledReviewItem[]>(() => initial);
+  const focusedInitial = useMemo(() => {
+    if (!focusSource) return initial;
+    const index = initial.findIndex((item) => item.sourceKey === focusSource);
+    return index < 0 ? initial : [initial[index]!, ...initial.slice(0, index), ...initial.slice(index + 1)];
+  }, [focusSource, initial]);
+  const [queue, setQueue] = useState<ScheduledReviewItem[]>(() => focusedInitial);
   const [sessionTotal] = useState(() => Math.max(initial.length, 1));
   const [revealed, setRevealed] = useState(false);
   const [done, setDone] = useState(false);
