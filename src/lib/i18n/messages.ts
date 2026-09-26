@@ -434,7 +434,7 @@ const en: MessageTree = {
 };
 
 const SHARE = new Set([
-  "BLOSSOM", "EXPLORE", "CONNECT", "LEARN", "Pron'Lab", "Pulse", "Immersion", "Tandem",
+  "BLOSSOM", "EXPLORE", "CONNECT", "LEARN", "Pron'Lab", "Pulse", "Immersion", "Tandem", "Labs",
   "Léo", "Saint-Pierre · Réunion", "Saint-Pierre · La Réunion",
 ]);
 
