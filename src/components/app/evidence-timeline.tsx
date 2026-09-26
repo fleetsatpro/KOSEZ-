@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Circle, LoaderCircle } from "lucide-react";
-import { Link } from "@tanstack/react-router";
 import { Eyebrow, Surface } from "@/components/app/primitives";
 import { MINERAL_DEFINITIONS, type MineralKey } from "@/lib/blossom/organism";
 import { Badge } from "@/components/ui/badge";
@@ -93,9 +92,9 @@ export function EvidenceTimeline({
           Le fil de preuves n’est pas disponible pour le moment. Rien n’est
           présenté comme confirmé lorsque la source n’a pas répondu.
         </div>
-      ) : items.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="p-6 text-sm leading-6 text-muted">
-          Aucune preuve enregistrée pour ce compte.
+          {items.length === 0 ? "Aucune preuve enregistrée pour ce compte." : "Aucune trace ne correspond à ce filtre. Revenez à « Tout » pour revoir l’ensemble du parcours."}
         </div>
       ) : (
         <ol className="divide-y divide-border/60">
