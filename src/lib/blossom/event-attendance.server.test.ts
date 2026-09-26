@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { eventStartEpoch } from "./event-attendance.server.ts";
+import { eventStartEpoch } from "./event-attendance.ts";
 
 test("event start parsing uses Réunion's UTC+4 offset", () => {
   assert.equal(
