@@ -68,11 +68,19 @@ test("tandem struggle prompt follows the selected learning language", () => {
   };
   const strugglingBase = {
     ...base,
-    attempts: [{
-      ...base.attempts[0],
-      score: 20,
-      createdAt: new Date().toISOString(),
-    }],
+    attempts: [
+      {
+        ...base.attempts[0],
+        score: 20,
+        createdAt: new Date(Date.now() - 1000).toISOString(),
+      },
+      {
+        ...base.attempts[0],
+        id: "a2",
+        score: 30,
+        createdAt: new Date().toISOString(),
+      },
+    ],
   };
   const es = computeInfluence({ ...strugglingBase, languageId: "es" });
   const fr = computeInfluence({ ...strugglingBase, languageId: "fr" });
