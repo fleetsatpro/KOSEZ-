@@ -80,6 +80,26 @@ async function assertRelationship(
       and staff.role = 'teacher'
      where g.teacher_user_id = $1
        and g.status = 'active'
+     union all
+     select 1
+     from blossom_guardian_link guardian
+     join blossom_teacher_link teacher
+       on teacher.learner_user_id = guardian.learner_user_id
+      and teacher.status = 'active'
+     where guardian.guardian_user_id = $1
+       and guardian.status = 'active'
+       and teacher.teacher_user_id = $2
+     union all
+     select 1
+     from blossom_guardian_link guardian
+     join blossom_organization_group_member gm
+       on gm.user_id = guardian.learner_user_id
+     join blossom_organization_group g
+       on g.id = gm.group_id
+      and g.status = 'active'
+      and g.teacher_user_id = $2
+     where guardian.guardian_user_id = $1
+       and guardian.status = 'active'
      limit 1`,
     [userId, partnerUserId],
   );
@@ -416,6 +436,58 @@ export async function reportMessage(
     status: String(rows[0].status) as "open" | "reviewing" | "resolved" | "dismissed",
     createdAt: new Date(String(rows[0].created_at)).toISOString(),
   };
+}
+
+export type GuardianTeacherContact = {
+  teacherUserId: string;
+  teacherName: string;
+  learnerUserId: string;
+  learnerName: string;
+};
+
+export async function getGuardianTeacherContacts(
+  guardianUserId: string,
+): Promise<GuardianTeacherContact[]> {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `select distinct
+       teacher.teacher_user_id,
+       coalesce(nullif(tp.display_name, ''), teacher.teacher_user_id) as teacher_name,
+       guardian.learner_user_id,
+       coalesce(nullif(lp.display_name, ''), guardian.learner_user_id) as learner_name
+     from blossom_guardian_link guardian
+     join blossom_profile lp on lp.user_id = guardian.learner_user_id
+     join blossom_teacher_link teacher
+       on teacher.learner_user_id = guardian.learner_user_id
+      and teacher.status = 'active'
+     join blossom_profile tp on tp.user_id = teacher.teacher_user_id
+     where guardian.guardian_user_id = $1
+       and guardian.status = 'active'
+     union
+     select distinct
+       g.teacher_user_id,
+       coalesce(nullif(tp.display_name, ''), g.teacher_user_id) as teacher_name,
+       guardian.learner_user_id,
+       coalesce(nullif(lp.display_name, ''), guardian.learner_user_id) as learner_name
+     from blossom_guardian_link guardian
+     join blossom_profile lp on lp.user_id = guardian.learner_user_id
+     join blossom_organization_group_member gm on gm.user_id = guardian.learner_user_id
+     join blossom_organization_group g
+       on g.id = gm.group_id
+      and g.status = 'active'
+      and g.teacher_user_id is not null
+     join blossom_profile tp on tp.user_id = g.teacher_user_id
+     where guardian.guardian_user_id = $1
+       and guardian.status = 'active'
+     order by teacher_name asc, learner_name asc`,
+    [guardianUserId],
+  );
+  return rows.map((row) => ({
+    teacherUserId: String(row.teacher_user_id),
+    teacherName: String(row.teacher_name),
+    learnerUserId: String(row.learner_user_id),
+    learnerName: String(row.learner_name),
+  }));
 }
 
 export async function getSupportInbox(userId: string): Promise<SupportConversationSummary[]> {
