@@ -3,14 +3,13 @@ import { ArrowRight, Check, CircleHelp } from "lucide-react";
 import {
   causalNextGesture,
   MINERAL_DEFINITIONS,
+  MINERAL_ORDER,
   MINERAL_WINDOW_DAYS,
   type GrowthEvent,
   type MineralKey,
   type MineralSnapshot,
 } from "@/lib/blossom/organism";
 import { cn } from "@/lib/utils";
-
-const ORDER: MineralKey[] = ["mission", "parole", "pron", "social", "atelier"];
 
 export function OrganismMineralsPanel({
   minerals,
@@ -43,7 +42,7 @@ export function OrganismMineralsPanel({
       </div>
       {next.tiedWith.length > 1 ? <div className="mt-4 flex items-start gap-2 rounded-xl border border-border bg-surface/70 px-3.5 py-3 text-xs leading-5 text-muted"><CircleHelp className="mt-0.5 size-3.5 shrink-0 text-primary" /><span><span className="font-medium text-fg">Égalité.</span> {next.tiedWith.map((key) => MINERAL_DEFINITIONS[key].label).join(" · ")} sont à {next.value}/100. La première porte est seulement un repère : vous pouvez choisir l’autre.</span></div> : null}
       <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-        {ORDER.map((key) => {
+        {MINERAL_ORDER.map((key) => {
           const def = MINERAL_DEFINITIONS[key];
           const value = minerals[key];
           const active = focusedMineral === key || next.tiedWith.includes(key);
