@@ -38,6 +38,7 @@ function activityDescriptor(type: string) {
     case "REVIEW_COMPLETED": return { title: "Révision terminée", summary: "Une preuve de récupération a été enregistrée.", evidenceClass: "artifact" as const, route: "/learn/review" };
     case "LIBRARY_COMPLETED": return { title: "Lecture terminée", summary: "La lecture a été enregistrée après la fin du texte.", evidenceClass: "artifact" as const, route: "/library" };
     case "HOMEWORK_COMPLETED": return { title: "Devoir terminé", summary: "Le devoir a été marqué fait par l’apprenant.", evidenceClass: "artifact" as const, route: "/moi" };
+    case "CURRICULUM_EVIDENCE_RECORDED": return { title: "Parcours lié", summary: "Cette trace relie une activité à une étape du parcours. Elle ne compte pas comme un geste supplémentaire.", evidenceClass: "artifact" as const, route: "/learn/curriculum" };
     case "LESSON_COMPLETED": return { title: "Leçon terminée", summary: "Une activité de curriculum a produit une trace.", evidenceClass: "action" as const, route: "/learn" };
     case "DIAGNOSTIC_COMPLETED": return { title: "Diagnostic terminé", summary: "Un repère d’apprentissage a été enregistré.", evidenceClass: "observation" as const, route: "/learn/labs" };
     case "CLASS_ATTENDED": return { title: "Présence en classe", summary: "Une présence a été enregistrée.", evidenceClass: "action" as const, route: "/explore" };
