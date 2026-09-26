@@ -113,3 +113,66 @@ export async function getAdminSafetySummary(userId: string) {
     })),
   };
 }
+
+
+export async function getAdminMessageReports(userId: string) {
+  const sql = await getSql();
+  const admin = await sql.query(
+    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    [userId],
+  );
+  if (!admin[0]) throw new BlossomForbiddenError("Admin access is not enabled for this account.");
+
+  const rows = await sql.query(
+    `select r.id, r.reporter_user_id, r.conversation_id, r.message_id, r.reason, r.status,
+        r.created_at, r.updated_at, m.sender_user_id, left(m.body, 500) as message_body
+     from blossom_message_report r
+     left join blossom_message m on m.id = r.message_id
+     order by r.created_at desc
+     limit 100`,
+  );
+  return rows.map((row) => ({
+    id: String(row.id),
+    reporterUserId: String(row.reporter_user_id),
+    conversationId: String(row.conversation_id),
+    messageId: row.message_id ? String(row.message_id) : null,
+    reason: String(row.reason),
+    status: String(row.status) as "open" | "reviewing" | "resolved" | "dismissed",
+    senderUserId: row.sender_user_id ? String(row.sender_user_id) : null,
+    messageBody: row.message_body ? String(row.message_body) : null,
+    createdAt: new Date(String(row.created_at)).toISOString(),
+    updatedAt: new Date(String(row.updated_at)).toISOString(),
+  }));
+}
+
+export async function updateAdminMessageReport(
+  userId: string,
+  reportId: string,
+  status: "reviewing" | "resolved" | "dismissed",
+) {
+  const reports = await getAdminMessageReports(userId);
+  const current = reports.find((report) => report.id === reportId);
+  if (!current) throw new Error("message-report-not-found");
+  if (
+    (current.status === "open" && status !== "reviewing") ||
+    (current.status === "reviewing" && !["resolved", "dismissed"].includes(status))
+  ) {
+    throw new Error("message-report-revision-conflict");
+  }
+  const sql = await getSql();
+  const rows = await sql.query(
+    "update blossom_message_report set status = $2, updated_at = current_timestamp where id = $1::uuid and status = $3 returning id, status, message_id",
+    [reportId, status, current.status],
+  );
+  if (!rows[0]) throw new Error("message-report-revision-conflict");
+  await writeAuditEvent(userId, {
+    action: "communication.message_report." + status,
+    resourceType: "message_report",
+    resourceId: reportId,
+    metadata: { messageId: rows[0].message_id ? String(rows[0].message_id) : null },
+  });
+  return {
+    id: String(rows[0].id),
+    status: String(rows[0].status) as "reviewing" | "resolved" | "dismissed",
+  };
+}
