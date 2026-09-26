@@ -167,7 +167,7 @@ export async function createTeacherSession(
   const session = mapSession({
     ...rows[0],
     learner_name: String(profile[0]?.name ?? input.learnerUserId),
-  });
+  }, true);
 
   await createNotification(input.learnerUserId, {
     kind: "learning",
