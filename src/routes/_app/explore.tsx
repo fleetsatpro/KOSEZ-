@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { CalendarDays, Check, Clock3, Download, MapPin, Users } from "lucide-react";
+import { Bookmark, BookmarkCheck, CalendarDays, Check, Clock3, Download, MapPin, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import {
   type EventItem,
 } from "@/lib/blossom/data";
 import { getPublishedContentOnServer } from "@/lib/blossom/content.api";
+import { getSavedExploreItemsOnServer, toggleSavedExploreItemOnServer } from "@/lib/blossom/domain.api";
 import { useBlossom } from "@/lib/blossom/store";
 import { formatLongDate } from "@/lib/utils";
 
@@ -99,30 +100,77 @@ function ExplorePage() {
   const earlyOk = planAllows(plan, "immersionEarly");
   const [events, setEvents] = useState<EventItem[]>(EVENTS);
   const [catalogue, setCatalogue] = useState<CatalogueItem[]>(CATALOGUE);
+  const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+  const [scope, setScope] = useState<"all" | "events" | "programmes" | "immersions">("all");
   const programmes = catalogue.filter((item) => item.kind !== "immersion");
   const immersions = catalogue.filter((item) => item.kind === "immersion");
 
   useEffect(() => {
     let disposed = false;
-    void getPublishedContentOnServer()
-      .then((published) => {
-        if (disposed) return;
-        setEvents(published.events);
-        setCatalogue(published.catalogue);
-      })
-      .catch(() => {
-        // Authenticated discovery keeps the authored runtime catalogue as its
-        // safe fallback when the content registry is temporarily unavailable.
-      });
+    void Promise.allSettled([
+      getPublishedContentOnServer(),
+      getSavedExploreItemsOnServer(),
+    ]).then(([publishedResult, savedResult]) => {
+      if (disposed) return;
+      if (publishedResult.status === "fulfilled") {
+        setEvents(publishedResult.value.events);
+        setCatalogue(publishedResult.value.catalogue);
+      }
+      if (savedResult.status === "fulfilled") {
+        setSavedItems(
+          new Set(
+            savedResult.value.map((item) => item.itemType + ":" + item.itemId),
+          ),
+        );
+      }
+    });
     return () => {
       disposed = true;
     };
   }, []);
 
+  const normalizedSearch = search.trim().toLocaleLowerCase("fr-FR");
+  const matchesText = (values: string[]) =>
+    !normalizedSearch ||
+    values.some((value) => value.toLocaleLowerCase("fr-FR").includes(normalizedSearch));
+  const eventMatches = (event: EventItem) =>
+    matchesText([event.title, event.blurb, event.host, event.place, event.language]);
+  const catalogueMatches = (item: CatalogueItem) =>
+    matchesText([item.title, item.description, item.instructor, item.location, item.format, item.level]);
+
+  async function toggleSave(itemType: "event" | "catalogue", itemId: string) {
+    const key = itemType + ":" + itemId;
+    try {
+      const result = await toggleSavedExploreItemOnServer({
+        data: { itemType, itemId },
+      });
+      setSavedItems((current) => {
+        const next = new Set(current);
+        if (result.saved) next.add(key);
+        else next.delete(key);
+        return next;
+      });
+    } catch {
+      toast("Cet élément n’a pas pu être enregistré. Rien n’a été modifié.");
+    }
+  }
+
   const now = Date.now();
   const upcomingEvents = events
     .filter((event) => eventDate(event).getTime() > now)
     .sort((a, b) => eventDate(a).getTime() - eventDate(b).getTime());
+  const filteredEvents = upcomingEvents
+    .filter((event) => scope === "all" || scope === "events")
+    .filter(eventMatches);
+  const filteredProgrammes = programmes
+    .filter(() => scope === "all" || scope === "programmes")
+    .filter(catalogueMatches);
+  const filteredImmersions = immersions
+    .filter(() => scope === "all" || scope === "immersions")
+    .filter(catalogueMatches);
+  const filteredCount =
+    filteredEvents.length + filteredProgrammes.length + filteredImmersions.length;
   const joinedUpcoming = upcomingEvents.filter((event) => joined.includes(event.id));
 
   return (
@@ -147,6 +195,47 @@ function ExplorePage() {
           </div>
         </div>
       </div>
+
+      <Surface className="mt-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+          <label className="min-w-0 flex-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">Recherche</span>
+            <span className="mt-2 flex min-h-11 items-center gap-2 rounded-xl border border-border bg-bg px-3">
+              <Search className="size-4 shrink-0 text-subtle" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+                placeholder="Lieu, thème, niveau, animateur…"
+                aria-label="Rechercher dans Explore"
+              />
+            </span>
+          </label>
+          <label className="w-full lg:w-52">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">Filtrer</span>
+            <select
+              value={scope}
+              onChange={(event) => setScope(event.target.value as typeof scope)}
+              className="mt-2 h-11 w-full rounded-xl border border-border bg-bg px-3 text-sm"
+              aria-label="Filtrer Explore"
+            >
+              <option value="all">Tout Explore</option>
+              <option value="events">Rencontres</option>
+              <option value="programmes">Programmes</option>
+              <option value="immersions">Immersions</option>
+            </select>
+          </label>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-subtle">
+          <span>{filteredCount} résultat{filteredCount === 1 ? "" : "s"} visible{filteredCount === 1 ? "" : "s"}</span>
+          {savedItems.size ? (
+            <span className="inline-flex items-center gap-1.5 text-primary">
+              <BookmarkCheck className="size-3.5" />
+              {savedItems.size} élément{savedItems.size === 1 ? "" : "s"} gardé{savedItems.size === 1 ? "" : "s"}
+            </span>
+          ) : null}
+        </div>
+      </Surface>
 
       <section className="mt-8">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -232,7 +321,15 @@ function ExplorePage() {
         </div>
 
         <div className="mt-5 grid gap-5">
-          {upcomingEvents.map((event) => {
+          {filteredEvents.length === 0 ? (
+            <Surface className="p-6">
+              <p className="font-display text-xl">Aucune rencontre pour cette recherche.</p>
+              <p className="mt-2 text-sm leading-6 text-muted">
+                Essayez un autre terme ou élargissez le filtre Explore.
+              </p>
+            </Surface>
+          ) : null}
+          {filteredEvents.map((event) => {
             const isIn = joined.includes(event.id);
             const registered = eventRegistrationCounts[event.id] ?? 0;
             const remaining = Math.max(
@@ -262,9 +359,21 @@ function ExplorePage() {
                         {event.title}
                       </h3>
                     </div>
-                    <Badge variant={isIn ? "default" : "outline"}>
-                      {isIn ? "Inscrit" : `${remaining} places`}
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="min-h-10"
+                        onClick={() => void toggleSave("event", event.id)}
+                        aria-label={savedItems.has("event:" + event.id) ? "Retirer des favoris" : "Garder cette rencontre"}
+                      >
+                        {savedItems.has("event:" + event.id) ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
+                        {savedItems.has("event:" + event.id) ? "Gardé" : "Garder"}
+                      </Button>
+                      <Badge variant={isIn ? "default" : "outline"}>
+                        {isIn ? "Inscrit" : `${remaining} places`}
+                      </Badge>
+                    </div>
                   </div>
 
                   <p className="mt-3 text-sm leading-6 text-muted">
@@ -346,7 +455,7 @@ function ExplorePage() {
         </div>
 
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          {programmes.map((item) => {
+          {filteredProgrammes.map((item) => {
             const active = enrolled.includes(item.id);
             const bookingStatus = bookingStatuses[item.id];
             return (
@@ -363,6 +472,16 @@ function ExplorePage() {
                   <div className="flex min-w-0 flex-col p-5">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline">{item.level}</Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="min-h-9"
+                        onClick={() => void toggleSave("catalogue", item.id)}
+                        aria-label={savedItems.has("catalogue:" + item.id) ? "Retirer des favoris" : "Garder ce programme"}
+                      >
+                        {savedItems.has("catalogue:" + item.id) ? <BookmarkCheck className="size-3.5" /> : <Bookmark className="size-3.5" />}
+                        {savedItems.has("catalogue:" + item.id) ? "Gardé" : "Garder"}
+                      </Button>
                       <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">
                         {item.format}
                       </span>
@@ -430,7 +549,7 @@ function ExplorePage() {
         </div>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          {immersions.map((item) => {
+          {filteredImmersions.map((item) => {
             const waiting = waitlist.includes(item.id);
             const locked = item.early === true && !earlyOk;
 
