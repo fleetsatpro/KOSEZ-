@@ -1080,6 +1080,9 @@ export const useBlossom = create<AppState>()(
         ...current,
         ...(persisted as object),
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.refreshOrganism();
+      },
     },
   ),
 );
