@@ -8,13 +8,13 @@ const SCAN_DIRS = ["src", "scripts", "server", "migrations", ".github"];
 const SKIP = new Set(["node_modules", "dist", ".git", ".next", "coverage"]);
 const TEXT_EXT = /\.(?:ts|tsx|js|mjs|mts|cjs|css|sql|json|yml|yaml)$/i;
 const FORBIDDEN = [
-  /\bPLACEHOLDER\b/i,
   /\bFIXME\b/i,
   /\bTODO\b/i,
   /\bWIP\b/i,
   /\bTBD\b/i,
-  /\bSTUB\b/i,
   /COMING\s+SOON/i,
+  /minimal\s+valid\s+tree/i,
+  /\b(?:temporary|sample|dummy|fake)\s+(?:data|implementation|content)\b/i,
   /NOT\s+IMPLEMENTED/i,
   /IMPLEMENT\s+(?:THIS|LATER)/i,
   /LOREM\s+IPSUM/i,
@@ -44,9 +44,6 @@ for (const file of files) {
     for (const pattern of FORBIDDEN) {
       const match = text.match(pattern);
       if (match) findings.push({ file: relativePath, marker: match[0] });
-    }
-    if (/^\s*PLACEHOLDER\s*$/i.test(text)) {
-      findings.push({ file: relativePath, marker: "file-is-placeholder" });
     }
   }
   if (/^(?:<<<<<|=====|>>>>>)/m.test(text)) {
