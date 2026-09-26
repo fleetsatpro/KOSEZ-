@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useState } from "react";
 import {
@@ -34,6 +35,7 @@ import { formatShortDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { MoiSettings } from "@/components/app/moi-settings";
+import { getProofTimelineOnServer } from "@/lib/blossom/domain.api";
 import { EvidenceTimeline } from "@/components/app/evidence-timeline";
 import { ConversationPanel } from "@/components/app/conversation-panel";
 import { ConversationInbox } from "@/components/app/conversation-inbox";
@@ -397,6 +399,65 @@ function MoiPage() {
           ))}
         </Surface>
       )}
+
+      {/* Unified proof timeline */}
+      <Surface className="mt-4 !p-5 sm:!p-6">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <Eyebrow>Fil de preuves</Eyebrow>
+            <h2 className="mt-1 font-display text-2xl tracking-tight">
+              Ce qui est réellement arrivé
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              Une seule chronologie relie vos traces d’apprentissage, de parole,
+              de Pron’Lab, de tandem et de terrain. Les liens reviennent à la
+              porte qui a produit la trace.
+            </p>
+          </div>
+          <Shield className="size-4 shrink-0 text-primary" strokeWidth={1.7} />
+        </div>
+
+        {proofTimelineLoading ? (
+          <p className="mt-5 text-sm text-muted">Lecture des traces enregistrées…</p>
+        ) : proofTimeline.length === 0 ? (
+          <p className="mt-5 text-sm text-subtle">
+            Aucune preuve serveur disponible pour le moment. Vos actions locales
+            restent visibles dans les surfaces qui les produisent.
+          </p>
+        ) : (
+          <ol className="mt-5 space-y-2">
+            {proofTimeline.map((item) => (
+              <li key={item.id}>
+                <Link
+                  to={item.href as never}
+                  className="group flex items-start gap-3 rounded-xl border border-border/70 bg-surface-2/30 p-3 transition hover:bg-surface-2/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                >
+                  <span className="mt-1 size-2 shrink-0 rounded-full bg-primary/80" aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="font-medium">{item.label}</span>
+                      <span className="text-[10px] text-subtle">
+                        {formatShortDate(item.occurredAt.slice(0, 10))}
+                      </span>
+                    </span>
+                    {item.detail ? (
+                      <span className="mt-1 block text-xs leading-5 text-muted">
+                        {item.detail}
+                      </span>
+                    ) : null}
+                    {item.sourceId ? (
+                      <span className="mt-1 block text-[10px] text-subtle">
+                        Trace · {item.sourceId}
+                      </span>
+                    ) : null}
+                  </span>
+                  <ChevronRight className="mt-1 size-4 shrink-0 text-subtle transition group-hover:translate-x-0.5 group-hover:text-primary" />
+                </Link>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Surface>
 
       {/* Calendar denser */}
       <Surface className="mt-4 !p-5 sm:!p-6">
