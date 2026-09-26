@@ -9,8 +9,11 @@ import { getTeacherWorkspaceOnServer } from "@/lib/blossom/domain.api";
 import { TEACHER_TAGS } from "@/lib/blossom/data";
 import { useBlossom } from "@/lib/blossom/store";
 import { LearnerDetail } from "./learner-detail";
+import { ConversationInbox } from "./conversation-inbox";
+import { ConversationPanel } from "./conversation-panel";
+import type { ConversationSummary } from "@/lib/blossom/messaging.server";
 
-type Tab = "prep" | "roster" | "lecture";
+type Tab = "prep" | "roster" | "lecture" | "messages";
 type TeacherRow = Awaited<ReturnType<typeof getTeacherWorkspaceOnServer>>[number];
 
 type RecognitionResult = {
@@ -106,6 +109,8 @@ export function TeacherStudio() {
   const [hwTitle, setHwTitle] = useState("");
   const [hwBody, setHwBody] = useState("");
   const [selectedLearnerId, setSelectedLearnerId] = useState("");
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [selectedConversationSummary, setSelectedConversationSummary] = useState<ConversationSummary | undefined>();
 
   const [voiceRecording, setVoiceRecording] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
@@ -293,7 +298,7 @@ export function TeacherStudio() {
       ) : (
         <>
           <div className="mt-6 flex gap-2 overflow-x-auto pb-1">
-            {(["prep", "roster", "lecture"] as const).map((id) => (
+            {(["prep", "roster", "lecture", "messages"] as const).map((id) => (
               <button
                 key={id}
                 type="button"
@@ -550,6 +555,30 @@ export function TeacherStudio() {
               </Surface>
             )}
             </>
+          ) : null}
+
+          {tab === "messages" ? (
+            <div className="mt-8">
+              <ConversationInbox
+                selectedId={selectedConversationId}
+                onSelect={(id, summary) => {
+                  setSelectedConversationId(id);
+                  setSelectedConversationSummary(summary);
+                }}
+              />
+              {selectedConversationId ? (
+                <ConversationPanel
+                  conversationId={selectedConversationId}
+                  kind={selectedConversationSummary?.kind}
+                  partnerUserId={selectedConversationSummary?.peerUserId ?? undefined}
+                  partnerName={selectedConversationSummary?.peerName}
+                />
+              ) : null}
+              <p className="mt-4 text-xs leading-5 text-subtle">
+                Les conversations sont réévaluées côté serveur à chaque lecture et envoi.
+                Une relation retirée ferme l’accès même si le fil existe encore.
+              </p>
+            </div>
           ) : null}
 
           {tab === "lecture" ? (
