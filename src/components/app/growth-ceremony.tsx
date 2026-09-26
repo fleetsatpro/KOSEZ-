@@ -1,16 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
-import { causalNextGesture, type MineralKey } from "@/lib/blossom/organism";
+import { causalNextGesture, MINERAL_DOORS, type MineralKey } from "@/lib/blossom/organism";
 import { cn } from "@/lib/utils";
 
-const MINERAL_LABEL: Record<MineralKey, string> = {
-  mission: "mission",
-  parole: "parole",
-  pron: "prononciation",
-  social: "social",
-  atelier: "atelier",
-};
 
 const KIND_META: Record<
   GrowthEvent["kind"],
@@ -165,7 +158,7 @@ export function GrowthCeremony({
           {event.mineral ? (
             <div className="mt-6 rounded-2xl border border-primary/25 bg-primary/6 px-4 py-3 text-left">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/80">
-                Minéral nourri · {MINERAL_LABEL[event.mineral]}
+                Minéral nourri · {MINERAL_DOORS[event.mineral].label}
               </p>
               <p className="mt-1 text-sm leading-5 text-fg">
                 Ce geste laisse une trace dans votre organisme — et la porte suivante reste liée à ce qu’il vient de nourrir.
@@ -220,16 +213,30 @@ function CausalDoor({
   return (
     <div className="mt-6 rounded-2xl border border-primary/25 bg-primary/5 px-4 py-3 text-left">
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/80">
-        Prochain geste · {next.mineral}
+        Prochain geste · {next.label} · {next.value}/100
       </p>
       <p className="mt-1 text-sm leading-5 text-fg/90">{next.line}</p>
-      <Link
-        to={next.door as "/osez" | "/pronlab" | "/mission" | "/tandem"}
-        onClick={onNavigate}
-        className="mt-3 inline-flex text-sm font-semibold text-primary hover:underline"
-      >
-        Ouvrir la porte →
-      </Link>
+      <p className="mt-2 text-[11px] leading-5 text-subtle">
+        Cette proposition suit la même règle que MOI, BLOSSOM, LEARN et CONNECT.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Link
+          to={next.door as "/osez" | "/pronlab" | "/mission" | "/tandem" | "/learn/labs"}
+          onClick={onNavigate}
+          className="inline-flex min-h-10 items-center rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+        >
+          {next.action} →
+        </Link>
+        {next.alternate ? (
+          <Link
+            to={next.alternate.door as "/osez" | "/pronlab" | "/mission" | "/tandem" | "/learn/labs"}
+            onClick={onNavigate}
+            className="inline-flex min-h-10 items-center rounded-full border border-border/80 bg-surface-2 px-4 py-2 text-xs font-semibold text-muted hover:text-fg"
+          >
+            Ou {next.alternate.action.toLowerCase()}
+          </Link>
+        ) : null}
+      </div>
     </div>
   );
 }
