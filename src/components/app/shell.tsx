@@ -231,8 +231,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           : contextKey(pathname) === "connect"
             ? "Présences"
             : contextKey(pathname) === "blossom"
-              ? "Votre croissance"
-              : "Votre espace";
+              ? m.context.blossom
+              : m.context.moi;
   const hideChrome =
     pathname === "/mission" || pathname.startsWith("/osez/") || pathname.startsWith("/tandem/");
 
@@ -416,8 +416,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <p className="mt-2 text-[11px] leading-5 text-muted">
               {journey.stage.nextAt
-                ? `${journey.remaining} point${journey.remaining > 1 ? "s" : ""} avant le prochain stade.`
-                : "Votre croissance continue."}
+                ? String(journey.remaining) + " →"
+                : m.context.blossom}
             </p>
           </div>
         </aside>
