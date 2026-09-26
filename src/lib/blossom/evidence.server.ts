@@ -2,7 +2,7 @@ import { getSql } from "@/lib/db";
 import { BlossomForbiddenError } from "./domain.server";
 import { pronlabEvidenceProjection } from "./evidence-projection";
 import { PRONLAB_SETS } from "./data";
-import { mineralForActivity, type MineralKey } from "./organism";
+import { MINERAL_DEFINITIONS, mineralForActivity, type MineralKey } from "./organism";
 import type { ActivityType } from "./engine";
 
 export type EvidenceClass = "action" | "artifact" | "observation" | "plan";
@@ -315,7 +315,7 @@ export async function getEvidenceTimeline(
     const exact = exactRoute(item.kind, item.sourceId, item.metadata);
     const replayableActivity =
       item.kind === "activity" &&
-      ["GRAMMAR_COMPLETED", "LISTENING_COMPLETED", "WRITING_COMPLETED", "LIBRARY_COMPLETED"].includes(
+      ["GRAMMAR_COMPLETED", "LISTENING_COMPLETED", "WRITING_COMPLETED", "LIBRARY_COMPLETED", "PRONLAB_ATTEMPTED"].includes(
         String(item.metadata.activityType ?? ""),
       );
     return {
