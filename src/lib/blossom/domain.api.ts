@@ -35,6 +35,16 @@ import {
   endTandemSession,
 } from "./domain.server";
 import type { JsonObject } from "./backend.server";
+import {
+  getOrCreateConversation,
+  getConversationMessages,
+  sendMessage,
+  markConversationRead,
+  reportMessage,
+  getSupportInbox,
+} from "./messaging.server";
+import { getEvidenceTimeline } from "./evidence.server";
+
 
 const metadataJson = z.string().trim().max(20000).optional();
 
@@ -209,6 +219,77 @@ export const endTandemSessionOnServer = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) =>
     endTandemSession(context.userId, data.sessionId, data.status),
+  );
+
+export const getOrCreateConversationOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      kind: z.enum(["tandem", "teacher", "support"]),
+      partnerUserId: z.string().trim().min(1).max(200).optional(),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    getOrCreateConversation(context.userId, data),
+  );
+
+export const getConversationMessagesOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      conversationId: z.string().uuid(),
+      limit: z.number().int().min(1).max(100).optional(),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    getConversationMessages(context.userId, data.conversationId, data.limit ?? 60),
+  );
+
+export const sendConversationMessageOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      conversationId: z.string().uuid(),
+      body: z.string().trim().min(1).max(4000),
+      clientMessageId: z.string().uuid().optional(),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    return sendMessage(context.userId, data);
+  });
+
+export const markConversationReadOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ conversationId: z.string().uuid() }))
+  .handler(async ({ context, data }) =>
+    markConversationRead(context.userId, data.conversationId),
+  );
+
+export const reportConversationMessageOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      conversationId: z.string().uuid(),
+      messageId: z.string().uuid(),
+      reason: z.string().trim().min(1).max(500),
+    }),
+  )
+  .handler(async ({ context, data }) => reportMessage(context.userId, data));
+
+export const getSupportInboxOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getSupportInbox(context.userId));
+
+export const getEvidenceTimelineOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      learnerUserId: z.string().trim().min(1).max(200).optional(),
+      limit: z.number().int().min(1).max(120).optional(),
+    }).optional(),
+  )
+  .handler(async ({ context, data }) =>
+    getEvidenceTimeline(context.userId, data?.learnerUserId ?? context.userId, data?.limit ?? 60),
   );
 
 function parseJsonObject(value: string | undefined): JsonObject {
