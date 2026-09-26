@@ -33,6 +33,8 @@ import { formatShortDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { MoiSettings } from "@/components/app/moi-settings";
+import { EvidenceTimeline } from "@/components/app/evidence-timeline";
+import { ConversationPanel } from "@/components/app/conversation-panel";
 
 export const Route = createFileRoute("/_app/moi")({
   component: MoiPage,
@@ -228,6 +230,17 @@ function MoiPage() {
       </div>
 
       <MoiSettings />
+
+      <EvidenceTimeline
+        title="Toutes vos preuves, au même endroit"
+        description="Le même fil rassemble vos gestes, productions, observations et engagements. Chaque ligne reste reliée à sa porte quand une porte existe."
+        limit={40}
+      />
+
+      <ConversationPanel
+        kind="support"
+        title="Parler à K’Osez"
+      />
 
       {/* Léo memory — denser */}
       {memoryOn ? (
