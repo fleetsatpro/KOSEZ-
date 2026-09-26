@@ -37,8 +37,7 @@ export const MINERAL_DEFINITIONS: Record<MineralKey, MineralDefinition> = {
 };
 
 export function mineralForActivity(type: ActivityType): MineralKey | null {
-  const keys = Object.keys(MINERAL_DEFINITIONS) as MineralKey[];
-  return keys.find((key) => MINERAL_DEFINITIONS[key].writtenBy.includes(type)) ?? null;
+  return MINERAL_ORDER.find((key) => MINERAL_DEFINITIONS[key].writtenBy.includes(type)) ?? null;
 }
 
 export function mineralLabel(key: MineralKey): string {
