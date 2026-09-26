@@ -27,7 +27,7 @@ function activityDescriptor(type: string) {
   switch (type) {
     case "MISSION_COMPLETED": return { title: "Mission accomplie", summary: "Une mission réellement clôturée.", evidenceClass: "action" as const, route: "/mission" };
     case "REAL_WORLD_BONUS": return { title: "Geste terrain", summary: "Une action réelle enregistrée.", evidenceClass: "action" as const, route: "/mission" };
-    case "SPEAK_COMPLETED": return { title: "Prise de parole", summary: "Une session OSEZ clôturée avec ses métadonnées.", evidenceClass: "observation" as const, route: "/osez" };
+    case "SPEAK_COMPLETED": return { title: "Prise de parole", summary: "Une session OSEZ clôturée avec ses métadonnées.", evidenceClass: "action" as const, route: "/osez" };
     case "PRONLAB_MASTERY": return { title: "Observation Pron’Lab", summary: "Un item Pron’Lab a franchi le seuil calculé.", evidenceClass: "observation" as const, route: "/pronlab" };
     case "PRONLAB_COMPLETED": return { title: "Set Pron’Lab terminé", summary: "Le set a été parcouru; aucune note de performance n’est inventée.", evidenceClass: "action" as const, route: "/pronlab" };
     case "TANDEM_COMPLETED": return { title: "Tandem clôturé", summary: "Un échange tandem a été enregistré avec une réflexion personnelle.", evidenceClass: "action" as const, route: "/tandem" };
