@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Leaf,
   Shield,
   BookOpen,
   Calendar,
+  CalendarClock,
   Sparkles,
   ChevronRight,
 } from "lucide-react";
@@ -39,6 +40,8 @@ import { ConversationPanel } from "@/components/app/conversation-panel";
 import { ConversationInbox } from "@/components/app/conversation-inbox";
 import { LearnerFeedback } from "@/components/app/learner-feedback";
 import { OrganismMineralsPanel } from "@/components/app/organism-minerals-panel";
+import { calendarFilename, teacherSessionToIcs } from "@/lib/blossom/calendar";
+import { getLearnerSessionsOnServer } from "@/lib/blossom/domain.api";
 
 export const Route = createFileRoute("/_app/moi")({
   component: MoiPage,
@@ -48,8 +51,28 @@ export const Route = createFileRoute("/_app/moi")({
  * MOI is not a settings dump.
  * Identity stage · Léo's private memory · preuves · courage atmosphere.
  */
+function downloadSessionCalendar(session: {
+  id: string;
+  title: string;
+  startsAt: string;
+  durationMinutes: number;
+  teacherName: string;
+  learnerName: string;
+}) {
+  const ics = teacherSessionToIcs(session);
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = calendarFilename(session.title);
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 function MoiPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<Awaited<ReturnType<typeof getLearnerSessionsOnServer>>>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
   const [selectedConversationKind, setSelectedConversationKind] = useState<"support" | "tandem" | "teacher">("support");
   const [selectedConversationPeerId, setSelectedConversationPeerId] = useState<string | null>(null);
   const [selectedConversationPeerName, setSelectedConversationPeerName] = useState<string | null>(null);
@@ -98,6 +121,23 @@ function MoiPage() {
   const initials = learner.firstName
     ? learner.firstName.slice(0, 1).toUpperCase()
     : "K";
+
+  useEffect(() => {
+    let disposed = false;
+    void getLearnerSessionsOnServer({ data: { limit: 12 } })
+      .then((rows) => {
+        if (!disposed) setSessions(rows);
+      })
+      .catch(() => {
+        if (!disposed) setSessions([]);
+      })
+      .finally(() => {
+        if (!disposed) setSessionsLoading(false);
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   const calendar = [
     ...EVENTS.filter((e) => joined.includes(e.id)).map((e) => ({
@@ -236,6 +276,48 @@ function MoiPage() {
           </p>
         </Surface>
       </div>
+
+      <Surface className="mt-4">
+        <div className="flex items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <CalendarClock className="size-4" />
+          </span>
+          <div>
+            <Eyebrow>Planning</Eyebrow>
+            <h2 className="mt-1 font-display text-2xl tracking-tight">Vos prochaines séances</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+              Dates réellement programmées par votre enseignant. Une programmation
+              n’est pas une preuve de présence.
+            </p>
+          </div>
+        </div>
+        {sessionsLoading ? (
+          <p className="mt-4 text-sm text-muted">Lecture du planning…</p>
+        ) : sessions.length === 0 ? (
+          <p className="mt-4 text-sm text-subtle">Aucune séance programmée pour le moment.</p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {sessions.slice(0, 6).map((session) => (
+              <li key={session.id} className="rounded-xl border border-border bg-surface-2/30 p-4">
+                <p className="font-medium">{session.title}</p>
+                <p className="mt-1 text-xs text-muted">
+                  {new Date(session.startsAt).toLocaleString("fr-FR", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })} · {session.durationMinutes} min · {session.teacherName}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => downloadSessionCalendar(session)}
+                  className="mt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary hover:underline"
+                >
+                  Ajouter au calendrier
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Surface>
 
       <MoiSettings />
 
