@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Eyebrow, Surface } from "@/components/app/primitives";
 import { EvidenceTimeline } from "@/components/app/evidence-timeline";
 import { ConversationPanel } from "@/components/app/conversation-panel";
+import { LearningFeedbackPanel } from "@/components/app/learning-feedback";
 
 function relative(value: string) {
   const delta = Math.max(0, Date.now() - new Date(value).getTime());
@@ -191,12 +192,15 @@ export function LearnerDetail({
         </Surface>
 
         {role === "teacher" ? (
-          <ConversationPanel
-            kind="teacher"
-            partnerUserId={learnerUserId}
-            partnerName={detail.name}
-            title={"Avec " + detail.name}
-          />
+          <>
+            <LearningFeedbackPanel learnerUserId={learnerUserId} />
+            <ConversationPanel
+              kind="teacher"
+              partnerUserId={learnerUserId}
+              partnerName={detail.name}
+              title={"Avec " + detail.name}
+            />
+          </>
         ) : null}
 
         {role === "teacher" && detail.notes.length ? (
