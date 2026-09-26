@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { ActivityEvent } from "./engine.ts";
 import {
@@ -10,6 +11,9 @@ import {
   causalNextGesture,
   pushGrowthEvent,
   weekKey,
+  MINERAL_DOORS,
+  MINERAL_ORDER,
+  MINERAL_WINDOW_DAYS,
 } from "./organism.ts";
 
 describe("organism minerals", () => {
@@ -75,16 +79,52 @@ describe("growth events", () => {
     assert.equal(grammar?.mineral, "atelier");
     assert.equal(tandem?.mineral, "social");
     assert.equal(tandem?.kind, "flower");
-    assert.equal(
-      growthEventForActivity(
-        "CURRICULUM_EVIDENCE_RECORDED",
-        "u1-l1",
-        "2026-09-22T00:00:00.000Z",
-      ),
-      null,
+    const curriculum = growthEventForActivity(
+      "CURRICULUM_EVIDENCE_RECORDED",
+      "u1-l1",
+      "2026-09-22T00:00:00.000Z",
     );
+    assert.equal(curriculum?.mineral, "atelier");
+    assert.equal(curriculum?.kind, "mineral");
   });
 
+  it("counts curriculum evidence as atelier nourishment", () => {
+    const m = computeMinerals([{
+      id: "e1",
+      type: "CURRICULUM_EVIDENCE_RECORDED",
+      createdAt: new Date().toISOString(),
+      sourceId: "u1-l1",
+    }]);
+    assert.ok(m.atelier > 0);
+  });
+
+  it("uses a single shared door contract for all five minerals", () => {
+    assert.deepEqual(MINERAL_ORDER, ["mission", "parole", "social", "atelier", "pron"]);
+    for (const key of MINERAL_ORDER) {
+      assert.equal(MINERAL_DOORS[key].key, key);
+      assert.ok(MINERAL_DOORS[key].door);
+      assert.ok(MINERAL_DOORS[key].action);
+      assert.ok(MINERAL_DOORS[key].proof);
+    }
+  });
+
+  it("makes tie-breaking visible instead of hiding it", () => {
+    const next = causalNextGesture({ at: "", mission: 5, parole: 5, pron: 40, social: 40, atelier: 40 });
+    assert.equal(next.value, 5);
+    assert.deepEqual(next.tied, ["mission", "parole"]);
+    assert.equal(next.alternate?.mineral, "parole");
+    assert.match(next.line, /égalité/i);
+  });
+
+  it("uses a concrete first door for a brand-new organism", () => {
+    const next = causalNextGesture({ at: "", mission: 0, parole: 0, pron: 0, social: 0, atelier: 0 });
+    assert.equal(next.mineral, "mission");
+    assert.equal(next.door, "/mission");
+  });
+
+  it("keeps the mineral window explicit", () => {
+    assert.equal(MINERAL_WINDOW_DAYS, 14);
+  });
   it("routes the weakest atelier mineral to Learn labs", () => {
     const next = causalNextGesture({
       at: "",
