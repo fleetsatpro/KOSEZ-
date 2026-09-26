@@ -52,8 +52,8 @@ import { getLearningFeedbackBundle, saveLearningFeedback, getLearnerFeedback } f
 import {
   getNotificationPreferences,
   setNotificationPreference,
-  type NotificationPreferenceKind,
 } from "./notification-preferences.server";
+import type { NotificationPreferenceKind } from "./notification-preferences";
 
 
 const metadataJson = z.string().trim().max(20000).optional();
