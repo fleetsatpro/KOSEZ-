@@ -18,6 +18,7 @@ import {
   courageRibbon,
   organismStatusLine,
   causalNextGesture,
+  MINERAL_DEFINITIONS,
   strugglingFocus,
 } from "@/lib/blossom/organism";
 import { todayMissionForLevel } from "@/lib/blossom/mission-today";
