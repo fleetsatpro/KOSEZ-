@@ -70,9 +70,13 @@ function GrammarLab({ level, focusTaskId }: { level: LabLevel; focusTaskId: stri
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const tasks = useMemo(() => {
+    if (focusTaskId) {
+      const exact = GRAMMAR_TASKS.find((item) => item.id === focusTaskId);
+      if (exact) return [exact];
+    }
     const all = GRAMMAR_TASKS.filter((item) => item.level === level);
     return linkedTaskId && all.some((item) => item.id === linkedTaskId) ? all.filter((item) => item.id === linkedTaskId) : all;
-  }, [level, linkedTaskId]);
+  }, [focusTaskId, level, linkedTaskId]);
   const [index, setIndex] = useState(0), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
   const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
   const task = tasks[index]!, answered = choice !== null;
@@ -139,9 +143,13 @@ function ListeningLab({ level, focusTaskId }: { level: LabLevel; focusTaskId: st
   const completeActivity = useBlossom((s) => s.completeActivity);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const tasks = useMemo(() => {
+    if (focusTaskId) {
+      const exact = LISTENING_TASKS.find((item) => item.id === focusTaskId);
+      if (exact) return [exact];
+    }
     const all = LISTENING_TASKS.filter((item) => item.level === level);
     return linkedTaskId && all.some((item) => item.id === linkedTaskId) ? all.filter((item) => item.id === linkedTaskId) : all;
-  }, [level, linkedTaskId]);
+  }, [focusTaskId, level, linkedTaskId]);
   const [index, setIndex] = useState(0), [choice, setChoice] = useState<string | null>(null), [correct, setCorrect] = useState(0), [finished, setFinished] = useState(false);
   const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
   const task = tasks[index]!, answered = choice !== null;
