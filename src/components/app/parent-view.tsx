@@ -11,6 +11,24 @@ import { getGuardianSessionsOnServer } from "@/lib/blossom/domain.api";
 type GuardianRow = Awaited<ReturnType<typeof getGuardianWorkspaceOnServer>>[number];
 type GuardianSession = Awaited<ReturnType<typeof getGuardianSessionsOnServer>>[number];
 
+function downloadSessionCalendar(session: {
+  id: string;
+  title: string;
+  startsAt: string;
+  durationMinutes: number;
+  teacherName: string;
+  learnerName: string;
+}) {
+  const ics = teacherSessionToIcs(session);
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = calendarFilename(session.title);
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 function relative(value: string | null) {
   if (!value) return "Aucune activité enregistrée";
   const days = Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000);
