@@ -33,6 +33,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Hardening audit
+        run: npm run audit:hardening
+
       - name: Test
         run: npm test
 

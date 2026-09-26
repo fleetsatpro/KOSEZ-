@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Eyebrow, Surface } from "@/components/app/primitives";
 import { LANGUAGE_MODULES } from "@/lib/blossom/data";
+import { isLearnLanguageId } from "@/lib/i18n/locales";
 import { useBlossom } from "@/lib/blossom/store";
 
 export function MoiSettings() {
@@ -64,7 +65,10 @@ export function MoiSettings() {
             <select
               className="mt-2 h-11 w-full rounded-xl border border-border bg-bg px-3 text-sm outline-none focus:border-primary/50"
               value={languageId}
-              onChange={(event) => setLanguage(event.target.value)}
+              onChange={(event) => {
+                const next = event.target.value;
+                if (isLearnLanguageId(next)) setLanguage(next);
+              }}
             >
               {LANGUAGE_MODULES.map((language) => <option key={language.id} value={language.id}>{language.name}</option>)}
             </select>

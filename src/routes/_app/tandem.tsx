@@ -6,9 +6,8 @@ import { Eyebrow, Initials, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  LANGUAGE_MODULES,
   LEARNER_MEMORY,
-  PRONLAB_SETS,
+  setsForLanguage,
   planAllows,
 } from "@/lib/blossom/data";
 import { influenceFromState } from "@/lib/blossom/influence";
@@ -20,16 +19,13 @@ import {
 } from "@/lib/blossom/organism";
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
+import { describeLearnLanguage, useUiLocale } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_app/tandem")({
   component: TandemPage,
 });
 
 type Candidate = Awaited<ReturnType<typeof getTandemCandidatesOnServer>>[number];
-
-function languageLabel(id: string) {
-  return LANGUAGE_MODULES.find((language) => language.id === id)?.name ?? id;
-}
 
 function TandemPage() {
   const pathname = useRouterState({
@@ -40,7 +36,9 @@ function TandemPage() {
 
 function TandemHub() {
   const learner = useBlossom((s) => s.learner);
+  const uiLocale = useUiLocale();
   const languageId = useBlossom((s) => s.languageId);
+  const languageLabel = (id: string) => describeLearnLanguage(id, uiLocale).label;
   const statusMap = useBlossom((s) => s.tandemStatus);
   const setStatus = useBlossom((s) => s.setTandemStatus);
   const tandemOpen = useBlossom((s) => s.tandemOpen);
@@ -59,11 +57,12 @@ function TandemHub() {
         growthEvents,
         phonemeLeaves,
         missionSessions,
-        allItems: PRONLAB_SETS.flatMap((s) => s.items),
+        allItems: setsForLanguage(languageId).flatMap((s) => s.items),
         memory: LEARNER_MEMORY,
         memoryOn: planAllows(plan, "memory"),
+        languageId,
       }),
-    [log, attempts, growthEvents, phonemeLeaves, missionSessions, plan],
+    [log, attempts, growthEvents, phonemeLeaves, missionSessions, plan, languageId],
   );
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +82,7 @@ function TandemHub() {
       interests: learner.interests,
       window: learner.practiceWindow,
     }),
-    [languageId, learner.interests, learner.level, learner.nativeLanguage, learner.practiceWindow],
+    [languageId, uiLocale, learner.interests, learner.level, learner.nativeLanguage, learner.practiceWindow],
   );
 
   const load = () => {

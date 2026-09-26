@@ -7,7 +7,7 @@ import { RecordControl, Waveform } from "@/components/app/record-control";
 import { Eyebrow, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LEARNER_MEMORY, planAllows, PRONLAB_SETS } from "@/lib/blossom/data";
+import { LEARNER_MEMORY, planAllows, PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
 import { influenceFromState } from "@/lib/blossom/influence";
 import type { LivingRoom } from "@/lib/blossom/speak-engine";
 import { reshuffleRoom } from "@/lib/blossom/speak-engine";
@@ -42,6 +42,7 @@ function SpeakRoom() {
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
   const learner = useBlossom((s) => s.learner);
+  const languageId = useBlossom((s) => s.languageId);
   const log = useBlossom((s) => s.activityLog);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
@@ -53,9 +54,10 @@ function SpeakRoom() {
     growthEvents,
     phonemeLeaves,
     missionSessions,
-    allItems: PRONLAB_SETS.flatMap((s) => s.items),
+    allItems: setsForLanguage(languageId).flatMap((s) => s.items),
     memory: LEARNER_MEMORY,
     memoryOn,
+    languageId,
   });
   const friction = influence.speak.friction ?? (memoryOn ? LEARNER_MEMORY.hesitation : null);
   const kitBoost = influence.speak.kitBoost;

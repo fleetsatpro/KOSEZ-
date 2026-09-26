@@ -15,7 +15,7 @@ import { OrganismMineralsPanel } from "@/components/app/organism-minerals-panel"
 import { Eyebrow, Page } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LEARNER_MEMORY, planAllows, PRONLAB_SETS } from "@/lib/blossom/data";
+import { LEARNER_MEMORY, planAllows, PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
 import { influenceFromState } from "@/lib/blossom/influence";
 import { hasSource } from "@/lib/blossom/engine";
 import {
@@ -68,19 +68,24 @@ function OsezHub() {
   const log = useBlossom((s) => s.activityLog);
   const plan = useBlossom((s) => s.plan);
   const learner = useBlossom((s) => s.learner);
+  const languageId = useBlossom((s) => s.languageId);
   const growthEvents = useBlossom((s) => s.growthEvents);
+  const attempts = useBlossom((s) => s.pronlabAttempts);
+  const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
+  const missionSessions = useBlossom((s) => s.missionSessions);
   const journey = useJourney();
   const memoryOn = planAllows(plan, "memory");
   const baseDare = todaysPulseDare();
   const influence = influenceFromState({
     activityLog: log,
-    pronlabAttempts: useBlossom.getState().pronlabAttempts,
+    pronlabAttempts: attempts,
     growthEvents,
-    phonemeLeaves: useBlossom.getState().phonemeLeaves,
-    missionSessions: useBlossom.getState().missionSessions,
-    allItems: PRONLAB_SETS.flatMap((s) => s.items),
+    phonemeLeaves,
+    missionSessions,
+    allItems: setsForLanguage(languageId).flatMap((s) => s.items),
     memory: LEARNER_MEMORY,
     memoryOn,
+    languageId,
   });
   const dare = influence.pulse.dareOverride ?? baseDare;
   const pulseOverridden = Boolean(influence.pulse.dareOverride);
