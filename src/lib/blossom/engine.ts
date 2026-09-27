@@ -110,9 +110,34 @@ export function pointsFromLog(log: ActivityEvent[]): number {
 }
 
 export function stageFromPoints(points: number) {
-  let current = STAGES[0];
+  let current = STAGES[0]!;
   for (const stage of STAGES) {
     if (points >= stage.minPoints) current = stage;
+  }
+  return current;
+}
+
+/** Stage by points, clamped so declared STAGE_REQUIREMENTS must be met to advance. */
+export function stageFromLog(log: ActivityEvent[]) {
+  const points = pointsFromLog(log);
+  const missions = countByType(log, "MISSION_COMPLETED");
+  const speak = countByType(log, "SPEAK_COMPLETED");
+  const pronlab = countByType(log, "PRONLAB_COMPLETED");
+  let current = STAGES[0]!;
+  for (let i = 1; i < STAGES.length; i++) {
+    const prev = STAGES[i - 1]!;
+    const candidate = STAGES[i]!;
+    const req = STAGE_REQUIREMENTS[prev.id];
+    if (
+      points >= candidate.minPoints &&
+      missions >= req.missions &&
+      speak >= req.speak &&
+      pronlab >= req.pronlab
+    ) {
+      current = candidate;
+    } else {
+      break;
+    }
   }
   return current;
 }
@@ -121,16 +146,19 @@ export function countByType(log: ActivityEvent[], type: ActivityType): number {
   return log.filter((event) => event.type === type).length;
 }
 
-export function hasSource(log: ActivityEvent[], sourceId: string): boolean {
-  return log.some((event) => event.sourceId === sourceId);
+export function hasSource(log: ActivityEvent[], sourceId: string, type?: ActivityType): boolean {
+  return log.some(
+    (event) =>
+      event.sourceId === sourceId && (type == null || event.type === type),
+  );
 }
 
 export function journeySnapshot(log: ActivityEvent[]) {
   const points = pointsFromLog(log);
-  const stage = stageFromPoints(points);
   const missions = countByType(log, "MISSION_COMPLETED");
   const speak = countByType(log, "SPEAK_COMPLETED");
   const pronlab = countByType(log, "PRONLAB_COMPLETED");
+  const stage = stageFromLog(log);
   const required = STAGE_REQUIREMENTS[stage.id];
   const remaining = stage.nextAt === null ? 0 : Math.max(0, stage.nextAt - points);
   const span =
