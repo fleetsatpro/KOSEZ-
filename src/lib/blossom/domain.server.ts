@@ -4,7 +4,7 @@ import { TANDEM_TOTAL_DURATION_SECONDS, TANDEM_CONTRACT } from "./tandem-contrac
 import { normalizeMutationTime } from "./sync-causality";
 import { IMMERSION, PRONLAB_SETS, setsForLanguage } from "./data";
 import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure } from "./lab-content";
-import { LEARN_LANGUAGES } from "@/lib/i18n/locales";
+import { LEARN_LANGUAGES, isLearnLanguageId, isLearnSurfaceAvailable } from "@/lib/i18n/locales";
 import { fullMissionBank } from "./mission-today";
 import type { JsonObject } from "./backend.server";
 
@@ -1346,6 +1346,10 @@ export async function saveLearningSubmission(
     [userId],
   );
   const languageId = String(profileRows[0]?.target_language ?? "en");
+  if (!isLearnLanguageId(languageId)) throw new BlossomForbiddenError("Langue d’apprentissage invalide.");
+  if ((input.kind === "grammar" || input.kind === "listening" || input.kind === "writing") && !isLearnSurfaceAvailable(languageId, "labs")) {
+    throw new BlossomForbiddenError("Cet atelier n’est pas disponible pour votre langue d’apprentissage active.");
+  }
 
   if (input.kind === "grammar") {
     const task = GRAMMAR_TASKS.find((item) => item.id === input.taskId);
