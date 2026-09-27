@@ -16,12 +16,14 @@ export function AdminRoleStudio() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   function load() {
     setLoading(true);
+    setLoadError(false);
     void listPlatformUsersOnServer({ data: { limit: 100 } })
       .then(setUsers)
-      .catch(() => toast("Impossible de charger les utilisateurs."))
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   }
 
@@ -64,6 +66,11 @@ export function AdminRoleStudio() {
 
       {loading ? (
         <p className="mt-6 text-sm text-muted">Chargement des comptes…</p>
+      ) : loadError ? (
+        <div className="mt-6">
+          <p className="text-sm text-muted">Les comptes n’ont pas pu être chargés.</p>
+          <Button className="mt-3" size="sm" variant="secondary" onClick={load}>Réessayer</Button>
+        </div>
       ) : users.length === 0 ? (
         <p className="mt-6 text-sm text-muted">
           Aucun profil encore. Les comptes apparaissent après inscription email.
