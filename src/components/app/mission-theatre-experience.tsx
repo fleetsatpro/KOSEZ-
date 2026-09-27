@@ -97,6 +97,7 @@ export function MissionTheatreExperience() {
   const recordMissionSupport = useBlossom((s) => s.recordMissionSupport);
   const saveMissionReflection = useBlossom((s) => s.saveMissionReflection);
   const completeMissionSession = useBlossom((s) => s.completeMissionSession);
+  const reopenMissionSession = useBlossom((s) => s.reopenMissionSession);
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
   useEffect(() => {
     if (curriculumLessonId) clearCurriculumLessonContext();
