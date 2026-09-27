@@ -97,7 +97,6 @@ export function MissionTheatreExperience() {
   const recordMissionSupport = useBlossom((s) => s.recordMissionSupport);
   const saveMissionReflection = useBlossom((s) => s.saveMissionReflection);
   const completeMissionSession = useBlossom((s) => s.completeMissionSession);
-  const reopenMissionSession = useBlossom((s) => s.reopenMissionSession);
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
   useEffect(() => {
     if (curriculumLessonId) clearCurriculumLessonContext();
@@ -119,7 +118,7 @@ export function MissionTheatreExperience() {
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
   const personalised = personaliseMission(todayMission, memory, memoryOn);
   const influence = influenceFromState({
-    activityLog: log,
+    activityLog: activeLog,
     pronlabAttempts: attempts,
     growthEvents,
     phonemeLeaves,
@@ -212,7 +211,11 @@ export function MissionTheatreExperience() {
 
   async function finishSession() {
     if (closing) return;
-    if (serverRunSessionId && elapsed < 60) {
+    const startedAt = run?.startedAt ? Date.parse(run.startedAt) : NaN;
+    const elapsedSeconds = Number.isFinite(startedAt)
+      ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
+      : 0;
+    if (serverRunSessionId && elapsedSeconds < 60) {
       toast("La session doit durer au moins 1 minute avant validation. Le geste reste ouvert.");
       return;
     }
