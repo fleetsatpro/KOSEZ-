@@ -34,6 +34,8 @@ function LibraryDocPage() {
   const doc = LIBRARY.find((d) => d.id === id);
   const saveWord = useBlossom((s) => s.saveWord);
   const completeActivity = useBlossom((s) => s.completeActivity);
+  const startLibraryReading = useBlossom((s) => s.startLibraryReading);
+  const completeLibraryReading = useBlossom((s) => s.completeLibraryReading);
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
   useEffect(() => {
     if (curriculumLessonId) clearCurriculumLessonContext();
@@ -47,6 +49,7 @@ function LibraryDocPage() {
   const recordReadingCompletion = useCallback(() => {
     if (!docId || readingCompleted) return;
     const sourceId = docId;
+    completeLibraryReading(sourceId);
     completeActivity("LIBRARY_COMPLETED", sourceId, `Lecture · ${docId}`);
     if (curriculumLessonId) {
       const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find(
@@ -63,6 +66,10 @@ function LibraryDocPage() {
     }
     setReadingCompleted(true);
   }, [completeActivity, curriculumLessonId, docId, readingCompleted]);
+
+  useEffect(() => {
+    if (docId) startLibraryReading(docId);
+  }, [docId, startLibraryReading]);
 
   useEffect(() => {
     const end = readingEndRef.current;
