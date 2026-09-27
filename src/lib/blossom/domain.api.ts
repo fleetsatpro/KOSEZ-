@@ -126,8 +126,13 @@ export const cancelTeacherSessionOnServer = createServerFn({ method: "POST" })
 
 export const startMissionRunSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ missionId: z.string().trim().min(1).max(200) }))
-  .handler(async ({ context, data }) => startMissionRunSession(context.userId, data.missionId));
+  .inputValidator(z.object({
+    missionId: z.string().trim().min(1).max(200),
+    runId: z.string().trim().min(1).max(200),
+  }))
+  .handler(async ({ context, data }) =>
+    startMissionRunSession(context.userId, data.missionId, data.runId),
+  );
 
 export const endMissionRunSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
