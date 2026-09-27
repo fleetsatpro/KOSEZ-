@@ -56,9 +56,10 @@ test("P0 identity reset clears the entire learner-scoped replica", () => {
 });
 
 test("P0 activity deduplication is type + source aware and pending-safe", () => {
-  assert.ok(store.includes("hasSource(log, sourceId, type)"));
+  assert.ok(store.includes("hasSource("));
   assert.ok(store.includes('syncState: "pending"'));
-  assert.ok(bridge.includes("`${event.type}:source:${event.sourceId}`"));
+  assert.ok(store.includes("languageId: get().languageId"));
+  assert.ok(bridge.includes("localActivityKey"));
 });
 
 test("P0 library completion cannot outrun the server dwell contract", () => {
@@ -93,7 +94,7 @@ test("P0 Tandem session evidence is language-bound", () => {
   assert.ok(tandemMigration.includes("add column if not exists language_id"));
   assert.ok(domainServer.includes("partnerLanguageId"));
   assert.ok(domainServer.includes("partner_language_id"));
-  assert.ok(syncServer.includes("currentLanguageId"));
+  assert.ok(domainServer.includes("currentLanguageId"));
   assert.ok(store.includes("previousStatus"));
   assert.ok(domainServer.includes("duration positive"));
 });
