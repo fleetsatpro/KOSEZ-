@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
+import { enforceRateLimit } from "./rate-limit.server";
 import { getPublishedContent } from "./content.server";
 import { BlossomForbiddenError, createNotification, writeAuditEvent } from "./domain.server";
 import { eventStartEpoch } from "./event-attendance";
@@ -69,6 +70,7 @@ export async function recordEventAttendance(
   userId: string,
   input: { eventId: string; learnerUserId: string; note?: string },
 ) {
+  await enforceRateLimit(userId, "admin.event-attendance", 120, 60);
   await assertAdmin(userId);
   const { events } = await getPublishedContent();
   const event = events.find((entry) => entry.id === input.eventId);
