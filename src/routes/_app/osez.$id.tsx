@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, RefreshCw, X } from "lucide-react";
 import { AmbientParticles } from "@/components/app/ambient-particles";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { GrowthCeremony } from "@/components/app/growth-ceremony";
 import { RecordControl, Waveform } from "@/components/app/record-control";
 import { Eyebrow, Surface } from "@/components/app/primitives";
@@ -29,7 +30,11 @@ import {
 } from "@/lib/blossom/curriculum-context";
 
 export const Route = createFileRoute("/_app/osez/$id")({
-  component: SpeakRoom,
+  component: () => (
+    <LearningSurfaceGate surface="osez">
+      <SpeakRoom />
+    </LearningSurfaceGate>
+  ),
 });
 
 function SpeakRoom() {
