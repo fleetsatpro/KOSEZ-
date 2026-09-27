@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, RefreshCw, X } from "lucide-react";
 import { AmbientParticles } from "@/components/app/ambient-particles";
 import { GrowthCeremony } from "@/components/app/growth-ceremony";
@@ -7,7 +7,7 @@ import { RecordControl, Waveform } from "@/components/app/record-control";
 import { Eyebrow, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LEARNER_MEMORY, planAllows, PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
+import { LEARNER_MEMORY, planAllows, setsForLanguage } from "@/lib/blossom/data";
 import { influenceFromState } from "@/lib/blossom/influence";
 import type { LivingRoom } from "@/lib/blossom/speak-engine";
 import { reshuffleRoom } from "@/lib/blossom/speak-engine";
@@ -22,6 +22,10 @@ import {
   type SessionSpeechSummary,
 } from "@/lib/blossom/speech-stt";
 import { useBlossom } from "@/lib/blossom/store";
+import {
+  endSpeakSessionOnServer,
+  startSpeakSessionOnServer,
+} from "@/lib/blossom/speak-session.api";
 import { track } from "@/lib/analytics";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -48,23 +52,31 @@ function SpeakRoom() {
   const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
   const missionSessions = useBlossom((s) => s.missionSessions);
   const memoryOn = planAllows(plan, "memory");
-  const influence = influenceFromState({
-    activityLog: log,
-    pronlabAttempts: attempts,
-    growthEvents,
-    phonemeLeaves,
-    missionSessions,
-    allItems: setsForLanguage(languageId).flatMap((s) => s.items),
-    memory: LEARNER_MEMORY,
-    memoryOn,
-    languageId,
-  });
+  const influence = useMemo(
+    () =>
+      influenceFromState({
+        activityLog: log,
+        pronlabAttempts: attempts,
+        growthEvents,
+        phonemeLeaves,
+        missionSessions,
+        allItems: setsForLanguage(languageId).flatMap((s) => s.items),
+        memory: LEARNER_MEMORY,
+        memoryOn,
+        languageId,
+      }),
+    [log, attempts, growthEvents, phonemeLeaves, missionSessions, languageId, memoryOn],
+  );
   const friction = influence.speak.friction ?? (memoryOn ? LEARNER_MEMORY.hesitation : null);
   const kitBoost = influence.speak.kitBoost;
   const pressureHint = influence.speak.pressureHint;
-  const influenceReasons = influence.speak.reasons
-    .filter((r) => r.code !== "balanced")
-    .map((r) => r.line);
+  const influenceReasons = useMemo(
+    () =>
+      influence.speak.reasons
+        .filter((r) => r.code !== "balanced")
+        .map((r) => r.line),
+    [influence.speak.reasons],
+  );
 
   const [room, setRoom] = useState<LivingRoom | null>(null);
   const [source, setSource] = useState<"llm" | "swarm">("swarm");
@@ -78,6 +90,10 @@ function SpeakRoom() {
   const [yourTurns, setYourTurns] = useState(0);
   const [showRescue, setShowRescue] = useState(false);
   const [speechSummary, setSpeechSummary] = useState<SessionSpeechSummary>(() => emptySpeechSummary());
+  const [serverSessionId, setServerSessionId] = useState<string | null>(null);
+  const [serverAuthorityAvailable, setServerAuthorityAvailable] = useState(true);
+  const [practiceOnly, setPracticeOnly] = useState(false);
+  const [closing, setClosing] = useState(false);
   const mineralsBefore = useRef(minerals);
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
   useEffect(() => {
@@ -95,6 +111,9 @@ function SpeakRoom() {
       setYourTurns(0);
       setShowRescue(false);
       setSpeechSummary(emptySpeechSummary());
+      setServerSessionId(null);
+      setPracticeOnly(false);
+      setServerAuthorityAvailable(true);
 
       let topic: string | undefined;
       if (id === "topic") {
@@ -151,6 +170,24 @@ function SpeakRoom() {
     setWaitingYou(true);
   }, [started, turn, done, room]);
 
+  async function beginServerSession(roomId: string) {
+    try {
+      const session = await startSpeakSessionOnServer({
+        data: { roomId, languageId },
+      });
+      setServerSessionId(session.id);
+      setServerAuthorityAvailable(true);
+      setPracticeOnly(false);
+      return session.id;
+    } catch {
+      setServerSessionId(null);
+      setServerAuthorityAvailable(false);
+      setPracticeOnly(true);
+      toast("Mode pratique — la session serveur est indisponible.");
+      return null;
+    }
+  }
+
   async function reshuffle() {
     if (!room) return;
     setLoading(true);
@@ -192,45 +229,81 @@ function SpeakRoom() {
     setDone(false);
     setElapsed(0);
     setYourTurns(0);
+    setServerSessionId(null);
+    setPracticeOnly(false);
     setLoading(false);
     toast("Nouvelle composition.");
   }
 
-  function finish() {
-    if (!room) return;
+  async function finish() {
+    if (!room || closing) return;
+    setClosing(true);
     mineralsBefore.current = useBlossom.getState().mineralSnapshot;
-    const speakingMinutes = Math.max(1, Math.round(elapsed / 60));
-    const result = complete(
-      "SPEAK_COMPLETED",
-      `speak-${room.id}`,
-      undefined,
-      {
-        minutes: speakingMinutes,
-        spokenSeconds: speechSummary.spokenSeconds,
-        transcriptCount: speechSummary.transcriptCount,
-        captureOnlyCount: speechSummary.captureOnlyCount,
-      },
-    );
-    if (result.ok) {
-      if (curriculumLessonId) {
-        const linked = useBlossom.getState().activityLog.some(
-          (event) =>
-            event.type === "CURRICULUM_EVIDENCE_RECORDED" &&
-            event.sourceId === curriculumLessonId,
-        );
-        if (!linked) {
-          useBlossom.getState().completeActivity(
-            "CURRICULUM_EVIDENCE_RECORDED",
-            curriculumLessonId,
-            `Preuve curriculum · Speak · ${room.id}`,
-            { supportId: `speak-${room.id}` },
-          );
-        }
-      }
-      toast("Session close. La tige s'épaissit.");
-      setCeremonyOpen(true);
-    } else {
+
+    // Practice-only: never claim SPEAK_COMPLETED or open ceremony.
+    if (!serverSessionId || !serverAuthorityAvailable || practiceOnly) {
+      toast("Pratique terminée — aucune preuve serveur enregistrée.");
+      setClosing(false);
       navigate({ to: "/osez" });
+      return;
+    }
+
+    try {
+      const closure = await endSpeakSessionOnServer({
+        data: {
+          sessionId: serverSessionId,
+          spokenSeconds: speechSummary.spokenSeconds,
+          transcriptCount: speechSummary.transcriptCount,
+          captureOnlyCount: speechSummary.captureOnlyCount,
+        },
+      });
+      if (!closure.ok) {
+        toast("Session non validée par le serveur.");
+        setClosing(false);
+        navigate({ to: "/osez" });
+        return;
+      }
+
+      const speakingMinutes = Math.max(1, Math.round((closure.durationSeconds ?? elapsed) / 60));
+      const result = complete(
+        "SPEAK_COMPLETED",
+        `speak-session-${serverSessionId}`,
+        undefined,
+        {
+          minutes: speakingMinutes,
+          spokenSeconds: speechSummary.spokenSeconds,
+          transcriptCount: speechSummary.transcriptCount,
+          captureOnlyCount: speechSummary.captureOnlyCount,
+          serverSessionId,
+        },
+      );
+      if (result.ok) {
+        if (curriculumLessonId) {
+          const linked = useBlossom.getState().activityLog.some(
+            (event) =>
+              event.type === "CURRICULUM_EVIDENCE_RECORDED" &&
+              event.sourceId === curriculumLessonId,
+          );
+          if (!linked) {
+            useBlossom.getState().completeActivity(
+              "CURRICULUM_EVIDENCE_RECORDED",
+              curriculumLessonId,
+              `Preuve curriculum · Speak · ${room.id}`,
+              { supportId: `speak-session-${serverSessionId}` },
+            );
+          }
+        }
+        toast("Session close. La tige s'épaissit.");
+        setCeremonyOpen(true);
+      } else {
+        toast("Preuve non acceptée.");
+        navigate({ to: "/osez" });
+      }
+    } catch {
+      toast("Impossible de clôturer la session serveur.");
+      navigate({ to: "/osez" });
+    } finally {
+      setClosing(false);
     }
   }
 
@@ -354,7 +427,7 @@ function SpeakRoom() {
               className="mt-8 h-12 w-full bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => {
                 track("speak_started", { roomId: room.id, seed: room.seed, source });
-                setStarted(true);
+                void beginServerSession(room.id).then(() => setStarted(true));
               }}
             >
               Entrer dans la room
@@ -403,11 +476,17 @@ function SpeakRoom() {
           </div>
 
           <p className="mt-6 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm leading-6 text-fg">
-            Clôturer écrit une <span className="font-semibold text-primary">tige</span> sur BLOSSOM
-            et nourrit le minéral <span className="font-semibold text-primary">parole</span>.
+            {practiceOnly || !serverAuthorityAvailable
+              ? "Mode pratique : aucune tige serveur ne sera écrite."
+              : (
+                <>
+                  Clôturer écrit une <span className="font-semibold text-primary">tige</span> sur BLOSSOM
+                  et nourrit le minéral <span className="font-semibold text-primary">parole</span>.
+                </>
+              )}
           </p>
-          <Button className="mt-4 h-12 w-full" onClick={finish}>
-            Clore la session
+          <Button className="mt-4 h-12 w-full" onClick={() => void finish()} disabled={closing}>
+            {closing ? "Validation en cours…" : practiceOnly ? "Terminer la pratique" : "Clore la session"}
           </Button>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <Button variant="secondary" onClick={() => void reshuffle()}>
@@ -485,87 +564,50 @@ function SpeakRoom() {
             {current.stretch ? (
               <p className="mt-2 text-xs leading-5 text-primary-foreground/50">Stretch · {current.stretch}</p>
             ) : null}
-            <p className="mt-3 text-[10px] uppercase tracking-[0.16em] text-primary-foreground/40">
-              {current.goal}
-            </p>
-          </div>
-        ) : null}
-
-        {showRescue && current?.recovery?.length ? (
-          <ul className="mt-6 flex flex-wrap justify-center gap-2">
-            {current.recovery.map((r) => (
-              <li
-                key={r}
-                className="rounded-full border border-primary-foreground/25 bg-primary-foreground/10 px-3 py-1 text-xs text-primary-foreground/80"
-              >
-                {r}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
-
-      <div className="px-6 pb-12">
-        {waitingYou ? (
-          <div className="space-y-3">
-            <RecordControl
-              inverted
-              cta="Maintenir pour répondre"
-              onFinished={async ({ seconds, blob, mimeType }) => {
-                let evidence = captureOnlyEvidence(seconds);
-                if (blob) {
+            <div className="mt-6">
+              <RecordControl
+                onRecorded={async (blob) => {
+                  setYourTurns((n) => n + 1);
                   try {
-                    const audioBase64 = await blobToBase64(blob);
-                    if (audioBase64) {
-                      evidence = await transcribeSpeakTurn({
-                        data: {
-                          audioBase64,
-                          mimeType,
-                          seconds,
-                          fileName: `kosez-${room.id}.webm`,
-                        },
-                      });
-                    }
+                    const b64 = await blobToBase64(blob);
+                    const transcript = await transcribeSpeakTurn({ data: { audioBase64: b64 } });
+                    setSpeechSummary((prev) =>
+                      appendSpeechTurn(prev, {
+                        transcript: transcript.text ?? "",
+                        seconds: transcript.durationSeconds ?? 0,
+                        captureOnly: !transcript.text,
+                      }),
+                    );
                   } catch {
-                    evidence = captureOnlyEvidence(seconds);
+                    setSpeechSummary((prev) =>
+                      appendSpeechTurn(prev, captureOnlyEvidence(3)),
+                    );
                   }
-                }
-                setSpeechSummary((summary) => appendSpeechTurn(summary, evidence));
-                track("speak_turn_evidence", {
-                  roomId: room.id,
-                  assessment: evidence.assessment,
-                  seconds: evidence.seconds,
-                  hasTranscript: Boolean(evidence.transcript),
-                });
-                setYourTurns((n) => n + 1);
-                setShowRescue(false);
-                setTurn((n) => n + 1);
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => setShowRescue((v) => !v)}
-              className="mx-auto block text-[11px] uppercase tracking-[0.16em] text-primary-foreground/50 hover:text-primary-foreground/80"
-            >
-              {showRescue ? "Masquer les secours" : "Phrases de secours"}
-            </button>
+                  setTurn((n) => n + 1);
+                }}
+              />
+            </div>
+            {showRescue ? (
+              <p className="mt-4 text-xs text-primary-foreground/50">{current.rescue}</p>
+            ) : (
+              <button
+                type="button"
+                className="mt-4 text-[11px] uppercase tracking-[0.14em] text-primary-foreground/40"
+                onClick={() => setShowRescue(true)}
+              >
+                Besoin d'aide ?
+              </button>
+            )}
           </div>
-        ) : (
-          <p className="text-center text-sm text-primary-foreground/50">Écoutez…</p>
-        )}
+        ) : null}
       </div>
     </div>
   );
 }
 
-function sessionEntropy(seed: string) {
+function sessionEntropy(seed: string): string {
   try {
-    const k = `kosez-entropy-${seed}`;
-    let v = sessionStorage.getItem(k);
-    if (!v) {
-      v = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      sessionStorage.setItem(k, v);
-    }
+    const v = `${seed}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     return v;
   } catch {
     return `${Date.now()}`;
