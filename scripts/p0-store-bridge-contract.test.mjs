@@ -21,7 +21,7 @@ let tandemMigration = "";
 let domainServer = "";
 
 test.before(async () => {
-  [store, bridge, syncServer, syncClient, libraryRoute, tandemMigration] = await Promise.all([
+  [store, bridge, syncServer, syncClient, libraryRoute, tandemMigration, domainServer] = await Promise.all([
     readFile(storePath, "utf8"),
     readFile(bridgePath, "utf8"),
     readFile(syncServerPath, "utf8"),
@@ -91,7 +91,8 @@ test("P0 sync queue uses monotonic causal timestamps", () => {
 
 test("P0 Tandem session evidence is language-bound", () => {
   assert.ok(tandemMigration.includes("add column if not exists language_id"));
-  assert.ok(syncServer.includes("language_id = $3"));
+  assert.ok(domainServer.includes("partnerLanguageId"));
+  assert.ok(domainServer.includes("partner_language_id"));
   assert.ok(syncServer.includes("currentLanguageId"));
   assert.ok(store.includes("previousStatus"));
   assert.ok(domainServer.includes("duration positive"));
