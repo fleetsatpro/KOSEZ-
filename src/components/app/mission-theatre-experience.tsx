@@ -35,6 +35,10 @@ import {
 } from "@/lib/blossom/mission";
 import { todayMissionForLevel } from "@/lib/blossom/mission-today";
 import { useBlossom } from "@/lib/blossom/store";
+import {
+  endMissionRunSessionOnServer,
+  startMissionRunSessionOnServer,
+} from "@/lib/blossom/domain.api";
 import { track } from "@/lib/analytics";
 import {
   clearCurriculumLessonContext,
@@ -144,13 +148,33 @@ export function MissionTheatreExperience() {
   const [challengeOpen, setChallengeOpen] = useState(false);
   const [growth, setGrowth] = useState<GrowthSnapshot | null>(null);
   const [supportUsed, setSupportUsed] = useState(Boolean(run?.supportUsed));
+  const [starting, setStarting] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [serverRunSessionId, setServerRunSessionId] = useState<string | null>(null);
+  const [serverEvidenceAvailable, setServerEvidenceAvailable] = useState(false);
 
-  function start() {
+  async function start() {
+    if (starting || closing) return;
+    setStarting(true);
     const started = startMissionRun(todayMission.id, mode, challenge);
     if (!started) {
+      setStarting(false);
       toast("Impossible de démarrer cette mission.");
       return;
     }
+    setServerRunSessionId(null);
+    setServerEvidenceAvailable(false);
+    try {
+      const serverSession = await startMissionRunSessionOnServer({
+        data: { missionId: todayMission.id, runId: started },
+      });
+      setServerRunSessionId(serverSession.id);
+      setServerEvidenceAvailable(true);
+    } catch {
+      // Local/offline practice remains usable, but cannot mint reward evidence
+      // until a server-authoritative run exists.
+    }
+    setStarting(false);
     track("mission_started", { missionId: todayMission.id, mode, challenge });
     setStep("prepare");
   }
@@ -185,17 +209,45 @@ export function MissionTheatreExperience() {
     setSaved(true);
   }
 
-  function finishSession() {
+  async function finishSession() {
+    if (closing) return;
+    setClosing(true);
+    let rewardSourceId: string | null = null;
+    if (serverRunSessionId) {
+      try {
+        const ended = await endMissionRunSessionOnServer({
+          data: { sessionId: serverRunSessionId },
+        });
+        if (ended.missionId !== todayMission.id) {
+          throw new Error("mission-session-mismatch");
+        }
+        rewardSourceId = `mission-session-${ended.id}`;
+      } catch {
+        setClosing(false);
+        toast("Validation serveur indisponible. La mission reste ouverte.");
+        return;
+      }
+    }
+
     const before = journeySnapshot(log);
-    const result = completeMissionSession(todayMission.id);
+    const result = completeMissionSession(todayMission.id, rewardSourceId);
     if (!result.ok) {
+      setClosing(false);
       toast("Session non close.");
       return;
     }
     const after = journeySnapshot(useBlossom.getState().activityLog);
     const evaluation = evaluateMission(reflection);
+    setServerRunSessionId(null);
+    setServerEvidenceAvailable(false);
     setGrowth({ before, after, evaluation });
-    track("mission_completed", { missionId: todayMission.id, mode, challenge });
+    track("mission_completed", {
+      missionId: todayMission.id,
+      mode,
+      challenge,
+      rewarded: Boolean(rewardSourceId),
+    });
+    setClosing(false);
   }
 
   if (growth) {
@@ -440,8 +492,8 @@ export function MissionTheatreExperience() {
                   ) : null}
                 </div>
               </div>
-              <Button size="lg" onClick={start} className="min-h-12 w-full rounded-xl px-6 sm:w-auto">
-                Entrer dans la scène
+              <Button size="lg" disabled={starting || closing} onClick={() => void start()} className="min-h-12 w-full rounded-xl px-6 sm:w-auto">
+                {starting ? "Ouverture de la scène…" : "Entrer dans la scène"}
                 <ArrowRight className="size-4" />
               </Button>
             </div>
@@ -500,7 +552,7 @@ export function MissionTheatreExperience() {
               onChange={setReflection}
               saved={saved}
               onSave={saveReflection}
-              onFinish={finishSession}
+              onFinish={() => void finishSession()}
               onRedo={() => {
                 reopenMissionSession(todayMission.id);
                 setStep("execute");
