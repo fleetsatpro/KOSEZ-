@@ -242,3 +242,31 @@ test("setsForLanguage keeps English as default and isolates LSF", () => {
   assert.ok(en.every((s) => (s.language ?? "en") === "en"));
   assert.ok(lsf.every((s) => s.language === "lsf"));
 });
+
+
+test("tandem language fit survives localized labels", () => {
+  const score = (await import("./engine.ts")).tandemMatchScore(
+    {
+      speaks: "Français",
+      wants: "Anglais",
+      level: "A2",
+      interests: [],
+      window: "12:00",
+    },
+    {
+      id: "partner",
+      name: "Alex",
+      city: "Saint-Pierre",
+      speaks: "English",
+      speaksLevel: "B1",
+      wants: "French",
+      wantsLevel: "A2",
+      interests: [],
+      window: "12:00",
+      goal: "",
+      initials: "A",
+      avatar: null,
+    },
+  );
+  assert.ok(score >= 40);
+});
