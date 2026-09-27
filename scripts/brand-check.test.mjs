@@ -108,6 +108,14 @@ test("canvas app with no card warns 'missing' and missing og:type", () => {
   assert.match(warnings[1], /og:type|x:game/);
 });
 
+test("decorative canvas can opt out of game-only brand requirements", () => {
+  const root = makeWorkspace({ siteJson: UTILITY_CUSTOM_SITE, cardFile: "og.jpg" });
+  assert.deepEqual(
+    computeBrandWarnings({ hasCanvas: true, isGame: false, workspaceRoot: root }),
+    [],
+  );
+});
+
 test("canvas card without type still warns for og:type", () => {
   const root = makeWorkspace({ siteJson: UTILITY_CUSTOM_SITE, cardFile: "og.jpg" });
   const warnings = computeBrandWarnings({ hasCanvas: true, workspaceRoot: root });

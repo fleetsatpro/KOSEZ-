@@ -12,11 +12,9 @@ import { influenceFromState } from "@/lib/blossom/influence";
 import type { LivingRoom } from "@/lib/blossom/speak-engine";
 import { reshuffleRoom } from "@/lib/blossom/speak-engine";
 import { buildSpeakRoom } from "@/lib/blossom/speak-llm";
-import { transcribeSpeakTurn } from "@/lib/blossom/speech.api";
 import {
   appendSpeechTurn,
-  blobToBase64,
-  captureOnlyEvidence,
+  resolveSpeechEvidence,
   emptySpeechSummary,
   weaveSpeechIntoDebrief,
   type SessionSpeechSummary,
@@ -512,24 +510,10 @@ function SpeakRoom() {
               inverted
               cta="Maintenir pour répondre"
               onFinished={async ({ seconds, blob, mimeType }) => {
-                let evidence = captureOnlyEvidence(seconds);
-                if (blob) {
-                  try {
-                    const audioBase64 = await blobToBase64(blob);
-                    if (audioBase64) {
-                      evidence = await transcribeSpeakTurn({
-                        data: {
-                          audioBase64,
-                          mimeType,
-                          seconds,
-                          fileName: `kosez-${room.id}.webm`,
-                        },
-                      });
-                    }
-                  } catch {
-                    evidence = captureOnlyEvidence(seconds);
-                  }
-                }
+                const evidence = await resolveSpeechEvidence(
+                  { seconds, blob, mimeType },
+                  { fileName: `kosez-${room.id}.webm` },
+                );
                 setSpeechSummary((summary) => appendSpeechTurn(summary, evidence));
                 track("speak_turn_evidence", {
                   roomId: room.id,

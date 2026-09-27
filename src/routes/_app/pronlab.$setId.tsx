@@ -14,8 +14,7 @@ import {
   clearCurriculumLessonContext,
   readCurriculumLessonContext,
 } from "@/lib/blossom/curriculum-context";
-import { transcribeSpeakTurn } from "@/lib/blossom/speech.api";
-import { blobToBase64, captureOnlyEvidence } from "@/lib/blossom/speech-stt";
+import { resolveSpeechEvidence } from "@/lib/blossom/speech-stt";
 import { learnLanguageDef } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_app/pronlab/$setId")({
@@ -282,24 +281,10 @@ function PronlabSetPage() {
             cta={heard ? "Maintenir pour dire" : "Écoutez, ou tentez"}
             onFinished={async ({ seconds, blob, mimeType }) => {
               const beforeMastered = summarisePronlabItem(item.id, useBlossom.getState().pronlabAttempts).mastered;
-              let evidence = captureOnlyEvidence(seconds);
-              if (blob) {
-                try {
-                  const audioBase64 = await blobToBase64(blob);
-                  if (audioBase64) {
-                    evidence = await transcribeSpeakTurn({
-                      data: {
-                        audioBase64,
-                        mimeType,
-                        seconds,
-                        fileName: `kosez-pronlab-${item.id}.webm`,
-                      },
-                    });
-                  }
-                } catch {
-                  evidence = captureOnlyEvidence(seconds);
-                }
-              }
+              const evidence = await resolveSpeechEvidence(
+                { seconds, blob, mimeType },
+                { fileName: `kosez-pronlab-${item.id}.webm` },
+              );
               const attempt = record(item.id, seconds, {
                 assessment: evidence.assessment,
                 provider: evidence.providerId ?? "speech-evidence",

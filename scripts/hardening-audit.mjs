@@ -8,7 +8,17 @@ const SELF = "scripts/hardening-audit.mjs";
 const SCAN_DIRS = ["src", "scripts", "server", "migrations", ".github", "public"];
 const SKIP = new Set(["node_modules", "dist", ".git", ".next", "coverage"]);
 const TEXT_EXT = /\.(?:ts|tsx|js|mjs|mts|cjs|css|sql|json|yml|yaml|html|svg|txt)$/i;
-const ROOT_FILES = ["package.json", "pnpm-lock.yaml", "tsconfig.json", "vite.config.ts", "vite.config.js", "vercel.json", "eslint.config.js"];
+const ROOT_FILES = [
+  "package.json",
+  "package-lock.json",
+  "pnpm-lock.yaml",
+  "tsconfig.json",
+  "vite.config.ts",
+  "vite.config.js",
+  "vercel.json",
+  "eslint.config.js",
+  "eslint.config.mjs",
+];
 const FORBIDDEN_FILENAME = /(?:^|\/)(?:placeholder|stub|mock|dummy|sample)(?:[-_.]|\/|$)/i;
 const FORBIDDEN = [
   /\bFIXME\b/i,
