@@ -40,13 +40,14 @@ function Review() {
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const vocabulary = useBlossom((s) => s.vocabulary);
   const submissions = useBlossom((s) => s.learningSubmissions);
+  const languageId = useBlossom((s) => s.languageId);
   const saveLearningSubmission = useBlossom((s) => s.saveLearningSubmission);
   const completeActivity = useBlossom((s) => s.completeActivity);
   const plan = useMemo(
-    () => buildReviewPlan(submissions, attempts, vocabulary),
-    [submissions, attempts, vocabulary],
+    () => buildReviewPlan(submissions, attempts, vocabulary, new Date().toISOString(), languageId),
+    [submissions, attempts, vocabulary, languageId],
   );
-  const fallback = useMemo(() => buildReviewQueue(attempts, vocabulary), [attempts, vocabulary]);
+  const fallback = useMemo(() => buildReviewQueue(attempts, vocabulary, languageId), [attempts, vocabulary, languageId]);
   const initial = useMemo(
     () => (plan.due.length ? plan.due : fallback.map((item) => ({
       ...item,
