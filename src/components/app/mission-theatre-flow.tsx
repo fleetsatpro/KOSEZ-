@@ -545,7 +545,7 @@ export function ReflectionStage({
   draft,
   saved,
   run,
-  _history,
+  history: _history,
   onChange,
   onSave,
   onRedo,
