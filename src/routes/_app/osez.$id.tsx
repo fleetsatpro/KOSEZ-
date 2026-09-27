@@ -9,6 +9,7 @@ import { Eyebrow, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LEARNER_MEMORY, planAllows, setsForLanguage } from "@/lib/blossom/data";
+import { endSpeakSessionOnServer, recordSpeakTurnOnServer, startSpeakSessionOnServer } from "@/lib/blossom/domain.api";
 import { influenceFromState } from "@/lib/blossom/influence";
 import type { LivingRoom } from "@/lib/blossom/speak-engine";
 import { generateRoomCatalog, reshuffleRoom } from "@/lib/blossom/speak-engine";
@@ -73,6 +74,8 @@ function SpeakRoom() {
   const [source, setSource] = useState<"llm" | "swarm">("swarm");
   const [loading, setLoading] = useState(true);
   const [started, setStarted] = useState(false);
+  const [startingSession, setStartingSession] = useState(false);
+  const [speakSessionId, setSpeakSessionId] = useState<string | null>(null);
   const [turn, setTurn] = useState(0);
   const [waitingYou, setWaitingYou] = useState(false);
   const [done, setDone] = useState(false);
@@ -92,6 +95,8 @@ function SpeakRoom() {
     async function compose() {
       setLoading(true);
       setStarted(false);
+      setStartingSession(false);
+      setSpeakSessionId(null);
       setTurn(0);
       setDone(false);
       setElapsed(0);
@@ -153,6 +158,15 @@ function SpeakRoom() {
       cancelled = true;
     };
   }, [id, learner.level, learner.firstName, learner.interests, friction, pressureHint, kitBoost, influenceReasons]);
+
+  useEffect(() => {
+    if (!started || !speakSessionId || done) return;
+    return () => {
+      void endSpeakSessionOnServer({
+        data: { sessionId: speakSessionId, status: "cancelled" },
+      }).catch(() => undefined);
+    };
+  }, [started, speakSessionId, done]);
 
   useEffect(() => {
     if (!started || done) return;
@@ -220,28 +234,47 @@ function SpeakRoom() {
     toast("Nouvelle composition.");
   }
 
-  function finish() {
-    if (!room) return;
-    const hasSpeechEvidence =
-      speechSummary.spokenSeconds > 0 || speechSummary.transcriptCount > 0;
-    if (!hasSpeechEvidence) {
+  async function finish() {
+    if (!room || !speakSessionId) {
       navigate({ to: "/osez" });
       return;
     }
-    mineralsBefore.current = useBlossom.getState().mineralSnapshot;
-    const speakingMinutes = Math.max(1, Math.round(speechSummary.spokenSeconds / 60));
-    const result = complete(
-      "SPEAK_COMPLETED",
-      `speak-${room.id}`,
-      undefined,
-      {
-        minutes: speakingMinutes,
-        spokenSeconds: speechSummary.spokenSeconds,
-        transcriptCount: speechSummary.transcriptCount,
-        captureOnlyCount: speechSummary.captureOnlyCount,
-      },
-    );
-    if (result.ok) {
+    const hasSpeechEvidence =
+      speechSummary.spokenSeconds > 0 || speechSummary.transcriptCount > 0;
+    if (!hasSpeechEvidence) {
+      await endSpeakSessionOnServer({
+        data: { sessionId: speakSessionId, status: "cancelled" },
+      }).catch(() => undefined);
+      navigate({ to: "/osez" });
+      return;
+    }
+    try {
+      const ended = await endSpeakSessionOnServer({
+        data: { sessionId: speakSessionId, status: "completed" },
+      });
+      if (ended.evidenceSeconds < 1 || ended.turnCount < 1 || ended.durationSeconds < 1) {
+        toast("La séance n’a pas produit de preuve vocale confirmée.");
+        return;
+      }
+      mineralsBefore.current = useBlossom.getState().mineralSnapshot;
+      const speakingMinutes = Math.max(1, Math.floor(ended.evidenceSeconds / 60));
+      const sourceId = `speak-session-${ended.id}`;
+      const result = complete(
+        "SPEAK_COMPLETED",
+        sourceId,
+        undefined,
+        {
+          minutes: speakingMinutes,
+          spokenSeconds: ended.evidenceSeconds,
+          durationSeconds: ended.durationSeconds,
+          transcriptCount: speechSummary.transcriptCount,
+          captureOnlyCount: speechSummary.captureOnlyCount,
+        },
+      );
+      if (!result.ok) {
+        toast("La clôture n’a pas été confirmée. La séance reste sans croissance tant que la preuve n’est pas validée.");
+        return;
+      }
       if (curriculumLessonId) {
         const linked = useBlossom.getState().activityLog.some(
           (event) =>
@@ -252,15 +285,16 @@ function SpeakRoom() {
           useBlossom.getState().completeActivity(
             "CURRICULUM_EVIDENCE_RECORDED",
             curriculumLessonId,
-            `Preuve curriculum · Speak · ${room.id}`,
-            { supportId: `speak-${room.id}` },
+            `Preuve curriculum · Speak · ${ended.id}`,
+            { supportId: sourceId },
           );
         }
       }
+      setDone(true);
       toast("Session close. La tige s'épaissit.");
       setCeremonyOpen(true);
-    } else {
-      navigate({ to: "/osez" });
+    } catch {
+      toast("La séance n’a pas pu être confirmée. Vérifiez votre connexion puis réessayez.");
     }
   }
 
@@ -382,12 +416,22 @@ function SpeakRoom() {
 
             <Button
               className="mt-8 h-12 w-full bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => {
-                track("speak_started", { roomId: room.id, seed: room.seed, source });
-                setStarted(true);
+              disabled={startingSession}
+              onClick={async () => {
+                setStartingSession(true);
+                try {
+                  const session = await startSpeakSessionOnServer({ data: { roomId: room.id } });
+                  setSpeakSessionId(session.id);
+                  setStarted(true);
+                  track("speak_started", { roomId: room.id, seed: room.seed, source, sessionId: session.id });
+                } catch {
+                  toast("La séance n’a pas pu être ouverte. Une connexion est nécessaire pour confirmer la preuve vocale.");
+                } finally {
+                  setStartingSession(false);
+                }
               }}
             >
-              Entrer dans la room
+              {startingSession ? "Ouverture de la séance…" : "Entrer dans la room"}
             </Button>
           </div>
         </div>
@@ -548,18 +592,27 @@ function SpeakRoom() {
                   { seconds, blob, mimeType },
                   { fileName: `kosez-${room.id}.webm` },
                 );
-                if (evidence.assessment !== "skipped") {
-                  setSpeechSummary((summary) => appendSpeechTurn(summary, evidence));
-                  track("speak_turn_evidence", {
-                    roomId: room.id,
-                    assessment: evidence.assessment,
-                    seconds: evidence.seconds,
-                    hasTranscript: Boolean(evidence.transcript),
-                  });
-                  setYourTurns((n) => n + 1);
-                } else {
+                if (evidence.assessment === "skipped" || evidence.seconds <= 0 || !speakSessionId) {
                   track("speak_turn_skipped", { roomId: room.id });
+                  toast("Aucune prise valide. Réessayez cette réponse.");
+                  return;
                 }
+                try {
+                  await recordSpeakTurnOnServer({
+                    data: { sessionId: speakSessionId, seconds: evidence.seconds },
+                  });
+                } catch {
+                  toast("La prise n’a pas été confirmée. Réessayez pour continuer.");
+                  return;
+                }
+                setSpeechSummary((summary) => appendSpeechTurn(summary, evidence));
+                track("speak_turn_evidence", {
+                  roomId: room.id,
+                  assessment: evidence.assessment,
+                  seconds: evidence.seconds,
+                  hasTranscript: Boolean(evidence.transcript),
+                });
+                setYourTurns((n) => n + 1);
                 setShowRescue(false);
                 setTurn((n) => n + 1);
               }}
