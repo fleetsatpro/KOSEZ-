@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { getSql } from "@/lib/db";
+import { enforceRateLimit } from "./rate-limit.server";
 import {
   CATALOGUE,
   EVENTS,
@@ -222,6 +223,7 @@ export async function getContentRevisionHistory(
   userId: string,
   contentKeyInput: string,
 ): Promise<ContentRevision[]> {
+  await enforceRateLimit(userId, "admin.content-archive", 30, 60);
   await assertAdmin(userId);
   const contentKey = contentKeySchema.parse(contentKeyInput);
   const sql = await getSql();
@@ -361,6 +363,7 @@ export async function saveContentDraft(
     expectedDraftRevision: number;
   },
 ) {
+  await enforceRateLimit(userId, "admin.content-draft", 60, 60);
   await assertAdmin(userId);
   const contentKey = contentKeySchema.parse(input.contentKey);
   const payload = validatePayload(input.kind, input.payload);
@@ -470,6 +473,7 @@ export async function publishContent(
   contentKeyInput: string,
   expectedDraftRevision: number,
 ) {
+  await enforceRateLimit(userId, "admin.content-publish", 30, 60);
   await assertAdmin(userId);
   const contentKey = contentKeySchema.parse(contentKeyInput);
   const sql = await getSql();
@@ -543,6 +547,7 @@ export async function restoreContentDraft(
     expectedDraftRevision: number;
   },
 ) {
+  await enforceRateLimit(userId, "admin.content-restore", 60, 60);
   await assertAdmin(userId);
   const contentKey = contentKeySchema.parse(input.contentKey);
   const sql = await getSql();
