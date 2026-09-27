@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { BlossomForbiddenError, createNotification, writeAuditEvent } from "./domain.server";
+import { enforceRateLimit } from "./rate-limit.server";
 
 export async function reportTandem(
   reporterUserId: string,
@@ -8,6 +9,7 @@ export async function reportTandem(
   reportId: string = randomUUID(),
   reason = "unspecified",
 ) {
+  await enforceRateLimit(reporterUserId, "safety.tandem-report", 3, 86400);
   if (reporterUserId === partnerUserId) {
     throw new BlossomForbiddenError("Vous ne pouvez pas vous signaler vous-même.");
   }
