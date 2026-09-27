@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { toast } from "sonner";
 import {
   ArrowRight,
@@ -84,6 +85,7 @@ export function LearnDashboard() {
   );
   const completeHomework = useBlossom((s) => s.completeHomework);
   const vocab = useBlossom((s) => s.vocabulary);
+  const languageId = useBlossom((s) => s.languageId);
   const languageVocabulary = useMemo(
     () =>
       vocab.filter((entry) => {
@@ -94,7 +96,6 @@ export function LearnDashboard() {
   );
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const submissions = useBlossom((s) => s.learningSubmissions);
-  const languageId = useBlossom((s) => s.languageId);
   const assigned = useBlossom((s) => s.assignedSetIds);
   const plan = useBlossom((s) => s.plan);
   const journey = useJourney();
@@ -102,12 +103,12 @@ export function LearnDashboard() {
   const growthEvents = useBlossom((s) => s.growthEvents);
   const nextGesture = causalNextGesture(minerals);
   const atelierGrowth = growthEvents.filter((event) => event.mineral === "atelier").slice(0, 3);
-  const skillProfile = buildSkillProfile(log, attempts, vocab, languageId);
+  const skillProfile = buildSkillProfile(log, attempts, languageVocabulary, languageId);
   const reviewPlan = buildReviewPlan(submissions, attempts, vocab, new Date().toISOString(), languageId);
   const intelligence = buildLearningIntelligence(
     log,
     attempts,
-    vocab,
+    languageVocabulary,
     submissions,
     reviewPlan,
     new Date().toISOString(),
