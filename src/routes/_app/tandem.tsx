@@ -88,18 +88,18 @@ function TandemHub() {
     [languageId, languageLabel, learner.interests, learner.level, learner.nativeLanguage, learner.practiceWindow],
   );
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
     void getTandemCandidatesOnServer()
       .then(setCandidates)
       .catch(() => setError("Impossible de charger les profils compatibles."))
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const ranked = useMemo(() => {
     const bias = influence.tandem.partnerBias;

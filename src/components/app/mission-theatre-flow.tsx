@@ -554,7 +554,7 @@ export function ReflectionStage({
   draft: MissionReflection;
   saved: boolean;
   run: MissionRun | null;
-  _history: ReturnType<typeof summariseMissionHistory>;
+  history: ReturnType<typeof summariseMissionHistory>;
   onChange: (next: MissionReflection) => void;
   onSave: (next?: MissionReflection) => void;
   onRedo: () => void;

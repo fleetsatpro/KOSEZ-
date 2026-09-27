@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, LibraryBig, Mic2, RotateCcw, Target } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GrowthCeremony } from "@/components/app/growth-ceremony";
 import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
@@ -65,6 +65,7 @@ function Review() {
   const [reviewed, setReviewed] = useState(0);
   const [misses, setMisses] = useState<Record<string, number>>({});
   const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
+  const initializedLanguageId = useRef(languageId);
 
   const finish = useCallback(() => {
     const day = new Date().toISOString().slice(0, 10);
@@ -94,6 +95,8 @@ function Review() {
   }, [completeActivity, curriculumLessonId, plan.due.length, reviewed]);
 
   useEffect(() => {
+    if (initializedLanguageId.current === languageId) return;
+    initializedLanguageId.current = languageId;
     setQueue(initial);
     setSessionTotal(Math.max(initial.length, 1));
     setReviewed(0);
@@ -101,7 +104,7 @@ function Review() {
     setRevealed(false);
     setDone(false);
     setCeremony(null);
-  }, [initial]);
+  }, [initial, languageId]);
 
   const current = queue[0];
   const total = sessionTotal;
