@@ -270,3 +270,27 @@ test("tandem language fit survives localized labels", () => {
   );
   assert.ok(score >= 40);
 });
+
+
+test("pending activity cannot change points or organism language state", () => {
+  const now = new Date().toISOString();
+  const pending: ActivityEvent = {
+    id: "pending-1",
+    type: "SPEAK_COMPLETED",
+    createdAt: now,
+    sourceId: "speak-pending",
+    metadata: { languageId: "en", syncState: "pending" },
+  };
+  const confirmed: ActivityEvent = {
+    id: "confirmed-1",
+    type: "SPEAK_COMPLETED",
+    createdAt: now,
+    sourceId: "speak-confirmed",
+    metadata: { languageId: "en", syncState: "confirmed" },
+  };
+  assert.equal(activityBelongsToLanguage(pending, "en"), false);
+  assert.equal(activityBelongsToLanguage(confirmed, "en"), true);
+  assert.equal(pointsFromLog([pending]), 10);
+  assert.equal(journeySnapshot([pending]).points, 10);
+  assert.equal(journeySnapshot([confirmed]).points, 10);
+});
