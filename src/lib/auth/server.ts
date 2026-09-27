@@ -184,6 +184,19 @@ export const auth = betterAuth({
   // local loopback variants, or clients get "Invalid origin".
   trustedOrigins,
 
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 100,
+    storage: "database",
+    modelName: "rateLimit",
+    customRules: {
+      "/sign-in/email": { window: 10, max: 5 },
+      "/sign-up/email": { window: 60, max: 5 },
+      "/forget-password/email": { window: 60, max: 5 },
+    },
+  },
+
   // Encrypt broker-issued OAuth tokens at rest, and treat the broker's upstreams
   // as trusted first-party identities. The broker owns identity and X emails are
   // synthetic/unverified, so WITHOUT this a login can fail with
@@ -211,7 +224,7 @@ export const auth = betterAuth({
   session: { cookieCache: { enabled: true, maxAge: 300 } },
 
   // Local email/password — toggled only via `./email-password` (not a plugin).
-  ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),
+  ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true, minPasswordLength: 12, maxPasswordLength: 128 } } : {}),
 
   // `__Host-` prefixed cookies: the browser REFUSES any same-named cookie that
   // carries a `Domain` attribute, so a sibling `*.grok.me` app cannot "toss" a
