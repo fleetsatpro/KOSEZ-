@@ -9,20 +9,23 @@ const bridgePath = join(root, "src/components/blossom-sync-bridge.tsx");
 const syncServerPath = join(root, "src/lib/blossom/sync.server.ts");
 const syncClientPath = join(root, "src/lib/blossom/sync-client.ts");
 const libraryRoutePath = join(root, "src/routes/_app/library.$id.tsx");
+const tandemMigrationPath = join(root, "migrations/0033_tandem_language_integrity.sql");
 
 let store = "";
 let bridge = "";
 let syncServer = "";
 let syncClient = "";
 let libraryRoute = "";
+let tandemMigration = "";
 
 test.before(async () => {
-  [store, bridge, syncServer, syncClient, libraryRoute] = await Promise.all([
+  [store, bridge, syncServer, syncClient, libraryRoute, tandemMigration] = await Promise.all([
     readFile(storePath, "utf8"),
     readFile(bridgePath, "utf8"),
     readFile(syncServerPath, "utf8"),
     readFile(syncClientPath, "utf8"),
     readFile(libraryRoutePath, "utf8"),
+    readFile(tandemMigrationPath, "utf8"),
   ]);
 });
 
@@ -80,4 +83,12 @@ test("P0 bridge preserves remote PronLab evidence metadata", () => {
 
 test("P0 sync queue uses monotonic causal timestamps", () => {
   assert.ok(syncClient.includes("createdAt: nextMutationCreatedAt()"));
+});
+
+
+test("P0 Tandem session evidence is language-bound", () => {
+  assert.ok(tandemMigration.includes("add column if not exists language_id"));
+  assert.ok(syncServer.includes("language_id = $3"));
+  assert.ok(syncServer.includes("currentLanguageId"));
+  assert.ok(store.includes("previousStatus"));
 });
