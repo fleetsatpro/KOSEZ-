@@ -30,6 +30,22 @@ interface GrokPwaEvent {
   req: { method: string; headers: Headers };
 }
 
+
+function withSecurityHeaders(response: Response, event: GrokPwaEvent): Response {
+  const headers = new Headers(response.headers);
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  headers.set("Permissions-Policy", "microphone=(self), camera=(), geolocation=()");
+  headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  if (process.env.VERCEL_ENV === "production" && event.url.protocol === "https:") {
+    headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
 function requestHost(event: GrokPwaEvent): string {
   return (
     event.req.headers.get("x-forwarded-host") ?? event.req.headers.get("host") ?? event.url.host
@@ -71,12 +87,15 @@ export default async function grokPwaMiddleware(
   const urlWithQuery = path + event.url.search;
 
   if (path === "/__grok/manifest.webmanifest" || path === "/__grok/manifest.json") {
-    return new Response(renderWebManifest(requestHost(event)), {
-      headers: {
-        "content-type": "application/manifest+json; charset=utf-8",
-        "cache-control": "no-cache",
-      },
-    });
+    return withSecurityHeaders(
+      new Response(renderWebManifest(requestHost(event)), {
+        headers: {
+          "content-type": "application/manifest+json; charset=utf-8",
+          "cache-control": "no-cache",
+        },
+      }),
+      event,
+    );
   }
 
   if (
@@ -88,12 +107,15 @@ export default async function grokPwaMiddleware(
       host: requestHost(event),
       url: urlWithQuery,
     });
-    return new Response(html, {
-      headers: {
-        "content-type": "text/html; charset=utf-8",
-        "cache-control": "no-cache",
-      },
-    });
+    return withSecurityHeaders(
+      new Response(html, {
+        headers: {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-cache",
+        },
+      }),
+      event,
+    );
   }
 
   if (!isDocumentPath(path)) return next();
@@ -105,7 +127,7 @@ export default async function grokPwaMiddleware(
     String(result.headers.get("content-type") ?? "").includes("text/html") &&
     !result.headers.get("content-encoding")
   ) {
-    return injectHeadStreaming(result, requestHost(event));
+    return withSecurityHeaders(injectHeadStreaming(result, requestHost(event)), event);
   }
-  return result;
+  return result instanceof Response ? withSecurityHeaders(result, event) : result;
 }
