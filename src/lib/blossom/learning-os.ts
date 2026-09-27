@@ -371,6 +371,17 @@ export function buildSkillProfile(
   });
 }
 
+export type ReviewItem = {
+  id: string;
+  kind: "pronunciation" | "vocabulary" | "mission";
+  title: string;
+  prompt: string;
+  answer: string;
+  reason: string;
+  priority: "haute" | "normale" | "nouvelle";
+  link: "pronlab" | "mission" | "library";
+};
+
 export function buildReviewQueue(
   attempts: PronlabAttempt[],
   vocabulary: Array<{ word: string; gloss: string; metadata?: { languageId?: string } }>,
