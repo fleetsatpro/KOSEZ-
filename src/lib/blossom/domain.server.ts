@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
-import { IMMERSION, PRONLAB_SETS } from "./data";
+import { IMMERSION, PRONLAB_SETS, setsForLanguage } from "./data";
 import type { JsonObject } from "./backend.server";
 
 import { getPublishedContent } from "./content.server";
@@ -671,12 +671,20 @@ export async function recordPronlabAttempt(
   userId: string,
   input: PronlabAttemptInput,
 ) {
+  const sql = await getSql();
+  const profileRows = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const languageId = String(profileRows[0]?.target_language ?? "en");
+  const activeItems = new Set(
+    setsForLanguage(languageId).flatMap((setDef) => setDef.items.map((item) => item.id)),
+  );
   const knownItem = PRONLAB_SETS.flatMap((set) => set.items).find((item) => item.id === input.itemId);
-  if (!knownItem) {
-    throw new BlossomForbiddenError("Cet exercice Pron'Lab n'existe pas.");
+  if (!knownItem || !activeItems.has(input.itemId)) {
+    throw new BlossomForbiddenError("Cet exercice Pron'Lab n'est pas disponible pour votre langue active.");
   }
 
-  const sql = await getSql();
   const recordId = input.idempotencyKey ?? randomUUID();
   const metadata = input.metadata ?? {};
   const safeScore = 0;
@@ -684,6 +692,7 @@ export async function recordPronlabAttempt(
     metadata.assessment === "transcript" ? "transcript" : "capture-only";
   const safeMetadata = {
     ...metadata,
+    languageId,
     assessment,
     provider:
       typeof metadata.provider === "string"
@@ -728,11 +737,14 @@ export async function saveVocabulary(
 ) {
   const sql = await getSql();
   const metadata = input.metadata ?? {};
-  const languageId =
-    typeof metadata.languageId === "string" ? metadata.languageId : "en";
-  const allowedLanguages = new Set(["en", "fr", "es", "pt", "it", "de", "cr", "lsf"]);
-  if (!allowedLanguages.has(languageId)) {
-    throw new BlossomForbiddenError("Cette langue cible n'est pas prise en charge.");
+  const profileRows = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const languageId = String(profileRows[0]?.target_language ?? "en");
+  const claimedLanguageId = metadata.languageId;
+  if (typeof claimedLanguageId === "string" && claimedLanguageId !== languageId) {
+    throw new BlossomForbiddenError("La langue du vocabulaire doit correspondre à votre langue active.");
   }
   const causalTime = normalizeMutationTime(input.mutationCreatedAt);
   const rows = await sql.query(
