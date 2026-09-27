@@ -1,6 +1,6 @@
 import { activityBelongsToLanguage, type ActivityEvent, type ActivityType, type PronlabAttempt } from "./engine.ts";
 import type { MissionSession } from "./mission.ts";
-import { PRONLAB_SETS, setsForLanguage, TODAY_MISSION, type PronlabItem } from "./data.ts";
+import { setsForLanguage, TODAY_MISSION, type PronlabItem } from "./data.ts";
 import { summarisePronlabItem } from "./engine.ts";
 
 export type LearningDomainId =
