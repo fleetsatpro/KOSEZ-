@@ -95,7 +95,7 @@ function LibraryIndex() {
             {languageVocabulary.map((v) => v.word).join(" · ")}
           </p>
           <p className="mt-2 text-xs text-subtle">
-            {languageVocabulary.length} mot{vocab.length > 1 ? "s" : ""} — prêts pour une
+            {languageVocabulary.length} mot{languageVocabulary.length > 1 ? "s" : ""} — prêts pour une
             mission ou un Speak.
           </p>
         </Surface>
