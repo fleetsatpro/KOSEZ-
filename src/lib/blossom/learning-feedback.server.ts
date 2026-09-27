@@ -202,10 +202,14 @@ export async function getLearnerFeedback(
   if (actorUserId !== learnerUserId) {
     const sql = await getSql();
     const allowed = await sql.query(
-      "select 1 from blossom_teacher_link where teacher_user_id = $1 and learner_user_id = $2 and status = 'active' union all select 1 from blossom_guardian_link where guardian_user_id = $1 and learner_user_id = $2 and status = 'active' union all select 1 from blossom_platform_admin where user_id = $1 and status = 'active'
+      `select 1 from blossom_teacher_link where teacher_user_id = $1 and learner_user_id = $2 and status = 'active'
+       union all
+       select 1 from blossom_guardian_link where guardian_user_id = $1 and learner_user_id = $2 and status = 'active'
+       union all
+       select 1 from blossom_platform_admin where user_id = $1 and status = 'active'
        union all
        select 1 from blossom_role_grant where user_id = $1 and role = 'admin' and status = 'active'
-       limit 1",
+       limit 1`,
       [actorUserId, learnerUserId],
     );
     if (!allowed[0]) throw new BlossomForbiddenError("Vous n'avez pas accès à ces retours.");
