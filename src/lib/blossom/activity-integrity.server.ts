@@ -69,6 +69,17 @@ export async function assertMissionSessionMutation(
   if (stringValue(session.missionId) !== missionId) {
     throw new Error("mission-session-id-mismatch");
   }
+  const profile = await (await getSql()).query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const expectedLanguageId = isLearnLanguageId(String(profile[0]?.target_language ?? ""))
+    ? String(profile[0].target_language)
+    : "en";
+  const sessionLanguageId = stringValue(session.languageId, "en");
+  if (sessionLanguageId !== expectedLanguageId) {
+    throw new Error("mission-session-language-mismatch");
+  }
   const activeRunId = stringValue(session.activeRunId);
   const runs = Array.isArray(session.runs) ? session.runs : [];
   const incomingCompletedIds = new Set(
