@@ -29,7 +29,6 @@ function CurriculumIndex() {
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const vocabulary = useBlossom((s) => s.vocabulary);
   const languageId = useBlossom((s) => s.languageId);
-  const languageId = useBlossom((s) => s.languageId);
   const profile = buildSkillProfile(log, attempts, vocabulary, languageId);
   const averageCoverage = Math.round(profile.reduce((sum, item) => sum + item.coverage, 0) / Math.max(1, profile.length));
 
