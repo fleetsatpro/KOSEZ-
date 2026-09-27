@@ -25,6 +25,7 @@ import { SYNC_OPERATIONS, type SyncJsonObject, type SyncMutation, type SyncResul
 import { CURRICULUM_UNITS, type LessonKind } from "./learning-os";
 import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure } from "./lab-content";
 import { ACTIVITY_EVENT_TYPES, assertActivityAppend } from "./activity-integrity.server";
+import { isLearnLanguageId } from "@/lib/i18n/locales";
 import { enforceRateLimit } from "./rate-limit.server";
 
 const SYNC_TIMEOUT_MS = 120_000;
@@ -246,7 +247,7 @@ function validateLearningSubmission(payload: z.infer<typeof submissionPayloadSch
 
 const profilePayloadSchema = z.object({
   displayName: z.string().trim().max(120).nullable().optional(),
-  targetLanguage: z.string().trim().min(2).max(16),
+  targetLanguage: z.enum(["en", "fr", "es", "pt", "it", "de", "cr", "lsf"]),
   level: z.string().trim().max(16).nullable().optional(),
   timezone: z.string().trim().max(80).nullable().optional(),
   preferences: z.record(z.string(), z.unknown())
@@ -386,22 +387,24 @@ async function applyMutation(
     }
     case "pronlab.attempt": {
       const payload = pronlabPayloadSchema.parse(mutation.payload);
+      const languageId = await activeLanguageId(userId);
       await recordPronlabAttempt(userId, {
         itemId: payload.itemId,
         score: payload.score,
         seconds: payload.seconds,
         tip: payload.tip ?? null,
-        metadata: objectValue(payload.metadata),
+        metadata: { ...objectValue(payload.metadata), languageId },
         idempotencyKey: mutation.mutationId,
       });
       return { mutationId: mutation.mutationId, status: "applied" };
     }
     case "vocabulary.upsert": {
       const payload = vocabularyPayloadSchema.parse(mutation.payload);
+      const languageId = await activeLanguageId(userId);
       await saveVocabulary(userId, {
         word: payload.word,
         gloss: payload.gloss,
-        metadata: objectValue(payload.metadata),
+        metadata: { ...objectValue(payload.metadata), languageId },
         mutationCreatedAt: mutation.createdAt,
       });
       return { mutationId: mutation.mutationId, status: "applied" };
@@ -436,13 +439,14 @@ async function applyMutation(
     case "learning.submission": {
       const payload = submissionPayloadSchema.parse(mutation.payload);
       const validated = validateLearningSubmission(payload);
+      const languageId = await activeLanguageId(userId);
       await saveLearningSubmission(userId, {
         id: mutation.mutationId,
         taskId: payload.taskId,
         kind: payload.kind,
         content: payload.content,
         checks: validated.checks,
-        result: validated.result,
+        result: { ...validated.result, languageId },
       });
       return { mutationId: mutation.mutationId, status: "applied" };
     }
