@@ -10,6 +10,9 @@ const gate = read("src/lib/auth/gate-session.server.ts");
 const auth = read("src/lib/auth/server.ts");
 const rateLimit = read("src/lib/blossom/rate-limit.server.ts");
 const preview = read("src/lib/auth/preview.ts");
+const api = read("src/lib/blossom/api.ts");
+const speakServer = read("src/lib/blossom/speak-server.server.ts");
+const pwa = read("server/middleware/grok-pwa.ts");
 
 test("activity mutations are enum-gated and pass through server integrity checks", () => {
   assert.match(sync, /eventType: z\.enum\(ACTIVITY_EVENT_TYPES\)/);
@@ -22,7 +25,19 @@ test("activity mutations are enum-gated and pass through server integrity checks
   assert.match(sync, /activeLanguageId/);
   assert.match(sync, /targetLanguage: z\.enum/);
   assert.match(sync, /mission-completion-without-prior-session/);
-  assert.match(sync, /mission-completion-without-prior-attempt/);
+  assert.match(sync, /assertMissionSessionMutation/);
+  assert.match(api, /z\.enum\(ACTIVITY_EVENT_TYPES\)/);
+  assert.match(api, /await assertActivityAppend\(/);
+  assert.match(api, /await assertMissionSessionMutation\(/);
+  assert.match(integrity, /activity-library-unknown-source/);
+  assert.match(integrity, /activity-pulse-unknown-source/);
+  assert.match(integrity, /activity-review-invalid-source/);
+  assert.match(integrity, /activity-legacy-reward-server-only/);
+  assert.match(integrity, /mission-completion-adds-unrelated-run/);
+  assert.match(speakServer, /speak\.room/);
+  assert.doesNotMatch(speakServer, /userWindows/);
+  assert.doesNotMatch(speakServer, /function assertRateLimit\(userId: string\)/);
+  assert.match(pwa, /withSecurityHeaders\(result, event\)/);
 });
 
 test("authenticated abuse surfaces use the distributed Postgres limiter", () => {
