@@ -1,5 +1,4 @@
 import { courageRibbon } from "@/lib/blossom/organism";
-import { useMessages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export function CourageRibbon({
@@ -9,7 +8,6 @@ export function CourageRibbon({
   days: string[];
   className?: string;
 }) {
-  const m = useMessages();
   const cells = courageRibbon(days);
   const spoken = cells.filter(Boolean).length;
 
@@ -17,17 +15,17 @@ export function CourageRibbon({
     <div className={cn("kosez-courage-ribbon", className)}>
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">
-          {m.courage.ribbon}
+          Ruban de courage
         </p>
         <p className="text-xs tabular-nums text-muted">
-          {m.courage.count.replace("{n}", String(spoken))}
+          {spoken} / 28 · sans flamme
         </p>
       </div>
-      <ul className="mt-3 flex flex-wrap gap-1" aria-label={m.courage.ariaDays}>
+      <ul className="mt-3 flex flex-wrap gap-1" aria-label="28 derniers jours de parole">
         {cells.map((on, i) => (
           <li
             key={i}
-            title={on ? m.courage.titleOn : m.courage.titleOff}
+            title={on ? "Geste ce jour-là" : "Terre en jachère"}
             className={cn(
               "size-2 rounded-full sm:size-2.5",
               on ? "bg-primary" : "bg-surface-2 ring-1 ring-border/80",
@@ -36,7 +34,7 @@ export function CourageRibbon({
         ))}
       </ul>
       <p className="mt-2 text-[11px] leading-5 text-subtle">
-        {m.courage.holesNote}
+        Les trous ne sont pas un échec — terre en jachère.
       </p>
     </div>
   );
