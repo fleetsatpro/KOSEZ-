@@ -23,7 +23,15 @@ function ProgressPage() {
   const intelligence = buildLearningIntelligence(log, attempts, vocabulary, submissions, reviewPlan, new Date().toISOString(), languageId);
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
-  const atelierGrowth = growthEvents.filter((event) => event.mineral === "atelier").slice(0, 4);
+  const atelierGrowth = growthEvents
+    .filter((event) => {
+      const tagged = event.languageId;
+      return (
+        (typeof tagged === "string" ? tagged === languageId : languageId === "en") &&
+        event.mineral === "atelier"
+      );
+    })
+    .slice(0, 4);
   const documented = profile.filter((item) => item.coverage >= 60).length;
   const blindSpots = profile.filter((item) => item.evidenceCount === 0);
 
