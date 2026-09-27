@@ -1204,27 +1204,36 @@ export async function completeHomeworkForLearner(
   return rows[0];
 }
 
-export async function startMissionRunSession(userId: string, missionId: string) {
+export async function startMissionRunSession(userId: string, missionId: string, runId: string) {
   await enforceRateLimit(userId, "mission.start-session", 20, 60);
   const normalizedMissionId = missionId.trim();
+  const normalizedRunId = runId.trim();
+  if (!normalizedRunId || normalizedRunId.length > 200) {
+    throw new BlossomForbiddenError("Cette session de mission est invalide.");
+  }
   if (!fullMissionBank().some((mission) => mission.id === normalizedMissionId)) {
     throw new BlossomForbiddenError("Cette mission n\u0027est pas disponible.");
   }
   const sql = await getSql();
   const active = await sql.query(
-    `select id from blossom_mission_run_session
+    `select id, run_id from blossom_mission_run_session
      where user_id = $1 and mission_id = $2 and status = 'active'
      order by created_at desc limit 1`,
     [userId, normalizedMissionId],
   );
-  if (active[0]) return { id: String(active[0].id), missionId: normalizedMissionId };
+  if (active[0]) {
+    if (String(active[0].run_id) !== normalizedRunId) {
+      throw new BlossomForbiddenError("Cette session de mission est déjà liée à une autre exécution.");
+    }
+    return { id: String(active[0].id), missionId: normalizedMissionId, runId: normalizedRunId };
+  }
   const sessionId = randomUUID();
   try {
     await sql.query(
       `insert into blossom_mission_run_session
-        (id, user_id, mission_id, status, started_at)
-       values ($1::uuid, $2, $3, 'active', current_timestamp)`,
-      [sessionId, userId, normalizedMissionId],
+        (id, user_id, mission_id, run_id, status, started_at)
+       values ($1::uuid, $2, $3, $4, 'active', current_timestamp)`,
+      [sessionId, userId, normalizedMissionId, normalizedRunId],
     );
   } catch (error) {
     if ((error as { code?: string })?.code !== "23505") throw error;
@@ -1235,9 +1244,12 @@ export async function startMissionRunSession(userId: string, missionId: string) 
       [userId, normalizedMissionId],
     );
     if (!raced[0]) throw new Error("mission-session-create-race");
-    return { id: String(raced[0].id), missionId: String(raced[0].mission_id) };
+    if (String(raced[0].run_id) !== normalizedRunId) {
+      throw new BlossomForbiddenError("Cette session de mission est déjà liée à une autre exécution.");
+    }
+    return { id: String(raced[0].id), missionId: String(raced[0].mission_id), runId: normalizedRunId };
   }
-  return { id: sessionId, missionId: normalizedMissionId };
+  return { id: sessionId, missionId: normalizedMissionId, runId: normalizedRunId };
 }
 
 export async function endMissionRunSession(userId: string, sessionId: string) {
