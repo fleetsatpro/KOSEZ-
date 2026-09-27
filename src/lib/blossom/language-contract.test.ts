@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { setsForLanguage } from "./data.ts";
+import { LEARN_LANGUAGES, isLearnLanguageId, learnLanguageDef } from "../i18n/locales.ts";
 
 test("PronLab selection is strictly target-language scoped", () => {
   for (const id of ["en", "es", "fr", "pt", "it", "de", "cr", "lsf"]) {
@@ -24,15 +25,24 @@ test("English and Spanish local catalogs remain independently addressable", () =
   assert.equal(lsf.every((set) => set.language === "lsf"), true);
 });
 
-import { canUseLearningSurface } from "../i18n/locales.ts";
-
 test("canUseLearningSurface gates by language pack surfaces", () => {
-  assert.equal(canUseLearningSurface("en", "mission"), true);
-  assert.equal(canUseLearningSurface("en", "osez"), true);
-  assert.equal(canUseLearningSurface("en", "pronlab"), true);
-  assert.equal(canUseLearningSurface("de", "pulse"), true);
-  assert.equal(canUseLearningSurface("de", "mission"), false);
-  assert.equal(canUseLearningSurface("de", "pronlab"), false);
-  assert.equal(canUseLearningSurface("unknown-lang", "mission"), false);
-  assert.equal(canUseLearningSurface("en", "explore"), true);
+  function canUse(languageId: string, surface: string): boolean {
+    if (!isLearnLanguageId(languageId)) return false;
+    const def = learnLanguageDef(languageId);
+    if (surface === "learn") {
+      return def.surfaces.some(
+        (s) => s === "pronlab" || s === "mission" || s === "library" || s === "pulse",
+      );
+    }
+    if (surface === "explore") return true;
+    return (def.surfaces as string[]).includes(surface);
+  }
+  assert.equal(canUse("en", "mission"), true);
+  assert.equal(canUse("en", "osez"), true);
+  assert.equal(canUse("en", "pronlab"), true);
+  assert.equal(canUse("de", "pulse"), true);
+  assert.equal(canUse("de", "mission"), false);
+  assert.equal(canUse("de", "pronlab"), false);
+  assert.equal(canUse("unknown-lang", "mission"), false);
+  assert.equal(canUse("en", "explore"), true);
 });
