@@ -17,9 +17,10 @@ function ProgressPage() {
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const vocabulary = useBlossom((s) => s.vocabulary);
   const submissions = useBlossom((s) => s.learningSubmissions);
-  const profile = buildSkillProfile(log, attempts, vocabulary);
-  const reviewPlan = buildReviewPlan(submissions, attempts, vocabulary);
-  const intelligence = buildLearningIntelligence(log, attempts, vocabulary, submissions, reviewPlan);
+  const languageId = useBlossom((s) => s.languageId);
+  const profile = buildSkillProfile(log, attempts, vocabulary, languageId);
+  const reviewPlan = buildReviewPlan(submissions, attempts, vocabulary, new Date().toISOString(), languageId);
+  const intelligence = buildLearningIntelligence(log, attempts, vocabulary, submissions, reviewPlan, new Date().toISOString(), languageId);
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
   const atelierGrowth = growthEvents.filter((event) => event.mineral === "atelier").slice(0, 4);
