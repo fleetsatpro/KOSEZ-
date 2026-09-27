@@ -6,6 +6,7 @@ import { createMutation, enqueueMutation } from "./sync-client";
 import type { SyncJsonValue } from "./sync-types";
 import {
   activityBelongsToLanguage,
+  activityLanguageMatches,
   hasSource,
   journeySnapshot,
   summarisePronlabItem,
@@ -406,7 +407,10 @@ export const useBlossom = create<AppState>()(
         const current = get();
         const log = current.activityLog;
         const scopedLog = activeLanguageActivityLog(log, current.languageId);
-        if (hasSource(log, sourceId, type)) {
+        const languageLog = log.filter((event) =>
+          activityLanguageMatches(event, current.languageId),
+        );
+        if (hasSource(languageLog, sourceId, type)) {
           const scopedExisting = scopedLog.some(
             (event) => event.sourceId === sourceId && event.type === type,
           );
