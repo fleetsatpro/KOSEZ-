@@ -314,3 +314,17 @@ test("core activity derivation fails closed for pending events", () => {
   assert.equal(pointsFromLog([pending]), 0);
   assert.equal(countByType([pending], "MISSION_COMPLETED"), 0);
 });
+
+
+test("activity deduplication keeps identical source keys independent across languages", () => {
+  const event: ActivityEvent = {
+    id: "fr-1",
+    type: "REVIEW_COMPLETED",
+    createdAt: new Date().toISOString(),
+    sourceId: "review-2026-09-27",
+    metadata: { languageId: "fr", syncState: "confirmed" },
+  };
+  assert.equal(activityLanguageMatches(event, "fr"), true);
+  assert.equal(activityLanguageMatches(event, "en"), false);
+  assert.equal(activityBelongsToLanguage(event, "fr"), true);
+});
