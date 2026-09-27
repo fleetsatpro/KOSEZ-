@@ -57,7 +57,7 @@ function ConnectPage() {
     () =>
       EVENTS.filter(
         (event) =>
-          new Date(`${event.date}T${event.time}:00Z`).getTime() > Date.now(),
+          parseKosezEventDate(event.date, event.time).getTime() > Date.now(),
       ).slice(0, 4),
     [],
   );
