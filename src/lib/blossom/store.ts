@@ -796,10 +796,8 @@ export const useBlossom = create<AppState>()(
 );
 
 export function useJourney() {
-  const { activityLog, languageId } = useBlossom((s) => ({
-    activityLog: s.activityLog,
-    languageId: s.languageId,
-  }));
+  const activityLog = useBlossom((s) => s.activityLog);
+  const languageId = useBlossom((s) => s.languageId);
   return journeySnapshot(activeLanguageActivityLog(activityLog, languageId));
 }
 
