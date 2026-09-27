@@ -60,7 +60,7 @@ function TandemHub() {
   const influence = useMemo(
     () =>
       influenceFromState({
-        activityLog: log,
+        activityLog: scopedLog,
         pronlabAttempts: attempts,
         growthEvents,
         phonemeLeaves,
