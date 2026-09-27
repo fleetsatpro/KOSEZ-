@@ -624,15 +624,18 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
       }
     };
 
-    void run();
-
     const eventName = syncChangeEventName();
     const onChange = () => void run();
     const onOnline = () => void run();
 
+    // Install the change listener before the first run. Otherwise a mutation
+    // emitted during initial hydration can miss the event and wait a full
+    // interval before reaching the server, breaking causal timing guarantees.
     window.addEventListener(eventName, onChange);
     window.addEventListener("online", onOnline);
     const timer = window.setInterval(onChange, SYNC_INTERVAL_MS);
+
+    void run();
 
     return () => {
       disposed = true;
