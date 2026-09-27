@@ -11,6 +11,8 @@ test("sync operation contract includes tandem reports", () => {
     "vocabulary.upsert",
     "event.register",
     "challenge.complete",
+    "library.start",
+    "library.complete",
     "tandem.status",
     "tandem.report",
     "learning.submission",
