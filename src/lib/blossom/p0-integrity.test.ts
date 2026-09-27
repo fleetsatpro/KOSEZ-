@@ -41,7 +41,7 @@ describe("P0 stage gates", () => {
       sourceId: `lib-${i}`,
     }));
     const byPoints = stageFromPoints(
-      log.reduce((s, e) => s + 2, 0),
+      log.reduce((s) => s + 2, 0),
     );
     assert.equal(byPoints.id, "growing");
     assert.equal(stageFromLog(log).id, "seed");
