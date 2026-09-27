@@ -119,7 +119,7 @@ export async function blobToBase64(blob: Blob, maxBytes = 1_200_000): Promise<st
 
 export type RecordCapture = {
   seconds: number;
-  blob?: Blob;
+  blob?: Blob | null;
   mimeType?: string;
 };
 
