@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
+import { isLearnLanguageId } from "@/lib/i18n/locales";
 
 export type JsonValue =
   | null
@@ -315,6 +316,9 @@ export async function upsertBlossomProfile(
     mutationCreatedAt?: string;
   },
 ): Promise<BlossomProfileRecord> {
+  if (!isLearnLanguageId(input.targetLanguage)) {
+    throw new Error("unsupported-language");
+  }
   const sql = await getSql();
   const causalTime = normalizeMutationTime(input.mutationCreatedAt);
 
