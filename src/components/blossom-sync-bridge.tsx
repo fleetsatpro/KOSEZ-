@@ -97,6 +97,18 @@ function mergeBackendState(remote: BackendState): void {
   }
   for (const event of remote.activity) {
     if (!isActivityType(event.eventType)) continue;
+    const rawMetadata = event.payload.metadata;
+    const activityMetadata =
+      rawMetadata && typeof rawMetadata === "object" && !Array.isArray(rawMetadata)
+        ? Object.fromEntries(
+            Object.entries(rawMetadata).filter(
+              ([, value]) =>
+                typeof value === "string" ||
+                typeof value === "number" ||
+                typeof value === "boolean",
+            ),
+          )
+        : undefined;
     const mapped: ActivityEvent = {
       id: event.id,
       type: event.eventType,
@@ -106,6 +118,9 @@ function mergeBackendState(remote: BackendState): void {
         typeof event.payload.note === "string"
           ? event.payload.note
           : undefined,
+      ...(activityMetadata && Object.keys(activityMetadata).length
+        ? { metadata: activityMetadata }
+        : {}),
     };
     const key = localActivityKey(mapped);
     const existing = activity.get(key);
@@ -143,11 +158,16 @@ function mergeBackendState(remote: BackendState): void {
       !localUpdatedAt ||
       (remoteUpdatedAt && timestamp(remoteUpdatedAt) >= timestamp(localUpdatedAt))
     ) {
+      const languageId =
+        entry.metadata && typeof entry.metadata.languageId === "string"
+          ? entry.metadata.languageId
+          : undefined;
       vocabularyByWord.set(key, {
         word: key,
         gloss: entry.gloss,
         firstSavedAt: entry.firstSavedAt,
         updatedAt: remoteUpdatedAt,
+        ...(languageId ? { metadata: { languageId } } : {}),
       });
     }
   }
