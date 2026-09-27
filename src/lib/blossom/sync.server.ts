@@ -81,6 +81,16 @@ function stringValue(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
+async function activeLanguageId(userId: string): Promise<string> {
+  const sql = await getSql();
+  const rows = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const raw = String(rows[0]?.target_language ?? "en");
+  return isLearnLanguageId(raw) ? raw : "en";
+}
+
 function intValue(value: unknown, fallback = 0): number {
   return typeof value === "number" && Number.isFinite(value)
     ? Math.round(value)
@@ -338,7 +348,7 @@ async function applyMutation(
         sourceId: payload.sourceId ?? null,
         payload: {
           ...objectValue(payload.payload),
-          metadata: safeMetadata,
+          metadata: objectValue(safeMetadata),
         },
         idempotencyKey: mutation.mutationId,
         occurredAt: payload.occurredAt,
