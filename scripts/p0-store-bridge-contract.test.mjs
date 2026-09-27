@@ -55,7 +55,7 @@ test("P0 PronLab semantics stay language-scoped and client cannot mint mastery g
   assert.ok(store.includes("setsForLanguage(get().languageId).flatMap"));
   assert.ok(store.includes("Mastery is now server-authoritative"));
   assert.ok(store.includes('operation: "pronlab.attempt"'));
-  assert.ok(syncServer.includes('activity-mastery-server-only'));
+  assert.ok(syncServer.includes("assertActivityAppend("));
 });
 
 test("P0 bridge preserves remote PronLab evidence metadata", () => {
