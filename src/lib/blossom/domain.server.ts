@@ -1774,8 +1774,13 @@ export async function startPulseSession(userId: string, dareId: string) {
   }
   if (normalizedDareId.startsWith("pulse-struggle-")) {
     const itemId = normalizedDareId.slice("pulse-struggle-".length);
-    const language = await getLearnerLanguage(userId);
-    const activeItem = setsForLanguage(language).some((set) =>
+    const profile = await sql.query(
+      "select target_language from blossom_profile where user_id = $1 limit 1",
+      [userId],
+    );
+    const rawLanguage = String(profile[0]?.target_language ?? "en");
+    const language = setsForLanguage(isLearnLanguageId(rawLanguage) ? rawLanguage : "en");
+    const activeItem = language.some((set) =>
       set.items.some((item) => item.id === itemId),
     );
     if (!activeItem) {
