@@ -230,14 +230,27 @@ export function enqueueMutation(mutation: SyncMutation): Promise<void> {
 }
 
 export async function listPendingMutations(): Promise<StoredMutation[]> {
+  if (!activeOwnerId) return [];
+
+  const canClaimOwnerless = (row: StoredMutation): boolean =>
+    row.state === "pending" &&
+    !row.ownerUserId &&
+    Number.isFinite(Date.parse(row.createdAt)) &&
+    Date.parse(row.createdAt) >= ownerlessScopeStartedAtMs;
+
   if (hasIndexedDb()) {
     try {
       const rows = await txRequest<StoredMutation[]>("readonly", (store) => store.getAll());
-          return rows
+      const claimable = rows.filter(canClaimOwnerless);
+      for (const row of claimable) {
+        row.ownerUserId = activeOwnerId;
+        await txRequest("readwrite", (store) => store.put(row));
+      }
+      return rows
+        .map((row) => (canClaimOwnerless(row) ? { ...row, ownerUserId: activeOwnerId } : row))
         .filter(
           (row) =>
             row.state === "pending" &&
-            Boolean(activeOwnerId) &&
             row.ownerUserId === activeOwnerId,
         )
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -245,11 +258,21 @@ export async function listPendingMutations(): Promise<StoredMutation[]> {
       // fallback below
     }
   }
-  return readFallback()
+
+  const fallback = readFallback();
+  let changed = false;
+  const claimed = fallback.map((row) => {
+    if (canClaimOwnerless(row)) {
+      changed = true;
+      return { ...row, ownerUserId: activeOwnerId };
+    }
+    return row;
+  });
+  if (changed) writeFallback(claimed);
+  return claimed
     .filter(
       (row) =>
         row.state === "pending" &&
-        Boolean(activeOwnerId) &&
         row.ownerUserId === activeOwnerId,
     )
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
