@@ -24,7 +24,11 @@ import { reportTandem } from "./safety.server";
 import { SYNC_OPERATIONS, type SyncJsonObject, type SyncMutation, type SyncResult } from "./sync-types";
 import { CURRICULUM_UNITS, type LessonKind } from "./learning-os";
 import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure } from "./lab-content";
-import { ACTIVITY_EVENT_TYPES, assertActivityAppend } from "./activity-integrity.server";
+import {
+  ACTIVITY_EVENT_TYPES,
+  assertActivityAppend,
+  assertMissionSessionMutation,
+} from "./activity-integrity.server";
 import { isLearnLanguageId } from "@/lib/i18n/locales";
 import { enforceRateLimit } from "./rate-limit.server";
 
@@ -33,23 +37,6 @@ const SYNC_TIMEOUT_MS = 120_000;
 function objectValue(value: unknown): JsonObject {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return value as JsonObject;
-}
-
-function activeMissionRunSnapshot(value: JsonValue): JsonObject | null {
-  const session = objectValue(value);
-  const activeRunId = stringValue(session.activeRunId);
-  if (!activeRunId || !Array.isArray(session.runs)) return null;
-  const run = session.runs.find(
-    (candidate) => objectValue(candidate).id === activeRunId,
-  );
-  return run && typeof run === "object" && !Array.isArray(run)
-    ? objectValue(run)
-    : null;
-}
-
-function missionRunHasAttempt(value: JsonObject): boolean {
-  if (!Array.isArray(value.attempts)) return false;
-  return value.attempts.some((candidate) => objectValue(candidate).kind === "mission");
 }
 
 export async function assertCurriculumEvidence(
@@ -375,28 +362,7 @@ async function applyMutation(
     case "mission.save": {
       const payload = missionPayloadSchema.parse(mutation.payload);
       const session = jsonValue(payload.session);
-      const incomingRun = activeMissionRunSnapshot(session);
-      const isCompleting = Boolean(incomingRun?.completedAt);
-      if (isCompleting) {
-        const sql = await getSql();
-        const currentRows = await sql.query(
-          "select session from blossom_mission_session where user_id = $1 and mission_id = $2 limit 1",
-          [userId, mutation.entityId],
-        );
-        if (!currentRows[0]) {
-          throw new Error("mission-completion-without-prior-session");
-        }
-        const currentSession = jsonValue(currentRows[0].session);
-        const currentRun = activeMissionRunSnapshot(currentSession);
-        if (
-          !currentRun ||
-          currentRun.id !== incomingRun?.id ||
-          currentRun.completedAt ||
-          !missionRunHasAttempt(currentRun)
-        ) {
-          throw new Error("mission-completion-without-prior-attempt");
-        }
-      }
+      await assertMissionSessionMutation(userId, mutation.entityId, session);
       const expectedRevision = mutation.expectedRevision ?? 0;
       const result = await saveBlossomMissionSession(
         userId,
