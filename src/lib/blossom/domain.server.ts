@@ -1785,35 +1785,47 @@ export async function startTandemSession(userId: string, partnerUserId: string) 
     ? rawLanguageId
     : "en";
 
+  const partnerProfileRows = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [partnerUserId],
+  );
+  const rawPartnerLanguageId = String(partnerProfileRows[0]?.target_language ?? "en");
+  const partnerLanguageId = LEARN_LANGUAGES.some((language) => language.id === rawPartnerLanguageId)
+    ? rawPartnerLanguageId
+    : "en";
+
   const active = await sql.query(
-    `select id, language_id from blossom_tandem_session
+    `select id, user_id, partner_user_id, language_id, partner_language_id
+     from blossom_tandem_session
      where ((user_id = $1 and partner_user_id = $2) or (user_id = $2 and partner_user_id = $1))
        and status = 'active'
      order by created_at desc limit 1`,
     [userId, partnerUserId],
   );
   if (active[0]) {
-    if (String(active[0].language_id ?? "en") === languageId) {
-      return String(active[0].id);
+    const isInitiator = String(active[0].user_id) === userId;
+    const expectedMine = isInitiator
+      ? String(active[0].language_id ?? "en")
+      : String(active[0].partner_language_id ?? "en");
+    const expectedPartner = isInitiator
+      ? String(active[0].partner_language_id ?? "en")
+      : String(active[0].language_id ?? "en");
+    if (expectedMine !== languageId) {
+      throw new BlossomForbiddenError("La langue d’apprentissage a changé depuis le début de cette session tandem. Recommencez le tandem.");
     }
-    await sql.query(
-      `update blossom_tandem_session
-       set status = 'cancelled',
-           ended_at = coalesce(ended_at, current_timestamp),
-           duration_seconds = greatest(0, extract(epoch from (coalesce(ended_at, current_timestamp) - started_at))::integer),
-           updated_at = current_timestamp
-       where id = $1::uuid and status = 'active'`,
-      [String(active[0].id)],
-    );
+    if (expectedPartner !== partnerLanguageId) {
+      throw new BlossomForbiddenError("La configuration de langue du partenaire a changé. Recommencez le tandem.");
+    }
+    return String(active[0].id);
   }
 
   const sessionId = randomUUID();
   try {
     await sql.query(
       `insert into blossom_tandem_session
-        (id, user_id, partner_user_id, language_id, status, started_at)
-       values ($1::uuid, $2, $3, $4, 'active', current_timestamp)`,
-      [sessionId, userId, partnerUserId, languageId],
+        (id, user_id, partner_user_id, language_id, partner_language_id, status, started_at)
+       values ($1::uuid, $2, $3, $4, $5, 'active', current_timestamp)`,
+      [sessionId, userId, partnerUserId, languageId, partnerLanguageId],
     );
   } catch (error) {
     if ((error as { code?: string })?.code !== "23505") throw error;
@@ -1828,7 +1840,19 @@ export async function startTandemSession(userId: string, partnerUserId: string) 
 
       [userId, partnerUserId, languageId],
     );
-    if (raced[0]) return String(raced[0].id);
+    if (raced[0]) {
+      const racedIsInitiator = String(raced[0].user_id) === userId;
+      const racedMine = racedIsInitiator
+        ? String(raced[0].language_id ?? "en")
+        : String(raced[0].partner_language_id ?? "en");
+      const racedPartner = racedIsInitiator
+        ? String(raced[0].partner_language_id ?? "en")
+        : String(raced[0].language_id ?? "en");
+      if (racedMine !== languageId || racedPartner !== partnerLanguageId) {
+        throw new BlossomForbiddenError("La configuration linguistique du tandem a changé. Recommencez le tandem.");
+      }
+      return String(raced[0].id);
+    }
     throw new Error("tandem-session-create-race");
   }
   await writeAuditEvent(userId, {
