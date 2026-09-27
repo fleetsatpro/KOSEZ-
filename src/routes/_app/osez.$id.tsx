@@ -224,7 +224,7 @@ function SpeakRoom() {
       return;
     }
     mineralsBefore.current = useBlossom.getState().mineralSnapshot;
-    const speakingMinutes = Math.max(1, Math.round(elapsed / 60));
+    const speakingMinutes = Math.max(1, Math.round(speechSummary.spokenSeconds / 60));
     const result = complete(
       "SPEAK_COMPLETED",
       `speak-${room.id}`,
