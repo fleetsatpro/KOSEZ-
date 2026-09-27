@@ -81,7 +81,10 @@ export default async function grokPwaMiddleware(
   next: () => unknown | Promise<unknown>,
 ): Promise<unknown> {
   const method = (event.req.method ?? "GET").toUpperCase();
-  if (method !== "GET") return next();
+  if (method !== "GET") {
+    const result = await next();
+    return result instanceof Response ? withSecurityHeaders(result, event) : result;
+  }
 
   const path = event.url.pathname;
   const urlWithQuery = path + event.url.search;
