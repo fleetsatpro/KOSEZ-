@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { INITIAL_PRONLAB_ATTEMPTS, LEARNER } from "./data.fixtures.ts";
+import { setsForLanguage } from "./data.ts";
 import { buildReviewQueue, buildSkillProfile, curriculumIntegrityIssues, curriculumUnitProgress, CURRICULUM_UNITS, lessonDone } from "./learning-os.ts";
 
 test("review queue prioritises persistent pronunciation friction", () => {
@@ -101,4 +102,38 @@ test("curriculum progress ignores legacy self-report events", () => {
 
 test("curriculum schema is internally coherent", () => {
   assert.deepEqual(curriculumIntegrityIssues(), []);
+});
+
+
+test("learning profile isolates Pron'Lab and vocabulary by active language", () => {
+  const enItem = setsForLanguage("en").flatMap((set) => set.items)[0]!;
+  const esItem = setsForLanguage("es").flatMap((set) => set.items)[0]!;
+  const attempts = [
+    {
+      id: "en-1",
+      itemId: enItem.id,
+      score: 0,
+      seconds: 4,
+      createdAt: "2026-09-22T10:00:00.000Z",
+    },
+    {
+      id: "es-1",
+      itemId: esItem.id,
+      score: 0,
+      seconds: 4,
+      createdAt: "2026-09-22T11:00:00.000Z",
+    },
+  ];
+  const vocabulary = [
+    { word: "recommend", gloss: "recommander", metadata: { languageId: "en" } },
+    { word: "cuenta", gloss: "addition", metadata: { languageId: "es" } },
+  ];
+
+  const en = buildSkillProfile([], attempts, vocabulary, "en");
+  const es = buildSkillProfile([], attempts, vocabulary, "es");
+
+  assert.equal(en.find((x) => x.domain.id === "pronunciation")!.evidenceCount, 1);
+  assert.equal(es.find((x) => x.domain.id === "pronunciation")!.evidenceCount, 1);
+  assert.equal(en.find((x) => x.domain.id === "vocabulary")!.evidenceCount, 1);
+  assert.equal(es.find((x) => x.domain.id === "vocabulary")!.evidenceCount, 1);
 });
