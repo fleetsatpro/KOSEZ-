@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Flag, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Surface } from "@/components/app/primitives";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { Button } from "@/components/ui/button";
 import { GrowthCeremony } from "@/components/app/growth-ceremony";
 import { ConversationPanel } from "@/components/app/conversation-panel";
@@ -20,7 +21,11 @@ import {
 import { useBlossom } from "@/lib/blossom/store";
 
 export const Route = createFileRoute("/_app/tandem/$id")({
-  component: TandemSession,
+  component: () => (
+    <LearningSurfaceGate surface="tandem">
+      <TandemSession />
+    </LearningSurfaceGate>
+  ),
 });
 
 const HALF_SECONDS = 30 * 60;
