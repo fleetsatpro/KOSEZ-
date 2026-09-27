@@ -1591,6 +1591,7 @@ export async function logTandemPrompt(
   userId: string,
   input: { sessionId: string; language: string; prompt: string },
 ) {
+  await enforceRateLimit(userId, "tandem.prompt", 60, 60);
   const sql = await getSql();
   const rows = await sql.query(
     `select user_id, partner_user_id, status from blossom_tandem_session
@@ -1615,14 +1616,45 @@ export async function endTandemSession(
   status: "completed" | "cancelled",
 ) {
   const sql = await getSql();
+  const current = await sql.query(
+    `select id, user_id, partner_user_id, status, started_at
+     from blossom_tandem_session
+     where id = $1::uuid and (user_id = $2 or partner_user_id = $2)
+     limit 1`,
+    [sessionId, userId],
+  );
+  if (!current[0]) throw new BlossomForbiddenError("Cette session tandem n'est pas disponible.");
+
+  if (status === "completed") {
+    const prompts = await sql.query(
+      `select user_id, count(*)::integer as count
+       from blossom_tandem_prompt_log
+       where session_id = $1::uuid
+       group by user_id`,
+      [sessionId],
+    );
+    const distinctParticipants = prompts.length;
+    const totalPrompts = prompts.reduce((sum, row) => sum + Number(row.count ?? 0), 0);
+    const elapsedSeconds = Math.max(
+      0,
+      Math.floor((Date.now() - new Date(String(current[0].started_at)).getTime()) / 1000),
+    );
+    if (elapsedSeconds < 120 || distinctParticipants < 2 || totalPrompts < 2) {
+      throw new BlossomForbiddenError(
+        "La session tandem doit contenir au moins deux minutes et un échange des deux côtés avant d'être validée.",
+      );
+    }
+  }
+
   const rows = await sql.query(
     `update blossom_tandem_session
      set status = $2, ended_at = coalesce(ended_at, current_timestamp), updated_at = current_timestamp
      where id = $1::uuid and (user_id = $3 or partner_user_id = $3)
+       and status = 'active'
      returning id, status, ended_at`,
     [sessionId, status, userId],
   );
-  if (!rows[0]) throw new BlossomForbiddenError("Cette session tandem n'est pas disponible.");
+  if (!rows[0]) throw new BlossomForbiddenError("Cette session tandem n'est plus active.");
   await writeAuditEvent(userId, {
     action: `tandem.session.${status}`,
     resourceType: "tandem_session",
