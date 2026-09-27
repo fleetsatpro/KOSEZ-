@@ -15,6 +15,7 @@ export type GrowthEvent = {
   at: string;
   kind: GrowthKind;
   sourceId?: string;
+  languageId?: string;
   intensity: number;
   label: string;
   mineral?: MineralKey;
