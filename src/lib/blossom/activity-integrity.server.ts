@@ -433,10 +433,6 @@ export async function assertActivityAppend(
 
   if (eventType === "PULSE_COMPLETED") {
     if (!sid) throw new Error("activity-pulse-invalid-source");
-    const seconds = Number(metadata.seconds);
-    if (!Number.isFinite(seconds) || seconds < 1 || seconds > 3600) {
-      throw new Error("activity-pulse-invalid-duration");
-    }
     if (sid !== "pulse-terrain" && sid !== "pulse-social" && !sid.startsWith("pulse-struggle-")) {
       throw new Error("activity-pulse-unknown-source");
     }
@@ -452,7 +448,32 @@ export async function assertActivityAppend(
       );
       if (!attempt[0]) throw new Error("activity-pulse-without-pronlab-evidence");
     }
-    return safeMetadata;
+
+    // Duration-bearing Pulse activity must point to a real server-timed
+    // completion. Client-supplied seconds are never trusted as reward evidence.
+    const completed = await sql.query(
+      `select duration_seconds, started_at, ended_at
+       from blossom_pulse_session
+       where user_id = $1
+         and dare_id = $2
+         and status = 'completed'
+         and duration_seconds is not null
+         and ended_at is not null
+       order by ended_at desc
+       limit 1`,
+      [userId, sid],
+    );
+    if (!completed[0]) throw new Error("activity-pulse-without-session");
+    const durationSeconds = Number(completed[0].duration_seconds);
+    if (!Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 3600) {
+      throw new Error("activity-pulse-invalid-server-duration");
+    }
+    return {
+      ...safeMetadata,
+      seconds: durationSeconds,
+      durationSeconds,
+      minutes: Math.max(1, Math.floor(durationSeconds / 60)),
+    };
   }
 
   if (eventType === "LIBRARY_COMPLETED") {
