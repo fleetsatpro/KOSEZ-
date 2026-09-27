@@ -23,9 +23,34 @@ export async function reportTandem(
     throw new BlossomForbiddenError("Ce profil n'est plus disponible.");
   }
 
+  // A report is a safety action against a real tandem relationship. Do not
+  // allow an arbitrary authenticated user to submit a report that also mutates
+  // another learner's connection state by guessing their user id.
+  const relationship = await sql.query(
+    `select 1
+     from blossom_tandem_connection mine
+     join blossom_tandem_connection theirs
+       on theirs.user_id = mine.partner_user_id
+      and theirs.partner_user_id = mine.user_id
+     where mine.user_id = $1
+       and mine.partner_user_id = $2
+       and mine.status = 'accepted'
+       and theirs.status = 'accepted'
+     limit 1`,
+    [reporterUserId, partnerUserId],
+  );
+  if (!relationship[0]) {
+    throw new BlossomForbiddenError("Vous ne pouvez signaler qu'un tandem réciproquement accepté.");
+  }
+
+  const cleanReason = reason.trim();
+  if (cleanReason.length < 1 || cleanReason.length > 500) {
+    throw new BlossomForbiddenError("Le motif du signalement est requis.");
+  }
+
   const rows = await sql.query(
     "insert into blossom_tandem_report (id, reporter_user_id, partner_user_id, reason) values ($1::uuid, $2, $3, $4) on conflict (id) do nothing returning id, reporter_user_id, partner_user_id, reason, status, created_at, updated_at",
-    [reportId, reporterUserId, partnerUserId, reason],
+    [reportId, reporterUserId, partnerUserId, cleanReason],
   );
 
   await sql.query(
@@ -74,7 +99,14 @@ export async function updateAdminSafetyReport(
 ) {
   const sql = await getSql();
   const admin = await sql.query(
-    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    `select 1
+     from blossom_platform_admin
+     where user_id = $1 and status = 'active'
+     union all
+     select 1
+     from blossom_role_grant
+     where user_id = $1 and role = 'admin' and status = 'active'
+     limit 1`,
     [userId],
   );
   if (!admin[0]) throw new BlossomForbiddenError("Admin access is not enabled for this account.");
@@ -101,7 +133,14 @@ export async function updateAdminSafetyReport(
 export async function getAdminSafetySummary(userId: string) {
   const sql = await getSql();
   const admin = await sql.query(
-    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    `select 1
+     from blossom_platform_admin
+     where user_id = $1 and status = 'active'
+     union all
+     select 1
+     from blossom_role_grant
+     where user_id = $1 and role = 'admin' and status = 'active'
+     limit 1`,
     [userId],
   );
   if (!admin[0]) {
@@ -134,7 +173,14 @@ export async function getAdminSafetySummary(userId: string) {
 export async function getAdminMessageReports(userId: string) {
   const sql = await getSql();
   const admin = await sql.query(
-    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    `select 1
+     from blossom_platform_admin
+     where user_id = $1 and status = 'active'
+     union all
+     select 1
+     from blossom_role_grant
+     where user_id = $1 and role = 'admin' and status = 'active'
+     limit 1`,
     [userId],
   );
   if (!admin[0]) throw new BlossomForbiddenError("Admin access is not enabled for this account.");
@@ -212,7 +258,14 @@ export async function getAdminSafetyCases(
 ): Promise<AdminSafetyCase[]> {
   const sql = await getSql();
   const admin = await sql.query(
-    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    `select 1
+     from blossom_platform_admin
+     where user_id = $1 and status = 'active'
+     union all
+     select 1
+     from blossom_role_grant
+     where user_id = $1 and role = 'admin' and status = 'active'
+     limit 1`,
     [userId],
   );
   if (!admin[0]) throw new BlossomForbiddenError("Admin access is not enabled for this account.");
@@ -257,7 +310,14 @@ export async function updateAdminSafetyCase(
 ) {
   const sql = await getSql();
   const admin = await sql.query(
-    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    `select 1
+     from blossom_platform_admin
+     where user_id = $1 and status = 'active'
+     union all
+     select 1
+     from blossom_role_grant
+     where user_id = $1 and role = 'admin' and status = 'active'
+     limit 1`,
     [userId],
   );
   if (!admin[0]) throw new BlossomForbiddenError("Admin access is not enabled for this account.");
