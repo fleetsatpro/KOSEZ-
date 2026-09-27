@@ -170,11 +170,20 @@ export async function assertActivityAppend(
       throw new Error("activity-tandem-invalid-session-source");
     }
     const rows = await sql.query(
-      "select 1 from blossom_tandem_session where id = $1::uuid and (user_id = $2 or partner_user_id = $2) and status = 'completed' and ended_at is not null limit 1",
+      "select started_at, ended_at from blossom_tandem_session where id = $1::uuid and (user_id = $2 or partner_user_id = $2) and status = 'completed' and ended_at is not null limit 1",
       [sessionId, userId],
     );
     if (!rows[0]) throw new Error("activity-tandem-without-session");
-    return safeMetadata;
+    const durationSeconds = Math.max(
+      0,
+      Math.floor((new Date(String(rows[0].ended_at)).getTime() - new Date(String(rows[0].started_at)).getTime()) / 1000),
+    );
+    return {
+      ...safeMetadata,
+      sessionId,
+      minutes: Math.max(1, Math.floor(durationSeconds / 60)),
+      durationSeconds,
+    };
   }
 
   if (eventType === "IMMERSION_ATTENDED") {
