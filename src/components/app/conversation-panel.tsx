@@ -147,13 +147,16 @@ export function SupportInbox({
 }) {
   const [items, setItems] = useState<Awaited<ReturnType<typeof getSupportInboxOnServer>>>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   async function load() {
     setLoading(true);
+    setLoadError(false);
     try {
       setItems(await getSupportInboxOnServer());
     } catch {
       setItems([]);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -179,6 +182,11 @@ export function SupportInbox({
 
       {loading ? (
         <p className="mt-5 text-sm text-muted">Chargement…</p>
+      ) : loadError ? (
+        <div className="mt-5 text-sm text-muted">
+          <p>Les demandes d’assistance n’ont pas pu être chargées.</p>
+          <Button className="mt-3" size="sm" variant="secondary" onClick={() => void load()}>Réessayer</Button>
+        </div>
       ) : items.length === 0 ? (
         <p className="mt-5 text-sm text-muted">Aucune conversation d’assistance ouverte.</p>
       ) : (
