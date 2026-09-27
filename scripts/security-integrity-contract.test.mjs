@@ -81,12 +81,17 @@ test("activity mutations are enum-gated and pass through server integrity checks
   assert.match(domain, /teacher\.note-save/);
   assert.match(domain, /homework\.complete/);
   assert.match(domain, /learning\.submission/);
+  assert.match(domain, /admin\.booking-update/);
   assert.match(domain, /communication\.connect-peers/);
   assert.match(domain, /tandem\.candidates/);
   assert.match(domain, /order by display_name asc\\n    limit 100/);
   assert.match(domain, /m\.role <> 'learner'/);
   assert.match(domain, /g\.teacher_user_id = \$2/);
   assert.match(sync, /updated_at < current_timestamp - interval '5 minutes'/);
+  assert.match(domain, /duration_seconds = greatest/);
+  assert.match(domain, /durationSeconds: Math\.max/);
+  assert.match(read("migrations/0029_tandem_session_integrity.sql"), /create unique index if not exists blossom_tandem_session_active_pair_uidx/);
+  assert.match(read("migrations/0029_tandem_session_integrity.sql"), /alter table blossom_tandem_session/);
   assert.match(domainApi, /ensureBootstrapAdmin\(context\.userId, identity\.email, identity\.emailVerified\)/);
 });
 
