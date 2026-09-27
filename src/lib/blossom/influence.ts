@@ -186,8 +186,13 @@ export function computeInfluence(input: {
     })
     .sort((a, b) => b.at.localeCompare(a.at))[0] ?? null;
   const low = lowestMineral(minerals);
-  const friction = dominantFriction(input.missionSessions);
-  const outcome = latestOutcome(input.missionSessions);
+  const scopedMissionSessions = Object.fromEntries(
+    Object.entries(input.missionSessions).filter(([, session]) =>
+      !session.languageId || session.languageId === input.languageId,
+    ),
+  ) as Record<string, MissionSession>;
+  const friction = dominantFriction(scopedMissionSessions);
+  const outcome = latestOutcome(scopedMissionSessions);
 
   // ── Mission influence ──────────────────────────────────────────────
   const missionReasons: InfluenceReason[] = [];
