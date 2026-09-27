@@ -88,3 +88,38 @@ test("tandem struggle prompt follows the selected learning language", () => {
   assert.match(es.tandem.openPrompt ?? "", /¿Puedes/);
   assert.match(fr.tandem.openPrompt ?? "", /Tu peux/);
 });
+
+
+test("causal influence ignores activity and growth from another learning language", () => {
+  const now = new Date().toISOString();
+  const foreign = computeInfluence({
+    log: [{
+      id: "en-1",
+      type: "SPEAK_COMPLETED",
+      createdAt: now,
+      sourceId: "en-room",
+      metadata: { languageId: "en" },
+    }],
+    attempts: [],
+    allItems: [],
+    growthEvents: [{
+      id: "en-growth",
+      at: now,
+      kind: "flower",
+      intensity: 1,
+      label: "Croissance anglaise",
+      mineral: "social",
+      languageId: "en",
+    }],
+    phonemeLeaves: [],
+    missionSessions: {},
+    memory: neutralMemory,
+    memoryOn: false,
+    languageId: "es",
+  });
+  assert.equal(foreign.minerals.parole, 0);
+  assert.equal(
+    foreign.mission.reasons.some((reason) => reason.code === "recent-growth"),
+    false,
+  );
+});
