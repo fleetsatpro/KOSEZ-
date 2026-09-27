@@ -245,7 +245,7 @@ test("setsForLanguage keeps English as default and isolates LSF", () => {
 
 
 test("tandem language fit survives localized labels", () => {
-  const score = (await import("./engine.ts")).tandemMatchScore(
+  const score = tandemMatchScore(
     {
       speaks: "Français",
       wants: "Anglais",
