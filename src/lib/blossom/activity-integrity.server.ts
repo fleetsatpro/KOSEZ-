@@ -432,12 +432,32 @@ export async function assertActivityAppend(
   }
 
   if (eventType === "PULSE_COMPLETED") {
-    if (!sid) throw new Error("activity-pulse-invalid-source");
-    if (sid !== "pulse-terrain" && sid !== "pulse-social" && !sid.startsWith("pulse-struggle-")) {
+    if (!/^pulse-session-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sid)) {
+      throw new Error("activity-pulse-invalid-session-source");
+    }
+
+    // Reward-bearing Pulse activity is bound to one server-created session.
+    // The client-provided dare id and seconds are never trusted as evidence.
+    const sessionId = sid.slice("pulse-session-".length);
+    const completed = await sql.query(
+      `select dare_id, duration_seconds, ended_at
+       from blossom_pulse_session
+       where id = $1::uuid
+         and user_id = $2
+         and status = 'completed'
+         and duration_seconds is not null
+         and ended_at is not null
+       limit 1`,
+      [sessionId, userId],
+    );
+    if (!completed[0]) throw new Error("activity-pulse-without-session");
+
+    const dareId = String(completed[0].dare_id);
+    if (dareId !== "pulse-terrain" && dareId !== "pulse-social" && !dareId.startsWith("pulse-struggle-")) {
       throw new Error("activity-pulse-unknown-source");
     }
-    if (sid.startsWith("pulse-struggle-")) {
-      const itemId = sid.slice("pulse-struggle-".length);
+    if (dareId.startsWith("pulse-struggle-")) {
+      const itemId = dareId.slice("pulse-struggle-".length);
       const activeItemIds = new Set(
         setsForLanguage(expectedLanguageId).flatMap((setDef) => setDef.items.map((item) => item.id)),
       );
@@ -449,27 +469,14 @@ export async function assertActivityAppend(
       if (!attempt[0]) throw new Error("activity-pulse-without-pronlab-evidence");
     }
 
-    // Duration-bearing Pulse activity must point to a real server-timed
-    // completion. Client-supplied seconds are never trusted as reward evidence.
-    const completed = await sql.query(
-      `select duration_seconds, started_at, ended_at
-       from blossom_pulse_session
-       where user_id = $1
-         and dare_id = $2
-         and status = 'completed'
-         and duration_seconds is not null
-         and ended_at is not null
-       order by ended_at desc
-       limit 1`,
-      [userId, sid],
-    );
-    if (!completed[0]) throw new Error("activity-pulse-without-session");
     const durationSeconds = Number(completed[0].duration_seconds);
     if (!Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 3600) {
       throw new Error("activity-pulse-invalid-server-duration");
     }
     return {
       ...safeMetadata,
+      pulseSessionId: sessionId,
+      dareId,
       seconds: durationSeconds,
       durationSeconds,
       minutes: Math.max(1, Math.floor(durationSeconds / 60)),
