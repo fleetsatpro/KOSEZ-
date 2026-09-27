@@ -35,6 +35,9 @@ import {
   endTandemSession,
   startPulseSession,
   endPulseSession,
+  startSpeakSession,
+  recordSpeakTurn,
+  endSpeakSession,
   startMissionRunSession,
   endMissionRunSession,
 } from "./domain.server";
@@ -447,6 +450,35 @@ export const endTandemSessionOnServer = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) =>
     endTandemSession(context.userId, data.sessionId, data.status),
+  );
+
+export const startSpeakSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(z.object({ roomId: z.string().trim().min(1).max(200) }))
+  .handler(async ({ context, data }) => startSpeakSession(context.userId, data.roomId));
+
+export const recordSpeakTurnOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(
+    z.object({
+      sessionId: z.string().uuid(),
+      seconds: z.number().finite().positive().max(300),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    recordSpeakTurn(context.userId, data.sessionId, data.seconds),
+  );
+
+export const endSpeakSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(
+    z.object({
+      sessionId: z.string().uuid(),
+      status: z.enum(["completed", "cancelled"]),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    endSpeakSession(context.userId, data.sessionId, data.status),
   );
 
 export const getGuardianTeacherContactsOnServer = createServerFn({ method: "GET" })
