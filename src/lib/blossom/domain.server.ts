@@ -1128,7 +1128,7 @@ export async function addTeacherNote(
   await assertLearnerAccess(actorUserId, input.learnerUserId, "teacher");
   const sql = await getSql();
   const rows = await sql.query(
-    "insert into blossom_teacher_note (id, teacher_user_id, learner_user_id, tags, note) values ($1::uuid, $2, $3, $4::jsonb, $5) returning id, teacher_user_id, learner_user_id, tags, note, created_at, updated_at",
+    "insert into blossom_teacher_note (id, teacher_user_id, learner_user_id, tags, note) values ($1::uuid, $2, $3, $4::jsonb, $5) on conflict (id) do update set tags = excluded.tags, note = excluded.note where blossom_teacher_note.teacher_user_id = excluded.teacher_user_id and blossom_teacher_note.learner_user_id = excluded.learner_user_id returning id, teacher_user_id, learner_user_id, tags, note, created_at, updated_at",
     [
       input.id ?? randomUUID(),
       actorUserId,
