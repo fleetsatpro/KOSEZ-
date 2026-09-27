@@ -182,8 +182,12 @@ export function MissionTheatreExperience() {
   }
 
   function finishAttempt(seconds: number) {
-    recordMissionAttempt(todayMission.id, "mission", "microphone", seconds);
-    setStep("reflect");
+    if (!Number.isFinite(seconds) || seconds <= 0) {
+      toast("Aucune prise vocale détectée. Parlez au moins un instant avant de continuer.");
+      return;
+    }
+    const recorded = recordMissionAttempt(todayMission.id, "mission", "microphone", seconds);
+    if (recorded) setStep("reflect");
   }
 
   function finishRealWorld() {
@@ -191,8 +195,12 @@ export function MissionTheatreExperience() {
     const seconds = Number.isFinite(startedAt)
       ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
       : 0;
-    recordMissionAttempt(todayMission.id, "mission", "manual", seconds);
-    setStep("reflect");
+    if (seconds <= 0) {
+      toast("Commencez le geste avant de le consigner.");
+      return;
+    }
+    const recorded = recordMissionAttempt(todayMission.id, "mission", "manual", seconds);
+    if (recorded) setStep("reflect");
   }
 
   function useSupport() {
