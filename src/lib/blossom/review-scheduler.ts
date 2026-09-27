@@ -120,7 +120,7 @@ export function buildReviewPlan(
 
   for (const word of scopedVocabulary) {
     const sourceKey = `vocab:${word.word}`;
-    const latest = latestReview(submissions, sourceKey);
+    const latest = latestReview(scopedSubmissions, sourceKey);
     const anchor = latest?.createdAt ?? word.updatedAt ?? word.firstSavedAt ?? now;
     const dueAt = latest
       ? addDays(latest.createdAt, intervalForSubmission(latest, submissions))
@@ -145,7 +145,7 @@ export function buildReviewPlan(
 
   if (languageId === "en") for (const kit of TODAY_MISSION.scene?.languageKit ?? []) {
     const sourceKey = `mission:${kit.phrase}`;
-    const latest = latestReview(submissions, sourceKey);
+    const latest = latestReview(scopedSubmissions, sourceKey);
     const interval = latest ? intervalForSubmission(latest, submissions) : 0;
     const dueAt = latest ? addDays(latest.createdAt, interval) : now;
     items.push({
