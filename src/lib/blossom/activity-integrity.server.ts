@@ -119,6 +119,16 @@ export async function assertActivityAppend(
     return;
   }
 
+  if (eventType === "PRONLAB_COMPLETED") {
+    if (!sid) throw new Error("activity-pronlab-missing-source");
+    const rows = await sql.query(
+      "select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 limit 1",
+      [userId, sid.replace(/^pron-touch-/, "")],
+    );
+    if (!rows[0]) throw new Error("activity-pronlab-without-attempt");
+    return;
+  }
+
   if (eventType === "TANDEM_COMPLETED") {
     const sessionId = sid.startsWith("tandem-session-") ? sid.slice("tandem-session-".length) : "";
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) {
