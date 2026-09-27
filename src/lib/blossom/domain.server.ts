@@ -1401,12 +1401,42 @@ export async function saveLearningSubmission(
     if (!expected || JSON.stringify(input.checks ?? []) !== JSON.stringify([expected])) {
       throw new Error("forged-review-checks");
     }
+    const taskId = input.taskId.trim();
+    const sqlForReview = sql;
+    if (taskId.startsWith("pron:")) {
+      const itemId = taskId.slice("pron:".length);
+      const activeItemIds = new Set(
+        setsForLanguage(languageId).flatMap((setDef) => setDef.items.map((item) => item.id)),
+      );
+      if (!activeItemIds.has(itemId)) throw new Error("unknown-review-source");
+      const attempts = await sqlForReview.query(
+        "select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 and coalesce(metadata->>'languageId', '') = $3 and seconds > 0 limit 1",
+        [userId, itemId, languageId],
+      );
+      if (!attempts[0]) throw new Error("review-pron-without-attempt");
+    } else if (taskId.startsWith("vocab:")) {
+      const word = taskId.slice("vocab:".length).trim().toLowerCase();
+      if (!word || word.length > 120) throw new Error("unknown-review-source");
+      const rows = await sqlForReview.query(
+        "select 1 from blossom_vocabulary where user_id = $1 and language_id = $2 and word = $3 limit 1",
+        [userId, languageId, word],
+      );
+      if (!rows[0]) throw new Error("review-vocab-without-word");
+    } else if (taskId.startsWith("mission:")) {
+      const phrase = taskId.slice("mission:".length);
+      const known = languageId === "en" && (TODAY_MISSION.scene?.languageKit ?? []).some((kit) => kit.phrase === phrase);
+      if (!known) throw new Error("unknown-review-source");
+    } else {
+      throw new Error("unknown-review-source");
+    }
     input = {
       ...input,
+      taskId,
       checks: [expected],
       result: {
         ...(input.result ?? {}),
         correct: input.content === "correct",
+        sourceKind: taskId.split(":")[0],
         languageId,
       },
     };
