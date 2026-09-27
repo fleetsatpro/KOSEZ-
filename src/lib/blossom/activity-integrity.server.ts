@@ -226,21 +226,19 @@ export async function assertLibraryReadingMutation(
     throw new Error("library-language-mismatch");
   }
   const sql = await getSql();
-  const mutationTime = Date.parse(mutationCreatedAt);
-  if (!Number.isFinite(mutationTime)) throw new Error("library-invalid-mutation-time");
-  const effectiveTime = new Date(Math.min(Date.now(), mutationTime));
+  if (!Number.isFinite(Date.parse(mutationCreatedAt))) {
+    throw new Error("library-invalid-mutation-time");
+  }
+
+  // The client timestamp is only a schema/format check. It is never used as
+  // evidence of elapsed reading time: otherwise an attacker can backdate
+  // library.start and manufacture an arbitrarily old session.
   if (action === "start") {
     await sql.query(
       `insert into blossom_library_reading (user_id, document_id, started_at)
-       values ($1, $2, $3::timestamptz)
-       on conflict (user_id, document_id) do update
-         set started_at = case
-           when blossom_library_reading.completed_at is null
-             and blossom_library_reading.started_at > $3::timestamptz
-           then $3::timestamptz
-           else blossom_library_reading.started_at
-         end`,
-      [userId, documentId, effectiveTime.toISOString()],
+       values ($1, $2, current_timestamp)
+       on conflict (user_id, document_id) do nothing`,
+      [userId, documentId],
     );
     return;
   }
@@ -252,17 +250,16 @@ export async function assertLibraryReadingMutation(
   if (!rows[0]) throw new Error("library-completion-without-start");
   if (rows[0].completed_at) return;
   const startedAt = new Date(String(rows[0].started_at)).getTime();
-  const completedAt = effectiveTime.getTime();
+  const completedAt = Date.now();
   const minimumSeconds = Math.max(30, Number(document.minutes) * 20);
   if (!Number.isFinite(startedAt) || completedAt - startedAt < minimumSeconds * 1000) {
     throw new Error("library-reading-too-fast");
   }
   await sql.query(
-    "update blossom_library_reading set completed_at = $3::timestamptz where user_id = $1 and document_id = $2 and completed_at is null",
-    [userId, documentId, effectiveTime.toISOString()],
+    "update blossom_library_reading set completed_at = current_timestamp where user_id = $1 and document_id = $2 and completed_at is null",
+    [userId, documentId],
   );
 }
-
 
 
 function stringValue(value: unknown, fallback = ""): string {
