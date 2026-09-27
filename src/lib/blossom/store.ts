@@ -624,7 +624,9 @@ export const useBlossom = create<AppState>()(
       },
       saveLearningSubmission: (input) => {
         const now = new Date().toISOString();
-        const existing = get().learningSubmissions.find((s) => s.taskId === input.taskId);
+        const existing = get().learningSubmissions.find(
+          (s) => s.taskId === input.taskId && s.result?.languageId === get().languageId,
+        );
         const languageId = get().languageId;
         const submissionResult = {
           ...input.result,
@@ -639,6 +641,9 @@ export const useBlossom = create<AppState>()(
             content: input.content,
             checks: input.checks,
             result: submissionResult as SyncJsonValue,
+            ...(existing
+              ? { rollback: { existed: true, submission: existing as unknown as SyncJsonValue } }
+              : { rollback: { existed: false } }),
           },
         });
         if (existing) {
@@ -740,6 +745,16 @@ export const useBlossom = create<AppState>()(
             word,
             gloss,
             metadata,
+            rollback: existing
+              ? {
+                  existed: true,
+                  word: existing.word,
+                  gloss: existing.gloss,
+                  firstSavedAt: existing.firstSavedAt ?? now,
+                  updatedAt: existing.updatedAt ?? now,
+                  metadata: existing.metadata ?? { languageId: current.languageId },
+                }
+              : { existed: false },
           },
         });
         const existing = current.vocabulary.find(
