@@ -409,7 +409,12 @@ export const useBlossom = create<AppState>()(
         const current = get();
         const log = current.activityLog;
         const scopedLog = activeLanguageActivityLog(log, current.languageId);
-        if (hasSource(scopedLog, sourceId, type)) return { ok: false, reason: "already" };
+        if (hasSource(log, sourceId, type)) {
+          const scopedExisting = scopedLog.some(
+            (event) => event.sourceId === sourceId && event.type === type,
+          );
+          return { ok: false, reason: scopedExisting ? "already" : "pending" };
+        }
         const before = journeySnapshot(scopedLog).stage.id;
         const previousMinerals = computeMinerals(scopedLog);
         const mutation = createMutation({
