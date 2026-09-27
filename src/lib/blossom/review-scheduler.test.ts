@@ -123,3 +123,38 @@ test("review plan isolates Pron'Lab, vocabulary and review history by language",
   assert.ok(es.due.some((item) => item.sourceKey === "vocab:hola"));
   assert.ok(!en.due.some((item) => item.sourceKey === "vocab:hola"));
 });
+
+
+test("review intervals ignore another language history", () => {
+  const base = new Date("2026-09-20T12:00:00.000Z").toISOString();
+  const en = {
+    id: "en-1",
+    taskId: "vocab:bonjour",
+    kind: "review" as const,
+    content: "correct",
+    checks: ["correct"],
+    result: { correct: true, languageId: "en" },
+    createdAt: base,
+    updatedAt: base,
+  };
+  const fr = {
+    id: "fr-1",
+    taskId: "vocab:bonjour",
+    kind: "review" as const,
+    content: "again",
+    checks: ["again"],
+    result: { correct: false, languageId: "fr" },
+    createdAt: new Date("2026-09-26T12:00:00.000Z").toISOString(),
+    updatedAt: new Date("2026-09-26T12:00:00.000Z").toISOString(),
+  };
+  const plan = buildReviewPlan(
+    [en, fr],
+    [],
+    [{ word: "bonjour", gloss: "hello", metadata: { languageId: "fr" } }],
+    new Date("2026-09-27T12:00:00.000Z").toISOString(),
+    "fr",
+  );
+  const item = plan.due.find((entry) => entry.sourceKey === "vocab:bonjour");
+  assert.ok(item);
+  assert.equal(item?.lastReviewedAt, fr.createdAt);
+});
