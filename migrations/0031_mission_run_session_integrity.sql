@@ -6,6 +6,7 @@ create table if not exists blossom_mission_run_session (
   id uuid primary key,
   user_id text not null,
   mission_id text not null,
+  run_id text not null,
   status text not null check (status in ('active','completed','cancelled')),
   started_at timestamptz not null default current_timestamp,
   ended_at timestamptz,
@@ -32,7 +33,7 @@ from ranked r
 where s.id = r.id and r.rn > 1;
 
 create unique index if not exists blossom_mission_run_session_active_uidx
-  on blossom_mission_run_session (user_id, mission_id)
+  on blossom_mission_run_session (user_id, mission_id, run_id)
   where status = 'active';
 
 create index if not exists blossom_mission_run_session_user_time_idx
