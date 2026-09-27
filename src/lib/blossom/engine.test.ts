@@ -5,6 +5,7 @@ import { planAllows, setsForLanguage } from "./data.ts";
 import {
   cafeMemoryHint,
   activityBelongsToLanguage,
+  isConfirmedActivity,
   countByType,
   hasSource,
   journeySnapshot,
@@ -298,4 +299,18 @@ test("pending activity cannot change points or organism language state", () => {
     0,
   );
   assert.equal(journeySnapshot([confirmed]).points, 10);
+});
+
+
+test("core activity derivation fails closed for pending events", () => {
+  const pending: ActivityEvent = {
+    id: "pending-core",
+    type: "MISSION_COMPLETED",
+    createdAt: new Date().toISOString(),
+    sourceId: "pending-mission",
+    metadata: { languageId: "en", syncState: "pending" },
+  };
+  assert.equal(isConfirmedActivity(pending), false);
+  assert.equal(pointsFromLog([pending]), 0);
+  assert.equal(countByType([pending], "MISSION_COMPLETED"), 0);
 });
