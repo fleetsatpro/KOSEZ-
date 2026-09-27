@@ -5,6 +5,7 @@ import { IMMERSION, PRONLAB_SETS } from "./data";
 import type { JsonObject } from "./backend.server";
 
 import { getPublishedContent } from "./content.server";
+import { enforceRateLimit } from "./rate-limit.server";
 
 export class BlossomForbiddenError extends Error {
   readonly status = 403;
@@ -1548,6 +1549,7 @@ export async function getGuardianLearnerDetail(
 }
 
 export async function startTandemSession(userId: string, partnerUserId: string) {
+  await enforceRateLimit(userId, "tandem.start-session", 10, 60);
   assertFeaturePlan(await getServerPlan(userId), "tandem");
   if (userId === partnerUserId) throw new BlossomForbiddenError("Une session tandem exige deux apprenants.");
   const sql = await getSql();
