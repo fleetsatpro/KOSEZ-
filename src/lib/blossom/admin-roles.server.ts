@@ -32,8 +32,9 @@ async function assertAdmin(userId: string) {
 export async function ensureBootstrapAdmin(
   userId: string,
   email: string | null | undefined,
+  emailVerified = false,
 ): Promise<boolean> {
-  if (!isBootstrapAdminEmail(email)) return false;
+  if (!emailVerified || !isBootstrapAdminEmail(email)) return false;
   const sql = await getSql();
   await sql.query(
     `insert into blossom_platform_admin (user_id, status, created_at, updated_at)
