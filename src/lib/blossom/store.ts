@@ -381,7 +381,7 @@ export const useBlossom = create<AppState>()(
       },
       completeActivity: (type, sourceId, note, metadata) => {
         const log = get().activityLog;
-        if (hasSource(log, sourceId)) return { ok: false, reason: "already" };
+        if (hasSource(log, sourceId, type)) return { ok: false, reason: "already" };
         const before = journeySnapshot(log).stage.id;
         const previousMinerals = computeMinerals(log);
         const mutation = createMutation({
@@ -416,21 +416,43 @@ export const useBlossom = create<AppState>()(
       },
       joinEvent: (id) => {
         if (get().joinedEventIds.includes(id)) return;
+        const mutation = createMutation({
+          operation: "event.register",
+          entityId: id,
+          payload: { status: "joined" },
+        });
         set({
           joinedEventIds: [...get().joinedEventIds, id],
           eventRegistrationCounts: { ...get().eventRegistrationCounts, [id]: (get().eventRegistrationCounts[id] ?? 0) + 1 },
         });
+        void enqueueMutation(mutation);
         track("event_joined");
       },
       leaveEvent: (id) => {
+        if (!get().joinedEventIds.includes(id)) return;
+        const mutation = createMutation({
+          operation: "event.register",
+          entityId: id,
+          payload: { status: "cancelled" },
+        });
         set({
           joinedEventIds: get().joinedEventIds.filter((x) => x !== id),
           eventRegistrationCounts: { ...get().eventRegistrationCounts, [id]: Math.max(0, (get().eventRegistrationCounts[id] ?? 1) - 1) },
         });
+        void enqueueMutation(mutation);
       },
       enroll: (id) => {
         if (get().enrolledIds.includes(id)) return;
-        set({ enrolledIds: [...get().enrolledIds, id] });
+        const mutation = createMutation({
+          operation: "booking.request",
+          entityId: id,
+          payload: { catalogueItemId: id },
+        });
+        set({
+          enrolledIds: [...get().enrolledIds, id],
+          bookingStatuses: { ...get().bookingStatuses, [id]: "requested" },
+        });
+        void enqueueMutation(mutation);
         track("course_enrolled");
       },
       recordPronlabAttempt: (itemId, seconds, evidenceMetadata) => {
@@ -465,12 +487,12 @@ export const useBlossom = create<AppState>()(
         const nextAttempts = [...get().pronlabAttempts, attempt];
         void enqueueMutation(mutation);
         const allItems = PRONLAB_SETS.flatMap((s) => s.items);
-        const phonemeLeaves = buildPhonemeLeaves(nextAttempts, allItems);
+        const phonemeLeaves = buildPhonemeLeaves(nextAttempts, setsForLanguage(get().languageId).flatMap((s) => s.items));
         set({ pronlabAttempts: nextAttempts, phonemeLeaves });
         track("pronlab_attempted", { itemId, assessment, score: scoreFromEvidence, seconds: safeSeconds });
         const after = summarisePronlabItem(itemId, nextAttempts);
-        if (!before.mastered && after.mastered) {
-          get().completeActivity("PRONLAB_MASTERY", `mastery-${itemId}`, `Maîtrise · ${item.focus || item.phrase}`);
+        if (!before.verifiedMastered && after.verifiedMastered) {
+          get().completeActivity("PRONLAB_MASTERY", `mastery-${itemId}`, `Maîtrise vérifiée · ${item.focus || item.phrase}`);
         } else if (before.attemptCount === 0 && after.attemptCount === 1) {
           get().completeActivity("PRONLAB_COMPLETED", `pron-touch-${itemId}`, `Premier passage · ${item.focus || item.phrase}`);
         }
@@ -493,8 +515,21 @@ export const useBlossom = create<AppState>()(
         voidProfileSync(current.learner, current.languageId, current.plan, current.warmup, current.exportConsent, value);
       },
       reportTandem: (partnerId) => {
+        const previousStatus = get().tandemStatus[partnerId];
         const count = (get().tandemReports[partnerId] ?? 0) + 1;
-        set({ tandemReports: { ...get().tandemReports, [partnerId]: count } });
+        const mutation = createMutation({
+          operation: "tandem.report",
+          entityId: partnerId,
+          payload: {
+            reason: "reported-from-tandem",
+            ...(previousStatus ? { previousStatus } : {}),
+          },
+        });
+        set({
+          tandemReports: { ...get().tandemReports, [partnerId]: count },
+          tandemStatus: { ...get().tandemStatus, [partnerId]: "blocked" },
+        });
+        void enqueueMutation(mutation);
         return { count, escalated: count >= 3 };
       },
       addTeacherNote: (studentId, tags, text) => {
@@ -504,6 +539,17 @@ export const useBlossom = create<AppState>()(
       saveLearningSubmission: (input) => {
         const now = new Date().toISOString();
         const existing = get().learningSubmissions.find((s) => s.taskId === input.taskId);
+        const mutation = createMutation({
+          operation: "learning.submission",
+          entityId: input.taskId,
+          payload: {
+            taskId: input.taskId,
+            kind: input.kind,
+            content: input.content,
+            checks: input.checks,
+            result: input.result as SyncJsonValue,
+          },
+        });
         if (existing) {
           set({
             learningSubmissions: get().learningSubmissions.map((s) =>
@@ -513,11 +559,12 @@ export const useBlossom = create<AppState>()(
         } else {
           set({
             learningSubmissions: [
-              { ...input, id: `sub-${Date.now()}`, createdAt: now, updatedAt: now },
+              { ...input, id: mutation.mutationId, createdAt: now, updatedAt: now },
               ...get().learningSubmissions,
             ],
           });
         }
+        void enqueueMutation(mutation);
       },
       saveWarmup: (text) => {
         set({ warmup: text });
@@ -542,17 +589,34 @@ export const useBlossom = create<AppState>()(
       },
       saveWord: (word, gloss) => {
         const now = new Date().toISOString();
-        const existing = get().vocabulary.find((v) => v.word === word);
+        const current = get();
+        const mutation = createMutation({
+          operation: "vocabulary.upsert",
+          entityId: word.toLowerCase(),
+          payload: {
+            word,
+            gloss,
+            metadata: { languageId: current.languageId },
+          },
+        });
+        const existing = current.vocabulary.find((v) => v.word.toLowerCase() === word.toLowerCase());
         if (existing) {
-          set({ vocabulary: get().vocabulary.map((v) => (v.word === word ? { ...v, gloss, updatedAt: now } : v)) });
+          set({ vocabulary: current.vocabulary.map((v) => (v.word.toLowerCase() === word.toLowerCase() ? { ...v, gloss, updatedAt: now } : v)) });
         } else {
-          set({ vocabulary: [{ word, gloss, firstSavedAt: now, updatedAt: now }, ...get().vocabulary] });
+          set({ vocabulary: [{ word, gloss, firstSavedAt: now, updatedAt: now }, ...current.vocabulary] });
         }
+        void enqueueMutation(mutation);
       },
       setImmersionPhase: (phase) => set({ immersionPhase: phase }),
       completeChallenge: (id) => {
         if (get().immersionDone.includes(id)) return;
+        const mutation = createMutation({
+          operation: "challenge.complete",
+          entityId: id,
+          payload: {},
+        });
         set({ immersionDone: [...get().immersionDone, id] });
+        void enqueueMutation(mutation);
         get().completeActivity("IMMERSION_ATTENDED", id);
       },
       completeChildMission: () => set({ childMissionDone: true }),
@@ -562,7 +626,13 @@ export const useBlossom = create<AppState>()(
       },
       joinWaitlist: (id) => {
         if (get().waitlistIds.includes(id)) return;
+        const mutation = createMutation({
+          operation: "waitlist.request",
+          entityId: id,
+          payload: { itemId: id },
+        });
         set({ waitlistIds: [...get().waitlistIds, id] });
+        void enqueueMutation(mutation);
       },
       setLanguage: (id) => {
         if (!isLearnLanguageId(id)) return;
@@ -605,16 +675,44 @@ export const useBlossom = create<AppState>()(
       },
       resetJourney: () => {
         set({
+          hasEntered: false,
+          parentMode: false,
+          teacherMode: false,
+          orgMode: false,
+          adminMode: false,
+          childMode: false,
+          learner: NEW_LEARNER,
           activityLog: [],
+          joinedEventIds: [],
+          eventRegistrationCounts: {},
+          enrolledIds: [],
+          assignedSetIds: [],
+          bookingStatuses: {},
+          pronlabAttempts: [],
+          tandemStatus: {},
+          tandemOpen: false,
+          tandemReports: {},
+          homework: [],
+          teacherNotes: [],
+          learningSubmissions: [],
+          warmup: null,
+          exportConsent: false,
+          vocabulary: [],
+          immersionPhase: "pre",
+          immersionDone: [],
+          plan: "digital",
+          childMissionDone: false,
+          childWords: [],
+          waitlistIds: [],
+          languageId: "en",
+          uiLocale: "fr",
+          missionSessions: {},
+          backendMissionRevisions: {},
+          syncOwnerUserId: null,
           growthEvents: [],
           mineralSnapshot: computeMinerals([]),
-          phonemeLeaves: buildPhonemeLeaves(
-            [],
-            setsForLanguage(get().languageId).flatMap((setDef) => setDef.items),
-          ),
+          phonemeLeaves: buildPhonemeLeaves([], setsForLanguage("en").flatMap((setDef) => setDef.items)),
           leoLetters: [],
-          pronlabAttempts: [],
-          missionSessions: {},
         });
       },
     }),
