@@ -1,12 +1,13 @@
 import { useMessages } from "@/lib/i18n";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Check, MapPin } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { GrowthCeremony } from "@/components/app/growth-ceremony";
 import { Button } from "@/components/ui/button";
 import { Page, Surface } from "@/components/app/primitives";
 import { useBlossom } from "@/lib/blossom/store";
-import { computeInfluenceFromState } from "@/lib/blossom/influence";
+import { influenceFromState, type InfluenceReason } from "@/lib/blossom/influence";
+import { LEARNER_MEMORY, planAllows, setsForLanguage } from "@/lib/blossom/data";
 
 export const Route = createFileRoute("/_app/osez/pulse")({
   component: PulsePage,
@@ -21,20 +22,34 @@ function PulsePage() {
   const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
   const missionSessions = useBlossom((s) => s.missionSessions);
   const languageId = useBlossom((s) => s.languageId);
-  const influence = computeInfluenceFromState({
-    log,
-    attempts,
-    growthEvents,
-    phonemeLeaves,
-    missionSessions,
-    languageId,
-  });
+  const plan = useBlossom((s) => s.plan);
+  const minerals = useBlossom((s) => s.mineralSnapshot);
+  const memoryOn = planAllows(plan, "memory");
+
+  const influence = useMemo(
+    () =>
+      influenceFromState({
+        activityLog: log,
+        pronlabAttempts: attempts,
+        growthEvents,
+        phonemeLeaves,
+        missionSessions,
+        allItems: setsForLanguage(languageId).flatMap((s) => s.items),
+        memory: LEARNER_MEMORY,
+        memoryOn,
+        languageId,
+      }),
+    [log, attempts, growthEvents, phonemeLeaves, missionSessions, languageId, memoryOn],
+  );
+
   const dare = influence.pulse.dareOverride;
   const [phase, setPhase] = useState<"ready" | "recording" | "done">("ready");
   const [elapsed, setElapsed] = useState(0);
   const [offline, setOffline] = useState(false);
+  const [ceremonyOpen, setCeremonyOpen] = useState(false);
   const timer = useRef<number | null>(null);
   const startedAt = useRef<number>(0);
+  const mineralsBefore = useRef(minerals);
 
   useEffect(() => {
     return () => {
@@ -43,6 +58,7 @@ function PulsePage() {
   }, []);
 
   function start() {
+    mineralsBefore.current = minerals;
     setPhase("recording");
     setElapsed(0);
     startedAt.current = Date.now();
@@ -59,6 +75,7 @@ function PulsePage() {
     const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
     setOffline(isOffline);
     completePulse(dare?.id ?? "pulse-local", seconds, isOffline);
+    setCeremonyOpen(true);
   }
 
   return (
@@ -77,7 +94,7 @@ function PulsePage() {
         </h1>
         {influence.pulse.reasons?.length ? (
           <ul className="mt-3 space-y-1">
-            {influence.pulse.reasons.map((r) => (
+            {influence.pulse.reasons.map((r: InfluenceReason) => (
               <li key={r.code} className="text-xs text-muted">
                 {r.line}
               </li>
@@ -120,7 +137,6 @@ function PulsePage() {
                 <Link to="/osez">OSEZ</Link>
               </Button>
             </div>
-            <GrowthCeremony activity="PULSE_COMPLETED" />
           </div>
         ) : null}
       </Surface>
@@ -129,6 +145,14 @@ function PulsePage() {
         <MapPin className="size-3.5" />
         Un geste réel, même court, compte.
       </p>
+
+      <GrowthCeremony
+        open={ceremonyOpen}
+        event={growthEvents[0] ?? null}
+        minerals={minerals}
+        previousMinerals={mineralsBefore.current}
+        onDismiss={() => setCeremonyOpen(false)}
+      />
     </Page>
   );
 }
