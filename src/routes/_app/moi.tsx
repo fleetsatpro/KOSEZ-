@@ -63,6 +63,7 @@ function MoiPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Awaited<ReturnType<typeof getLearnerSessionsOnServer>>>([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsError, setSessionsError] = useState(false);
   const [selectedConversationKind, setSelectedConversationKind] = useState<"support" | "tandem" | "teacher">("support");
   const [selectedConversationPeerId, setSelectedConversationPeerId] = useState<string | null>(null);
   const [selectedConversationPeerName, setSelectedConversationPeerName] = useState<string | null>(null);
@@ -112,12 +113,17 @@ function MoiPage() {
 
   useEffect(() => {
     let disposed = false;
+    setSessionsLoading(true);
+    setSessionsError(false);
     void getLearnerSessionsOnServer({ data: { limit: 12 } })
       .then((rows) => {
         if (!disposed) setSessions(rows);
       })
       .catch(() => {
-        if (!disposed) setSessions([]);
+        if (!disposed) {
+          setSessions([]);
+          setSessionsError(true);
+        }
       })
       .finally(() => {
         if (!disposed) setSessionsLoading(false);
@@ -281,6 +287,16 @@ function MoiPage() {
         </div>
         {sessionsLoading ? (
           <p className="mt-4 text-sm text-muted">Lecture du planning…</p>
+        ) : sessionsError ? (
+          <Surface className="mt-5">
+            <p className="font-display text-xl">Vos séances n’ont pas pu être chargées.</p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Rien n’est présenté comme vide lorsque la source n’a pas répondu.
+            </p>
+            <Button variant="secondary" className="mt-4" onClick={() => window.location.reload()}>
+              Réessayer
+            </Button>
+          </Surface>
         ) : sessions.length === 0 ? (
           <p className="mt-4 text-sm text-subtle">Aucune séance programmée pour le moment.</p>
         ) : (
