@@ -49,8 +49,9 @@ test("P0 identity reset clears the entire learner-scoped replica", () => {
   }
 });
 
-test("P0 activity deduplication is type + source aware", () => {
-  assert.ok(store.includes("hasSource(scopedLog, sourceId, type)"));
+test("P0 activity deduplication is type + source aware and pending-safe", () => {
+  assert.ok(store.includes("hasSource(log, sourceId, type)"));
+  assert.ok(store.includes('syncState: "pending"'));
   assert.ok(bridge.includes("`${event.type}:source:${event.sourceId}`"));
 });
 
