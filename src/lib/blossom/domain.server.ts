@@ -1839,7 +1839,7 @@ export async function endTandemSession(
 
 function validPulseDareId(dareId: string): boolean {
   const id = dareId.trim();
-  return id === "pulse-terrain" || id === "pulse-social" || id.startsWith("pulse-struggle-");
+  return id === "pulse-local" || id === "pulse-terrain" || id === "pulse-social" || id.startsWith("pulse-struggle-");
 }
 
 export async function startPulseSession(userId: string, dareId: string) {
