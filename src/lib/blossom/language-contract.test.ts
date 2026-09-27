@@ -23,3 +23,16 @@ test("English and Spanish local catalogs remain independently addressable", () =
   assert.equal(es.every((set) => set.language === "es"), true);
   assert.equal(lsf.every((set) => set.language === "lsf"), true);
 });
+
+import { canUseLearningSurface } from "../i18n/locales.ts";
+
+test("canUseLearningSurface gates by language pack surfaces", () => {
+  assert.equal(canUseLearningSurface("en", "mission"), true);
+  assert.equal(canUseLearningSurface("en", "osez"), true);
+  assert.equal(canUseLearningSurface("en", "pronlab"), true);
+  assert.equal(canUseLearningSurface("de", "pulse"), true);
+  assert.equal(canUseLearningSurface("de", "mission"), false);
+  assert.equal(canUseLearningSurface("de", "pronlab"), false);
+  assert.equal(canUseLearningSurface("unknown-lang", "mission"), false);
+  assert.equal(canUseLearningSurface("en", "explore"), true);
+});
