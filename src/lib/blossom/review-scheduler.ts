@@ -56,6 +56,16 @@ function latestReview(submissions: LearningSubmission[], sourceKey: string): Lea
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
 }
 
+function submissionBelongsToLanguage(submission: LearningSubmission, languageId: string): boolean {
+  const tagged = submission.result.languageId;
+  return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+}
+
+function vocabularyBelongsToLanguage(entry: { metadata?: { languageId?: string } }, languageId: string): boolean {
+  const tagged = entry.metadata?.languageId;
+  return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+}
+
 function intervalForSubmission(
   submission: LearningSubmission,
   submissions: LearningSubmission[],
@@ -68,11 +78,13 @@ function intervalForSubmission(
 export function buildReviewPlan(
   submissions: LearningSubmission[],
   attempts: PronlabAttempt[],
-  vocabulary: Array<{ word: string; gloss: string; firstSavedAt?: string; updatedAt?: string }>,
+  vocabulary: Array<{ word: string; gloss: string; firstSavedAt?: string; updatedAt?: string; metadata?: { languageId?: string } }>,
   now = new Date().toISOString(),
   languageId = "en",
 ): ReviewPlan {
   const items: ScheduledReviewItem[] = [];
+  const scopedSubmissions = submissions.filter((submission) => submissionBelongsToLanguage(submission, languageId));
+  const scopedVocabulary = vocabulary.filter((entry) => vocabularyBelongsToLanguage(entry, languageId));
 
   // Target-language isolation: only Pron'Lab items for the active learning language.
   const pronItems = setsForLanguage(languageId).flatMap((set) => set.items);
@@ -80,9 +92,9 @@ export function buildReviewPlan(
     const summary = summarisePronlabItem(item.id, attempts);
     if (!summary.attemptCount) continue;
     const sourceKey = `pron:${item.id}`;
-    const latest = latestReview(submissions, sourceKey);
+    const latest = latestReview(scopedSubmissions, sourceKey);
     const baseDue = latest
-      ? addDays(latest.createdAt, intervalForSubmission(latest, submissions))
+      ? addDays(latest.createdAt, intervalForSubmission(latest, scopedSubmissions))
       : addDays(
           attempts.filter((attempt) => attempt.itemId === item.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]?.createdAt ?? now,
           summary.struggling ? 1 : summary.mastered ? 7 : 3,
@@ -106,7 +118,7 @@ export function buildReviewPlan(
     });
   }
 
-  for (const word of vocabulary) {
+  for (const word of scopedVocabulary) {
     const sourceKey = `vocab:${word.word}`;
     const latest = latestReview(submissions, sourceKey);
     const anchor = latest?.createdAt ?? word.updatedAt ?? word.firstSavedAt ?? now;
