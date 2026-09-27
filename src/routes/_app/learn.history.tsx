@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Filter, History as HistoryIcon, Mic2, Target } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Eyebrow, Page, Surface } from "@/components/app/primitives";
+import { Eyebrow, Page } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { historyRows } from "@/lib/blossom/learning-os";

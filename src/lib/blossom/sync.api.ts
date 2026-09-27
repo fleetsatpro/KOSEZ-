@@ -31,7 +31,7 @@ function parseMutations(raw: string): SyncMutation[] {
 
 export const syncBlossom = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       deviceId: z.string().trim().min(10).max(200),
       mutationsJson: envelope,

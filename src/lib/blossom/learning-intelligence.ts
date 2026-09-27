@@ -2,7 +2,7 @@ import { activityBelongsToLanguage, type ActivityEvent, type ActivityType, type 
 import type { LearningSubmission } from "./store.ts";
 import { summarisePronlabItem } from "./engine.ts";
 import { setsForLanguage } from "./data.ts";
-import type { ScheduledReviewItem, ReviewPlan } from "./review-scheduler.ts";
+import type { ReviewPlan } from "./review-scheduler.ts";
 import {
   CAN_DO_OBJECTIVES,
   CURRICULUM_UNITS,

@@ -64,11 +64,13 @@ export function GrowthCeremony({
   className?: string;
 }) {
   const [phase, setPhase] = useState<"enter" | "hold" | "exit">("enter");
+  const eventId = event?.id;
+  const eventIntensity = event?.intensity ?? 0;
 
   useEffect(() => {
-    if (!open || !event) return;
+    if (!open || eventId == null) return;
     setPhase("enter");
-    const intensity = Math.min(1, Math.max(0.2, event.intensity));
+    const intensity = Math.min(1, Math.max(0.2, eventIntensity));
     const holdMs = 380 + Math.round(intensity * 180);
     const totalMs = 3200 + Math.round(intensity * 1800);
     const hold = window.setTimeout(() => setPhase("hold"), holdMs);
@@ -80,7 +82,7 @@ export function GrowthCeremony({
       window.clearTimeout(hold);
       window.clearTimeout(auto);
     };
-  }, [open, event?.id, event?.intensity, onDismiss]);
+  }, [open, eventId, eventIntensity, onDismiss]);
 
   const meta = event ? KIND_META[event.kind] : null;
 

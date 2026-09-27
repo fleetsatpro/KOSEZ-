@@ -274,7 +274,7 @@
   box-shadow: 0 24px 64px -38px rgba(0,0,0,.95);
 }
 
-.modern-ui .rounded-[28px] { border-radius: 24px; }
+.modern-ui [class~="rounded-[28px]"] { border-radius: 24px; }
 .modern-ui .rounded-2xl { border-radius: 18px; }
 .modern-ui .rounded-xl { border-radius: 14px; }
 
@@ -559,21 +559,21 @@
   text-shadow: 0 10px 60px rgba(0,0,0,.24);
 }
 
-.modern-ui .kosez-mission-page .rounded-\\[30px\\],
-.modern-ui .kosez-mission-page .rounded-\\[28px\\] {
+.modern-ui .kosez-mission-page [class~="rounded-[30px]"],
+.modern-ui .kosez-mission-page [class~="rounded-[28px]"] {
   border-color: rgba(237,243,238,.08);
   box-shadow: 0 24px 70px -46px rgba(0,0,0,.95);
 }
 
-.modern-ui .kosez-mission-page .rounded-\\[30px\\].bg-surface,
-.modern-ui .kosez-mission-page .rounded-\\[28px\\].bg-surface {
+.modern-ui .kosez-mission-page [class~="rounded-[30px]"].bg-surface,
+.modern-ui .kosez-mission-page [class~="rounded-[28px]"].bg-surface {
   background:
     radial-gradient(circle at 90% 0%, rgba(217,255,105,.045), transparent 34%),
     linear-gradient(180deg, rgba(20,27,24,.98), rgba(12,17,15,.98));
 }
 
-.modern-ui .kosez-mission-page .rounded-\\[24px\\],
-.modern-ui .kosez-mission-page .rounded-\\[26px\\] {
+.modern-ui .kosez-mission-page [class~="rounded-[24px]"],
+.modern-ui .kosez-mission-page [class~="rounded-[26px]"] {
   border-color: rgba(237,243,238,.07);
 }
 

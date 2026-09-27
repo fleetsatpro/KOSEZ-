@@ -11,7 +11,7 @@ const inputSchema = z.object({
 
 export const transcribeSpeakTurn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(inputSchema)
+  .validator(inputSchema)
   .handler(async ({ data, context }) => {
     const { transcribeSpeechAudio } = await import("./speech-server.server");
     return transcribeSpeechAudio(data, context.userId);

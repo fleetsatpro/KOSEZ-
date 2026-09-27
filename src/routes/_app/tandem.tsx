@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, Clock, Heart, MapPin, Pause, RefreshCw, Users, Leaf } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Initials, Page, Surface } from "@/components/app/primitives";
@@ -38,7 +38,10 @@ function TandemHub() {
   const learner = useBlossom((s) => s.learner);
   const uiLocale = useUiLocale();
   const languageId = useBlossom((s) => s.languageId);
-  const languageLabel = (id: string) => describeLearnLanguage(id, uiLocale).label;
+  const languageLabel = useCallback(
+    (id: string) => describeLearnLanguage(id, uiLocale).label,
+    [uiLocale],
+  );
   const statusMap = useBlossom((s) => s.tandemStatus);
   const setStatus = useBlossom((s) => s.setTandemStatus);
   const tandemOpen = useBlossom((s) => s.tandemOpen);
@@ -82,7 +85,7 @@ function TandemHub() {
       interests: learner.interests,
       window: learner.practiceWindow,
     }),
-    [languageId, uiLocale, learner.interests, learner.level, learner.nativeLanguage, learner.practiceWindow],
+    [languageId, languageLabel, learner.interests, learner.level, learner.nativeLanguage, learner.practiceWindow],
   );
 
   const load = () => {
@@ -126,7 +129,7 @@ function TandemHub() {
       })
       .filter((row) => row.status !== "blocked")
       .sort((a, b) => b.score - a.score);
-  }, [candidates, me, statusMap, influence.tandem.partnerBias]);
+  }, [candidates, languageLabel, me, statusMap, influence.tandem.partnerBias]);
 
   const accepted = ranked.filter((row) => row.status === "accepted");
   const pending = ranked.filter((row) => row.status === "pending");

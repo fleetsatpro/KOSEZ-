@@ -23,6 +23,7 @@ function ConnectPage() {
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
   const tandemOpen = planAllows(plan, "tandem");
+  const joinedKey = joined.join(",");
   const socialNext = causalNextGesture(minerals);
   const navigate = useNavigate();
   const [peers, setPeers] = useState<ConnectPeer[]>([]);
@@ -45,7 +46,7 @@ function ConnectPage() {
     return () => {
       disposed = true;
     };
-  }, [joined.join(",")]);
+  }, [joinedKey]);
 
   const upcoming = useMemo(
     () =>

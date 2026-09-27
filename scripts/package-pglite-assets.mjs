@@ -8,7 +8,7 @@
  * for these binary assets, so the final server artifact must contain them
  * explicitly.
  */
-import { copyFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 

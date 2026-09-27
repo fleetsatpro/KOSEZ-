@@ -13,7 +13,6 @@ import {
   type ActivityType,
   type PronlabAttempt,
 } from "./engine";
-import { mergeMissionSessions } from "./sync-merge";
 import {
   activeMissionRun,
   appendMissionAttempt,
@@ -534,7 +533,6 @@ export const useBlossom = create<AppState>()(
         };
         const nextAttempts = [...get().pronlabAttempts, attempt];
         void enqueueMutation(mutation);
-        const allItems = PRONLAB_SETS.flatMap((s) => s.items);
         const phonemeLeaves = buildPhonemeLeaves(nextAttempts, setsForLanguage(get().languageId).flatMap((s) => s.items));
         set({ pronlabAttempts: nextAttempts, phonemeLeaves });
         track("pronlab_attempted", { itemId, assessment, score: scoreFromEvidence, seconds: safeSeconds });
