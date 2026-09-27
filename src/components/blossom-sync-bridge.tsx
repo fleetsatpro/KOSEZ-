@@ -146,10 +146,22 @@ function mergeBackendState(remote: BackendState): void {
   }
 
   const vocabularyByWord = new Map(
-    current.vocabulary.map((entry) => [entry.word.toLowerCase(), entry]),
+    current.vocabulary.map((entry) => {
+      const languageId = entry.metadata?.languageId ?? "en";
+      return [`${languageId}:${entry.word.toLowerCase()}`, entry] as const;
+    }),
   );
   for (const entry of remote.vocabulary) {
-    const key = entry.word.toLowerCase();
+    const rawLanguageId =
+      typeof entry.languageId === "string"
+        ? entry.languageId
+        : typeof entry.metadata?.languageId === "string"
+          ? entry.metadata.languageId
+          : "en";
+    const languageId: LearnLanguageId = isLearnLanguageId(rawLanguageId)
+      ? rawLanguageId
+      : "en";
+    const key = `${languageId}:${entry.word.toLowerCase()}`;
     const local = vocabularyByWord.get(key);
     const remoteUpdatedAt = entry.updatedAt;
     const localUpdatedAt = local?.updatedAt;
@@ -158,16 +170,12 @@ function mergeBackendState(remote: BackendState): void {
       !localUpdatedAt ||
       (remoteUpdatedAt && timestamp(remoteUpdatedAt) >= timestamp(localUpdatedAt))
     ) {
-      const languageId =
-        entry.metadata && typeof entry.metadata.languageId === "string"
-          ? entry.metadata.languageId
-          : undefined;
       vocabularyByWord.set(key, {
-        word: key,
+        word: entry.word.toLowerCase(),
         gloss: entry.gloss,
         firstSavedAt: entry.firstSavedAt,
         updatedAt: remoteUpdatedAt,
-        ...(languageId ? { metadata: { languageId } } : {}),
+        metadata: { languageId },
       });
     }
   }
