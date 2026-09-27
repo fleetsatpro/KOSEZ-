@@ -1,5 +1,6 @@
 import { getSql } from "@/lib/db";
 import { CURRICULUM_UNITS, type LessonKind } from "./learning-os";
+import { PRONLAB_SETS, setsForLanguage } from "./data";
 
 function jsonObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
@@ -92,13 +93,24 @@ export async function assertActivityAppend(
   eventType: AllowedActivityEventType,
   sourceId: string | null | undefined,
   metadata: Record<string, unknown>,
-) {
+): Promise<Record<string, unknown>> {
   const sql = await getSql();
   const sid = typeof sourceId === "string" ? sourceId.trim() : "";
 
+  const profile = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const expectedLanguageId = String(profile[0]?.target_language ?? "en");
+  const claimedLanguageId = metadata.languageId;
+  if (typeof claimedLanguageId !== "string" || claimedLanguageId !== expectedLanguageId) {
+    throw new Error("activity-language-mismatch");
+  }
+  const safeMetadata = { ...metadata, languageId: expectedLanguageId };
+
   if (eventType === "CURRICULUM_EVIDENCE_RECORDED") {
     await assertCurriculumEvidence(userId, sid || stringValue(metadata.lessonId), metadata);
-    return;
+    return safeMetadata;
   }
 
   if (eventType === "PRONLAB_MASTERY") {
@@ -121,12 +133,33 @@ export async function assertActivityAppend(
 
   if (eventType === "PRONLAB_COMPLETED") {
     if (!sid) throw new Error("activity-pronlab-missing-source");
-    const rows = await sql.query(
-      "select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 limit 1",
-      [userId, sid.replace(/^pron-touch-/, "")],
-    );
-    if (!rows[0]) throw new Error("activity-pronlab-without-attempt");
-    return;
+    if (sid.startsWith("pron-touch-")) {
+      const itemId = sid.slice("pron-touch-".length);
+      const activeItemIds = new Set(
+        setsForLanguage(expectedLanguageId).flatMap((setDef) => setDef.items.map((item) => item.id)),
+      );
+      if (!activeItemIds.has(itemId)) throw new Error("activity-pronlab-language-mismatch");
+      const rows = await sql.query(
+        "select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 limit 1",
+        [userId, itemId],
+      );
+      if (!rows[0]) throw new Error("activity-pronlab-without-attempt");
+      return safeMetadata;
+    }
+    if (sid.startsWith("pronlab-set-")) {
+      const setId = sid.slice("pronlab-set-".length);
+      const setDef = PRONLAB_SETS.find((set) => set.id === setId);
+      if (!setDef || !setsForLanguage(expectedLanguageId).some((set) => set.id === setId)) {
+        throw new Error("activity-pronlab-set-language-mismatch");
+      }
+      const missing = await sql.query(
+        "select item_id from blossom_pronlab_attempt where user_id = $1 and item_id = any($2::text[])",
+        [userId, setDef.items.map((item) => item.id)],
+      );
+      if (missing.length !== setDef.items.length) throw new Error("activity-pronlab-set-without-attempts");
+      return safeMetadata;
+    }
+    throw new Error("activity-pronlab-invalid-source");
   }
 
   if (eventType === "TANDEM_COMPLETED") {
@@ -139,7 +172,17 @@ export async function assertActivityAppend(
       [sessionId, userId],
     );
     if (!rows[0]) throw new Error("activity-tandem-without-session");
-    return;
+    return safeMetadata;
+  }
+
+  if (eventType === "IMMERSION_ATTENDED") {
+    if (!sid) throw new Error("activity-immersion-missing-source");
+    const rows = await sql.query(
+      "select 1 from blossom_challenge_completion where user_id = $1 and challenge_id = $2 limit 1",
+      [userId, sid],
+    );
+    if (!rows[0]) throw new Error("activity-immersion-without-challenge");
+    return safeMetadata;
   }
 
   if (eventType === "EVENT_ATTENDED") {
@@ -149,7 +192,7 @@ export async function assertActivityAppend(
       [userId, sid],
     );
     if (!attendance[0]) throw new Error("activity-event-without-attendance");
-    return;
+    return safeMetadata;
   }
 
   if (eventType === "HOMEWORK_COMPLETED") {
@@ -159,7 +202,7 @@ export async function assertActivityAppend(
       [userId, sid],
     );
     if (!rows[0]) throw new Error("activity-homework-not-completed");
-    return;
+    return safeMetadata;
   }
 
   const requiresSource: AllowedActivityEventType[] = [
@@ -178,7 +221,35 @@ export async function assertActivityAppend(
     "LESSON_COMPLETED",
     "REAL_WORLD_BONUS",
   ];
+  if (eventType === "REVIEW_COMPLETED") {
+    const rows = await sql.query(
+      "select 1 from blossom_learning_submission where user_id = $1 and kind = 'review' and created_at >= current_date limit 1",
+      [userId],
+    );
+    if (!rows[0]) throw new Error("activity-review-without-submission");
+    return safeMetadata;
+  }
+
   if (requiresSource.includes(eventType) && !sid) {
     throw new Error("activity-missing-source");
   }
+
+  if (eventType === "GRAMMAR_COMPLETED" || eventType === "LISTENING_COMPLETED" || eventType === "WRITING_COMPLETED") {
+    const kind = eventType.startsWith("GRAMMAR") ? "grammar" : eventType.startsWith("LISTENING") ? "listening" : "writing";
+    const rows = await sql.query(
+      "select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = $3 limit 1",
+      [userId, sid, kind],
+    );
+    if (!rows[0]) throw new Error("activity-learning-without-submission");
+  }
+
+  if (eventType === "CLASS_ATTENDED") {
+    throw new Error("activity-class-attendance-server-only");
+  }
+
+  if (eventType === "SPEAK_COMPLETED") {
+    throw new Error("activity-speak-completion-server-only");
+  }
+
+  return safeMetadata;
 }
