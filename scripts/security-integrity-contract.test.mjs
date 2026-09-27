@@ -21,6 +21,8 @@ test("activity mutations are enum-gated and pass through server integrity checks
   assert.match(integrity, /activity-language-mismatch/);
   assert.match(sync, /activeLanguageId/);
   assert.match(sync, /targetLanguage: z\.enum/);
+  assert.match(sync, /mission-completion-without-prior-session/);
+  assert.match(sync, /mission-completion-without-prior-attempt/);
 });
 
 test("authenticated abuse surfaces use the distributed Postgres limiter", () => {
