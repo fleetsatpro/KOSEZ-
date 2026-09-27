@@ -10,13 +10,21 @@ import { Eyebrow, Surface } from "@/components/app/primitives";
 export function AdminEventAttendance() {
   const [rows, setRows] = useState<AdminEventAttendanceRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unavailable, setUnavailable] = useState(false);
   const [busy, setBusy] = useState("");
 
   async function load() {
     setLoading(true);
-    try { setRows(await getAdminEventAttendanceOnServer()); }
-    catch { setRows([]); toast("Le registre de présence n’est pas disponible."); }
-    finally { setLoading(false); }
+    setUnavailable(false);
+    try {
+      setRows(await getAdminEventAttendanceOnServer());
+      setUnavailable(false);
+    } catch {
+      setUnavailable(true);
+      toast("Le registre de présence n’est pas disponible.");
+    } finally {
+      setLoading(false);
+    }
   }
   useEffect(() => { void load(); }, []);
 
@@ -48,6 +56,7 @@ export function AdminEventAttendance() {
         <Users className="size-5 text-primary" />
       </div>
       {loading ? <div className="mt-5 flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" /> Chargement…</div> :
+       unavailable ? <p className="mt-5 text-sm text-muted" role="alert">Registre indisponible. Réessayez plus tard — ce n’est pas une liste vide.</p> :
        grouped.length === 0 ? <p className="mt-5 text-sm text-muted">Aucune inscription confirmée à pointer.</p> :
        <div className="mt-5 space-y-5">
          {grouped.map(([eventId, eventRows]) => (
