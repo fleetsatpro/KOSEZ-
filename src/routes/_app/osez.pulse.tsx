@@ -68,7 +68,6 @@ function PulsePage() {
     if (closing) return;
     setClosing(true);
     let sessionId: string | null = null;
-    let timerAvailable = true;
     try {
       const session = await startPulseSessionOnServer({
         data: { dareId: dare?.id ?? "pulse-local" },
@@ -77,7 +76,6 @@ function PulsePage() {
       setServerSessionId(session.id);
       setServerTimerAvailable(true);
     } catch {
-      timerAvailable = false;
       setServerSessionId(null);
       setServerTimerAvailable(false);
     }
