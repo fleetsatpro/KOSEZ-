@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BookMarked, Clock } from "lucide-react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LIBRARY as LIBRARY_CORE, planAllows } from "@/lib/blossom/data";
@@ -10,7 +11,11 @@ import { useBlossom } from "@/lib/blossom/store";
 const LIBRARY = [...LIBRARY_CORE, ...EXTRA_LIBRARY];
 
 export const Route = createFileRoute("/_app/library")({
-  component: LibraryPage,
+  component: () => (
+    <LearningSurfaceGate surface="library">
+      <LibraryPage />
+    </LearningSurfaceGate>
+  ),
 });
 
 /**
