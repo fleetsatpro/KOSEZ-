@@ -162,7 +162,7 @@ function PronlabIndex() {
                   to="/pronlab/$setId"
                   params={{
                     setId:
-                      PRONLAB_SETS.find((s) =>
+                      sets.find((s) =>
                         s.items.some((i) => i.id === struggle.id),
                       )?.id ?? sets[0]?.id ?? "th",
                   }}
