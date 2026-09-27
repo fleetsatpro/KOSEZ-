@@ -26,7 +26,14 @@ export type BlossomAccessContext = {
 async function assertAdmin(userId: string) {
   const sql = await getSql();
   const rows = await sql.query(
-    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    `select 1
+     from blossom_platform_admin
+     where user_id = $1 and status = 'active'
+     union all
+     select 1
+     from blossom_role_grant
+     where user_id = $1 and role = 'admin' and status = 'active'
+     limit 1`,
     [userId],
   );
   if (!rows[0]) {
@@ -568,6 +575,7 @@ export async function requestCatalogueBooking(
   userId: string,
   catalogueItemId: string,
 ) {
+  await enforceRateLimit(userId, "commerce.booking-request", 10, 3600);
   const { catalogue } = await getPublishedContent();
   if (!catalogue.some((item) => item.id === catalogueItemId)) {
     throw new Error("unknown-catalogue-item");
@@ -622,6 +630,7 @@ export async function requestCatalogueBooking(
 }
 
 export async function requestWaitlist(userId: string, itemId: string) {
+  await enforceRateLimit(userId, "commerce.waitlist-request", 10, 3600);
   const { catalogue } = await getPublishedContent();
   const item = catalogue.find((entry) => entry.id === itemId && entry.kind === "immersion");
   if (!item) throw new Error("unknown-waitlist-item");
@@ -671,6 +680,7 @@ export async function recordPronlabAttempt(
   userId: string,
   input: PronlabAttemptInput,
 ) {
+  await enforceRateLimit(userId, "learning.pronlab-attempt", 60, 60);
   const sql = await getSql();
   const profileRows = await sql.query(
     "select target_language from blossom_profile where user_id = $1 limit 1",
@@ -735,6 +745,7 @@ export async function saveVocabulary(
     mutationCreatedAt?: string;
   },
 ) {
+  await enforceRateLimit(userId, "learning.vocabulary-upsert", 120, 60);
   const sql = await getSql();
   const metadata = input.metadata ?? {};
   const profileRows = await sql.query(
@@ -776,6 +787,7 @@ export async function setTandemStatus(
     metadata?: JsonObject;
   },
 ) {
+  await enforceRateLimit(userId, "tandem.status", 30, 60);
   assertFeaturePlan(await getServerPlan(userId), "tandem");
   if (userId === input.partnerUserId) {
     throw new BlossomForbiddenError("A tandem partner must be a different learner.");
@@ -884,6 +896,7 @@ export async function registerEvent(
   eventId: string,
   status: "joined" | "waitlist" | "cancelled",
 ) {
+  await enforceRateLimit(userId, "event.register", 20, 60);
   const sql = await getSql();
   const publishedEvents = await getPublishedContent();
   const event = publishedEvents.events.find((item) => item.id === eventId);
@@ -967,6 +980,7 @@ export async function registerEvent(
 }
 
 export async function completeChallenge(userId: string, challengeId: string) {
+  await enforceRateLimit(userId, "immersion.challenge-complete", 30, 60);
   if (!IMMERSION.challenges.includes(challengeId)) {
     throw new BlossomForbiddenError("Ce défi d'immersion n'existe pas.");
   }
@@ -1064,6 +1078,7 @@ export async function saveHomework(
     status: "draft" | "sent" | "done";
   },
 ) {
+  await enforceRateLimit(actorUserId, "teacher.homework-save", 60, 60);
   await assertLearnerAccess(actorUserId, input.learnerUserId, "teacher");
   if (input.status === "done") {
     throw new BlossomForbiddenError("La fin d’un devoir est réservée à l’apprenant.");
@@ -1109,6 +1124,7 @@ export async function addTeacherNote(
     note: string;
   },
 ) {
+  await enforceRateLimit(actorUserId, "teacher.note-save", 60, 60);
   await assertLearnerAccess(actorUserId, input.learnerUserId, "teacher");
   const sql = await getSql();
   const rows = await sql.query(
@@ -1129,6 +1145,7 @@ export async function completeHomeworkForLearner(
   learnerUserId: string,
   homeworkId: string,
 ) {
+  await enforceRateLimit(learnerUserId, "homework.complete", 30, 60);
   const sql = await getSql();
   const rows = await sql.query(
     "update blossom_homework set status = 'done', updated_at = current_timestamp where id = $1::uuid and learner_user_id = $2 and status = 'sent' returning id, author_user_id, learner_user_id, title, body, status, created_at, updated_at",
@@ -1186,6 +1203,7 @@ export async function saveLearningSubmission(
     result?: Record<string, unknown>;
   },
 ) {
+  await enforceRateLimit(userId, "learning.submission", 60, 60);
   const sql = await getSql();
   const id = input.id ?? randomUUID();
   const rows = await sql.query(
