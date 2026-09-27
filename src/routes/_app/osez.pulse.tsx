@@ -67,12 +67,10 @@ function PulsePage() {
   async function start() {
     if (closing) return;
     setClosing(true);
-    let sessionId: string | null = null;
     try {
       const session = await startPulseSessionOnServer({
         data: { dareId: dare?.id ?? "pulse-local" },
       });
-      sessionId = session.id;
       setServerSessionId(session.id);
       setServerTimerAvailable(true);
     } catch {
@@ -84,8 +82,6 @@ function PulsePage() {
     setElapsed(0);
     setPhase("recording");
     setClosing(false);
-    // The local clock is display-only. It keeps the exercise usable during a
-    // transient outage, but only a server session can produce reward-bearing time.
     timer.current = window.setInterval(() => {
       setElapsed(Math.floor((Date.now() - startedAt.current) / 1000));
     }, 250);
@@ -198,9 +194,10 @@ function PulsePage() {
 
       <GrowthCeremony
         open={ceremonyOpen}
-        onClose={() => setCeremonyOpen(false)}
-        mineralsBefore={mineralsBefore.current}
-        mineralsAfter={useBlossom.getState().mineralSnapshot}
+        event={growthEvents[0] ?? null}
+        minerals={minerals}
+        previousMinerals={mineralsBefore.current}
+        onDismiss={() => setCeremonyOpen(false)}
       />
     </Page>
   );
