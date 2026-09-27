@@ -4,6 +4,7 @@
  */
 
 import type { SpeechTurnEvidence } from "./speech-stt.ts";
+import { enforceRateLimit } from "./rate-limit.server";
 
 type SttSlot = {
   id: string;
