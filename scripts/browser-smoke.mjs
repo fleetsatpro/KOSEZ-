@@ -304,7 +304,7 @@ try {
         }
         const readingEnd = page.locator('[data-reading-end="true"]');
         const readingHeader = await page.locator("body").innerText().catch(() => "");
-        const readingMinutesMatch = /(d+)\s+min de lecture/i.exec(readingHeader);
+        const readingMinutesMatch = /(\d+)\s+min de lecture/i.exec(readingHeader);
         const readingMinutes = readingMinutesMatch ? Number(readingMinutesMatch[1]) : 1;
         if (!Number.isFinite(readingMinutes) || readingMinutes < 1 || readingMinutes > 120) {
           throw new Error("could not determine a sane library reading duration");
