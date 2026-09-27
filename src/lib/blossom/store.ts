@@ -386,7 +386,8 @@ export const useBlossom = create<AppState>()(
         return { ...result, evaluation };
       },
       completeActivity: (type, sourceId, note, metadata) => {
-        const log = get().activityLog;
+        const current = get();
+        const log = current.activityLog;
         if (hasSource(log, sourceId, type)) return { ok: false, reason: "already" };
         const before = journeySnapshot(log).stage.id;
         const previousMinerals = computeMinerals(log);
@@ -417,7 +418,6 @@ export const useBlossom = create<AppState>()(
         const ge = growthEventForActivity(type, sourceId, event.createdAt);
         const growthEvents = ge ? pushGrowthEvent(get().growthEvents, ge) : get().growthEvents;
         const mineralSnapshot = computeMinerals(nextLog);
-        const current = get();
         const phonemeLeaves = buildPhonemeLeaves(
           current.pronlabAttempts,
           setsForLanguage(current.languageId).flatMap((setDef) => setDef.items),
