@@ -10,10 +10,11 @@
 
 import type { PronlabItem } from "./data";
 import type { LearnLanguageId } from "../i18n/locales.ts";
-import type {
-  ActivityEvent,
-  LearnerMemory,
-  PronlabAttempt,
+import {
+  activityBelongsToLanguage,
+  type ActivityEvent,
+  type LearnerMemory,
+  type PronlabAttempt,
 } from "./engine.ts";
 import type { MissionOutcome, MissionSession } from "./mission.ts";
 import { evaluateMission, summariseMissionHistory } from "./mission.ts";
