@@ -17,6 +17,7 @@ import {
   causalNextGesture,
   computeMinerals,
 } from "@/lib/blossom/organism";
+import { activityBelongsToLanguage } from "@/lib/blossom/engine";
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 import { describeLearnLanguage, useUiLocale } from "@/lib/i18n";
@@ -38,6 +39,10 @@ function TandemHub() {
   const learner = useBlossom((s) => s.learner);
   const uiLocale = useUiLocale();
   const languageId = useBlossom((s) => s.languageId);
+  const scopedLog = useMemo(
+    () => log.filter((event) => activityBelongsToLanguage(event, languageId)),
+    [log, languageId],
+  );
   const languageLabel = useCallback(
     (id: string) => describeLearnLanguage(id, uiLocale).label,
     [uiLocale],
@@ -71,7 +76,7 @@ function TandemHub() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const minerals = useMemo(() => computeMinerals(log), [log]);
+  const minerals = useMemo(() => computeMinerals(scopedLog), [scopedLog]);
   const nextGesture = causalNextGesture(minerals);
   const socialGrowth = growthEvents
     .filter((g) => g.mineral === "social" || g.kind === "flower")
