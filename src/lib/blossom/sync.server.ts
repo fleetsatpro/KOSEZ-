@@ -21,7 +21,7 @@ import {
   completeHomeworkForLearner,
 } from "./domain.server";
 import { reportTandem } from "./safety.server";
-import { SYNC_OPERATIONS, type SyncMutation, type SyncResult } from "./sync-types";
+import { SYNC_OPERATIONS, type SyncJsonObject, type SyncMutation, type SyncResult } from "./sync-types";
 import { CURRICULUM_UNITS, type LessonKind } from "./learning-os";
 import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure } from "./lab-content";
 import { ACTIVITY_EVENT_TYPES, assertActivityAppend } from "./activity-integrity.server";
@@ -313,10 +313,15 @@ async function storeResult(
   );
 }
 
+ type AppliedSyncResult =
+  | { mutationId: string; status: "applied"; revision?: number }
+  | { mutationId: string; status: "conflict"; currentRevision: number; currentSessionJson: string }
+  | { mutationId: string; status: "rejected"; errorCode: string };
+
 async function applyMutation(
   userId: string,
   mutation: SyncMutation,
-): Promise<SyncResult> {
+): Promise<AppliedSyncResult> {
   switch (mutation.operation) {
     case "activity.append": {
       const payload = activityPayloadSchema.parse(mutation.payload);
@@ -536,20 +541,45 @@ export async function syncBlossomBatch(
       });
       continue;
     }
-    const claimed = await claimMutation(userId, parsed.data);
+    const normalizedMutation: SyncMutation = {
+      mutationId: parsed.data.mutationId,
+      deviceId: parsed.data.deviceId,
+      operation: parsed.data.operation,
+      entityId: parsed.data.entityId,
+      expectedRevision: parsed.data.expectedRevision,
+      payload: objectValue(parsed.data.payload) as SyncJsonObject,
+      createdAt: parsed.data.createdAt,
+    };
+    const claimed = await claimMutation(userId, normalizedMutation);
     if (claimed === "duplicate") {
       const sql = await getSql();
       const rows = await sql.query(
         "select status, result, error_code from blossom_sync_mutation where mutation_id = $1::uuid and user_id = $2",
-        [parsed.data.mutationId, userId],
+        [normalizedMutation.mutationId, userId],
       );
       const row = rows[0];
-      results.push({
-        mutationId: parsed.data.mutationId,
-        status: (row?.status as SyncResult["status"]) ?? "applied",
-        errorCode: row?.error_code ? String(row.error_code) : undefined,
-        ...(row?.result && typeof row.result === "object" ? (row.result as object) : {}),
-      });
+      const stored = row?.result && typeof row.result === "object" ? row.result as Record<string, unknown> : {};
+      const status = String(row?.status ?? "");
+      if (status === "conflict") {
+        results.push({
+          mutationId: normalizedMutation.mutationId,
+          status: "conflict",
+          currentRevision: Number(stored.currentRevision ?? 0),
+          currentSessionJson: String(stored.currentSessionJson ?? "null"),
+        });
+      } else if (status === "rejected") {
+        results.push({
+          mutationId: normalizedMutation.mutationId,
+          status: "rejected",
+          errorCode: row?.error_code ? String(row.error_code) : "mutation-rejected",
+        });
+      } else {
+        results.push({
+          mutationId: normalizedMutation.mutationId,
+          status: "duplicate",
+          revision: typeof stored.revision === "number" ? stored.revision : undefined,
+        });
+      }
       continue;
     }
     if (claimed === "busy") {
@@ -562,18 +592,18 @@ export async function syncBlossomBatch(
     }
     try {
       const result = await Promise.race([
-        applyMutation(userId, parsed.data),
+        applyMutation(userId, normalizedMutation),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("sync-timeout")), SYNC_TIMEOUT_MS),
         ),
       ]);
-      await storeResult(userId, parsed.data.mutationId, result.status, result as unknown as Record<string, unknown>, result.errorCode);
+      await storeResult(userId, normalizedMutation.mutationId, result.status, result as unknown as Record<string, unknown>, "errorCode" in result ? result.errorCode : undefined);
       results.push(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "sync-apply-failed";
-      await storeResult(userId, parsed.data.mutationId, "rejected", {}, message);
+      await storeResult(userId, normalizedMutation.mutationId, "rejected", {}, message);
       results.push({
-        mutationId: parsed.data.mutationId,
+        mutationId: normalizedMutation.mutationId,
         status: "rejected",
         errorCode: message.slice(0, 120),
       });
