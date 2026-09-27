@@ -1776,22 +1776,44 @@ export async function startTandemSession(userId: string, partnerUserId: string) 
   if (!access[0]?.mine || !access[0]?.theirs) {
     throw new BlossomForbiddenError("La connexion tandem n'est pas réciproque.");
   }
+  const profileRows = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const rawLanguageId = String(profileRows[0]?.target_language ?? "en");
+  const languageId = LEARN_LANGUAGES.some((language) => language.id === rawLanguageId)
+    ? rawLanguageId
+    : "en";
+
   const active = await sql.query(
-    `select id from blossom_tandem_session
+    `select id, language_id from blossom_tandem_session
      where ((user_id = $1 and partner_user_id = $2) or (user_id = $2 and partner_user_id = $1))
        and status = 'active'
      order by created_at desc limit 1`,
     [userId, partnerUserId],
   );
-  if (active[0]) return String(active[0].id);
+  if (active[0]) {
+    if (String(active[0].language_id ?? "en") === languageId) {
+      return String(active[0].id);
+    }
+    await sql.query(
+      `update blossom_tandem_session
+       set status = 'cancelled',
+           ended_at = coalesce(ended_at, current_timestamp),
+           duration_seconds = greatest(0, extract(epoch from (coalesce(ended_at, current_timestamp) - started_at))::integer),
+           updated_at = current_timestamp
+       where id = $1::uuid and status = 'active'`,
+      [String(active[0].id)],
+    );
+  }
 
   const sessionId = randomUUID();
   try {
     await sql.query(
       `insert into blossom_tandem_session
-        (id, user_id, partner_user_id, status, started_at)
-       values ($1::uuid, $2, $3, 'active', current_timestamp)`,
-      [sessionId, userId, partnerUserId],
+        (id, user_id, partner_user_id, language_id, status, started_at)
+       values ($1::uuid, $2, $3, $4, 'active', current_timestamp)`,
+      [sessionId, userId, partnerUserId, languageId],
     );
   } catch (error) {
     if ((error as { code?: string })?.code !== "23505") throw error;
@@ -1800,9 +1822,11 @@ export async function startTandemSession(userId: string, partnerUserId: string) 
        from blossom_tandem_session
        where ((user_id = $1 and partner_user_id = $2) or (user_id = $2 and partner_user_id = $1))
          and status = 'active'
+         and language_id = $3
        order by created_at desc
        limit 1`,
-      [userId, partnerUserId],
+
+      [userId, partnerUserId, languageId],
     );
     if (raced[0]) return String(raced[0].id);
     throw new Error("tandem-session-create-race");
@@ -1823,12 +1847,20 @@ export async function logTandemPrompt(
   await enforceRateLimit(userId, "tandem.prompt", 60, 60);
   const sql = await getSql();
   const rows = await sql.query(
-    `select user_id, partner_user_id, status from blossom_tandem_session
+    `select user_id, partner_user_id, language_id, status from blossom_tandem_session
      where id = $1::uuid and (user_id = $2 or partner_user_id = $2) limit 1`,
     [input.sessionId, userId],
   );
   if (!rows[0] || String(rows[0].status) !== "active") {
     throw new BlossomForbiddenError("Cette session tandem n'est plus active.");
+  }
+  const currentProfile = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const currentLanguageId = String(currentProfile[0]?.target_language ?? "en");
+  if (String(rows[0].language_id ?? "en") !== currentLanguageId) {
+    throw new BlossomForbiddenError("La langue de cette session tandem a changé. Recommencez le tandem.");
   }
   const row = await sql.query(
     `insert into blossom_tandem_prompt_log (id, session_id, user_id, language, prompt)
@@ -1847,7 +1879,7 @@ export async function endTandemSession(
   await enforceRateLimit(userId, "tandem.end-session", 10, 60);
   const sql = await getSql();
   const current = await sql.query(
-    `select id, user_id, partner_user_id, status, started_at
+    `select id, user_id, partner_user_id, language_id, status, started_at
      from blossom_tandem_session
      where id = $1::uuid and (user_id = $2 or partner_user_id = $2)
      limit 1`,
@@ -1856,6 +1888,14 @@ export async function endTandemSession(
   if (!current[0]) throw new BlossomForbiddenError("Cette session tandem n'est pas disponible.");
 
   if (status === "completed") {
+    const profileRows = await sql.query(
+      "select target_language from blossom_profile where user_id = $1 limit 1",
+      [userId],
+    );
+    const currentLanguageId = String(profileRows[0]?.target_language ?? "en");
+    if (String(current[0].language_id ?? "en") !== currentLanguageId) {
+      throw new BlossomForbiddenError("La langue de cette session tandem a changé. Recommencez le tandem.");
+    }
     const prompts = await sql.query(
       `select user_id, count(*)::integer as count
        from blossom_tandem_prompt_log
