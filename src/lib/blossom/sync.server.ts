@@ -35,6 +35,23 @@ function objectValue(value: unknown): JsonObject {
   return value as JsonObject;
 }
 
+function activeMissionRunSnapshot(value: JsonValue): JsonObject | null {
+  const session = objectValue(value);
+  const activeRunId = stringValue(session.activeRunId);
+  if (!activeRunId || !Array.isArray(session.runs)) return null;
+  const run = session.runs.find(
+    (candidate) => objectValue(candidate).id === activeRunId,
+  );
+  return run && typeof run === "object" && !Array.isArray(run)
+    ? objectValue(run)
+    : null;
+}
+
+function missionRunHasAttempt(value: JsonObject): boolean {
+  if (!Array.isArray(value.attempts)) return false;
+  return value.attempts.some((candidate) => objectValue(candidate).kind === "mission");
+}
+
 export async function assertCurriculumEvidence(
   userId: string,
   lessonId: string,
@@ -357,12 +374,34 @@ async function applyMutation(
     }
     case "mission.save": {
       const payload = missionPayloadSchema.parse(mutation.payload);
-      const session = payload.session;
+      const session = jsonValue(payload.session);
+      const incomingRun = activeMissionRunSnapshot(session);
+      const isCompleting = Boolean(incomingRun?.completedAt);
+      if (isCompleting) {
+        const sql = await getSql();
+        const currentRows = await sql.query(
+          "select session from blossom_mission_session where user_id = $1 and mission_id = $2 limit 1",
+          [userId, mutation.entityId],
+        );
+        if (!currentRows[0]) {
+          throw new Error("mission-completion-without-prior-session");
+        }
+        const currentSession = jsonValue(currentRows[0].session);
+        const currentRun = activeMissionRunSnapshot(currentSession);
+        if (
+          !currentRun ||
+          currentRun.id !== incomingRun?.id ||
+          currentRun.completedAt ||
+          !missionRunHasAttempt(currentRun)
+        ) {
+          throw new Error("mission-completion-without-prior-attempt");
+        }
+      }
       const expectedRevision = mutation.expectedRevision ?? 0;
       const result = await saveBlossomMissionSession(
         userId,
         mutation.entityId,
-        jsonValue(session),
+        session,
         expectedRevision,
         mutation.mutationId,
       );
