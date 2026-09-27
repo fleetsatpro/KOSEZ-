@@ -22,7 +22,7 @@ import { POINTS, type ActivityEvent, type PronlabAttempt } from "@/lib/blossom/e
 import { buildPhonemeLeaves } from "@/lib/blossom/organism";
 import { setsForLanguage } from "@/lib/blossom/data";
 import { useBlossom } from "@/lib/blossom/store";
-import { isUiLocaleId, isLearnLanguageId } from "@/lib/i18n/locales";
+import { isUiLocaleId, isLearnLanguageId, type LearnLanguageId } from "@/lib/i18n/locales";
 
 const SYNC_INTERVAL_MS = 45_000;
 const MAX_BATCHES_PER_PASS = 8;
