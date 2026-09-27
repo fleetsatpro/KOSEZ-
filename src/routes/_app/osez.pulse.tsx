@@ -8,6 +8,10 @@ import { Page, Surface } from "@/components/app/primitives";
 import { useBlossom } from "@/lib/blossom/store";
 import { influenceFromState, type InfluenceReason } from "@/lib/blossom/influence";
 import { LEARNER_MEMORY, planAllows, setsForLanguage } from "@/lib/blossom/data";
+import {
+  endPulseSessionOnServer,
+  startPulseSessionOnServer,
+} from "@/lib/blossom/domain.api";
 
 export const Route = createFileRoute("/_app/osez/pulse")({
   component: PulsePage,
@@ -47,6 +51,9 @@ function PulsePage() {
   const [elapsed, setElapsed] = useState(0);
   const [offline, setOffline] = useState(false);
   const [ceremonyOpen, setCeremonyOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [serverSessionId, setServerSessionId] = useState<string | null>(null);
+  const [serverTimerAvailable, setServerTimerAvailable] = useState(true);
   const timer = useRef<number | null>(null);
   const startedAt = useRef<number>(0);
   const mineralsBefore = useRef(minerals);
@@ -57,24 +64,67 @@ function PulsePage() {
     };
   }, []);
 
-  function start() {
+  async function start() {
+    if (closing) return;
+    setClosing(true);
+    let sessionId: string | null = null;
+    let timerAvailable = true;
+    try {
+      const session = await startPulseSessionOnServer({
+        data: { dareId: dare?.id ?? "pulse-local" },
+      });
+      sessionId = session.id;
+      setServerSessionId(session.id);
+      setServerTimerAvailable(true);
+    } catch {
+      timerAvailable = false;
+      setServerSessionId(null);
+      setServerTimerAvailable(false);
+    }
     mineralsBefore.current = minerals;
+    setClosing(false);
     setPhase("recording");
     setElapsed(0);
     startedAt.current = Date.now();
+    if (!sessionId) {
+      const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
+      setOffline(isOffline);
+    }
+    if (!timerAvailable) {
+      // Keep the exercise usable when the API is unavailable, but do not
+      // create a reward-bearing completion event without server evidence.
+      return;
+    }
     timer.current = window.setInterval(() => {
       setElapsed(Math.floor((Date.now() - startedAt.current) / 1000));
     }, 250);
   }
 
-  function finish() {
+  async function finish() {
     if (timer.current) window.clearInterval(timer.current);
-    const seconds = Math.max(1, Math.floor((Date.now() - startedAt.current) / 1000));
-    setElapsed(seconds);
-    setPhase("done");
+    if (closing) return;
+    setClosing(true);
+    let authoritativeSeconds: number | null = null;
+    if (serverSessionId) {
+      try {
+        const closure = await endPulseSessionOnServer({
+          data: { sessionId: serverSessionId, status: "completed" },
+        });
+        authoritativeSeconds = closure.durationSeconds;
+      } catch {
+        setClosing(false);
+        return;
+      }
+    }
     const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
     setOffline(isOffline);
-    completePulse(dare?.id ?? "pulse-local", seconds, isOffline);
+    const localSeconds = Math.max(1, Math.floor((Date.now() - startedAt.current) / 1000));
+    setElapsed(authoritativeSeconds ?? localSeconds);
+    setPhase("done");
+    if (authoritativeSeconds !== null) {
+      completePulse(dare?.id ?? "pulse-local", authoritativeSeconds, false);
+    }
+    setClosing(false);
     setCeremonyOpen(true);
   }
 
@@ -104,8 +154,8 @@ function PulsePage() {
 
         {phase === "ready" ? (
           <div className="mt-8">
-            <Button className="w-full" onClick={start}>
-              Commencer
+            <Button className="w-full" disabled={closing} onClick={() => void start()}>
+              {closing ? "Ouverture…" : "Commencer"}
             </Button>
           </div>
         ) : null}
@@ -114,7 +164,7 @@ function PulsePage() {
           <div className="mt-8 space-y-4">
             <p className="font-display text-4xl tabular-nums text-primary">{elapsed}s</p>
             <Button className="w-full" variant="secondary" onClick={finish}>
-              Terminer
+              {closing ? "Clôture…" : "Terminer"}
             </Button>
           </div>
         ) : null}
