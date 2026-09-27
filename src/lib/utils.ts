@@ -30,3 +30,13 @@ export function todayLabel(now = new Date()) {
     month: "long",
   }).format(now);
 }
+
+
+/** K’Osez centre event clock: Saint-Pierre, La Réunion (UTC+04:00). */
+export const KOSEZ_EVENT_UTC_OFFSET = "+04:00";
+
+export function parseKosezEventDate(date: string, time: string): Date {
+  const value = new Date(`${date}T${time}:00${KOSEZ_EVENT_UTC_OFFSET}`);
+  if (Number.isNaN(value.getTime())) throw new Error("invalid-kosez-event-date");
+  return value;
+}
