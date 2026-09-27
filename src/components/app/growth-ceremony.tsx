@@ -111,7 +111,6 @@ export function GrowthCeremony({
   return (
     <div
       role="dialog"
-      role="dialog"
       aria-modal="true"
       aria-labelledby="growth-ceremony-title"
       className={cn(
