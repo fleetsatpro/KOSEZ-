@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LEARNER_MEMORY, planAllows, setsForLanguage } from "@/lib/blossom/data";
 import { influenceFromState } from "@/lib/blossom/influence";
-import { hasSource } from "@/lib/blossom/engine";
+import { activityBelongsToLanguage, hasSource } from "@/lib/blossom/engine";
 import {
   courageDaysFromLog,
   courageRibbon,
@@ -75,6 +75,10 @@ function OsezHub() {
   const missionSessions = useBlossom((s) => s.missionSessions);
   const journey = useJourney();
   const memoryOn = planAllows(plan, "memory");
+  const scopedLog = useMemo(
+    () => log.filter((event) => activityBelongsToLanguage(event, languageId)),
+    [log, languageId],
+  );
   const baseDare = todaysPulseDare();
   const influence = influenceFromState({
     activityLog: log,
@@ -89,12 +93,16 @@ function OsezHub() {
   });
   const dare = influence.pulse.dareOverride ?? baseDare;
   const pulseOverridden = Boolean(influence.pulse.dareOverride);
-  const courageDays = courageDaysFromLog(log);
+  const courageDays = courageDaysFromLog(scopedLog);
   const cells = courageRibbon(courageDays);
   const spoken = cells.filter(Boolean).length;
-  const minerals = useMemo(() => computeMinerals(log), [log]);
+  const minerals = useMemo(() => computeMinerals(scopedLog), [scopedLog]);
   const nextGesture = causalNextGesture(minerals);
-  const recentGrowth = [...growthEvents]
+  const recentGrowth = growthEvents
+    .filter((event) => {
+      const tagged = event.languageId;
+      return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+    })
     .sort((a, b) => b.at.localeCompare(a.at))
     .slice(0, 3);
   const particleIntensity = Math.min(1, 0.35 + minerals.parole / 100);
@@ -119,7 +127,7 @@ function OsezHub() {
     [learner.level, learner.firstName, learner.interests, memoryOn, influence.speak],
   );
 
-  const roomsDone = rooms.filter((r) => hasSource(log, `speak-${r.id}`)).length;
+  const roomsDone = rooms.filter((r) => hasSource(scopedLog, `speak-${r.id}`)).length;
 
   function launchTopic(raw?: string) {
     const t = (raw ?? topic).trim();
@@ -435,7 +443,7 @@ function OsezHub() {
                   <Link
                     key={scene.id}
                     to="/osez/$id"
-                    params={{ id: scene.place.archetype }}
+                    params={{ id: scene.id }}
                     className="group overflow-hidden rounded-2xl border border-border/50 bg-surface shadow-[var(--shadow-border)] magnetic-surface"
                   >
                     <div className="relative aspect-[16/10] overflow-hidden">
