@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { TANDEM_TOTAL_DURATION_SECONDS, TANDEM_CONTRACT } from "./tandem-contract";
 import { normalizeMutationTime } from "./sync-causality";
-import { IMMERSION, PRONLAB_SETS, setsForLanguage } from "./data";
+import { IMMERSION, PRONLAB_SETS, GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure, setsForLanguage } from "./data";
 import { LEARN_LANGUAGES } from "@/lib/i18n/locales";
 import { fullMissionBank } from "./mission-today";
 import type { JsonObject } from "./backend.server";
@@ -1317,6 +1317,73 @@ export async function saveLearningSubmission(
 ) {
   await enforceRateLimit(userId, "learning.submission", 60, 60);
   const sql = await getSql();
+  const profileRows = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const languageId = String(profileRows[0]?.target_language ?? "en");
+
+  if (input.kind === "grammar") {
+    const task = GRAMMAR_TASKS.find((item) => item.id === input.taskId);
+    if (!task) throw new Error("unknown-grammar-task");
+    const correct = input.content === task.answer;
+    const expectedChecks = [correct ? "correct" : "incorrect"];
+    if (JSON.stringify(input.checks ?? []) !== JSON.stringify(expectedChecks)) {
+      throw new Error("forged-grammar-checks");
+    }
+    input = {
+      ...input,
+      checks: expectedChecks,
+      result: { ...(input.result ?? {}), correct, target: task.target, languageId },
+    };
+  } else if (input.kind === "listening") {
+    const task = LISTENING_TASKS.find((item) => item.id === input.taskId);
+    if (!task) throw new Error("unknown-listening-task");
+    const correct = input.content === task.answer;
+    const expectedChecks = [correct ? "correct" : "incorrect"];
+    if (JSON.stringify(input.checks ?? []) !== JSON.stringify(expectedChecks)) {
+      throw new Error("forged-listening-checks");
+    }
+    input = {
+      ...input,
+      checks: expectedChecks,
+      result: { ...(input.result ?? {}), correct, level: task.level, languageId },
+    };
+  } else if (input.kind === "writing") {
+    const prompt = WRITING_PROMPTS.find((item) => item.id === input.taskId);
+    if (!prompt) throw new Error("unknown-writing-task");
+    const evaluation = evaluateWritingStructure(prompt, input.content);
+    if (JSON.stringify(input.checks ?? []) !== JSON.stringify(evaluation.passed)) {
+      throw new Error("forged-writing-checks");
+    }
+    input = {
+      ...input,
+      checks: evaluation.passed,
+      result: {
+        ...(input.result ?? {}),
+        checkCount: evaluation.passed.length,
+        checkTotal: evaluation.total,
+        structureScore: evaluation.score,
+        method: evaluation.method,
+        languageId,
+      },
+    };
+  } else if (input.kind === "review") {
+    const expected = input.content === "correct" ? "correct" : input.content === "again" ? "again" : null;
+    if (!expected || JSON.stringify(input.checks ?? []) !== JSON.stringify([expected])) {
+      throw new Error("forged-review-checks");
+    }
+    input = {
+      ...input,
+      checks: [expected],
+      result: {
+        ...(input.result ?? {}),
+        correct: input.content === "correct",
+        languageId,
+      },
+    };
+  }
+
   const id = input.id ?? randomUUID();
   const rows = await sql.query(
     "insert into blossom_learning_submission (id, user_id, task_id, kind, content, checks, result) values ($1::uuid, $2, $3, $4, $5, $6::jsonb, $7::jsonb) on conflict (id) do update set content = excluded.content, checks = excluded.checks, result = excluded.result, updated_at = current_timestamp where blossom_learning_submission.user_id = excluded.user_id returning id, task_id, kind, content, checks, result, created_at, updated_at",
