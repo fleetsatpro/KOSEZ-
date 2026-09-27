@@ -1406,6 +1406,7 @@ export async function updateAdminBooking(
     providerReference?: string | null;
   },
 ): Promise<AdminBookingUpdateResult> {
+  await enforceRateLimit(userId, "admin.booking-update", 60, 60);
   await assertAdmin(userId);
   const sql = await getSql();
   const currentRows = await sql.query(
