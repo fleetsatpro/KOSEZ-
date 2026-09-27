@@ -191,7 +191,7 @@ export function createMutation(
 ): SyncMutation {
   return {
     ...input,
-    ...(activeOwnerId ? { ownerUserId: ownerId } : {}),
+    ...(activeOwnerId ? { ownerUserId: activeOwnerId } : {}),
     mutationId: randomUuid(),
     deviceId: getDeviceId(),
     // Causal commands may be emitted in the same millisecond. Persist a monotone
@@ -252,7 +252,7 @@ export async function listPendingMutations(): Promise<StoredMutation[]> {
         .filter(
           (row) =>
             row.state === "pending" &&
-            row.ownerUserId === ownerId,
+            row.ownerUserId === activeOwnerId,
         )
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     } catch {
