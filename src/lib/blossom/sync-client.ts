@@ -9,6 +9,33 @@ const DEVICE_KEY = "kosez-blossom-device-id";
 const CHANGE_EVENT = "kosez:sync-needed";
 let activeOwnerId: string | null = null;
 const enqueueQueue = createSerialQueue();
+const MUTATION_CLOCK_KEY = "kosez-blossom-mutation-clock-v1";
+let lastMutationCreatedAtMs = 0;
+
+function nextMutationCreatedAt(): string {
+  const now = Date.now();
+  let persisted = 0;
+  if (typeof window !== "undefined") {
+    try {
+      persisted = Number(window.localStorage.getItem(MUTATION_CLOCK_KEY) ?? 0);
+    } catch {
+      persisted = 0;
+    }
+  }
+
+  const next = Math.max(now, persisted + 1, lastMutationCreatedAtMs + 1);
+  lastMutationCreatedAtMs = next;
+
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(MUTATION_CLOCK_KEY, String(next));
+    } catch {
+      // Monotonic in-memory ordering still protects the current page.
+    }
+  }
+
+  return new Date(next).toISOString();
+}
 
 export type StoredMutation = SyncMutation & {
   state: "pending" | "conflict";
@@ -114,7 +141,9 @@ export function createMutation(
     ...(activeOwnerId ? { ownerUserId: activeOwnerId } : {}),
     mutationId: randomUuid(),
     deviceId: getDeviceId(),
-    createdAt: new Date().toISOString(),
+    // Causal commands may be emitted in the same millisecond. Persist a monotone
+    // clock so IndexedDB/localStorage ordering cannot invert source and evidence.
+    createdAt: nextMutationCreatedAt(),
   };
 }
 
