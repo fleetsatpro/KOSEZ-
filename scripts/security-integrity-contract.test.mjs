@@ -9,6 +9,7 @@ const bootstrap = read("src/lib/auth/admin-bootstrap.ts");
 const gate = read("src/lib/auth/gate-session.server.ts");
 const auth = read("src/lib/auth/server.ts");
 const rateLimit = read("src/lib/blossom/rate-limit.server.ts");
+const preview = read("src/lib/auth/preview.ts");
 
 test("activity mutations are enum-gated and pass through server integrity checks", () => {
   assert.match(sync, /eventType: z\.enum\(ACTIVITY_EVENT_TYPES\)/);
@@ -41,6 +42,8 @@ test("Better Auth uses persistent rate limiting and stronger password floor", ()
 test("production admin bootstrap fails closed and session material is never logged", () => {
   assert.match(bootstrap, /if \(hasRealDatabase\(\)\) return \[\];/);
   assert.doesNotMatch(gate, /cookiePreview/);
+  assert.match(preview, /GROK_PREVIEW_CLIENT_SECRET/);
+  assert.doesNotMatch(preview, /PREVIEW_CLIENT_SECRET\\s*=\\s*["\']/);
 });
 
 test("the custom rate-limit error is explicit 429", () => {
