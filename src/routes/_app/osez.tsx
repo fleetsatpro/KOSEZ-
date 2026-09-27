@@ -81,7 +81,7 @@ function OsezHub() {
   );
   const baseDare = todaysPulseDare();
   const influence = influenceFromState({
-    activityLog: log,
+    activityLog: scopedLog,
     pronlabAttempts: attempts,
     growthEvents,
     phonemeLeaves,
