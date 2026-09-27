@@ -191,7 +191,7 @@ export function createMutation(
 ): SyncMutation {
   return {
     ...input,
-    ...(activeOwnerId ? { ownerUserId: activeOwnerId } : {}),
+    ...(activeOwnerId ? { ownerUserId: ownerId } : {}),
     mutationId: randomUuid(),
     deviceId: getDeviceId(),
     // Causal commands may be emitted in the same millisecond. Persist a monotone
@@ -230,7 +230,8 @@ export function enqueueMutation(mutation: SyncMutation): Promise<void> {
 }
 
 export async function listPendingMutations(): Promise<StoredMutation[]> {
-  if (!activeOwnerId) return [];
+  const ownerId = activeOwnerId;
+  if (!ownerId) return [];
 
   const canClaimOwnerless = (row: StoredMutation): boolean =>
     row.state === "pending" &&
@@ -243,15 +244,15 @@ export async function listPendingMutations(): Promise<StoredMutation[]> {
       const rows = await txRequest<StoredMutation[]>("readonly", (store) => store.getAll());
       const claimable = rows.filter(canClaimOwnerless);
       for (const row of claimable) {
-        row.ownerUserId = activeOwnerId;
+        row.ownerUserId = ownerId;
         await txRequest("readwrite", (store) => store.put(row));
       }
       return rows
-        .map((row) => (canClaimOwnerless(row) ? { ...row, ownerUserId: activeOwnerId } : row))
+        .map((row) => (canClaimOwnerless(row) ? { ...row, ownerUserId: ownerId } : row))
         .filter(
           (row) =>
             row.state === "pending" &&
-            row.ownerUserId === activeOwnerId,
+            row.ownerUserId === ownerId,
         )
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     } catch {
@@ -264,7 +265,7 @@ export async function listPendingMutations(): Promise<StoredMutation[]> {
   const claimed = fallback.map((row) => {
     if (canClaimOwnerless(row)) {
       changed = true;
-      return { ...row, ownerUserId: activeOwnerId };
+      return { ...row, ownerUserId: ownerId };
     }
     return row;
   });
@@ -273,7 +274,7 @@ export async function listPendingMutations(): Promise<StoredMutation[]> {
     .filter(
       (row) =>
         row.state === "pending" &&
-        row.ownerUserId === activeOwnerId,
+        row.ownerUserId === ownerId,
     )
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
@@ -327,7 +328,7 @@ export async function mutationStatusCounts(): Promise<{
     try {
       const rows = await txRequest<StoredMutation[]>("readonly", (store) => store.getAll());
       return rows
-        .filter((row) => Boolean(activeOwnerId) && row.ownerUserId === activeOwnerId)
+        .filter((row) => Boolean(activeOwnerId) && row.ownerUserId === ownerId)
         .reduce(
           (acc, row) => {
             if (row.state === "pending") acc.pending += 1;
@@ -342,7 +343,7 @@ export async function mutationStatusCounts(): Promise<{
   }
 
   return readFallback()
-    .filter((row) => Boolean(activeOwnerId) && row.ownerUserId === activeOwnerId)
+    .filter((row) => Boolean(activeOwnerId) && row.ownerUserId === ownerId)
     .reduce(
       (acc, row) => {
         if (row.state === "pending") acc.pending += 1;
