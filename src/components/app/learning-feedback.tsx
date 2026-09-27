@@ -14,16 +14,19 @@ export function LearningFeedbackPanel({ learnerUserId }: { learnerUserId: string
   const [items, setItems] = useState<LearningFeedbackBundle[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [busy, setBusy] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(false);
     try {
       const rows = await getLearningFeedbackBundleOnServer({ data: { learnerUserId, limit: 18 } });
       setItems(rows);
       setDrafts(Object.fromEntries(rows.map((row) => [row.submissionId, row.feedback?.body ?? ""])));
     } catch {
       setItems([]);
+      setError(true);
       toast("Les productions pédagogiques ne sont pas disponibles.");
     } finally {
       setLoading(false);
@@ -67,6 +70,13 @@ export function LearningFeedbackPanel({ learnerUserId }: { learnerUserId: string
       {loading ? (
         <div className="mt-5 flex items-center gap-2 text-sm text-muted">
           <LoaderCircle className="size-4 animate-spin" /> Chargement…
+        </div>
+      ) : error ? (
+        <div className="mt-5">
+          <p className="text-sm text-muted">Les productions pédagogiques n’ont pas pu être chargées.</p>
+          <Button className="mt-3" size="sm" variant="secondary" onClick={() => void load()}>
+            Réessayer
+          </Button>
         </div>
       ) : items.length === 0 ? (
         <p className="mt-5 text-sm text-muted">Aucune production à commenter.</p>
