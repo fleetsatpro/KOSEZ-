@@ -43,6 +43,7 @@ function LibraryDocPage() {
   }, [curriculumLessonId]);
   const readingEndRef = useRef<HTMLDivElement | null>(null);
   const completionRequestedRef = useRef(false);
+  const readingEligibleAtRef = useRef<number>(Number.POSITIVE_INFINITY);
   const activityLog = useBlossom((s) => s.activityLog);
   const languageId = useBlossom((s) => s.languageId);
   const vocab = useBlossom((s) => s.vocabulary);
@@ -69,13 +70,21 @@ function LibraryDocPage() {
 
   const recordReadingCompletion = useCallback(() => {
     if (!docId || readingCompleted || completionRequestedRef.current) return;
+    const waitMs = readingEligibleAtRef.current - Date.now();
+    if (waitMs > 0) {
+      window.setTimeout(() => recordReadingCompletion(), waitMs + 1500);
+      return;
+    }
     completionRequestedRef.current = true;
     completeLibraryReading(docId);
   }, [completeLibraryReading, docId, readingCompleted]);
 
   useEffect(() => {
     completionRequestedRef.current = false;
-  }, [docId]);
+    readingEligibleAtRef.current = docId && doc
+      ? Date.now() + (Math.max(30, doc.minutes * 20) + 2) * 1000
+      : Number.POSITIVE_INFINITY;
+  }, [docId, doc]);
 
   useEffect(() => {
     if (docId) startLibraryReading(docId);
