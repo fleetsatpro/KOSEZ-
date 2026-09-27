@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
+import { enforceRateLimit } from "./rate-limit.server";
 import { BlossomForbiddenError, createNotification, writeAuditEvent } from "./domain.server";
 import { conversationIdForRelationship } from "./communication";
 
@@ -227,6 +228,7 @@ export async function sendMessage(
   userId: string,
   input: { conversationId: string; body: string; clientMessageId?: string | null },
 ): Promise<ConversationMessage> {
+  await enforceRateLimit(userId, "communication.send", 30, 60);
   const access = await assertConversationAccess(userId, input.conversationId);
   const body = input.body.trim();
   if (body.length < 1 || body.length > 4000) {
@@ -374,6 +376,7 @@ export async function reportMessage(
   if (reason.length < 1 || reason.length > 500) {
     throw new BlossomForbiddenError("Le motif du signalement est requis.");
   }
+  await enforceRateLimit(userId, "communication.report", 10, 86400);
   const sql = await getSql();
   const message = await sql.query(
     "select 1 from blossom_message where id = $1::uuid and conversation_id = $2::uuid limit 1",
