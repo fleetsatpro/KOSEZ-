@@ -193,6 +193,8 @@ type AppState = {
   setLanguage: (id: LearnLanguageId) => void;
   setUiLocale: (id: UiLocaleId) => void;
   completePulse: (dareId: string, seconds: number, offline: boolean) => void;
+  startLibraryReading: (documentId: string) => void;
+  completeLibraryReading: (documentId: string) => void;
   markLeoLetterRead: (id: string) => void;
   refreshOrganism: () => void;
   resetJourney: () => void;
@@ -700,6 +702,26 @@ export const useBlossom = create<AppState>()(
       },
       completePulse: (dareId, seconds, offline) => {
         get().completeActivity("PULSE_COMPLETED", dareId, offline ? "offline" : "online", { seconds });
+      },
+      startLibraryReading: (documentId) => {
+        if (!documentId.trim()) return;
+        void enqueueMutation(
+          createMutation({
+            operation: "library.start",
+            entityId: documentId,
+            payload: {},
+          }),
+        );
+      },
+      completeLibraryReading: (documentId) => {
+        if (!documentId.trim()) return;
+        void enqueueMutation(
+          createMutation({
+            operation: "library.complete",
+            entityId: documentId,
+            payload: {},
+          }),
+        );
       },
       markLeoLetterRead: (id) => {
         set({ leoLetters: get().leoLetters.map((l) => (l.id === id ? { ...l, read: true } : l)) });
