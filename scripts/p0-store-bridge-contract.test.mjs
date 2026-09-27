@@ -10,6 +10,7 @@ const syncServerPath = join(root, "src/lib/blossom/sync.server.ts");
 const syncClientPath = join(root, "src/lib/blossom/sync-client.ts");
 const libraryRoutePath = join(root, "src/routes/_app/library.$id.tsx");
 const tandemMigrationPath = join(root, "migrations/0033_tandem_language_integrity.sql");
+const domainServerPath = join(root, "src/lib/blossom/domain.server.ts");
 
 let store = "";
 let bridge = "";
@@ -17,6 +18,7 @@ let syncServer = "";
 let syncClient = "";
 let libraryRoute = "";
 let tandemMigration = "";
+let domainServer = "";
 
 test.before(async () => {
   [store, bridge, syncServer, syncClient, libraryRoute, tandemMigration] = await Promise.all([
@@ -26,6 +28,7 @@ test.before(async () => {
     readFile(syncClientPath, "utf8"),
     readFile(libraryRoutePath, "utf8"),
     readFile(tandemMigrationPath, "utf8"),
+    readFile(domainServerPath, "utf8"),
   ]);
 });
 
@@ -91,4 +94,5 @@ test("P0 Tandem session evidence is language-bound", () => {
   assert.ok(syncServer.includes("language_id = $3"));
   assert.ok(syncServer.includes("currentLanguageId"));
   assert.ok(store.includes("previousStatus"));
+  assert.ok(domainServer.includes("duration positive"));
 });
