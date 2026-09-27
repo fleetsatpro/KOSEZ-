@@ -307,7 +307,11 @@ export async function assertActivityAppend(
   if (typeof claimedLanguageId !== "string" || claimedLanguageId !== expectedLanguageId) {
     throw new Error("activity-language-mismatch");
   }
-  const safeMetadata = { ...metadata, languageId: expectedLanguageId };
+  const safeMetadata = {
+    ...metadata,
+    languageId: expectedLanguageId,
+    syncState: "confirmed" as const,
+  };
 
   if (eventType === "CURRICULUM_EVIDENCE_RECORDED") {
     await assertCurriculumEvidence(userId, sid || stringValue(metadata.lessonId), metadata);
