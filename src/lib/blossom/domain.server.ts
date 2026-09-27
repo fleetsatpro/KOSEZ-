@@ -726,22 +726,30 @@ export async function saveVocabulary(
   },
 ) {
   const sql = await getSql();
+  const metadata = input.metadata ?? {};
+  const languageId =
+    typeof metadata.languageId === "string" ? metadata.languageId : "en";
+  const allowedLanguages = new Set(["en", "fr", "es", "pt", "it", "de", "cr", "lsf"]);
+  if (!allowedLanguages.has(languageId)) {
+    throw new BlossomForbiddenError("Cette langue cible n'est pas prise en charge.");
+  }
   const causalTime = normalizeMutationTime(input.mutationCreatedAt);
   const rows = await sql.query(
-    "insert into blossom_vocabulary (user_id, word, gloss, metadata, updated_at) values ($1, $2, $3, $4::jsonb, coalesce($5::timestamptz, current_timestamp)) on conflict (user_id, word) do update set gloss = excluded.gloss, metadata = excluded.metadata, updated_at = excluded.updated_at where blossom_vocabulary.updated_at <= excluded.updated_at returning word, gloss, metadata, first_saved_at, updated_at",
+    "insert into blossom_vocabulary (user_id, language_id, word, gloss, metadata, updated_at) values ($1, $2, $3, $4, $5::jsonb, coalesce($6::timestamptz, current_timestamp)) on conflict (user_id, language_id, word) do update set gloss = excluded.gloss, metadata = excluded.metadata, updated_at = excluded.updated_at where blossom_vocabulary.updated_at <= excluded.updated_at returning word, gloss, metadata, language_id, first_saved_at, updated_at",
     [
       userId,
+      languageId,
       input.word.toLowerCase(),
       input.gloss,
-      JSON.stringify(input.metadata ?? {}),
+      JSON.stringify({ ...metadata, languageId }),
       causalTime,
     ],
   );
   if (rows[0]) return rows[0];
 
   const current = await sql.query(
-    "select word, gloss, metadata, first_saved_at, updated_at from blossom_vocabulary where user_id = $1 and word = $2",
-    [userId, input.word.toLowerCase()],
+    "select word, gloss, metadata, language_id, first_saved_at, updated_at from blossom_vocabulary where user_id = $1 and language_id = $2 and word = $3",
+    [userId, languageId, input.word.toLowerCase()],
   );
   if (!current[0]) throw new Error("vocabulary-write-failed");
   return current[0];
