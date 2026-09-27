@@ -26,13 +26,24 @@ export type ActivityType =
   | "CURRICULUM_EVIDENCE_RECORDED"
   | "LIBRARY_COMPLETED";
 
+export type ActivityMetadata = Record<string, string | number | boolean>;
+
 export type ActivityEvent = {
   id: string;
   type: ActivityType;
   createdAt: string;
   sourceId?: string;
   note?: string;
+  metadata?: ActivityMetadata;
 };
+
+export function activityBelongsToLanguage(
+  event: ActivityEvent,
+  languageId: string,
+): boolean {
+  const tagged = event.metadata?.languageId;
+  return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+}
 
 export const POINTS: Record<ActivityType, number> = {
   MISSION_COMPLETED: 4,
