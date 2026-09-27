@@ -1637,12 +1637,27 @@ export async function startTandemSession(userId: string, partnerUserId: string) 
   if (active[0]) return String(active[0].id);
 
   const sessionId = randomUUID();
-  await sql.query(
-    `insert into blossom_tandem_session
-      (id, user_id, partner_user_id, status, started_at)
-     values ($1::uuid, $2, $3, 'active', current_timestamp)`,
-    [sessionId, userId, partnerUserId],
-  );
+  try {
+    await sql.query(
+      `insert into blossom_tandem_session
+        (id, user_id, partner_user_id, status, started_at)
+       values ($1::uuid, $2, $3, 'active', current_timestamp)`,
+      [sessionId, userId, partnerUserId],
+    );
+  } catch (error) {
+    if ((error as { code?: string })?.code !== "23505") throw error;
+    const raced = await sql.query(
+      `select id
+       from blossom_tandem_session
+       where ((user_id = $1 and partner_user_id = $2) or (user_id = $2 and partner_user_id = $1))
+         and status = 'active'
+       order by created_at desc
+       limit 1`,
+      [userId, partnerUserId],
+    );
+    if (raced[0]) return String(raced[0].id);
+    throw new Error("tandem-session-create-race");
+  }
   await writeAuditEvent(userId, {
     subjectUserId: partnerUserId,
     action: "tandem.session.started",
@@ -1714,10 +1729,21 @@ export async function endTandemSession(
 
   const rows = await sql.query(
     `update blossom_tandem_session
-     set status = $2, ended_at = coalesce(ended_at, current_timestamp), updated_at = current_timestamp
+     set status = $2,
+         ended_at = coalesce(ended_at, current_timestamp),
+         duration_seconds = greatest(
+           0,
+           extract(
+             epoch from (
+               coalesce(ended_at, current_timestamp)
+               - started_at
+             )
+           )::integer
+         ),
+         updated_at = current_timestamp
      where id = $1::uuid and (user_id = $3 or partner_user_id = $3)
        and status = 'active'
-     returning id, status, ended_at`,
+     returning id, status, ended_at, duration_seconds`,
     [sessionId, status, userId],
   );
   if (!rows[0]) throw new BlossomForbiddenError("Cette session tandem n'est plus active.");
@@ -1726,5 +1752,10 @@ export async function endTandemSession(
     resourceType: "tandem_session",
     resourceId: sessionId,
   });
-  return { id: String(rows[0].id), status: String(rows[0].status), endedAt: new Date(String(rows[0].ended_at)).toISOString() };
+  return {
+    id: String(rows[0].id),
+    status: String(rows[0].status),
+    endedAt: new Date(String(rows[0].ended_at)).toISOString(),
+    durationSeconds: Math.max(0, Number(rows[0].duration_seconds ?? 0)),
+  };
 }
