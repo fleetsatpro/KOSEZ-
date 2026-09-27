@@ -514,9 +514,9 @@ export const useBlossom = create<AppState>()(
         set({ pronlabAttempts: nextAttempts, phonemeLeaves });
         track("pronlab_attempted", { itemId, assessment, score: scoreFromEvidence, seconds: safeSeconds });
         const after = summarisePronlabItem(itemId, nextAttempts);
-        if (!before.verifiedMastered && after.verifiedMastered) {
-          get().completeActivity("PRONLAB_MASTERY", `mastery-${itemId}`, `Maîtrise vérifiée · ${item.focus || item.phrase}`);
-        } else if (before.attemptCount === 0 && after.attemptCount === 1) {
+        // Mastery is now server-authoritative. Capture-only practice can still
+        // shape the local learner state, but it cannot mint a reward event.
+        if (before.attemptCount === 0 && after.attemptCount === 1) {
           get().completeActivity("PRONLAB_COMPLETED", `pron-touch-${itemId}`, `Premier passage · ${item.focus || item.phrase}`);
         }
         const setDef = PRONLAB_SETS.find((s) => s.items.some((i) => i.id === itemId));
