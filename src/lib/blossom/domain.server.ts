@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
 import { IMMERSION, PRONLAB_SETS, setsForLanguage } from "./data";
+import { isLearnLanguageId } from "@/lib/i18n/locales";
 import type { JsonObject } from "./backend.server";
 
 import { getPublishedContent } from "./content.server";
@@ -1772,6 +1773,7 @@ export async function startPulseSession(userId: string, dareId: string) {
   if (!validPulseDareId(normalizedDareId)) {
     throw new BlossomForbiddenError("Cette impulsion n\u0027est pas disponible.");
   }
+  const sql = await getSql();
   if (normalizedDareId.startsWith("pulse-struggle-")) {
     const itemId = normalizedDareId.slice("pulse-struggle-".length);
     const profile = await sql.query(
@@ -1788,7 +1790,6 @@ export async function startPulseSession(userId: string, dareId: string) {
     }
   }
 
-  const sql = await getSql();
   const active = await sql.query(
     `select id, dare_id
      from blossom_pulse_session
