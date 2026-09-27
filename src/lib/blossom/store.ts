@@ -513,6 +513,7 @@ export const useBlossom = create<AppState>()(
             : 0;
         const metadata = {
           ...(evidenceMetadata ?? {}),
+          languageId: get().languageId,
           assessment,
           provider: (evidenceMetadata?.provider as string | undefined) ?? (evidenceMetadata?.providerId as string | undefined) ?? "speech-evidence",
         };
