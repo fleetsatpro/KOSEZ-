@@ -115,6 +115,7 @@ test("learning profile isolates Pron'Lab and vocabulary by active language", () 
       score: 0,
       seconds: 4,
       createdAt: "2026-09-22T10:00:00.000Z",
+      metadata: {},
     },
     {
       id: "es-1",
@@ -122,6 +123,7 @@ test("learning profile isolates Pron'Lab and vocabulary by active language", () 
       score: 0,
       seconds: 4,
       createdAt: "2026-09-22T11:00:00.000Z",
+      metadata: {},
     },
   ];
   const vocabulary = [
