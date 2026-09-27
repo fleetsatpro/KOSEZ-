@@ -104,7 +104,7 @@ export function LearnDashboard() {
   const nextGesture = causalNextGesture(minerals);
   const atelierGrowth = growthEvents.filter((event) => event.mineral === "atelier").slice(0, 3);
   const skillProfile = buildSkillProfile(log, attempts, languageVocabulary, languageId);
-  const reviewPlan = buildReviewPlan(submissions, attempts, vocab, new Date().toISOString(), languageId);
+  const reviewPlan = buildReviewPlan(submissions, attempts, languageVocabulary, new Date().toISOString(), languageId);
   const intelligence = buildLearningIntelligence(
     log,
     attempts,
@@ -117,7 +117,7 @@ export function LearnDashboard() {
   const weeklyBrief = buildWeeklyLearningBrief(
     log,
     attempts,
-    vocab,
+    languageVocabulary,
     submissions,
     new Date().toISOString(),
     languageId,
@@ -178,7 +178,7 @@ export function LearnDashboard() {
               {journey.points} points
             </span>
             <span className="rounded-full bg-surface-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
-              {languageVocabulary.length} mot{vocab.length === 1 ? "" : "s"} gardé{vocab.length === 1 ? "" : "s"}
+              {languageVocabulary.length} mot{languageVocabulary.length === 1 ? "" : "s"} gardé{languageVocabulary.length === 1 ? "" : "s"}
             </span>
           </div>
         </div>
@@ -525,7 +525,7 @@ export function LearnDashboard() {
           <Eyebrow>Vocabulaire vivant</Eyebrow>
           <div className="mt-3 flex items-end justify-between gap-4">
             <div>
-              <p className="font-display text-4xl leading-none tabular-nums">{vocab.length}</p>
+              <p className="font-display text-4xl leading-none tabular-nums">{languageVocabulary.length}</p>
               <p className="mt-1 text-xs text-muted">mots gardés pour revenir plus tard</p>
             </div>
             <BookOpen className="size-5 text-primary" strokeWidth={1.7} />
