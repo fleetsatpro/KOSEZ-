@@ -377,7 +377,7 @@ export function buildLearningIntelligence(
   const activeDays30 = uniqueDays(dates, now, 30);
   const momentum = Math.round(Math.min(100, (activeDays14 / 14) * 100));
   const breadth = Math.round((domains.filter((domain) => domain.evidenceCount > 0).length / Math.max(1, domains.length)) * 100);
-  const friction = submissions.filter(
+  const friction = scopedSubmissions.filter(
     (submission) => submission.kind === "review" && (
       submission.result.correct === false ||
       submission.checks.includes("again")
