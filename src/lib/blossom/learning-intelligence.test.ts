@@ -145,3 +145,39 @@ test("linked curriculum evidence is direct and objective-scoped", () => {
   assert.ok((result.domains.find((item) => item.domainId === "grammar")?.directEvidenceCount ?? 0) > 0);
   assert.equal(result.domains.find((item) => item.domainId === "speaking")?.evidenceCount, 0);
 });
+
+
+test("learning intelligence ignores review friction from another language", () => {
+  const esReview: LearningSubmission = {
+    id: "es-review",
+    taskId: "vocab:recommend",
+    kind: "review",
+    content: "again",
+    checks: ["again"],
+    result: { correct: false, languageId: "es" },
+    createdAt: "2026-09-21T10:00:00.000Z",
+    updatedAt: "2026-09-21T10:00:00.000Z",
+  };
+
+  const es = buildLearningIntelligence(
+    [],
+    [],
+    [],
+    [esReview],
+    plan(),
+    "2026-09-22T12:00:00.000Z",
+    "es",
+  );
+  const en = buildLearningIntelligence(
+    [],
+    [],
+    [],
+    [esReview],
+    plan(),
+    "2026-09-22T12:00:00.000Z",
+    "en",
+  );
+
+  assert.equal(es.friction, 1);
+  assert.equal(en.friction, 0);
+});
