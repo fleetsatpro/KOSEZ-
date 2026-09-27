@@ -303,6 +303,17 @@ try {
           errors.pageErrors.push("curriculum library lesson did not route to the bound document");
         }
         const readingEnd = page.locator('[data-reading-end="true"]');
+        const readingHeader = await page.locator("body").innerText().catch(() => "");
+        const readingMinutesMatch = /(d+)\s+min de lecture/i.exec(readingHeader);
+        const readingMinutes = readingMinutesMatch ? Number(readingMinutesMatch[1]) : 1;
+        if (!Number.isFinite(readingMinutes) || readingMinutes < 1 || readingMinutes > 120) {
+          throw new Error("could not determine a sane library reading duration");
+        }
+        // The server records library.start with current_timestamp and requires
+        // real elapsed time before library.complete. The smoke must exercise
+        // that contract instead of attempting to forge elapsed time.
+        const dwellSeconds = Math.max(30, readingMinutes * 20) + 2;
+        await page.waitForTimeout(dwellSeconds * 1000);
         await readingEnd.scrollIntoViewIfNeeded();
         await page.getByText("lecture enregistrée", { exact: false }).waitFor({
           state: "visible",
