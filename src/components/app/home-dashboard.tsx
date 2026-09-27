@@ -10,6 +10,7 @@ import {
   setsForLanguage,
 } from "@/lib/blossom/data";
 import {
+  activityBelongsToLanguage,
   hasSource,
   nextStage,
   personaliseMission,
@@ -41,14 +42,18 @@ export function HomeDashboard() {
   const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
   const missionSessions = useBlossom((s) => s.missionSessions);
   const journey = useJourney();
+  const scopedLog = useMemo(
+    () => log.filter((event) => activityBelongsToLanguage(event, languageId)),
+    [log, languageId],
+  );
 
   const todayMission = todayMissionForLevel(learner.level);
-  const missionDone = hasSource(log, todayMission.id);
+  const missionDone = hasSource(scopedLog, todayMission.id);
   const memoryOn = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
   const mission = personaliseMission(todayMission, memory, memoryOn);
   const upcoming = nextStage(journey.stage.id);
-  const ribbon = courageRibbon(courageDaysFromLog(log));
+  const ribbon = courageRibbon(courageDaysFromLog(scopedLog));
   const spoken = ribbon.filter(Boolean).length;
   const plantSrc = PLANT_IMAGE[journey.stage.id];
   const initials = learner.firstName
@@ -60,7 +65,7 @@ export function HomeDashboard() {
   const influence = useMemo(
     () =>
       influenceFromState({
-        activityLog: log,
+        activityLog: scopedLog,
         pronlabAttempts: attempts,
         growthEvents,
         phonemeLeaves,
@@ -73,7 +78,11 @@ export function HomeDashboard() {
     [log, attempts, growthEvents, phonemeLeaves, missionSessions, memory, memoryOn, languageId],
   );
 
-  const recentGrowth = [...growthEvents]
+  const recentGrowth = growthEvents
+    .filter((event) => {
+      const tagged = event.languageId;
+      return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+    })
     .sort((a, b) => b.at.localeCompare(a.at))
     .slice(0, 3);
 
