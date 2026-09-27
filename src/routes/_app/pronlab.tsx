@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Lock, Target, Leaf } from "lucide-react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -15,7 +16,11 @@ import { isSetUnlocked, useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/pronlab")({
-  component: PronlabHub,
+  component: () => (
+    <LearningSurfaceGate surface="pronlab">
+      <PronlabHub />
+    </LearningSurfaceGate>
+  ),
 });
 
 function PronlabHub() {
