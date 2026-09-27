@@ -84,7 +84,20 @@ export async function assertMissionSessionMutation(
     throw new Error("mission-session-id-mismatch");
   }
   const activeRunId = stringValue(session.activeRunId);
-  if (!activeRunId) return;
+  const runs = Array.isArray(session.runs) ? session.runs : [];
+  const incomingCompletedIds = new Set(
+    runs
+      .map((candidate) => jsonObject(candidate))
+      .filter((run) => typeof run.completedAt === "string" && Boolean(run.completedAt))
+      .map((run) => run.id)
+      .filter((id): id is string => typeof id === "string" && id.length > 0),
+  );
+  if (!activeRunId) {
+    if (incomingCompletedIds.size > 0) {
+      throw new Error("mission-completion-without-active-run");
+    }
+    return;
+  }
 
   const incomingRun = missionRunById(value, activeRunId);
   if (!incomingRun) throw new Error("mission-session-invalid-active-run");
@@ -108,6 +121,20 @@ export async function assertMissionSessionMutation(
       throw new Error("mission-completion-without-prior-run");
     }
     return;
+  }
+
+  const currentRuns = Array.isArray(currentSession.runs) ? currentSession.runs : [];
+  const currentCompletedIds = new Set(
+    currentRuns
+      .map((candidate) => jsonObject(candidate))
+      .filter((run) => typeof run.completedAt === "string" && Boolean(run.completedAt))
+      .map((run) => run.id)
+      .filter((id): id is string => typeof id === "string" && id.length > 0),
+  );
+  for (const completedId of incomingCompletedIds) {
+    if (!currentCompletedIds.has(completedId) && completedId !== activeRunId) {
+      throw new Error("mission-completion-adds-unrelated-run");
+    }
   }
 
   const incomingCompleted = typeof incomingRun.completedAt === "string" && Boolean(incomingRun.completedAt);
