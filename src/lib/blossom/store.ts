@@ -560,8 +560,17 @@ export const useBlossom = create<AppState>()(
         return attempt;
       },
       setTandemStatus: (partnerId, status) => {
+        const previousStatus = get().tandemStatus[partnerId];
         set({ tandemStatus: { ...get().tandemStatus, [partnerId]: status } });
-        voidSyncMutation({ operation: "tandem.status", entityId: partnerId, payload: { status, metadata: {} } });
+        voidSyncMutation({
+          operation: "tandem.status",
+          entityId: partnerId,
+          payload: {
+            status,
+            ...(previousStatus ? { previousStatus } : {}),
+            metadata: {},
+          },
+        });
       },
       setTandemOpen: (value) => {
         set({ tandemOpen: value });
