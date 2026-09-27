@@ -1,4 +1,4 @@
-import type { ActivityEvent, ActivityType, PronlabAttempt } from "./engine.ts";
+import { activityBelongsToLanguage, type ActivityEvent, type ActivityType, type PronlabAttempt } from "./engine.ts";
 import type { LearningSubmission } from "./store.ts";
 import { summarisePronlabItem } from "./engine.ts";
 import { setsForLanguage } from "./data.ts";
@@ -177,7 +177,7 @@ function pronunciationEvidence(attempts: PronlabAttempt[]): LearningEvidence[] {
 }
 
 function vocabularyEvidence(
-  vocabulary: Array<{ word: string; gloss: string; firstSavedAt?: string; updatedAt?: string }>,
+  vocabulary: Array<{ word: string; gloss: string; firstSavedAt?: string; updatedAt?: string; metadata?: { languageId?: string } }>,
 ): LearningEvidence[] {
   return vocabulary.map((word) => ({
     domainId: "vocabulary",
@@ -345,13 +345,30 @@ function recommendation(
 export function buildLearningIntelligence(
   log: ActivityEvent[],
   attempts: PronlabAttempt[],
-  vocabulary: Array<{ word: string; gloss: string }>,
+  vocabulary: Array<{ word: string; gloss: string; metadata?: { languageId?: string } }>,
   submissions: LearningSubmission[],
   plan: ReviewPlan,
   now = new Date().toISOString(),
   languageId = "en",
 ): LearningIntelligence {
-  const evidence = collectLearningEvidence(log, attempts, submissions, vocabulary);
+  const scopedLog = log.filter((event) => activityBelongsToLanguage(event, languageId));
+  const scopedAttempts = attempts.filter((attempt) =>
+    setsForLanguage(languageId).some((set) => set.items.some((item) => item.id === attempt.itemId)),
+  );
+  const scopedSubmissions = submissions.filter((submission) => {
+    const tagged = submission.result.languageId;
+    return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+  });
+  const scopedVocabulary = vocabulary.filter((entry) => {
+    const tagged = entry.metadata?.languageId;
+    return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+  });
+  const evidence = collectLearningEvidence(
+    scopedLog,
+    scopedAttempts,
+    scopedSubmissions,
+    scopedVocabulary,
+  );
   const domains = LEARNING_DOMAINS.map((domain) => domainSignal(domain.id, evidence, now));
   const dates = evidence
     .filter((item) => item.kind !== "vocabulary" && item.freshnessKnown)
@@ -365,7 +382,7 @@ export function buildLearningIntelligence(
       submission.result.correct === false ||
       submission.checks.includes("again")
     ),
-  ).length + setsForLanguage(languageId).flatMap((set) => set.items).filter((item) => summarisePronlabItem(item.id, attempts).struggling).length;
+  ).length + setsForLanguage(languageId).flatMap((set) => set.items).filter((item) => summarisePronlabItem(item.id, scopedAttempts).struggling).length;
 
   const highPriorityDue = plan.due.filter((item) => item.priority === "haute").length;
   return {
@@ -396,15 +413,32 @@ export type WeeklyLearningBrief = {
 export function buildWeeklyLearningBrief(
   log: ActivityEvent[],
   attempts: PronlabAttempt[],
-  vocabulary: Array<{ word: string; gloss: string; firstSavedAt?: string; updatedAt?: string }>,
+  vocabulary: Array<{ word: string; gloss: string; firstSavedAt?: string; updatedAt?: string; metadata?: { languageId?: string } }>,
   submissions: LearningSubmission[],
   now = new Date().toISOString(),
   languageId = "en",
 ): WeeklyLearningBrief {
-  const evidence = collectLearningEvidence(log, attempts, submissions, vocabulary);
+  const scopedLog = log.filter((event) => activityBelongsToLanguage(event, languageId));
+  const scopedAttempts = attempts.filter((attempt) =>
+    setsForLanguage(languageId).some((set) => set.items.some((item) => item.id === attempt.itemId)),
+  );
+  const scopedSubmissions = submissions.filter((submission) => {
+    const tagged = submission.result.languageId;
+    return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+  });
+  const scopedVocabulary = vocabulary.filter((entry) => {
+    const tagged = entry.metadata?.languageId;
+    return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+  });
+  const evidence = collectLearningEvidence(
+    scopedLog,
+    scopedAttempts,
+    scopedSubmissions,
+    scopedVocabulary,
+  );
   const recent = evidence.filter((item) => item.freshnessKnown && daysAgo(now, item.createdAt) <= 7);
   const activeDates = new Set(recent.map((item) => item.createdAt.slice(0, 10)));
-  const recentReviews = submissions.filter(
+  const recentReviews = scopedSubmissions.filter(
     (submission) =>
       submission.kind === "review" &&
       daysAgo(now, submission.createdAt) <= 7,
@@ -426,7 +460,7 @@ export function buildWeeklyLearningBrief(
     log,
     attempts,
     vocabulary,
-    submissions,
+    scopedSubmissions,
     { due: [], upcoming: [] },
     now,
     languageId,
