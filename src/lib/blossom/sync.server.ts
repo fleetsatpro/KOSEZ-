@@ -502,7 +502,7 @@ async function applyMutation(
       await appendBlossomActivity(userId, {
         eventType: "LIBRARY_COMPLETED",
         sourceId: mutation.entityId,
-        payload: { metadata: safeMetadata },
+        payload: { metadata: objectValue(safeMetadata) },
         idempotencyKey: mutation.mutationId,
       });
       return { mutationId: mutation.mutationId, status: "applied" };
