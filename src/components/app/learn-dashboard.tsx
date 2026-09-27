@@ -86,6 +86,7 @@ export function LearnDashboard() {
   const vocab = useBlossom((s) => s.vocabulary);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const submissions = useBlossom((s) => s.learningSubmissions);
+  const languageId = useBlossom((s) => s.languageId);
   const assigned = useBlossom((s) => s.assignedSetIds);
   const plan = useBlossom((s) => s.plan);
   const journey = useJourney();
@@ -93,20 +94,24 @@ export function LearnDashboard() {
   const growthEvents = useBlossom((s) => s.growthEvents);
   const nextGesture = causalNextGesture(minerals);
   const atelierGrowth = growthEvents.filter((event) => event.mineral === "atelier").slice(0, 3);
-  const skillProfile = buildSkillProfile(log, attempts, vocab);
-  const reviewPlan = buildReviewPlan(submissions, attempts, vocab);
+  const skillProfile = buildSkillProfile(log, attempts, vocab, languageId);
+  const reviewPlan = buildReviewPlan(submissions, attempts, vocab, new Date().toISOString(), languageId);
   const intelligence = buildLearningIntelligence(
     log,
     attempts,
     vocab,
     submissions,
     reviewPlan,
+    new Date().toISOString(),
+    languageId,
   );
   const weeklyBrief = buildWeeklyLearningBrief(
     log,
     attempts,
     vocab,
     submissions,
+    new Date().toISOString(),
+    languageId,
   );
   const nextAction = intelligence.next;
   const nextActionHref =
@@ -120,7 +125,7 @@ export function LearnDashboard() {
             ? "/learn/labs"
             : "/learn/review";
 
-  const sets = setsForLanguage(useBlossom((s) => s.languageId));
+  const sets = setsForLanguage(languageId);
   const libraryOk = planAllows(plan, "library");
 
   const activeHomework = homework.find((item) => item.status === "sent") ?? null;
