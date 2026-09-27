@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
 import { causalNextGesture, type MineralKey } from "@/lib/blossom/organism";
@@ -65,11 +65,30 @@ export function GrowthCeremony({
 }) {
   const [phase, setPhase] = useState<"enter" | "hold" | "exit">("enter");
   const closeRef = useRef<HTMLButtonElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
   const eventId = event?.id;
   const eventIntensity = event?.intensity ?? 0;
 
+  const close = useCallback(() => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+    }
+    setPhase("exit");
+    closeTimerRef.current = window.setTimeout(() => {
+      onDismiss();
+      returnFocusRef.current?.focus();
+      returnFocusRef.current = null;
+      closeTimerRef.current = null;
+    }, 180);
+  }, [onDismiss]);
+
   useEffect(() => {
     if (!open || eventId == null) return;
+    returnFocusRef.current =
+      typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     setPhase("enter");
     const intensity = Math.min(1, Math.max(0.2, eventIntensity));
     const holdMs = 380 + Math.round(intensity * 180);
@@ -80,18 +99,21 @@ export function GrowthCeremony({
       window.clearTimeout(focus);
     };
   }, [open, eventId, eventIntensity]);
-  
+
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
-      setPhase("exit");
-      window.setTimeout(onDismiss, 320);
+      close();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onDismiss]);
+  }, [open, close]);
+
+  useEffect(() => () => {
+    if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
+  }, []);
 
   const meta = event ? KIND_META[event.kind] : null;
 
@@ -125,10 +147,7 @@ export function GrowthCeremony({
           "absolute inset-0 bg-black/55 backdrop-blur-[2px] transition-opacity duration-300 motion-reduce:transition-none",
           phase === "exit" ? "opacity-0" : "opacity-100",
         )}
-        onClick={() => {
-          setPhase("exit");
-          window.setTimeout(onDismiss, 320);
-        }}
+        onClick={close}
       />
 
       <div
@@ -207,10 +226,7 @@ export function GrowthCeremony({
           <button
             ref={closeRef}
             type="button"
-            onClick={() => {
-              setPhase("exit");
-              window.setTimeout(onDismiss, 320);
-            }}
+            onClick={close}
             className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full border border-border/80 bg-transparent px-5 text-sm font-medium text-muted transition-colors hover:text-fg"
           >
             Continuer
