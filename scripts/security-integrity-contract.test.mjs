@@ -22,6 +22,7 @@ test("activity mutations are enum-gated and pass through server integrity checks
   assert.match(integrity, /activity-diagnostic-server-only/);
   assert.match(integrity, /activity-tandem-insufficient-evidence/);
   assert.match(read("src/lib/blossom/backend.server.ts"), /where blossom_learning_submission\.user_id = excluded\.user_id/);
+  assert.match(read("src/lib/blossom/domain.server.ts"), /where blossom_learning_submission\.user_id = excluded\.user_id/);
   assert.match(integrity, /activity-event-without-attendance/);
   assert.match(integrity, /activity-pronlab-without-attempt/);
   assert.match(integrity, /tandem-session-/);
