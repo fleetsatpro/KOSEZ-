@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
 import { IMMERSION, PRONLAB_SETS, setsForLanguage } from "./data";
-import { isLearnLanguageId } from "@/lib/i18n/locales";
+import { LEARN_LANGUAGES } from "@/lib/i18n/locales";
 import { fullMissionBank } from "./mission-today";
 import type { JsonObject } from "./backend.server";
 
@@ -1856,7 +1856,7 @@ export async function startPulseSession(userId: string, dareId: string) {
       [userId],
     );
     const rawLanguage = String(profile[0]?.target_language ?? "en");
-    const language = setsForLanguage(isLearnLanguageId(rawLanguage) ? rawLanguage : "en");
+    const language = setsForLanguage(LEARN_LANGUAGES.some((item) => item.id === rawLanguage) ? rawLanguage : "en");
     const activeItem = language.some((set) =>
       set.items.some((item) => item.id === itemId),
     );
