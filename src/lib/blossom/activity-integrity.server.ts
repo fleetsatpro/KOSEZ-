@@ -506,6 +506,9 @@ export async function assertActivityAppend(
     if (!sid) throw new Error("activity-library-missing-source");
     const known = knownLibraryDocument(sid);
     if (!known) throw new Error("activity-library-unknown-source");
+    if (libraryLanguageId(known.language) !== expectedLanguageId) {
+      throw new Error("activity-library-language-mismatch");
+    }
     const completed = await sql.query(
       "select 1 from blossom_library_reading where user_id = $1 and document_id = $2 and completed_at is not null limit 1",
       [userId, sid],
@@ -555,8 +558,8 @@ export async function assertActivityAppend(
       throw new Error("activity-review-invalid-source");
     }
     const rows = await sql.query(
-      "select 1 from blossom_learning_submission where user_id = $1 and kind = 'review' and created_at >= current_date limit 1",
-      [userId],
+      "select 1 from blossom_learning_submission where user_id = $1 and kind = 'review' and created_at >= current_date and coalesce(result->>'languageId', '') = $2 limit 1",
+      [userId, expectedLanguageId],
     );
     if (!rows[0]) throw new Error("activity-review-without-submission");
     return safeMetadata;
@@ -572,8 +575,8 @@ export async function assertActivityAppend(
     if (!match?.[1]) throw new Error("activity-learning-invalid-source");
     const taskId = match[1];
     const rows = await sql.query(
-      "select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = $3 limit 1",
-      [userId, taskId, kind],
+      "select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = $3 and coalesce(result->>'languageId', '') = $4 limit 1",
+      [userId, taskId, kind, expectedLanguageId],
     );
     if (!rows[0]) throw new Error("activity-learning-without-submission");
   }
