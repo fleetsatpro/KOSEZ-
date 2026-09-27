@@ -187,12 +187,11 @@ export function MissionTheatreExperience() {
   }
 
   function finishRealWorld() {
-    recordMissionAttempt(
-      todayMission.id,
-      "mission",
-      "manual",
-      Math.max(60, todayMission.durationMin * 60),
-    );
+    const startedAt = run?.startedAt ? Date.parse(run.startedAt) : NaN;
+    const seconds = Number.isFinite(startedAt)
+      ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
+      : 0;
+    recordMissionAttempt(todayMission.id, "mission", "manual", seconds);
     setStep("reflect");
   }
 
@@ -222,6 +221,14 @@ export function MissionTheatreExperience() {
         });
         if (ended.missionId !== todayMission.id) {
           throw new Error("mission-session-mismatch");
+        }
+        if (ended.durationSeconds < 60) {
+          reopenMissionSession(todayMission.id);
+          setSaved(false);
+          setStep("execute");
+          setClosing(false);
+          toast("La session doit durer au moins 1 minute avant validation. Le geste reste ouvert.");
+          return;
         }
         rewardSourceId = `mission-session-${ended.id}`;
       } catch {
