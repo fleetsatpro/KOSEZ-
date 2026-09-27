@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { LEARNER_MEMORY, planAllows, setsForLanguage } from "@/lib/blossom/data";
 import { influenceFromState } from "@/lib/blossom/influence";
 import type { LivingRoom } from "@/lib/blossom/speak-engine";
-import { reshuffleRoom } from "@/lib/blossom/speak-engine";
+import { generateRoomCatalog, reshuffleRoom } from "@/lib/blossom/speak-engine";
 import { buildSpeakRoom } from "@/lib/blossom/speak-llm";
 import {
   appendSpeechTurn,
@@ -101,6 +101,27 @@ function SpeakRoom() {
         } catch {
           topic = undefined;
         }
+      }
+
+      const catalogRoom = id.startsWith("room-")
+        ? generateRoomCatalog({
+            level: learner.level,
+            firstName: learner.firstName,
+            friction: friction ?? undefined,
+            interests: learner.interests,
+            entropy: "hub-daily",
+            pressureHint,
+            kitBoost,
+            influenceReasons,
+          }).find((candidate) => candidate.id === id)
+        : null;
+
+      if (catalogRoom) {
+        if (cancelled) return;
+        setRoom(catalogRoom);
+        setSource("swarm");
+        setLoading(false);
+        return;
       }
 
       const archetype = id === "live" || id === "topic" ? undefined : id;
@@ -196,6 +217,12 @@ function SpeakRoom() {
 
   function finish() {
     if (!room) return;
+    const hasSpeechEvidence =
+      speechSummary.spokenSeconds > 0 || speechSummary.transcriptCount > 0;
+    if (!hasSpeechEvidence) {
+      navigate({ to: "/osez" });
+      return;
+    }
     mineralsBefore.current = useBlossom.getState().mineralSnapshot;
     const speakingMinutes = Math.max(1, Math.round(elapsed / 60));
     const result = complete(
@@ -405,7 +432,9 @@ function SpeakRoom() {
             et nourrit le minéral <span className="font-semibold text-primary">parole</span>.
           </p>
           <Button className="mt-4 h-12 w-full" onClick={finish}>
-            Clore la session
+            {speechSummary.spokenSeconds > 0 || speechSummary.transcriptCount > 0
+              ? "Clore la session"
+              : "Fermer sans croissance"}
           </Button>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <Button variant="secondary" onClick={() => void reshuffle()}>
@@ -514,14 +543,18 @@ function SpeakRoom() {
                   { seconds, blob, mimeType },
                   { fileName: `kosez-${room.id}.webm` },
                 );
-                setSpeechSummary((summary) => appendSpeechTurn(summary, evidence));
-                track("speak_turn_evidence", {
-                  roomId: room.id,
-                  assessment: evidence.assessment,
-                  seconds: evidence.seconds,
-                  hasTranscript: Boolean(evidence.transcript),
-                });
-                setYourTurns((n) => n + 1);
+                if (evidence.assessment !== "skipped") {
+                  setSpeechSummary((summary) => appendSpeechTurn(summary, evidence));
+                  track("speak_turn_evidence", {
+                    roomId: room.id,
+                    assessment: evidence.assessment,
+                    seconds: evidence.seconds,
+                    hasTranscript: Boolean(evidence.transcript),
+                  });
+                  setYourTurns((n) => n + 1);
+                } else {
+                  track("speak_turn_skipped", { roomId: room.id });
+                }
                 setShowRescue(false);
                 setTurn((n) => n + 1);
               }}
