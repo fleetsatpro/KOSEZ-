@@ -336,15 +336,40 @@ export async function assertActivityAppend(
   }
 
   if (eventType === "MISSION_COMPLETED") {
-    if (!sid) throw new Error("activity-mission-missing-source");
-    const rows = await sql.query(
-      "select session from blossom_mission_session where user_id = $1 and mission_id = $2 limit 1",
-      [userId, sid],
-    );
-    if (!rows[0] || !hasCompletedMissionSession(rows[0].session)) {
-      throw new Error("activity-mission-without-completed-session");
+    if (!/^mission-session-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sid)) {
+      throw new Error("activity-mission-invalid-session-source");
     }
-    return safeMetadata;
+    const serverSessionId = sid.slice("mission-session-".length);
+    const serverRun = await sql.query(
+      `select mission_id, run_id, duration_seconds, ended_at
+       from blossom_mission_run_session
+       where id = $1::uuid and user_id = $2 and status = 'completed' and duration_seconds is not null and ended_at is not null
+       limit 1`,
+      [serverSessionId, userId],
+    );
+    if (!serverSession[0]) throw new Error("activity-mission-without-server-session");
+    const missionId = String(serverSession[0].mission_id);
+    const missionRows = await sql.query(
+      "select session from blossom_mission_session where user_id = $1 and mission_id = $2 limit 1",
+      [userId, missionId],
+    );
+    if (!missionRows[0]) throw new Error("activity-mission-without-completed-session");
+    const localRun = missionRunById(missionRows[0].session, String(serverSession[0].run_id));
+    if (!localRun || typeof localRun.completedAt !== "string" || !localRun.completedAt || !missionRunHasMissionAttempt(localRun) || !missionRunHasReflection(localRun)) {
+      throw new Error("activity-mission-without-matched-run");
+    }
+    const completedAtMs = Date.parse(String(localRun.completedAt));
+    const serverEndedAtMs = Date.parse(String(serverSession[0].ended_at));
+    if (!Number.isFinite(completedAtMs) || !Number.isFinite(serverEndedAtMs)) {
+      throw new Error("activity-mission-invalid-completion-time");
+    }
+    return {
+      ...safeMetadata,
+      missionId,
+      runId: String(serverSession[0].run_id),
+      serverSessionId,
+      durationSeconds: Math.max(0, Number(serverSession[0].duration_seconds ?? 0)),
+    };
   }
 
   if (eventType === "PRONLAB_COMPLETED") {
