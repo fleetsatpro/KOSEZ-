@@ -274,7 +274,7 @@ export async function listPendingMutations(): Promise<StoredMutation[]> {
     .filter(
       (row) =>
         row.state === "pending" &&
-        row.ownerUserId === ownerId,
+        row.ownerUserId === activeOwnerId,
     )
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
@@ -328,7 +328,7 @@ export async function mutationStatusCounts(): Promise<{
     try {
       const rows = await txRequest<StoredMutation[]>("readonly", (store) => store.getAll());
       return rows
-        .filter((row) => Boolean(activeOwnerId) && row.ownerUserId === ownerId)
+        .filter((row) => Boolean(activeOwnerId) && row.ownerUserId === activeOwnerId)
         .reduce(
           (acc, row) => {
             if (row.state === "pending") acc.pending += 1;
@@ -343,7 +343,7 @@ export async function mutationStatusCounts(): Promise<{
   }
 
   return readFallback()
-    .filter((row) => Boolean(activeOwnerId) && row.ownerUserId === ownerId)
+    .filter((row) => Boolean(activeOwnerId) && row.ownerUserId === activeOwnerId)
     .reduce(
       (acc, row) => {
         if (row.state === "pending") acc.pending += 1;
