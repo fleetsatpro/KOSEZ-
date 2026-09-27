@@ -347,19 +347,19 @@ export async function assertActivityAppend(
        limit 1`,
       [serverSessionId, userId],
     );
-    if (!serverSession[0]) throw new Error("activity-mission-without-server-session");
-    const missionId = String(serverSession[0].mission_id);
+    if (!serverRun[0]) throw new Error("activity-mission-without-server-session");
+    const missionId = String(serverRun[0].mission_id);
     const missionRows = await sql.query(
       "select session from blossom_mission_session where user_id = $1 and mission_id = $2 limit 1",
       [userId, missionId],
     );
     if (!missionRows[0]) throw new Error("activity-mission-without-completed-session");
-    const localRun = missionRunById(missionRows[0].session, String(serverSession[0].run_id));
+    const localRun = missionRunById(missionRows[0].session, String(serverRun[0].run_id));
     if (!localRun || typeof localRun.completedAt !== "string" || !localRun.completedAt || !missionRunHasMissionAttempt(localRun) || !missionRunHasReflection(localRun)) {
       throw new Error("activity-mission-without-matched-run");
     }
     const completedAtMs = Date.parse(String(localRun.completedAt));
-    const serverEndedAtMs = Date.parse(String(serverSession[0].ended_at));
+    const serverEndedAtMs = Date.parse(String(serverRun[0].ended_at));
     if (!Number.isFinite(completedAtMs) || !Number.isFinite(serverEndedAtMs)) {
       throw new Error("activity-mission-invalid-completion-time");
     }
@@ -368,7 +368,7 @@ export async function assertActivityAppend(
       missionId,
       runId: String(serverSession[0].run_id),
       serverSessionId,
-      durationSeconds: Math.max(0, Number(serverSession[0].duration_seconds ?? 0)),
+      durationSeconds: Math.max(0, Number(serverRun[0].duration_seconds ?? 0)),
     };
   }
 
