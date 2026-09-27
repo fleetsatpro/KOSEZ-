@@ -4,6 +4,7 @@ import { INITIAL_LOG, INITIAL_PRONLAB_ATTEMPTS, LEARNER } from "./data.fixtures.
 import { planAllows, setsForLanguage } from "./data.ts";
 import {
   cafeMemoryHint,
+  activityBelongsToLanguage,
   countByType,
   hasSource,
   journeySnapshot,
@@ -292,5 +293,9 @@ test("pending activity cannot change points or organism language state", () => {
   assert.equal(activityBelongsToLanguage(confirmed, "en"), true);
   assert.equal(pointsFromLog([pending]), 10);
   assert.equal(journeySnapshot([pending]).points, 10);
+  assert.equal(
+    journeySnapshot([pending].filter((event) => activityBelongsToLanguage(event, "en"))).points,
+    0,
+  );
   assert.equal(journeySnapshot([confirmed]).points, 10);
 });
