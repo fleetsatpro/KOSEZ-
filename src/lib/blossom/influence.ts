@@ -339,9 +339,19 @@ export function computeInfluence(input: {
       mineral: "pron",
     });
   } else if (low.key === "mission" && low.value < 30) {
+    const terrainDareByLanguage: Partial<Record<LearnLanguageId, string>> = {
+      en: "One minimal real-world gesture: say one clear sentence to someone, then log it here.",
+      fr: "Un geste terrain minimal : une phrase claire à quelqu'un, puis notez-la ici.",
+      es: "Un gesto de terreno mínimo: di una frase clara a alguien y luego anótala aquí.",
+      pt: "Um gesto de terreno mínimo: diga uma frase clara a alguém e registe-a aqui.",
+      de: "Ein kleiner realer Schritt: Sagen Sie einer Person einen klaren Satz und notieren Sie ihn hier.",
+      it: "Un piccolo gesto reale: dite una frase chiara a qualcuno, poi annotatela qui.",
+      cr: "En ti geste dan lavi reel: di enn fraz kler ek enn dimounn, apré note li isi.",
+      lsf: "Un geste réel minimal : faites un signe clair à quelqu'un, puis notez-le ici.",
+    };
     dareOverride = {
       id: "pulse-terrain",
-      line: "Un geste terrain minimal : une phrase claire à un inconnu, puis notez-la ici.",
+      line: terrainDareByLanguage[input.languageId] ?? terrainDareByLanguage.en!,
       seconds: 120,
     };
     pulseReasons.push({
@@ -350,9 +360,19 @@ export function computeInfluence(input: {
       mineral: "mission",
     });
   } else if (low.key === "social" && low.value < 30) {
+    const socialDareByLanguage: Partial<Record<LearnLanguageId, string>> = {
+      en: "Exchange two sentences with someone — tandem, counter, or neighbour at the table.",
+      fr: "Échangez deux phrases avec quelqu'un — tandem, comptoir ou voisin de table.",
+      es: "Intercambia dos frases con alguien — tándem, mostrador o vecino de mesa.",
+      pt: "Troque duas frases com alguém — tandem, balcão ou pessoa à mesa.",
+      de: "Tauschen Sie zwei Sätze mit jemandem aus — Tandem, Tresen oder Tischnachbar.",
+      it: "Scambiate due frasi con qualcuno — tandem, bancone o vicino di tavolo.",
+      cr: "Echanj de fraz ek enn dimounn — tandem, kontwar ousa vwazin latab.",
+      lsf: "Échangez deux signes avec quelqu'un — tandem, comptoir ou voisin de table.",
+    };
     dareOverride = {
       id: "pulse-social",
-      line: "Échangez deux phrases avec quelqu'un — tandem, comptoir, ou voisin de table.",
+      line: socialDareByLanguage[input.languageId] ?? socialDareByLanguage.en!,
       seconds: 120,
     };
     pulseReasons.push({
@@ -495,7 +515,17 @@ export function computeInfluence(input: {
       mineral: "pron",
     });
   } else if (low.key === "social" && low.value < 40) {
-    openPrompt = "How has your week been? One real answer is enough.";
+    const socialOpenByLanguage: Partial<Record<LearnLanguageId, string>> = {
+      en: "How has your week been? One real answer is enough.",
+      fr: "Comment s'est passée votre semaine ? Une vraie réponse suffit.",
+      es: "¿Cómo ha ido tu semana? Una respuesta real es suficiente.",
+      pt: "Como foi a sua semana? Uma resposta verdadeira chega.",
+      de: "Wie war Ihre Woche? Eine echte Antwort genügt.",
+      it: "Com'è andata la tua settimana? Basta una risposta vera.",
+      cr: "Kouma to semenn inn pase ? Enn vre repons sifi.",
+      lsf: "Comment s'est passée votre semaine ? Une réponse simple suffit.",
+    };
+    openPrompt = socialOpenByLanguage[input.languageId] ?? socialOpenByLanguage.en!;
     partnerBias = "social-recover";
     tandemReasons.push({
       code: "mineral-low",
