@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Leaf, Target, Volume2 } from "lucide-react";
 import { RecordControl } from "@/components/app/record-control";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { Eyebrow, Page, Sparkline, DualWave, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,11 @@ import { resolveSpeechEvidence } from "@/lib/blossom/speech-stt";
 import { learnLanguageDef } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_app/pronlab/$setId")({
-  component: PronlabSetPage,
+  component: () => (
+    <LearningSurfaceGate surface="pronlab">
+      <PronlabSetPage />
+    </LearningSurfaceGate>
+  ),
 });
 
 function highlight(phrase: string, segment: string) {
