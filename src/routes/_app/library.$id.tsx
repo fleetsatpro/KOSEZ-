@@ -42,6 +42,7 @@ function LibraryDocPage() {
     if (curriculumLessonId) clearCurriculumLessonContext();
   }, [curriculumLessonId]);
   const readingEndRef = useRef<HTMLDivElement | null>(null);
+  const completionRequestedRef = useRef(false);
   const activityLog = useBlossom((s) => s.activityLog);
   const languageId = useBlossom((s) => s.languageId);
   const vocab = useBlossom((s) => s.vocabulary);
@@ -67,9 +68,14 @@ function LibraryDocPage() {
   );
 
   const recordReadingCompletion = useCallback(() => {
-    if (!docId || readingCompleted) return;
+    if (!docId || readingCompleted || completionRequestedRef.current) return;
+    completionRequestedRef.current = true;
     completeLibraryReading(docId);
   }, [completeLibraryReading, docId, readingCompleted]);
+
+  useEffect(() => {
+    completionRequestedRef.current = false;
+  }, [docId]);
 
   useEffect(() => {
     if (docId) startLibraryReading(docId);
