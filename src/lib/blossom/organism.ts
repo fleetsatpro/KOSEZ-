@@ -408,13 +408,21 @@ export function pushGrowthEvent(
   return [next, ...withoutDup].slice(0, cap);
 }
 
+function localDateKey(value: Date): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function courageDaysFromLog(log: ActivityEvent[]): string[] {
   // Evidence-first: only verified speaking days, not tandem/social or manual missions.
   const speakTypes: ActivityType[] = ["SPEAK_COMPLETED"];
   const set = new Set<string>();
   for (const e of log) {
     if (!speakTypes.includes(e.type)) continue;
-    set.add(e.createdAt.slice(0, 10));
+    const at = new Date(e.createdAt);
+    if (Number.isFinite(at.getTime())) set.add(localDateKey(at));
   }
   return [...set].sort();
 }
@@ -426,7 +434,7 @@ export function courageRibbon(days: string[], now = new Date()): boolean[] {
     const d = new Date(now);
     d.setHours(12, 0, 0, 0);
     d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    const key = localDateKey(d);
     out.push(set.has(key));
   }
   return out;
