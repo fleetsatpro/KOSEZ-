@@ -4,6 +4,7 @@ import { normalizeMutationTime } from "./sync-causality";
 import { IMMERSION, PRONLAB_SETS, setsForLanguage } from "./data";
 import { LEARN_LANGUAGES } from "@/lib/i18n/locales";
 import { fullMissionBank } from "./mission-today";
+import { appendBlossomActivity } from "./backend.server";
 import type { JsonObject } from "./backend.server";
 
 import { getPublishedContent } from "./content.server";
@@ -1935,4 +1936,144 @@ export async function endPulseSession(
     endedAt: new Date(String(rows[0].ended_at)).toISOString(),
     durationSeconds: Math.max(0, Number(rows[0].duration_seconds ?? 0)),
   };
+}
+
+export async function startSpeakSession(userId: string, roomId: string) {
+  await enforceRateLimit(userId, "speak.start-session", 20, 60);
+  const normalizedRoomId = roomId.trim();
+  if (!normalizedRoomId || normalizedRoomId.length > 200) {
+    throw new BlossomForbiddenError("Cette room n’est pas disponible.");
+  }
+  const sql = await getSql();
+  const profileRows = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const rawLanguage = String(profileRows[0]?.target_language ?? "en");
+  const languageId = LEARN_LANGUAGES.some((item) => item.id === rawLanguage)
+    ? rawLanguage
+    : "en";
+
+  const active = await sql.query(
+    `select id, room_id, language_id
+     from blossom_speak_session
+     where user_id = $1 and status = 'active'
+     order by created_at desc
+     limit 1`,
+    [userId],
+  );
+  if (active[0]) {
+    if (String(active[0].room_id) === normalizedRoomId && String(active[0].language_id) === languageId) {
+      return { id: String(active[0].id), roomId: normalizedRoomId, languageId };
+    }
+    await sql.query(
+      `update blossom_speak_session
+       set status = 'cancelled',
+           ended_at = coalesce(ended_at, current_timestamp),
+           duration_seconds = greatest(0, extract(epoch from (coalesce(ended_at, current_timestamp) - started_at))::integer),
+           updated_at = current_timestamp
+       where id = $1::uuid and user_id = $2 and status = 'active'`,
+      [String(active[0].id), userId],
+    );
+  }
+
+  const sessionId = randomUUID();
+  await sql.query(
+    `insert into blossom_speak_session
+      (id, user_id, room_id, language_id, status, started_at)
+     values ($1::uuid, $2, $3, $4, 'active', current_timestamp)`,
+    [sessionId, userId, normalizedRoomId, languageId],
+  );
+  return { id: sessionId, roomId: normalizedRoomId, languageId };
+}
+
+export async function recordSpeakTurn(
+  userId: string,
+  sessionId: string,
+  seconds: number,
+) {
+  await enforceRateLimit(userId, "speak.record-turn", 120, 60);
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    throw new BlossomForbiddenError("Aucune prise vocale valide n’a été reçue.");
+  }
+  const requestedSeconds = Math.min(300, Math.round(seconds));
+  const sql = await getSql();
+  const rows = await sql.query(
+    `update blossom_speak_session
+     set evidence_seconds = least(
+           3600,
+           evidence_seconds + least(
+             $3,
+             greatest(0, extract(epoch from (current_timestamp - started_at))::integer)
+           )
+         ),
+         turn_count = least(600, turn_count + 1),
+         updated_at = current_timestamp
+     where id = $1::uuid and user_id = $2 and status = 'active'
+     returning id, evidence_seconds, turn_count`,
+    [sessionId, userId, requestedSeconds],
+  );
+  if (!rows[0]) throw new BlossomForbiddenError("Cette prise ne peut plus être enregistrée.");
+  if (Number(rows[0].evidence_seconds ?? 0) <= 0) {
+    throw new BlossomForbiddenError("La prise est trop courte pour être validée.");
+  }
+  return {
+    id: String(rows[0].id),
+    evidenceSeconds: Number(rows[0].evidence_seconds ?? 0),
+    turnCount: Number(rows[0].turn_count ?? 0),
+  };
+}
+
+export async function endSpeakSession(
+  userId: string,
+  sessionId: string,
+  status: "completed" | "cancelled",
+) {
+  await enforceRateLimit(userId, "speak.end-session", 20, 60);
+  const sql = await getSql();
+  const rows = await sql.query(
+    `update blossom_speak_session
+     set status = $2,
+         ended_at = coalesce(ended_at, current_timestamp),
+         duration_seconds = greatest(
+           0,
+           extract(epoch from (coalesce(ended_at, current_timestamp) - started_at))::integer
+         ),
+         updated_at = current_timestamp
+     where id = $1::uuid and user_id = $3 and status = 'active'
+     returning id, room_id, language_id, status, ended_at, duration_seconds, evidence_seconds, turn_count`,
+    [sessionId, status, userId],
+  );
+  if (rows[0]) {
+    return {
+      id: String(rows[0].id),
+      roomId: String(rows[0].room_id),
+      languageId: String(rows[0].language_id),
+      status: String(rows[0].status) as "completed" | "cancelled",
+      endedAt: new Date(String(rows[0].ended_at)).toISOString(),
+      durationSeconds: Math.max(0, Number(rows[0].duration_seconds ?? 0)),
+      evidenceSeconds: Math.max(0, Number(rows[0].evidence_seconds ?? 0)),
+      turnCount: Math.max(0, Number(rows[0].turn_count ?? 0)),
+    };
+  }
+  const existing = await sql.query(
+    `select id, room_id, language_id, status, ended_at, duration_seconds, evidence_seconds, turn_count
+     from blossom_speak_session
+     where id = $1::uuid and user_id = $2
+     limit 1`,
+    [sessionId, userId],
+  );
+  if (existing[0] && String(existing[0].status) === "completed") {
+    return {
+      id: String(existing[0].id),
+      roomId: String(existing[0].room_id),
+      languageId: String(existing[0].language_id),
+      status: "completed" as const,
+      endedAt: new Date(String(existing[0].ended_at)).toISOString(),
+      durationSeconds: Math.max(0, Number(existing[0].duration_seconds ?? 0)),
+      evidenceSeconds: Math.max(0, Number(existing[0].evidence_seconds ?? 0)),
+      turnCount: Math.max(0, Number(existing[0].turn_count ?? 0)),
+    };
+  }
+  throw new BlossomForbiddenError("Cette session n’est plus active.");
 }
