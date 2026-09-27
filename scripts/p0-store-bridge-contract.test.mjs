@@ -8,18 +8,21 @@ const storePath = join(root, "src/lib/blossom/store.ts");
 const bridgePath = join(root, "src/components/blossom-sync-bridge.tsx");
 const syncServerPath = join(root, "src/lib/blossom/sync.server.ts");
 const syncClientPath = join(root, "src/lib/blossom/sync-client.ts");
+const libraryRoutePath = join(root, "src/routes/_app/library.$id.tsx");
 
 let store = "";
 let bridge = "";
 let syncServer = "";
 let syncClient = "";
+let libraryRoute = "";
 
 test.before(async () => {
-  [store, bridge, syncServer, syncClient] = await Promise.all([
+  [store, bridge, syncServer, syncClient, libraryRoute] = await Promise.all([
     readFile(storePath, "utf8"),
     readFile(bridgePath, "utf8"),
     readFile(syncServerPath, "utf8"),
     readFile(syncClientPath, "utf8"),
+    readFile(libraryRoutePath, "utf8"),
   ]);
 });
 
@@ -49,6 +52,18 @@ test("P0 identity reset clears the entire learner-scoped replica", () => {
 test("P0 activity deduplication is type + source aware", () => {
   assert.ok(store.includes("hasSource(scopedLog, sourceId, type)"));
   assert.ok(bridge.includes("`${event.type}:source:${event.sourceId}`"));
+});
+
+test("P0 library completion cannot outrun the server dwell contract", () => {
+  assert.ok(libraryRoute.includes("readingEligibleAtRef"));
+  assert.match(
+    libraryRoute,
+    /const waitMs = readingEligibleAtRef\.current - Date\.now\(\);[\s\S]*if \(waitMs > 0\)[\s\S]*setTimeout/,
+  );
+  assert.match(
+    libraryRoute,
+    /Date\.now\(\) \+ \(Math\.max\(30, doc\.minutes \* 20\) \+ 2\) \* 1000/,
+  );
 });
 
 test("P0 PronLab semantics stay language-scoped and client cannot mint mastery growth", () => {
