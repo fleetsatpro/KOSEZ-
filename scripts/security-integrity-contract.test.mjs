@@ -45,7 +45,7 @@ test("production admin bootstrap fails closed and session material is never logg
   assert.match(bootstrap, /if \(hasRealDatabase\(\)\) return \[\];/);
   assert.doesNotMatch(gate, /cookiePreview/);
   assert.match(preview, /GROK_PREVIEW_CLIENT_SECRET/);
-  assert.doesNotMatch(preview, /PREVIEW_CLIENT_SECRET\\s*=\\s*["\']/);
+  assert.doesNotMatch(preview, /PREVIEW_CLIENT_SECRET\\s*=\\s*["']/);
 });
 
 test("the custom rate-limit error is explicit 429", () => {
