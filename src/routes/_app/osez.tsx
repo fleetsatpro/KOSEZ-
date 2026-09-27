@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { AmbientParticles } from "@/components/app/ambient-particles";
 import { OrganismMineralsPanel } from "@/components/app/organism-minerals-panel";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { Eyebrow, Page } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,11 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/osez")({
-  component: OsezPage,
+  component: () => (
+    <LearningSurfaceGate surface="osez">
+      <OsezPage />
+    </LearningSurfaceGate>
+  ),
 });
 
 const STREET_PROTOCOL = [
