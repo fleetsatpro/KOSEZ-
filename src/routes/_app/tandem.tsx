@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, Clock, Heart, MapPin, Pause, RefreshCw, Users, Leaf } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Initials, Page, Surface } from "@/components/app/primitives";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +24,11 @@ import { cn } from "@/lib/utils";
 import { describeLearnLanguage, useUiLocale } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_app/tandem")({
-  component: TandemPage,
+  component: () => (
+    <LearningSurfaceGate surface="tandem">
+      <TandemPage />
+    </LearningSurfaceGate>
+  ),
 });
 
 type Candidate = Awaited<ReturnType<typeof getTandemCandidatesOnServer>>[number];
