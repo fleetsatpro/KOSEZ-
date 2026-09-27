@@ -1,6 +1,6 @@
 import { getSql } from "@/lib/db";
 import { TANDEM_TOTAL_DURATION_SECONDS, TANDEM_CONTRACT } from "./tandem-contract";
-import { isLearnLanguageId } from "@/lib/i18n/locales";
+import { isLearnLanguageId, isLearnSurfaceAvailable } from "@/lib/i18n/locales";
 import { CURRICULUM_UNITS, type LessonKind } from "./learning-os";
 import { LIBRARY, PRONLAB_SETS, setsForLanguage } from "./data";
 import { EXTRA_LIBRARY } from "./library-extra";
@@ -588,6 +588,9 @@ export async function assertActivityAppend(
   }
 
   if (eventType === "GRAMMAR_COMPLETED" || eventType === "LISTENING_COMPLETED" || eventType === "WRITING_COMPLETED") {
+    if (!isLearnSurfaceAvailable(expectedLanguageId, "labs")) {
+      throw new Error("activity-learning-surface-unavailable");
+    }
     const kind = eventType.startsWith("GRAMMAR") ? "grammar" : eventType.startsWith("LISTENING") ? "listening" : "writing";
     const match = new RegExp("^lab:" + kind + ":([^:]+):\\d{4}-\\d{2}-\\d{2}$").exec(sid);
     if (!match?.[1]) throw new Error("activity-learning-invalid-source");
