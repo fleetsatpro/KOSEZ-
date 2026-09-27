@@ -7,7 +7,7 @@ import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { STAGES, nextStage } from "@/lib/blossom/engine";
-import { organismStatusLine } from "@/lib/blossom/organism";
+import { causalNextGesture, organismStatusLine } from "@/lib/blossom/organism";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +19,7 @@ function PlantPage() {
   const journey = useJourney();
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
+  const nextGesture = causalNextGesture(minerals);
   const upcoming = nextStage(journey.stage.id);
   const leoLine = organismStatusLine(minerals);
   const reqs = [
@@ -113,6 +114,11 @@ function PlantPage() {
             value={stageProgress}
             aria-label={`Progression du stade ${journey.stage.label}`}
           />
+          {reqs.some((item) => item.current < item.required) ? (
+            <p className="mt-2 text-[11px] leading-5 text-subtle">
+              Les points avancent, mais le stade suivant demande aussi les conditions ci-dessous.
+            </p>
+          ) : null}
 
           <ul className="mt-6 space-y-2" aria-label="Conditions du stade">
             {reqs.map((item) => {
@@ -146,15 +152,13 @@ function PlantPage() {
 
           <div className="mt-auto pt-6">
             <Button asChild className="w-full sm:w-auto">
-              <Link to="/mission">
+              <Link to={nextGesture.door as "/mission" | "/osez" | "/pronlab" | "/tandem" | "/learn/labs"}>
                 Nourrir la plante
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
             </Button>
             <p className="mt-3 text-xs leading-5 text-subtle">
-              {upcoming
-                ? "La prochaine mission compte déjà pour le stade suivant."
-                : "Votre régularité porte ses fruits."}
+              {nextGesture.line}
             </p>
           </div>
         </Surface>
