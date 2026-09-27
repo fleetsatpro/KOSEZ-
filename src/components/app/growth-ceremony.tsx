@@ -247,7 +247,12 @@ export function GrowthCeremony({
             </ul>
           ) : null}
 
-          <CausalDoor minerals={minerals} onNavigate={close} />
+          <CausalDoor
+            minerals={minerals}
+            onNavigate={() => {
+              setPhase("exit");
+            }}
+          />
 
           <button
             ref={closeRef}
