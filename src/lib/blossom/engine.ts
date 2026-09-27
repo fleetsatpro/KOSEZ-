@@ -26,7 +26,9 @@ export type ActivityType =
   | "CURRICULUM_EVIDENCE_RECORDED"
   | "LIBRARY_COMPLETED";
 
-export type ActivityMetadata = Record<string, string | number | boolean>;
+export type ActivityMetadata = Record<string, string | number | boolean> & {
+  syncState?: "pending" | "confirmed";
+};
 
 export type ActivityEvent = {
   id: string;
@@ -41,6 +43,7 @@ export function activityBelongsToLanguage(
   event: ActivityEvent,
   languageId: string,
 ): boolean {
+  if (event.metadata?.syncState === "pending") return false;
   const tagged = event.metadata?.languageId;
   return typeof tagged === "string" ? tagged === languageId : languageId === "en";
 }
