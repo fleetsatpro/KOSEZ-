@@ -31,10 +31,6 @@ type LlmRoomPayload = {
   kit?: Array<{ phrase: string; use: string }>;
 };
 
-const REQUEST_WINDOW_MS = 60_000;
-const REQUEST_LIMIT = 12;
-const userWindows = new Map<string, number[]>();
-
 function env(key: string): string | undefined {
   const value = process.env[key]?.trim();
   return value || undefined;
