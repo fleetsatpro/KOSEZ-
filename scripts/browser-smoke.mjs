@@ -210,10 +210,34 @@ try {
       { waitUntil: "domcontentloaded", timeout: timeoutMs },
     );
     if (expectedAuth === "disabled") {
-      await page.locator('[data-smoke="blossom-home"]').waitFor({
-        state: "visible",
-        timeout: 10000,
-      });
+      try {
+        await page.locator('[data-smoke="blossom-home"]').waitFor({
+          state: "visible",
+          timeout: 10000,
+        });
+      } catch (error) {
+        const debugBody = normalizeBodyText(await page.locator("body").innerText().catch(() => ""));
+        const debugStorage = await page
+          .evaluate((storageKey) => {
+            try {
+              return window.localStorage.getItem(storageKey);
+            } catch {
+              return null;
+            }
+          }, SMOKE_STATE_KEY)
+          .catch(() => null);
+        const markerCount = await page.locator('[data-smoke="blossom-home"]').count().catch(() => -1);
+        errors.pageErrors.push(
+          "learner home surface did not become visible: " +
+          String(error?.message || error) +
+          " · url=" + page.url() +
+          " · markerCount=" + markerCount +
+          " · storage=" + (debugStorage ? debugStorage.slice(0, 1200) : "null") +
+          " · body=" + debugBody.slice(0, 2200) +
+          " · console=" + errors.consoleErrors.slice(-12).join(" | ") +
+          " · page=" + errors.pageErrors.slice(-12).join(" | "),
+        );
+      }
     } else {
       await page.waitForTimeout(500);
     }
