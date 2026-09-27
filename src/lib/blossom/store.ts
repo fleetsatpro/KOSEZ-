@@ -516,6 +516,13 @@ export const useBlossom = create<AppState>()(
           assessment,
           provider: (evidenceMetadata?.provider as string | undefined) ?? (evidenceMetadata?.providerId as string | undefined) ?? "speech-evidence",
         };
+        if (
+          assessment === "skipped" &&
+          safeSeconds <= 0 &&
+          !String(evidenceMetadata?.transcript ?? "").trim()
+        ) {
+          return null;
+        }
         const safeSeconds = Math.max(0, Math.round(seconds));
         const mutation = createMutation({
           operation: "pronlab.attempt",
