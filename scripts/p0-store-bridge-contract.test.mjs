@@ -56,3 +56,7 @@ test("P0 PronLab semantics stay language-scoped and verified-only for mastery gr
 test("P0 bridge preserves remote PronLab evidence metadata", () => {
   assert.ok(bridge.includes("metadata: attempt.metadata"));
 });
+
+test("P0 sync queue uses monotonic causal timestamps", () => {
+  assert.ok(store.includes("createdAt: nextMutationCreatedAt()"));
+});
