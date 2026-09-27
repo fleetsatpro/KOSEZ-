@@ -1,6 +1,26 @@
 import { getSql } from "@/lib/db";
 import { CURRICULUM_UNITS, type LessonKind } from "./learning-os";
 
+function jsonObject(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
+}
+
+function hasCompletedMissionSession(value: unknown): boolean {
+  const session = jsonObject(value);
+  const runs = Array.isArray(session.runs) ? session.runs : [];
+  return runs.some((runValue) => {
+    const run = jsonObject(runValue);
+    if (typeof run.completedAt !== "string" || !run.completedAt) return false;
+    if (!run.reflection || typeof run.reflection !== "object") return false;
+    const attempts = Array.isArray(run.attempts) ? run.attempts : [];
+    return attempts.some((attemptValue) => {
+      const attempt = jsonObject(attemptValue);
+      return attempt.kind === "mission";
+    });
+  });
+}
+
 /** Server-authoritative allowlist — mirrors ActivityType in engine.ts. */
 export const ACTIVITY_EVENT_TYPES = [
   "MISSION_COMPLETED",
@@ -82,33 +102,31 @@ export async function assertActivityAppend(
   }
 
   if (eventType === "PRONLAB_MASTERY") {
-    const itemId = sid.startsWith("mastery-") ? sid.slice("mastery-".length) : sid;
-    if (!itemId) throw new Error("activity-mastery-missing-item");
+    // No client mutation can certify mastery. A real mastery verdict must be
+    // produced by a server-authoritative assessment path.
+    throw new Error("activity-mastery-server-only");
+  }
+
+  if (eventType === "MISSION_COMPLETED") {
+    if (!sid) throw new Error("activity-mission-missing-source");
     const rows = await sql.query(
-      `select score, seconds from blossom_pronlab_attempt
-       where user_id = $1 and item_id = $2
-       order by created_at desc limit 12`,
-      [userId, itemId],
+      "select session from blossom_mission_session where user_id = $1 and mission_id = $2 limit 1",
+      [userId, sid],
     );
-    if (!rows.length) throw new Error("activity-mastery-without-attempts");
-    const verifiedHigh = rows.some(
-      (row) => Number(row.score) >= 90 && Number(row.seconds) > 0,
-    );
-    const practiceCaptures = rows.filter((row) => Number(row.seconds) >= 8).length;
-    if (!verifiedHigh && practiceCaptures < 2) {
-      throw new Error("activity-mastery-insufficient-evidence");
+    if (!rows[0] || !hasCompletedMissionSession(rows[0].session)) {
+      throw new Error("activity-mission-without-completed-session");
     }
     return;
   }
 
   if (eventType === "TANDEM_COMPLETED") {
+    const sessionId = sid.startsWith("tandem-session-") ? sid.slice("tandem-session-".length) : "";
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) {
+      throw new Error("activity-tandem-invalid-session-source");
+    }
     const rows = await sql.query(
-      `select 1 from blossom_tandem_session
-       where (user_id = $1 or partner_user_id = $1)
-         and status = 'completed'
-         and ended_at is not null
-       limit 1`,
-      [userId],
+      "select 1 from blossom_tandem_session where id = $1::uuid and (user_id = $2 or partner_user_id = $2) and status = 'completed' and ended_at is not null limit 1",
+      [sessionId, userId],
     );
     if (!rows[0]) throw new Error("activity-tandem-without-session");
     return;
@@ -116,32 +134,21 @@ export async function assertActivityAppend(
 
   if (eventType === "EVENT_ATTENDED") {
     if (!sid) throw new Error("activity-event-missing-source");
-    const rows = await sql.query(
-      `select 1 from blossom_event_registration
-       where user_id = $1 and event_id = $2 and status in ('joined', 'attended', 'checked_in')
-       limit 1`,
-      [userId, sid],
-    );
     const attendance = await sql.query(
-      `select 1 from blossom_event_attendance
-       where user_id = $1 and event_id = $2 limit 1`,
+      "select 1 from blossom_event_attendance where user_id = $1 and event_id = $2 limit 1",
       [userId, sid],
     );
-    if (!rows[0] && !attendance[0]) throw new Error("activity-event-without-registration");
+    if (!attendance[0]) throw new Error("activity-event-without-attendance");
     return;
   }
 
   if (eventType === "HOMEWORK_COMPLETED") {
     if (!sid) throw new Error("activity-homework-missing-source");
     const rows = await sql.query(
-      `select 1 from blossom_homework
-       where learner_user_id = $1
-         and (id::text = $2 or title = $2)
-         and status in ('sent', 'done', 'completed', 'draft')
-       limit 1`,
+      "select 1 from blossom_homework where learner_user_id = $1 and id::text = $2 and status = 'done' limit 1",
       [userId, sid],
     );
-    if (!rows[0]) throw new Error("activity-homework-not-found");
+    if (!rows[0]) throw new Error("activity-homework-not-completed");
     return;
   }
 
