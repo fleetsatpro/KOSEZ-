@@ -326,6 +326,7 @@ export type ConnectPeer = {
 };
 
 export async function getConnectPeers(userId: string): Promise<ConnectPeer[]> {
+  await enforceRateLimit(userId, "communication.connect-peers", 60, 60);
   const sql = await getSql();
   const rows = await sql.query(
     `select
@@ -402,6 +403,7 @@ function prefStringArray(preferences: Record<string, unknown>, key: string) {
 }
 
 export async function getTandemCandidates(userId: string): Promise<TandemCandidate[]> {
+  await enforceRateLimit(userId, "tandem.candidates", 60, 60);
   assertFeaturePlan(await getServerPlan(userId), "tandem");
   const sql = await getSql();
   const rows = await sql.query(
@@ -426,7 +428,8 @@ export async function getTandemCandidates(userId: string): Promise<TandemCandida
       )
       and coalesce(mine.status, 'suggested') <> 'blocked'
       and coalesce(incoming.status, 'none') <> 'blocked'
-    order by display_name asc`,
+    order by display_name asc
+    limit 100`,
     [userId],
   );
 
