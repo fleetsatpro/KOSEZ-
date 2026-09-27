@@ -81,8 +81,9 @@ export function computeMinerals(log: ActivityEvent[]): MineralSnapshot {
     countTypes(log, ["MISSION_COMPLETED", "REAL_WORLD_BONUS"], true),
     8,
   );
+  // Parole is SPEAK only — Tandem is social mineral territory (#58).
   const parole = norm(
-    countTypes(log, ["SPEAK_COMPLETED", "TANDEM_COMPLETED"]),
+    countTypes(log, ["SPEAK_COMPLETED"]),
     6,
   );
   const pron = norm(
@@ -413,11 +414,8 @@ export function pushGrowthEvent(
 }
 
 export function courageDaysFromLog(log: ActivityEvent[]): string[] {
-  const speakTypes: ActivityType[] = [
-    "SPEAK_COMPLETED",
-    "TANDEM_COMPLETED",
-    "MISSION_COMPLETED",
-  ];
+  // Evidence-first: only verified speaking days, not tandem/social or manual missions.
+  const speakTypes: ActivityType[] = ["SPEAK_COMPLETED"];
   const set = new Set<string>();
   for (const e of log) {
     if (!speakTypes.includes(e.type)) continue;
