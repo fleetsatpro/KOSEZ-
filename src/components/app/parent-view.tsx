@@ -31,6 +31,7 @@ export function ParentView() {
   const [error, setError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<GuardianSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -83,7 +84,10 @@ export function ParentView() {
         if (!disposed) setSessions(rows);
       })
       .catch(() => {
-        if (!disposed) setSessions([]);
+        if (!disposed) {
+          setSessions([]);
+          setSessionsError(true);
+        }
       })
       .finally(() => {
         if (!disposed) setSessionsLoading(false);
