@@ -59,7 +59,7 @@ type GrowthSnapshot = {
   before: ReturnType<typeof journeySnapshot>;
   after: ReturnType<typeof journeySnapshot>;
   evaluation: ReturnType<typeof evaluateMission>;
-  pending?: boolean;
+  credit: "confirmed" | "pending" | "local-only";
 };
 
 function CinematicTop({ step, language }: { step: MissionStep; language: string }) {
@@ -155,6 +155,7 @@ export function MissionTheatreExperience() {
   const [closing, setClosing] = useState(false);
   const [serverRunSessionId, setServerRunSessionId] = useState<string | null>(null);
   const [serverEvidenceAvailable, setServerEvidenceAvailable] = useState(false);
+  const [rewardSourceId, setRewardSourceId] = useState<string | null>(null);
 
   async function start() {
     if (starting || closing) return;
@@ -247,18 +248,27 @@ export function MissionTheatreExperience() {
       }
     }
 
-    const before = journeySnapshot(log);
+    const before = journeySnapshot(activeLog);
     const result = completeMissionSession(todayMission.id, rewardSourceId);
     if (!result.ok) {
       setClosing(false);
       toast("Session non close.");
       return;
     }
-    const after = journeySnapshot(useBlossom.getState().activityLog);
+    const currentConfirmedLog = useBlossom
+      .getState()
+      .activityLog.filter((event) => activityBelongsToLanguage(event, languageId));
+    const after = journeySnapshot(currentConfirmedLog);
     const evaluation = evaluateMission(reflection);
     setServerRunSessionId(null);
     setServerEvidenceAvailable(false);
-    setGrowth({ before, after, evaluation, pending: Boolean(result.pending) });
+    setRewardSourceId(rewardSourceId);
+    setGrowth({
+      before,
+      after,
+      evaluation,
+      credit: rewardSourceId ? "pending" : "local-only",
+    });
     track("mission_completed", {
       missionId: todayMission.id,
       mode,
@@ -267,6 +277,26 @@ export function MissionTheatreExperience() {
     });
     setClosing(false);
   }
+
+  useEffect(() => {
+    if (!growth || growth.credit !== "pending" || !rewardSourceId) return;
+    const confirmed = activeLog.some(
+      (event) =>
+        event.type === "MISSION_COMPLETED" &&
+        event.sourceId === rewardSourceId,
+    );
+    if (!confirmed) return;
+    setGrowth((current) =>
+      current
+        ? {
+            ...current,
+            after: journeySnapshot(activeLog),
+            credit: "confirmed",
+          }
+        : current,
+    );
+    setRewardSourceId(null);
+  }, [activeLog, growth, rewardSourceId]);
 
   if (growth) {
     const pointDelta = growth.after.points - growth.before.points;
@@ -290,17 +320,23 @@ export function MissionTheatreExperience() {
         <div className="relative z-10 mx-auto flex min-h-[calc(100svh-4rem)] max-w-5xl flex-col justify-center">
           <div className="text-center">
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">
-              Post-crédit · BLOSSOM
+              {growth.credit === "confirmed"
+                ? "Post-crédit · BLOSSOM"
+                : growth.credit === "pending"
+                  ? "Crédit en synchronisation · BLOSSOM"
+                  : "Pratique locale · BLOSSOM"}
             </p>
             <h1 className="mt-4 font-display text-[clamp(3rem,8vw,6rem)] leading-[0.88] tracking-[-0.06em]">
               Un geste. Une racine.
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-muted sm:text-base">
-              {growth.pending
-                ? "Votre session est clôturée localement et attend la confirmation serveur. Aucune croissance n'est présentée comme acquise avant cette confirmation."
-                : "Votre action vient d'être enregistrée. Voici la conséquence exacte — sans score à jouer, sans flamme à protéger."}
+              {growth.credit === "pending"
+                ? "Votre session est clôturée et le crédit attend la confirmation serveur. Aucune croissance n'est présentée comme acquise avant cette confirmation."
+                : growth.credit === "local-only"
+                  ? "Votre pratique est consignée localement, mais aucun crédit BLOSSOM n'est acquis sans session serveur confirmée."
+                  : "Votre action vient d'être enregistrée. Voici la conséquence exacte — sans score à jouer, sans flamme à protéger."}
             </p>
-            {!growth.pending && latestGrowth ? (
+            {growth.credit === "confirmed" && latestGrowth ? (
               <p className="mx-auto mt-3 max-w-md rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm text-primary">
                 {latestGrowth.label}
               </p>
@@ -326,7 +362,9 @@ export function MissionTheatreExperience() {
             <div className="rounded-[26px] border border-primary/15 bg-surface p-4 magnetic-surface">
               <div className="flex items-center justify-between px-1 pb-3">
                 <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Après</span>
-                <span className="text-xs tabular-nums text-primary">+{pointDelta} pts</span>
+                <span className="text-xs tabular-nums text-primary">
+                  {growth.credit === "confirmed" ? "+" + pointDelta + " pts" : "En attente"}
+                </span>
               </div>
               <BlossomPlant
                 linked={false}
