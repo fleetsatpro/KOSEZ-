@@ -12,6 +12,10 @@ const auth = read("src/lib/auth/server.ts");
 const rateLimit = read("src/lib/blossom/rate-limit.server.ts");
 const preview = read("src/lib/auth/preview.ts");
 const api = read("src/lib/blossom/api.ts");
+const domain = read("src/lib/blossom/domain.server.ts");
+const safety = read("src/lib/blossom/safety.server.ts");
+const messaging = read("src/lib/blossom/messaging.server.ts");
+const domainApi = read("src/lib/blossom/domain.api.ts");
 const speakServer = read("src/lib/blossom/speak-server.server.ts");
 const pwa = read("server/middleware/grok-pwa.ts");
 
@@ -60,6 +64,24 @@ test("activity mutations are enum-gated and pass through server integrity checks
   assert.doesNotMatch(speakServer, /userWindows/);
   assert.doesNotMatch(speakServer, /function assertRateLimit\(userId: string\)/);
   assert.match(pwa, /withSecurityHeaders\(result, event\)/);
+  assert.match(safety, /tandem_connection mine/);
+  assert.match(safety, /mine\.status = 'accepted'/);
+  assert.match(safety, /Vous ne pouvez signaler qu'un tandem réciproquement accepté/);
+  assert.match(messaging, /communication\.list/);
+  assert.match(messaging, /order by c\.updated_at desc limit 100/);
+  assert.match(messaging, /await assertConversationAccess\(userId, conversationId\)/);
+  assert.match(domain, /commerce\.booking-request/);
+  assert.match(domain, /commerce\.waitlist-request/);
+  assert.match(domain, /learning\.pronlab-attempt/);
+  assert.match(domain, /learning\.vocabulary-upsert/);
+  assert.match(domain, /tandem\.status/);
+  assert.match(domain, /event\.register/);
+  assert.match(domain, /immersion\.challenge-complete/);
+  assert.match(domain, /teacher\.homework-save/);
+  assert.match(domain, /teacher\.note-save/);
+  assert.match(domain, /homework\.complete/);
+  assert.match(domain, /learning\.submission/);
+  assert.match(domainApi, /ensureBootstrapAdmin\(context\.userId, identity\.email, identity\.emailVerified\)/);
 });
 
 test("authenticated abuse surfaces use the distributed Postgres limiter", () => {
