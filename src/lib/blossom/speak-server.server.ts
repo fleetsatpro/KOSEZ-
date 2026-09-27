@@ -30,89 +30,6 @@ type LlmRoomPayload = {
   kit?: Array<{ phrase: string; use: string }>;
 };
 
-const REQUEST_WINDOW_MS = 60_000;
-const REQUEST_LIMIT = 12;
-const userWindows = new Map<string, number[]>();
-
-function env(key: string): string | undefined {
-  const value = process.env[key]?.trim();
-  return value || undefined;
-}
-
-function csv(key: string): string[] {
-  return (env(key) ?? "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-}
-
-function resolveModelCascade(): SpeakModelSlot[] {
-  const slots: SpeakModelSlot[] = [];
-  const primaryUrl = env("SPEAK_LLM_URL");
-  if (primaryUrl) {
-    slots.push({
-      id: "primary",
-      url: primaryUrl.replace(/\/$/, ""),
-      model: env("SPEAK_LLM_MODEL") ?? "llama-3.1-8b-instruct",
-      apiKey: env("SPEAK_LLM_API_KEY"),
-      timeoutMs: 22_000,
-    });
-  }
-
-  const urls = csv("SPEAK_LLM_FALLBACK_URLS");
-  const models = csv("SPEAK_LLM_FALLBACK_MODELS");
-  const keys = csv("SPEAK_LLM_FALLBACK_KEYS");
-  urls.forEach((url, index) => {
-    slots.push({
-      id: `fallback-${index + 1}`,
-      url: url.replace(/\/$/, ""),
-      model: models[index] ?? slots[0]?.model ?? "llama-3.1-8b-instruct",
-      apiKey: keys[index],
-      timeoutMs: 18_000,
-    });
-  });
-
-  const groqKey = env("GROQ_API_KEY");
-  if (groqKey && !slots.some((slot) => slot.url.includes("groq.com"))) {
-    slots.push({
-      id: "groq",
-      url: "https://api.groq.com/openai/v1",
-      model: env("GROQ_MODEL") ?? "llama-3.3-70b-versatile",
-      apiKey: groqKey,
-      timeoutMs: 20_000,
-    });
-  }
-
-  const openRouterKey = env("OPENROUTER_API_KEY");
-  if (openRouterKey && !slots.some((slot) => slot.url.includes("openrouter.ai"))) {
-    slots.push({
-      id: "openrouter",
-      url: "https://openrouter.ai/api/v1",
-      model: env("OPENROUTER_MODEL") ?? "meta-llama/llama-3.1-8b-instruct",
-      apiKey: openRouterKey,
-      timeoutMs: 25_000,
-    });
-  }
-
-  const seen = new Set<string>();
-  return slots.filter((slot) => {
-    const key = `${slot.url}|${slot.model}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function assertRateLimit(userId: string) {
-  const now = Date.now();
-  const recent = (userWindows.get(userId) ?? []).filter(
-    (stamp) => now - stamp < REQUEST_WINDOW_MS,
-  );
-  if (recent.length >= REQUEST_LIMIT) throw new Error("speak-rate-limit");
-  recent.push(now);
-  userWindows.set(userId, recent);
-}
-
 function mergeLlmIntoRoom(base: LivingRoom, payload: LlmRoomPayload): LivingRoom {
   const turns =
     payload.turns && payload.turns.length >= 4
@@ -201,7 +118,7 @@ export async function composeSpeakRoom(
   input: ServerTopicRequest,
   userId: string,
 ): Promise<{ room: LivingRoom; source: "llm" | "swarm"; modelId?: string }> {
-  assertRateLimit(userId);
+  await enforceRateLimit(userId, "speak.room", 12, 60);
 
   const clean = input.topic.trim().slice(0, 120);
   const baseInput: GenerateInput = {
