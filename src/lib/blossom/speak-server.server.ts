@@ -1,5 +1,6 @@
 import type { GenerateInput, LivingRoom } from "./speak-engine.ts";
 import { generateLivingRoom, roomBriefForLlm } from "./speak-engine.ts";
+import { enforceRateLimit } from "./rate-limit.server";
 
 type ServerTopicRequest = {
   topic: string;
@@ -23,6 +24,77 @@ type LlmRoomPayload = {
   title?: string;
   setting?: string;
   cast?: { role: string; name: string; stance: string };
+
+
+function env(key: string): string | undefined {
+  const value = process.env[key]?.trim();
+  return value || undefined;
+}
+
+function csv(key: string): string[] {
+  return (env(key) ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function resolveModelCascade(): SpeakModelSlot[] {
+  const slots: SpeakModelSlot[] = [];
+  const primaryUrl = env("SPEAK_LLM_URL");
+  if (primaryUrl) {
+    slots.push({
+      id: "primary",
+      url: primaryUrl.replace(/\/$/, ""),
+      model: env("SPEAK_LLM_MODEL") ?? "llama-3.1-8b-instruct",
+      apiKey: env("SPEAK_LLM_API_KEY"),
+      timeoutMs: 22_000,
+    });
+  }
+
+  const urls = csv("SPEAK_LLM_FALLBACK_URLS");
+  const models = csv("SPEAK_LLM_FALLBACK_MODELS");
+  const keys = csv("SPEAK_LLM_FALLBACK_KEYS");
+  urls.forEach((url, index) => {
+    slots.push({
+      id: `fallback-${index + 1}`,
+      url: url.replace(/\/$/, ""),
+      model: models[index] ?? slots[0]?.model ?? "llama-3.1-8b-instruct",
+      apiKey: keys[index],
+      timeoutMs: 18_000,
+    });
+  });
+
+  const groqKey = env("GROQ_API_KEY");
+  if (groqKey && !slots.some((slot) => slot.url.includes("groq.com"))) {
+    slots.push({
+      id: "groq",
+      url: "https://api.groq.com/openai/v1",
+      model: env("GROQ_MODEL") ?? "llama-3.3-70b-versatile",
+      apiKey: groqKey,
+      timeoutMs: 20_000,
+    });
+  }
+
+  const openRouterKey = env("OPENROUTER_API_KEY");
+  if (openRouterKey && !slots.some((slot) => slot.url.includes("openrouter.ai"))) {
+    slots.push({
+      id: "openrouter",
+      url: "https://openrouter.ai/api/v1",
+      model: env("OPENROUTER_MODEL") ?? "meta-llama/llama-3.1-8b-instruct",
+      apiKey: openRouterKey,
+      timeoutMs: 25_000,
+    });
+  }
+
+  const seen = new Set<string>();
+  return slots.filter((slot) => {
+    const key = `${slot.url}|${slot.model}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
   pressure?: { label: string; description: string };
   turns?: Array<{ speaker: "ai" | "you"; line?: string; hint: string }>;
   debrief?: { strength: string; improvement: string; model: string };
