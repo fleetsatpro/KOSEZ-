@@ -366,7 +366,7 @@ export async function assertActivityAppend(
     return {
       ...safeMetadata,
       missionId,
-      runId: String(serverSession[0].run_id),
+      runId: String(serverRun[0].run_id),
       serverSessionId,
       durationSeconds: Math.max(0, Number(serverRun[0].duration_seconds ?? 0)),
     };
