@@ -9,6 +9,7 @@ import {
 import { MESSAGES, type MessageTree } from "./messages";
 
 export * from "./locales";
+export * from "./learning-surface";
 export type { MessageTree } from "./messages";
 
 export function messagesFor(locale: string): MessageTree {
