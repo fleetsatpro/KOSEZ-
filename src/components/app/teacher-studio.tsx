@@ -306,7 +306,13 @@ export function TeacherStudio() {
                 onClick={() => setTab(id)}
                 className={id === tab ? "h-11 shrink-0 rounded-md bg-primary px-4 text-sm text-primary-foreground" : "h-11 shrink-0 rounded-md bg-surface px-4 text-sm text-muted shadow-[var(--shadow-border)]"}
               >
-                {id === "prep" ? "Avant le cours" : id === "roster" ? "Classe" : "Lecture"}
+                {id === "prep"
+                  ? "Avant le cours"
+                  : id === "roster"
+                    ? "Classe"
+                    : id === "lecture"
+                      ? "Lecture"
+                      : "Messages"}
               </button>
             ))}
           </div>
