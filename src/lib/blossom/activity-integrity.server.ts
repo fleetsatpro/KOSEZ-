@@ -403,11 +403,15 @@ export async function assertActivityAppend(
       throw new Error("activity-tandem-invalid-session-source");
     }
     const rows = await sql.query(
-      "select started_at, ended_at, language_id from blossom_tandem_session where id = $1::uuid and (user_id = $2 or partner_user_id = $2) and status = 'completed' and ended_at is not null limit 1",
+      "select user_id, partner_user_id, started_at, ended_at, language_id, partner_language_id from blossom_tandem_session where id = $1::uuid and (user_id = $2 or partner_user_id = $2) and status = 'completed' and ended_at is not null limit 1",
       [sessionId, userId],
     );
     if (!rows[0]) throw new Error("activity-tandem-without-session");
-    if (String(rows[0].language_id ?? "en") !== expectedLanguageId) {
+    const isInitiator = String(rows[0].user_id) === userId;
+    const sessionLanguageId = isInitiator
+      ? String(rows[0].language_id ?? "en")
+      : String(rows[0].partner_language_id ?? "en");
+    if (sessionLanguageId !== expectedLanguageId) {
       throw new Error("activity-tandem-language-mismatch");
     }
     const durationSeconds = Math.floor(
