@@ -43,7 +43,6 @@ function PronlabIndex() {
   );
   const sets = setsForLanguage(languageId);
   const activeItems = sets.flatMap((s) => s.items);
-  const activeItemIds = new Set(activeItems.map((item) => item.id));
   const activeLog = log.filter((event) => activityBelongsToLanguage(event, languageId));
   const struggle = strugglingFocus(attempts, activeItems);
   const minerals = computeMinerals(activeLog);
