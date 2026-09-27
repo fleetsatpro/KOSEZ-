@@ -329,7 +329,11 @@ export const useBlossom = create<AppState>()(
         voidProfileSync(learner, current.languageId, current.plan, current.warmup, current.exportConsent, current.tandemOpen);
       },
       startMissionRun: (missionId, mode, challenge = "core") => {
-        const current = get().missionSessions[missionId] ?? createMissionSession(missionId);
+        const existing = get().missionSessions[missionId];
+        const current =
+          existing && (!existing.languageId || existing.languageId === get().languageId)
+            ? { ...existing, languageId: existing.languageId ?? get().languageId }
+            : createMissionSession(missionId, get().languageId);
         const next = beginMissionRun(current, mode, challenge);
         const active = activeMissionRun(next);
         if (next === current || !active) return active?.id ?? null;
