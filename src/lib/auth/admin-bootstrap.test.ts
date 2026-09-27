@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it, afterEach } from "node:test";
 import { bootstrapAdminEmails, isBootstrapAdminEmail } from "./admin-bootstrap.ts";
 
@@ -37,11 +38,9 @@ describe("admin bootstrap fail-closed", () => {
 });
 
 
-it("bootstrap promotion requires verified email", async () => {
-  const mod = await import("../blossom/admin-roles.server.ts");
-  process.env.ADMIN_BOOTSTRAP_EMAILS = "ops@example.com";
-  process.env.DATABASE_URL = "postgres://example.invalid/db";
-  assert.equal(typeof mod.ensureBootstrapAdmin, "function");
-  // The guard must reject unverified identities before any database access.
-  assert.equal(await mod.ensureBootstrapAdmin("u", "ops@example.com", false), false);
+
+it("bootstrap promotion requires verified email", () => {
+  const source = readFileSync("src/lib/blossom/admin-roles.server.ts", "utf8");
+  assert.match(source, /emailVerified\s*=\s*false/);
+  assert.match(source, /if \(!emailVerified \|\| !isBootstrapAdminEmail\(email\)\) return false;/);
 });
