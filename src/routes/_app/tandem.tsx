@@ -75,7 +75,7 @@ function TandemHub() {
         memoryOn: planAllows(plan, "memory"),
         languageId,
       }),
-    [log, attempts, growthEvents, phonemeLeaves, missionSessions, plan, languageId],
+    [scopedLog, attempts, growthEvents, phonemeLeaves, missionSessions, plan, languageId],
   );
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
