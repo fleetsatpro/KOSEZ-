@@ -547,6 +547,9 @@ export async function syncBlossomBatch(
   if (mutations.length > 50) {
     throw new Error("sync-batch-too-large");
   }
+  if (mutations.some((mutation) => mutation.deviceId !== deviceId)) {
+    throw new Error("sync-device-mismatch");
+  }
   if (
     mutations.some((mutation) => {
       try {
