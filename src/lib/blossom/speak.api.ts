@@ -5,7 +5,7 @@ import {
   startSpeakSession,
   endSpeakSession,
   getActiveSpeakSession,
-} from "./domain.server";
+} from "./speak-session.server";
 
 export const startSpeakSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
