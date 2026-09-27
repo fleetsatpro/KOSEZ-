@@ -11,12 +11,18 @@ export function AdminEventAttendance() {
   const [rows, setRows] = useState<AdminEventAttendanceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
+  const [error, setError] = useState(false);
 
   async function load() {
     setLoading(true);
-    try { setRows(await getAdminEventAttendanceOnServer()); }
-    catch { setRows([]); toast("Le registre de présence n’est pas disponible."); }
-    finally { setLoading(false); }
+    setError(false);
+    try {
+      setRows(await getAdminEventAttendanceOnServer());
+    } catch {
+      setRows([]);
+      setError(true);
+      toast("Le registre de présence n’est pas disponible.");
+    } finally { setLoading(false); }
   }
   useEffect(() => { void load(); }, []);
 
@@ -48,6 +54,12 @@ export function AdminEventAttendance() {
         <Users className="size-5 text-primary" />
       </div>
       {loading ? <div className="mt-5 flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" /> Chargement…</div> :
+       error ? (
+         <div className="mt-5">
+           <p className="text-sm text-muted">Le registre n’a pas pu être chargé.</p>
+           <Button className="mt-3" size="sm" variant="secondary" onClick={() => void load()}>Réessayer</Button>
+         </div>
+       ) :
        grouped.length === 0 ? <p className="mt-5 text-sm text-muted">Aucune inscription confirmée à pointer.</p> :
        <div className="mt-5 space-y-5">
          {grouped.map(([eventId, eventRows]) => (

@@ -27,7 +27,6 @@ export function ChildHome() {
   const languageId = useBlossom((s) => s.languageId);
   const done = useBlossom((s) => s.childMissionDone);
   const completeChild = useBlossom((s) => s.completeChildMission);
-  const completeActivity = useBlossom((s) => s.completeActivity);
   const words = useBlossom((s) => s.childWords);
   const markWord = useBlossom((s) => s.markChildWord);
   const journey = useJourney();
@@ -36,8 +35,7 @@ export function ChildHome() {
 
   function completeMission() {
     if (done) return;
-    const result = completeActivity("MISSION_COMPLETED", "child-mission");
-    if (result.ok) completeChild();
+    completeChild();
   }
 
   return (
@@ -73,7 +71,7 @@ export function ChildHome() {
           Une minute suffit.
         </p>
         {done ? (
-          <p className="mt-5 text-sm text-primary">C’est noté dans ton BLOSSOM.</p>
+          <p className="mt-5 text-sm text-primary">C’est noté dans ton espace.</p>
         ) : (
           <Button className="mt-5 w-full" onClick={completeMission}>
             J’ai parlé
@@ -117,7 +115,7 @@ export function ChildHome() {
 
       <Progress className="mt-6" value={progress * 100} />
       <p className="mt-2 text-center text-xs text-subtle">
-        Un adulte voit la semaine. Il ne peut pas parler à ta place.
+        Un adulte autorisé peut suivre le parcours confirmé. Il ne peut pas parler à ta place.
       </p>
 
       <Button

@@ -55,6 +55,7 @@ export function AdminContentStudio() {
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<Awaited<ReturnType<typeof getAdminContentHistoryOnServer>>>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState(false);
 
   const selected = useMemo(() => items.find((item) => item.contentKey === selectedKey) ?? items[0], [items, selectedKey]);
 
@@ -71,9 +72,13 @@ export function AdminContentStudio() {
     if (!selected) return;
     setDraft({ ...selected.draftPayload });
     setHistoryLoading(true);
+    setHistoryError(false);
     void getAdminContentHistoryOnServer({ data: { contentKey: selected.contentKey } })
       .then(setHistory)
-      .catch(() => setHistory([]))
+      .catch(() => {
+        setHistory([]);
+        setHistoryError(true);
+      })
       .finally(() => setHistoryLoading(false));
   }, [selected]);
 
@@ -340,7 +345,7 @@ export function AdminContentStudio() {
               <div>
                 <Eyebrow>Historique</Eyebrow>
                 <p className="mt-1 text-sm text-muted">
-                  {historyLoading ? "Chargement…" : `${history.length} révision${history.length > 1 ? "s" : ""}`}
+                  {historyLoading ? "Chargement…" : historyError ? "Historique indisponible" : `${history.length} révision${history.length > 1 ? "s" : ""}`}
                 </p>
               </div>
               <ShieldCheck className="size-4 text-primary" />

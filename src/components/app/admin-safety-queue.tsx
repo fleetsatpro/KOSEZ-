@@ -12,13 +12,16 @@ import { Eyebrow, Surface } from "@/components/app/primitives";
 export function AdminSafetyQueue() {
   const [cases, setCases] = useState<AdminSafetyCase[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   async function load() {
     setLoading(true);
+    setError(false);
     try {
       setCases(await getAdminSafetyCasesOnServer());
     } catch {
       setCases([]);
+      setError(true);
     } finally {
       setLoading(false);
     }

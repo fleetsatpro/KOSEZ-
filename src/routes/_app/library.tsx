@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, BookMarked, Clock } from "lucide-react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LIBRARY as LIBRARY_CORE, planAllows } from "@/lib/blossom/data";
@@ -10,7 +11,11 @@ import { useBlossom } from "@/lib/blossom/store";
 const LIBRARY = [...LIBRARY_CORE, ...EXTRA_LIBRARY];
 
 export const Route = createFileRoute("/_app/library")({
-  component: LibraryPage,
+  component: () => (
+    <LearningSurfaceGate surface="library">
+      <LibraryPage />
+    </LearningSurfaceGate>
+  ),
 });
 
 /**
@@ -26,6 +31,11 @@ function LibraryPage() {
 
 function LibraryIndex() {
   const vocab = useBlossom((s) => s.vocabulary);
+  const languageId = useBlossom((s) => s.languageId);
+  const languageVocabulary = vocab.filter((entry) => {
+    const tagged = entry.metadata?.languageId;
+    return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+  });
   const plan = useBlossom((s) => s.plan);
   const libraryOk = planAllows(plan, "library");
 
@@ -73,7 +83,7 @@ function LibraryIndex() {
         </p>
       </header>
 
-      {vocab.length > 0 && (
+      {languageVocabulary.length > 0 && (
         <Surface className="mt-8 !p-4 sm:!p-5">
           <div className="flex items-center gap-2">
             <BookMarked className="size-4 text-primary" strokeWidth={1.7} />
@@ -82,10 +92,10 @@ function LibraryIndex() {
             </p>
           </div>
           <p className="mt-3 text-sm leading-6 text-fg">
-            {vocab.map((v) => v.word).join(" · ")}
+            {languageVocabulary.map((v) => v.word).join(" · ")}
           </p>
           <p className="mt-2 text-xs text-subtle">
-            {vocab.length} mot{vocab.length > 1 ? "s" : ""} — prêts pour une
+            {languageVocabulary.length} mot{languageVocabulary.length > 1 ? "s" : ""} — prêts pour une
             mission ou un Speak.
           </p>
         </Surface>

@@ -1,4 +1,5 @@
 import type { Mission, MissionScene } from "./data";
+import type { LearnLanguageId } from "@/lib/i18n/locales";
 import type { LearnerMemory } from "./engine";
 import type { MissionInfluence } from "./influence";
 
@@ -42,6 +43,7 @@ export type MissionRun = {
 
 export type MissionSession = {
   missionId: string;
+  languageId: LearnLanguageId;
   runs: MissionRun[];
   activeRunId: string | null;
 };
@@ -126,9 +128,13 @@ export function nextMissionChallenge(
   return outcome === "advance" ? "stretch" : "core";
 }
 
-export function createMissionSession(missionId: string): MissionSession {
+export function createMissionSession(
+  missionId: string,
+  languageId: LearnLanguageId = "en",
+): MissionSession {
   return {
     missionId,
+    languageId,
     runs: [],
     activeRunId: null,
   };

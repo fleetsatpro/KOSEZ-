@@ -54,6 +54,7 @@ function PulsePage() {
   const [closing, setClosing] = useState(false);
   const [serverSessionId, setServerSessionId] = useState<string | null>(null);
   const [serverTimerAvailable, setServerTimerAvailable] = useState(true);
+  const [pendingRewardSourceId, setPendingRewardSourceId] = useState<string | null>(null);
   const timer = useRef<number | null>(null);
   const startedAt = useRef<number>(0);
   const mineralsBefore = useRef(minerals);
@@ -116,12 +117,28 @@ function PulsePage() {
     const localSeconds = Math.max(1, Math.floor((Date.now() - startedAt.current) / 1000));
     setElapsed(authoritativeSeconds ?? localSeconds);
     setPhase("done");
-    if (authoritativeSeconds !== null) {
-      completePulse(`pulse-session-${serverSessionId}`, authoritativeSeconds, false);
+    if (authoritativeSeconds !== null && serverSessionId) {
+      const sourceId = "pulse-session-" + serverSessionId;
+      completePulse(sourceId, authoritativeSeconds, false);
+      setPendingRewardSourceId(sourceId);
     }
     setClosing(false);
-    setCeremonyOpen(true);
   }
+
+  useEffect(() => {
+    if (!pendingRewardSourceId) return;
+    const confirmed = log.some(
+      (event) =>
+        event.type === "PULSE_COMPLETED" &&
+        event.sourceId === pendingRewardSourceId,
+    );
+    if (!confirmed) return;
+    setPendingRewardSourceId(null);
+    const confirmedGrowth = growthEvents.find(
+      (growth) => growth.sourceId === pendingRewardSourceId,
+    );
+    if (confirmedGrowth) setCeremonyOpen(true);
+  }, [growthEvents, log, pendingRewardSourceId]);
 
   return (
     <Page className="kosez-feature-page max-w-lg">
@@ -175,7 +192,7 @@ function PulsePage() {
               <Check className="size-5" />
               <span className="font-medium">
                 {!serverTimerAvailable
-                  ? "Pratique enregistrée sans durée certifiée. Aucun crédit de temps n’a été attribué."
+                  ? "Pratique locale enregistrée. Aucun crédit BLOSSOM n’a été attribué sans validation serveur."
                   : offline
                     ? "Session serveur terminée ; la connexion locale était indisponible après la mesure."
                     : `Environ ${elapsed}s de courage. La terre s'en souvient.`}
@@ -200,7 +217,13 @@ function PulsePage() {
 
       <GrowthCeremony
         open={ceremonyOpen}
-        event={growthEvents[0] ?? null}
+        event={
+          growthEvents.find(
+            (growth) =>
+              growth.sourceId ===
+              (pendingRewardSourceId ?? (serverSessionId ? "pulse-session-" + serverSessionId : "")),
+          ) ?? null
+        }
         minerals={minerals}
         previousMinerals={mineralsBefore.current}
         onDismiss={() => setCeremonyOpen(false)}

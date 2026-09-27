@@ -368,7 +368,12 @@ try {
     };
   }
 
-  const brandWarnings = computeBrandWarnings({ hasCanvas: viewports.desktop.hasCanvas });
+  const workspaceRoot = process.env.GITHUB_WORKSPACE || process.cwd();
+  const brandWarnings = computeBrandWarnings({
+    hasCanvas: viewports.desktop.hasCanvas,
+    isGame: false,
+    workspaceRoot,
+  });
   // The CI learner smoke intentionally runs on an auth-disabled isolated server
   // so it can inspect the actual learner UI. Auth correctness is checked
   // separately against the production-mode auth-on server.

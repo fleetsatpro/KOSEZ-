@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
+import { TANDEM_TOTAL_DURATION_SECONDS, TANDEM_CONTRACT } from "./tandem-contract";
 import { normalizeMutationTime } from "./sync-causality";
 import { IMMERSION, PRONLAB_SETS, setsForLanguage } from "./data";
-import { LEARN_LANGUAGES } from "@/lib/i18n/locales";
+import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure } from "./lab-content";
+import { LEARN_LANGUAGES, isLearnLanguageId, isLearnSurfaceAvailable } from "@/lib/i18n/locales";
 import { fullMissionBank } from "./mission-today";
 import type { JsonObject } from "./backend.server";
 
@@ -731,6 +733,9 @@ export async function recordPronlabAttempt(
   if (!knownItem || !activeItems.has(input.itemId)) {
     throw new BlossomForbiddenError("Cet exercice Pron'Lab n'est pas disponible pour votre langue active.");
   }
+  if (!Number.isFinite(input.seconds) || input.seconds <= 0) {
+    throw new BlossomForbiddenError("Une prise Pron'Lab doit contenir une durée positive.");
+  }
 
   const recordId = input.idempotencyKey ?? randomUUID();
   const metadata = input.metadata ?? {};
@@ -1211,8 +1216,28 @@ export async function startMissionRunSession(userId: string, missionId: string, 
   if (!normalizedRunId || normalizedRunId.length > 200) {
     throw new BlossomForbiddenError("Cette session de mission est invalide.");
   }
-  if (!fullMissionBank().some((mission) => mission.id === normalizedMissionId)) {
+  const mission = fullMissionBank().find((item) => item.id === normalizedMissionId);
+  if (!mission) {
     throw new BlossomForbiddenError("Cette mission n\u0027est pas disponible.");
+  }
+  const profileRows = await (await getSql()).query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const languageId = String(profileRows[0]?.target_language ?? "en");
+  const missionLanguage = String(mission.language ?? "en").trim().toLowerCase();
+  const missionLanguageId =
+    missionLanguage === "english" ? "en" :
+    missionLanguage === "french" ? "fr" :
+    missionLanguage === "spanish" ? "es" :
+    missionLanguage === "portuguese" ? "pt" :
+    missionLanguage === "german" ? "de" :
+    missionLanguage === "italian" ? "it" :
+    missionLanguage === "lsf" ? "lsf" :
+    missionLanguage === "creole" || missionLanguage === "creole reunionnais" ? "cr" :
+    missionLanguage;
+  if (missionLanguageId !== languageId) {
+    throw new BlossomForbiddenError("Cette mission n'est pas disponible dans votre langue d'apprentissage active.");
   }
   const sql = await getSql();
   const active = await sql.query(
@@ -1316,6 +1341,107 @@ export async function saveLearningSubmission(
 ) {
   await enforceRateLimit(userId, "learning.submission", 60, 60);
   const sql = await getSql();
+  const profileRows = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const languageId = String(profileRows[0]?.target_language ?? "en");
+  if (!isLearnLanguageId(languageId)) throw new BlossomForbiddenError("Langue d’apprentissage invalide.");
+  if ((input.kind === "grammar" || input.kind === "listening" || input.kind === "writing") && !isLearnSurfaceAvailable(languageId, "labs")) {
+    throw new BlossomForbiddenError("Cet atelier n’est pas disponible pour votre langue d’apprentissage active.");
+  }
+
+  if (input.kind === "grammar") {
+    const task = GRAMMAR_TASKS.find((item) => item.id === input.taskId);
+    if (!task) throw new Error("unknown-grammar-task");
+    const correct = input.content === task.answer;
+    const expectedChecks = [correct ? "correct" : "incorrect"];
+    if (JSON.stringify(input.checks ?? []) !== JSON.stringify(expectedChecks)) {
+      throw new Error("forged-grammar-checks");
+    }
+    input = {
+      ...input,
+      checks: expectedChecks,
+      result: { ...(input.result ?? {}), correct, target: task.target, languageId },
+    };
+  } else if (input.kind === "listening") {
+    const task = LISTENING_TASKS.find((item) => item.id === input.taskId);
+    if (!task) throw new Error("unknown-listening-task");
+    const correct = input.content === task.answer;
+    const expectedChecks = [correct ? "correct" : "incorrect"];
+    if (JSON.stringify(input.checks ?? []) !== JSON.stringify(expectedChecks)) {
+      throw new Error("forged-listening-checks");
+    }
+    input = {
+      ...input,
+      checks: expectedChecks,
+      result: { ...(input.result ?? {}), correct, level: task.level, languageId },
+    };
+  } else if (input.kind === "writing") {
+    const prompt = WRITING_PROMPTS.find((item) => item.id === input.taskId);
+    if (!prompt) throw new Error("unknown-writing-task");
+    const evaluation = evaluateWritingStructure(prompt, input.content);
+    if (JSON.stringify(input.checks ?? []) !== JSON.stringify(evaluation.passed)) {
+      throw new Error("forged-writing-checks");
+    }
+    input = {
+      ...input,
+      checks: evaluation.passed,
+      result: {
+        ...(input.result ?? {}),
+        checkCount: evaluation.passed.length,
+        checkTotal: evaluation.total,
+        structureScore: evaluation.score,
+        method: evaluation.method,
+        languageId,
+      },
+    };
+  } else if (input.kind === "review") {
+    const expected = input.content === "correct" ? "correct" : input.content === "again" ? "again" : null;
+    if (!expected || JSON.stringify(input.checks ?? []) !== JSON.stringify([expected])) {
+      throw new Error("forged-review-checks");
+    }
+    const taskId = input.taskId.trim();
+    const sqlForReview = sql;
+    if (taskId.startsWith("pron:")) {
+      const itemId = taskId.slice("pron:".length);
+      const activeItemIds = new Set(
+        setsForLanguage(languageId).flatMap((setDef) => setDef.items.map((item) => item.id)),
+      );
+      if (!activeItemIds.has(itemId)) throw new Error("unknown-review-source");
+      const attempts = await sqlForReview.query(
+        "select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 and coalesce(metadata->>'languageId', '') = $3 and seconds > 0 limit 1",
+        [userId, itemId, languageId],
+      );
+      if (!attempts[0]) throw new Error("review-pron-without-attempt");
+    } else if (taskId.startsWith("vocab:")) {
+      const word = taskId.slice("vocab:".length).trim().toLowerCase();
+      if (!word || word.length > 120) throw new Error("unknown-review-source");
+      const rows = await sqlForReview.query(
+        "select 1 from blossom_vocabulary where user_id = $1 and language_id = $2 and word = $3 limit 1",
+        [userId, languageId, word],
+      );
+      if (!rows[0]) throw new Error("review-vocab-without-word");
+    } else if (taskId.startsWith("mission:")) {
+      const phrase = taskId.slice("mission:".length);
+      const known = languageId === "en" && (TODAY_MISSION.scene?.languageKit ?? []).some((kit) => kit.phrase === phrase);
+      if (!known) throw new Error("unknown-review-source");
+    } else {
+      throw new Error("unknown-review-source");
+    }
+    input = {
+      ...input,
+      taskId,
+      checks: [expected],
+      result: {
+        ...(input.result ?? {}),
+        correct: input.content === "correct",
+        sourceKind: taskId.split(":")[0],
+        languageId,
+      },
+    };
+  }
+
   const id = input.id ?? randomUUID();
   const rows = await sql.query(
     "insert into blossom_learning_submission (id, user_id, task_id, kind, content, checks, result) values ($1::uuid, $2, $3, $4, $5, $6::jsonb, $7::jsonb) on conflict (id) do update set content = excluded.content, checks = excluded.checks, result = excluded.result, updated_at = current_timestamp where blossom_learning_submission.user_id = excluded.user_id returning id, task_id, kind, content, checks, result, created_at, updated_at",
@@ -1704,22 +1830,56 @@ export async function startTandemSession(userId: string, partnerUserId: string) 
   if (!access[0]?.mine || !access[0]?.theirs) {
     throw new BlossomForbiddenError("La connexion tandem n'est pas réciproque.");
   }
+  const profileRows = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const rawLanguageId = String(profileRows[0]?.target_language ?? "en");
+  const languageId = LEARN_LANGUAGES.some((language) => language.id === rawLanguageId)
+    ? rawLanguageId
+    : "en";
+
+  const partnerProfileRows = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [partnerUserId],
+  );
+  const rawPartnerLanguageId = String(partnerProfileRows[0]?.target_language ?? "en");
+  const partnerLanguageId = LEARN_LANGUAGES.some((language) => language.id === rawPartnerLanguageId)
+    ? rawPartnerLanguageId
+    : "en";
+
   const active = await sql.query(
-    `select id from blossom_tandem_session
+    `select id, user_id, partner_user_id, language_id, partner_language_id
+     from blossom_tandem_session
      where ((user_id = $1 and partner_user_id = $2) or (user_id = $2 and partner_user_id = $1))
        and status = 'active'
      order by created_at desc limit 1`,
     [userId, partnerUserId],
   );
-  if (active[0]) return String(active[0].id);
+  if (active[0]) {
+    const isInitiator = String(active[0].user_id) === userId;
+    const expectedMine = isInitiator
+      ? String(active[0].language_id ?? "en")
+      : String(active[0].partner_language_id ?? "en");
+    const expectedPartner = isInitiator
+      ? String(active[0].partner_language_id ?? "en")
+      : String(active[0].language_id ?? "en");
+    if (expectedMine !== languageId) {
+      throw new BlossomForbiddenError("La langue d’apprentissage a changé depuis le début de cette session tandem. Recommencez le tandem.");
+    }
+    if (expectedPartner !== partnerLanguageId) {
+      throw new BlossomForbiddenError("La configuration de langue du partenaire a changé. Recommencez le tandem.");
+    }
+    return String(active[0].id);
+  }
 
   const sessionId = randomUUID();
   try {
     await sql.query(
       `insert into blossom_tandem_session
-        (id, user_id, partner_user_id, status, started_at)
-       values ($1::uuid, $2, $3, 'active', current_timestamp)`,
-      [sessionId, userId, partnerUserId],
+        (id, user_id, partner_user_id, language_id, partner_language_id, status, started_at)
+       values ($1::uuid, $2, $3, $4, $5, 'active', current_timestamp)`,
+      [sessionId, userId, partnerUserId, languageId, partnerLanguageId],
     );
   } catch (error) {
     if ((error as { code?: string })?.code !== "23505") throw error;
@@ -1728,11 +1888,25 @@ export async function startTandemSession(userId: string, partnerUserId: string) 
        from blossom_tandem_session
        where ((user_id = $1 and partner_user_id = $2) or (user_id = $2 and partner_user_id = $1))
          and status = 'active'
+         and language_id = $3
        order by created_at desc
        limit 1`,
-      [userId, partnerUserId],
+
+      [userId, partnerUserId, languageId],
     );
-    if (raced[0]) return String(raced[0].id);
+    if (raced[0]) {
+      const racedIsInitiator = String(raced[0].user_id) === userId;
+      const racedMine = racedIsInitiator
+        ? String(raced[0].language_id ?? "en")
+        : String(raced[0].partner_language_id ?? "en");
+      const racedPartner = racedIsInitiator
+        ? String(raced[0].partner_language_id ?? "en")
+        : String(raced[0].language_id ?? "en");
+      if (racedMine !== languageId || racedPartner !== partnerLanguageId) {
+        throw new BlossomForbiddenError("La configuration linguistique du tandem a changé. Recommencez le tandem.");
+      }
+      return String(raced[0].id);
+    }
     throw new Error("tandem-session-create-race");
   }
   await writeAuditEvent(userId, {
@@ -1751,12 +1925,24 @@ export async function logTandemPrompt(
   await enforceRateLimit(userId, "tandem.prompt", 60, 60);
   const sql = await getSql();
   const rows = await sql.query(
-    `select user_id, partner_user_id, status from blossom_tandem_session
+    `select user_id, partner_user_id, language_id, partner_language_id, status from blossom_tandem_session
      where id = $1::uuid and (user_id = $2 or partner_user_id = $2) limit 1`,
     [input.sessionId, userId],
   );
   if (!rows[0] || String(rows[0].status) !== "active") {
     throw new BlossomForbiddenError("Cette session tandem n'est plus active.");
+  }
+  const currentProfile = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const currentLanguageId = String(currentProfile[0]?.target_language ?? "en");
+  const isInitiator = String(rows[0].user_id) === userId;
+  const sessionLanguageId = isInitiator
+    ? String(rows[0].language_id ?? "en")
+    : String(rows[0].partner_language_id ?? "en");
+  if (sessionLanguageId !== currentLanguageId) {
+    throw new BlossomForbiddenError("La langue de cette session tandem a changé. Recommencez le tandem.");
   }
   const row = await sql.query(
     `insert into blossom_tandem_prompt_log (id, session_id, user_id, language, prompt)
@@ -1775,7 +1961,7 @@ export async function endTandemSession(
   await enforceRateLimit(userId, "tandem.end-session", 10, 60);
   const sql = await getSql();
   const current = await sql.query(
-    `select id, user_id, partner_user_id, status, started_at
+    `select id, user_id, partner_user_id, language_id, partner_language_id, status, started_at
      from blossom_tandem_session
      where id = $1::uuid and (user_id = $2 or partner_user_id = $2)
      limit 1`,
@@ -1784,6 +1970,18 @@ export async function endTandemSession(
   if (!current[0]) throw new BlossomForbiddenError("Cette session tandem n'est pas disponible.");
 
   if (status === "completed") {
+    const profileRows = await sql.query(
+      "select target_language from blossom_profile where user_id = $1 limit 1",
+      [userId],
+    );
+    const currentLanguageId = String(profileRows[0]?.target_language ?? "en");
+    const isInitiator = String(current[0].user_id) === userId;
+    const sessionLanguageId = isInitiator
+      ? String(current[0].language_id ?? "en")
+      : String(current[0].partner_language_id ?? "en");
+    if (sessionLanguageId !== currentLanguageId) {
+      throw new BlossomForbiddenError("La langue de cette session tandem a changé. Recommencez le tandem.");
+    }
     const prompts = await sql.query(
       `select user_id, count(*)::integer as count
        from blossom_tandem_prompt_log
@@ -1797,9 +1995,9 @@ export async function endTandemSession(
       0,
       Math.floor((Date.now() - new Date(String(current[0].started_at)).getTime()) / 1000),
     );
-    if (elapsedSeconds < 120 || distinctParticipants < 2 || totalPrompts < 2) {
+    if (elapsedSeconds < TANDEM_TOTAL_DURATION_SECONDS || distinctParticipants < TANDEM_CONTRACT.minParticipants || totalPrompts < TANDEM_CONTRACT.minPrompts) {
       throw new BlossomForbiddenError(
-        "La session tandem doit contenir au moins deux minutes et un échange des deux côtés avant d'être validée.",
+        "La session tandem doit respecter le cadre 30 + 30 minutes et contenir un échange enregistré des deux côtés avant d'être validée.",
       );
     }
   }
@@ -1935,4 +2133,144 @@ export async function endPulseSession(
     endedAt: new Date(String(rows[0].ended_at)).toISOString(),
     durationSeconds: Math.max(0, Number(rows[0].duration_seconds ?? 0)),
   };
+}
+
+export async function startSpeakSession(userId: string, roomId: string) {
+  await enforceRateLimit(userId, "speak.start-session", 20, 60);
+  const normalizedRoomId = roomId.trim();
+  if (!normalizedRoomId || normalizedRoomId.length > 200) {
+    throw new BlossomForbiddenError("Cette room n’est pas disponible.");
+  }
+  const sql = await getSql();
+  const profileRows = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const rawLanguage = String(profileRows[0]?.target_language ?? "en");
+  const languageId = LEARN_LANGUAGES.some((item) => item.id === rawLanguage)
+    ? rawLanguage
+    : "en";
+
+  const active = await sql.query(
+    `select id, room_id, language_id
+     from blossom_speak_session
+     where user_id = $1 and status = 'active'
+     order by created_at desc
+     limit 1`,
+    [userId],
+  );
+  if (active[0]) {
+    if (String(active[0].room_id) === normalizedRoomId && String(active[0].language_id) === languageId) {
+      return { id: String(active[0].id), roomId: normalizedRoomId, languageId };
+    }
+    await sql.query(
+      `update blossom_speak_session
+       set status = 'cancelled',
+           ended_at = coalesce(ended_at, current_timestamp),
+           duration_seconds = greatest(0, extract(epoch from (coalesce(ended_at, current_timestamp) - started_at))::integer),
+           updated_at = current_timestamp
+       where id = $1::uuid and user_id = $2 and status = 'active'`,
+      [String(active[0].id), userId],
+    );
+  }
+
+  const sessionId = randomUUID();
+  await sql.query(
+    `insert into blossom_speak_session
+      (id, user_id, room_id, language_id, status, started_at)
+     values ($1::uuid, $2, $3, $4, 'active', current_timestamp)`,
+    [sessionId, userId, normalizedRoomId, languageId],
+  );
+  return { id: sessionId, roomId: normalizedRoomId, languageId };
+}
+
+export async function recordSpeakTurn(
+  userId: string,
+  sessionId: string,
+  seconds: number,
+) {
+  await enforceRateLimit(userId, "speak.record-turn", 120, 60);
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    throw new BlossomForbiddenError("Aucune prise vocale valide n’a été reçue.");
+  }
+  const requestedSeconds = Math.min(300, Math.round(seconds));
+  const sql = await getSql();
+  const rows = await sql.query(
+    `update blossom_speak_session
+     set evidence_seconds = least(
+           3600,
+           evidence_seconds + least(
+             $3,
+             greatest(0, extract(epoch from (current_timestamp - started_at))::integer)
+           )
+         ),
+         turn_count = least(600, turn_count + 1),
+         updated_at = current_timestamp
+     where id = $1::uuid and user_id = $2 and status = 'active'
+     returning id, evidence_seconds, turn_count`,
+    [sessionId, userId, requestedSeconds],
+  );
+  if (!rows[0]) throw new BlossomForbiddenError("Cette prise ne peut plus être enregistrée.");
+  if (Number(rows[0].evidence_seconds ?? 0) <= 0) {
+    throw new BlossomForbiddenError("La prise est trop courte pour être validée.");
+  }
+  return {
+    id: String(rows[0].id),
+    evidenceSeconds: Number(rows[0].evidence_seconds ?? 0),
+    turnCount: Number(rows[0].turn_count ?? 0),
+  };
+}
+
+export async function endSpeakSession(
+  userId: string,
+  sessionId: string,
+  status: "completed" | "cancelled",
+) {
+  await enforceRateLimit(userId, "speak.end-session", 20, 60);
+  const sql = await getSql();
+  const rows = await sql.query(
+    `update blossom_speak_session
+     set status = $2,
+         ended_at = coalesce(ended_at, current_timestamp),
+         duration_seconds = greatest(
+           0,
+           extract(epoch from (coalesce(ended_at, current_timestamp) - started_at))::integer
+         ),
+         updated_at = current_timestamp
+     where id = $1::uuid and user_id = $3 and status = 'active'
+     returning id, room_id, language_id, status, ended_at, duration_seconds, evidence_seconds, turn_count`,
+    [sessionId, status, userId],
+  );
+  if (rows[0]) {
+    return {
+      id: String(rows[0].id),
+      roomId: String(rows[0].room_id),
+      languageId: String(rows[0].language_id),
+      status: String(rows[0].status) as "completed" | "cancelled",
+      endedAt: new Date(String(rows[0].ended_at)).toISOString(),
+      durationSeconds: Math.max(0, Number(rows[0].duration_seconds ?? 0)),
+      evidenceSeconds: Math.max(0, Number(rows[0].evidence_seconds ?? 0)),
+      turnCount: Math.max(0, Number(rows[0].turn_count ?? 0)),
+    };
+  }
+  const existing = await sql.query(
+    `select id, room_id, language_id, status, ended_at, duration_seconds, evidence_seconds, turn_count
+     from blossom_speak_session
+     where id = $1::uuid and user_id = $2
+     limit 1`,
+    [sessionId, userId],
+  );
+  if (existing[0] && String(existing[0].status) === "completed") {
+    return {
+      id: String(existing[0].id),
+      roomId: String(existing[0].room_id),
+      languageId: String(existing[0].language_id),
+      status: "completed" as const,
+      endedAt: new Date(String(existing[0].ended_at)).toISOString(),
+      durationSeconds: Math.max(0, Number(existing[0].duration_seconds ?? 0)),
+      evidenceSeconds: Math.max(0, Number(existing[0].evidence_seconds ?? 0)),
+      turnCount: Math.max(0, Number(existing[0].turn_count ?? 0)),
+    };
+  }
+  throw new BlossomForbiddenError("Cette session n’est plus active.");
 }

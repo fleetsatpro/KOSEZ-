@@ -23,21 +23,27 @@ function ConnectPage() {
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
   const tandemOpen = planAllows(plan, "tandem");
+  const joinedKey = joined.join(",");
   const socialNext = causalNextGesture(minerals);
   const navigate = useNavigate();
   const [peers, setPeers] = useState<ConnectPeer[]>([]);
   const [conversationPeerId, setConversationPeerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let disposed = false;
     setLoading(true);
+    setLoadError(false);
     void getConnectPeersOnServer()
       .then((rows) => {
         if (!disposed) setPeers(rows);
       })
       .catch(() => {
-        if (!disposed) setPeers([]);
+        if (!disposed) {
+          setPeers([]);
+          setLoadError(true);
+        }
       })
       .finally(() => {
         if (!disposed) setLoading(false);
@@ -45,13 +51,13 @@ function ConnectPage() {
     return () => {
       disposed = true;
     };
-  }, [joined.join(",")]);
+  }, [joinedKey]);
 
   const upcoming = useMemo(
     () =>
       EVENTS.filter(
         (event) =>
-          new Date(`${event.date}T${event.time}:00Z`).getTime() > Date.now(),
+          parseKosezEventDate(event.date, event.time).getTime() > Date.now(),
       ).slice(0, 4),
     [],
   );
@@ -215,6 +221,17 @@ function ConnectPage() {
         {loading ? (
           <Surface className="mt-5">
             <p className="text-sm text-muted">Recherche des présences partagées…</p>
+          </Surface>
+        ) : loadError ? (
+          <Surface className="mt-5">
+            <UserRound className="size-5 text-primary" strokeWidth={1.7} />
+            <h3 className="mt-4 font-display text-2xl">Votre cercle n’a pas pu être chargé.</h3>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+              Rien n’est présenté comme vide lorsque la source n’a pas répondu. Réessayez pour relire les présences confirmées.
+            </p>
+            <Button variant="secondary" className="mt-5" onClick={() => window.location.reload()}>
+              Réessayer
+            </Button>
           </Surface>
         ) : peers.length === 0 ? (
           <Surface className="mt-5">

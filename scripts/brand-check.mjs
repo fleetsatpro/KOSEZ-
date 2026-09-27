@@ -65,11 +65,12 @@ export function ogPendingActive(workspaceRoot, now = Date.now()) {
  */
 export function computeBrandWarnings({
   hasCanvas,
+  isGame = hasCanvas,
   workspaceRoot = "/workspace",
   now = Date.now(),
 }) {
   if (ogPendingActive(workspaceRoot, now)) return [];
-  return brandWarningsOnDisk({ hasCanvas, workspaceRoot });
+  return brandWarningsOnDisk({ hasCanvas, isGame, workspaceRoot });
 }
 
 /**
@@ -82,6 +83,7 @@ export function computeBrandWarnings({
  */
 function brandWarningsOnDisk({
   hasCanvas,
+  isGame = hasCanvas,
   workspaceRoot = "/workspace",
   cardRequired = false,
 }) {
@@ -109,7 +111,7 @@ function brandWarningsOnDisk({
           + `${sitePath} per ${skillPath} so identity is explicit.`,
       );
     }
-  } else if (hasCanvas) {
+  } else if (isGame) {
     warnings.push(
       `BRAND WARNING: this looks like a game/canvas app but ${workspaceRoot}/public/og.jpg `
         + "is missing. Games and visually rich apps must ship a custom 1200x630 share card "
@@ -135,7 +137,7 @@ function brandWarningsOnDisk({
     );
   }
 
-  if (hasCanvas && !siteDeclaresOgTypeGame(site)) {
+  if (isGame && !siteDeclaresOgTypeGame(site)) {
     warnings.push(
       'BRAND WARNING: this looks like a game/canvas app but src/lib/og/site.json is missing '
         + '"type": "x:game". X uses og:type=x:game to present the unfurl as a game card — set '
@@ -146,7 +148,7 @@ function brandWarningsOnDisk({
 
   // Games with a custom link card must also ship the 50:11 X feed card.
   // Skip while still on the og.grok.me placeholder — that pass has not started yet.
-  if (hasCanvas && cardPath !== undefined) {
+  if (isGame && cardPath !== undefined) {
     const bannerPath = join(workspaceRoot, "public/x-banner.jpg");
     if (!existsSync(bannerPath)) {
       warnings.push(

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { ArrowLeft, ArrowRight, Check, Sprout } from "lucide-react";
 import { BlossomPlant } from "@/components/app/plant";
 import { OrganismMineralsPanel } from "@/components/app/organism-minerals-panel";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { STAGES, nextStage } from "@/lib/blossom/engine";
 import { organismStatusLine } from "@/lib/blossom/organism";
+import { activityBelongsToLanguage } from "@/lib/blossom/engine";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +21,17 @@ function PlantPage() {
   const journey = useJourney();
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
+  const languageId = useBlossom((s) => s.languageId);
+  const scopedGrowthEvents = useMemo(
+    () =>
+      growthEvents.filter((event) => {
+        const tagged = event.languageId;
+        return typeof tagged === "string"
+          ? tagged === languageId
+          : languageId === "en";
+      }),
+    [growthEvents, languageId],
+  );
   const upcoming = nextStage(journey.stage.id);
   const leoLine = organismStatusLine(minerals);
   const reqs = [
@@ -75,7 +88,7 @@ function PlantPage() {
           nextAt={journey.stage.nextAt}
           remaining={journey.remaining}
           linked={false}
-          growthEvents={growthEvents}
+          growthEvents={scopedGrowthEvents}
           showCausal
         />
 
@@ -160,9 +173,9 @@ function PlantPage() {
         </Surface>
       </div>
 
-      <OrganismMineralsPanel minerals={minerals} growthEvents={growthEvents} />
+      <OrganismMineralsPanel minerals={minerals} growthEvents={scopedGrowthEvents} />
 
-      <SceneReel events={growthEvents} className="mt-6" limit={10} />
+      <SceneReel events={scopedGrowthEvents} className="mt-6" limit={10} />
 
       <Surface className="mt-8 magnetic-surface">
         <Eyebrow>Les cinq stades</Eyebrow>

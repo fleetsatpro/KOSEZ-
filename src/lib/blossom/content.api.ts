@@ -66,7 +66,7 @@ export const getAdminContentItemsOnServer = createServerFn({ method: "GET" })
 
 export const saveAdminContentDraftOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.discriminatedUnion("kind", [
       z.object({
         kind: z.literal("event"),
@@ -88,7 +88,7 @@ export const saveAdminContentDraftOnServer = createServerFn({ method: "POST" })
 
 export const archiveAdminContentOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       contentKey: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,159}$/),
       expectedPublishedRevision: z.number().int().positive(),
@@ -100,7 +100,7 @@ export const archiveAdminContentOnServer = createServerFn({ method: "POST" })
 
 export const publishAdminContentOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       contentKey: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,159}$/),
       expectedDraftRevision: z.number().int().positive(),
@@ -113,7 +113,7 @@ export const publishAdminContentOnServer = createServerFn({ method: "POST" })
 
 export const getAdminContentHistoryOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       contentKey: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,159}$/),
     }),
@@ -125,7 +125,7 @@ export const getAdminContentHistoryOnServer = createServerFn({ method: "GET" })
 
 export const restoreAdminContentDraftOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       contentKey: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,159}$/),
       channel: z.enum(["draft", "published", "archived"]),

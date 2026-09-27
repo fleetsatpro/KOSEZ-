@@ -241,7 +241,16 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (!accessPending && childMode && !access.isChild) {
       setChildMode(false);
     }
-  }, [access.isChild, accessPending, childMode, setChildMode]);
+    if (!accessPending && parentMode && !access.isGuardian) {
+      useBlossom.getState().setParentMode(false);
+    }
+    if (!accessPending && teacherMode && !access.isTeacher) {
+      useBlossom.getState().setTeacherMode(false);
+    }
+    if (!accessPending && orgMode && !access.isOrgStaff) {
+      useBlossom.getState().setOrgMode(false);
+    }
+  }, [access.isChild, access.isGuardian, access.isTeacher, access.isOrgStaff, accessPending, childMode, parentMode, teacherMode, orgMode, setChildMode]);
 
   useEffect(() => {
     if (!accessPending && adminMode && !access.isAdmin) {
@@ -266,21 +275,21 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
-  if (parentMode) {
+  if (!accessPending && parentMode && access.isGuardian) {
     return (
       <div className="paper-grain min-h-dvh bg-bg text-fg">
         <ParentView />
       </div>
     );
   }
-  if (orgMode) {
+  if (!accessPending && orgMode && access.isOrgStaff) {
     return (
       <div className="paper-grain min-h-dvh bg-bg text-fg">
         <OrgStudio />
       </div>
     );
   }
-  if (teacherMode) {
+  if (!accessPending && teacherMode && access.isTeacher) {
     return (
       <div className="paper-grain min-h-dvh bg-bg text-fg">
         <TeacherStudio />

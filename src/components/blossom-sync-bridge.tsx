@@ -434,8 +434,18 @@ async function flushOutbox(): Promise<void> {
             waitlistIds: state.waitlistIds.filter((id) => id !== mutation.entityId),
           });
         } else if (mutation.operation === "tandem.status") {
+          const payload = mutation.payload as { previousStatus?: string };
           const next = { ...state.tandemStatus };
-          delete next[mutation.entityId];
+          const previousStatus =
+            payload.previousStatus === "pending" ||
+            payload.previousStatus === "accepted" ||
+            payload.previousStatus === "paused" ||
+            payload.previousStatus === "blocked" ||
+            payload.previousStatus === "suggested"
+              ? payload.previousStatus
+              : undefined;
+          if (previousStatus) next[mutation.entityId] = previousStatus as typeof state.tandemStatus[string];
+          else delete next[mutation.entityId];
           useBlossom.setState({ tandemStatus: next });
         } else if (mutation.operation === "tandem.report") {
           const payload = mutation.payload as {
@@ -513,7 +523,11 @@ async function flushOutbox(): Promise<void> {
                         ? { ...homework, status: "draft" as const }
                         : homework,
                     )
-                  : state.homework.filter((homework) => homework.id !== mutation.mutationId),
+                  : state.homework.filter((homework) =>
+                      mutation.payload.id
+                        ? homework.id !== mutation.payload.id
+                        : homework.id !== mutation.mutationId,
+                    ),
             });
           }
         } else if (mutation.operation === "homework.complete") {
@@ -524,6 +538,66 @@ async function flushOutbox(): Promise<void> {
                 : homework,
             ),
           });
+        } else if (mutation.operation === "learning.submission") {
+          const rollback =
+            mutation.payload.rollback &&
+            typeof mutation.payload.rollback === "object" &&
+            !Array.isArray(mutation.payload.rollback)
+              ? (mutation.payload.rollback as Record<string, unknown>)
+              : null;
+          const existed = rollback?.existed === true;
+          const previous =
+            rollback?.submission &&
+            typeof rollback.submission === "object" &&
+            !Array.isArray(rollback.submission)
+              ? (rollback.submission as Record<string, unknown>)
+              : null;
+          const current = useBlossom.getState().learningSubmissions;
+          useBlossom.setState({
+            learningSubmissions: existed && previous
+              ? current.map((submission) =>
+                  submission.taskId === mutation.entityId &&
+                  submission.id === previous.id
+                    ? previous as typeof submission
+                    : submission,
+                )
+              : current.filter((submission) => submission.id !== mutation.mutationId),
+          });
+        } else if (mutation.operation === "vocabulary.upsert") {
+          const rollback =
+            mutation.payload.rollback &&
+            typeof mutation.payload.rollback === "object" &&
+            !Array.isArray(mutation.payload.rollback)
+              ? (mutation.payload.rollback as Record<string, unknown>)
+              : null;
+          const current = useBlossom.getState().vocabulary;
+          const existed = rollback?.existed === true;
+          if (existed) {
+            useBlossom.setState({
+              vocabulary: current.map((entry) =>
+                entry.word.toLowerCase() === mutation.entityId &&
+                entry.metadata?.languageId === state.languageId &&
+                typeof rollback?.word === "string"
+                  ? {
+                      ...entry,
+                      word: rollback.word,
+                      gloss: typeof rollback.gloss === "string" ? rollback.gloss : entry.gloss,
+                      firstSavedAt: typeof rollback.firstSavedAt === "string" ? rollback.firstSavedAt : entry.firstSavedAt,
+                      updatedAt: typeof rollback.updatedAt === "string" ? rollback.updatedAt : entry.updatedAt,
+                      metadata: { languageId: state.languageId },
+                    }
+                  : entry,
+              ),
+            });
+          } else {
+            useBlossom.setState({
+              vocabulary: current.filter(
+                (entry) =>
+                  !(entry.word.toLowerCase() === mutation.entityId &&
+                    entry.metadata?.languageId === state.languageId),
+              ),
+            });
+          }
         } else if (mutation.operation === "activity.append") {
           useBlossom.setState({
             activityLog: state.activityLog.filter((event) => event.id !== mutation.mutationId),
@@ -559,6 +633,7 @@ function SyncMark({ ready }: { ready: boolean }) {
 
 export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
   const { user, isPending } = useCurrentUserState();
+  const userId = user?.id;
   const syncingRef = useRef(false);
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
@@ -566,7 +641,7 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
   useEffect(() => {
     if (isPending) return;
 
-    if (!user) {
+    if (!userId) {
       setSyncOwner(null);
       useBlossom.getState().resetJourney();
       onReadyRef.current?.();
@@ -575,13 +650,13 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
 
     let disposed = false;
     const storedOwner = useBlossom.getState().syncOwnerUserId;
-    const userChanged = storedOwner !== user.id;
-    setSyncOwner(user.id);
+    const userChanged = storedOwner !== userId;
+    setSyncOwner(userId);
 
     if (userChanged) {
       useBlossom.getState().resetJourney();
     }
-    useBlossom.setState({ syncOwnerUserId: user.id });
+    useBlossom.setState({ syncOwnerUserId: userId });
 
     if (!navigator.onLine) {
       onReadyRef.current?.();
@@ -643,7 +718,7 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
       window.removeEventListener("online", onOnline);
       window.clearInterval(timer);
     };
-  }, [isPending, user?.id]);
+  }, [isPending, userId]);
 
   return null;
 }

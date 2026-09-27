@@ -18,13 +18,16 @@ export function ConversationInbox({
 }) {
   const [items, setItems] = useState<ConversationSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   async function load() {
     setLoading(true);
+    setError(false);
     try {
       setItems(await listConversationsOnServer());
     } catch {
       setItems([]);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -70,6 +73,13 @@ export function ConversationInbox({
 
       {loading ? (
         <p className="p-6 text-sm text-muted">Lecture des conversations…</p>
+      ) : error ? (
+        <div className="p-6 text-sm text-muted">
+          Les conversations n’ont pas pu être chargées.
+          <Button className="mt-4" size="sm" variant="secondary" onClick={() => void load()}>
+            Réessayer
+          </Button>
+        </div>
       ) : items.length === 0 ? (
         <div className="p-6 text-center">
           <MessageCircle className="mx-auto size-5 text-primary" />

@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Filter, History as HistoryIcon, Mic2, Target } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Eyebrow, Page, Surface } from "@/components/app/primitives";
+import { Eyebrow, Page } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { activityBelongsToLanguage } from "@/lib/blossom/engine";
 import { historyRows } from "@/lib/blossom/learning-os";
 import { useBlossom } from "@/lib/blossom/store";
 
@@ -17,7 +18,31 @@ function HistoryPage() {
   const log = useBlossom((s) => s.activityLog);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const missionSessions = useBlossom((s) => s.missionSessions);
-  const rows = useMemo(() => historyRows(log, attempts, missionSessions), [log, attempts, missionSessions]);
+  const languageId = useBlossom((s) => s.languageId);
+  const scopedLog = useMemo(
+    () => log.filter((event) => activityBelongsToLanguage(event, languageId)),
+    [log, languageId],
+  );
+  const scopedAttempts = useMemo(
+    () => attempts.filter((attempt) => {
+      const tagged = attempt.metadata?.languageId;
+      if (typeof tagged === "string") return tagged === languageId;
+      return languageId === "en";
+    }),
+    [attempts, languageId],
+  );
+  const scopedMissionSessions = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(missionSessions)
+          .filter(([, session]) => !session.languageId || session.languageId === languageId),
+      ),
+    [missionSessions, languageId],
+  );
+  const rows = useMemo(
+    () => historyRows(scopedLog, scopedAttempts, scopedMissionSessions),
+    [scopedLog, scopedAttempts, scopedMissionSessions],
+  );
   const [filter, setFilter] = useState<FilterId>("all");
   const visible = filter === "all" ? rows : rows.filter((row) => row.kind === filter);
 

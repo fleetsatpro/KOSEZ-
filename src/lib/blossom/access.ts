@@ -20,11 +20,12 @@ const EMPTY_ACCESS: BlossomWorkspaceAccess = {
 
 export function useBlossomWorkspaceAccess() {
   const { user, isPending: authPending } = useCurrentUserState();
+  const userId = user?.id;
   const [access, setAccess] = useState<BlossomWorkspaceAccess | null>(null);
 
   useEffect(() => {
     let disposed = false;
-    if (authPending || !user) {
+    if (authPending || !userId) {
       setAccess(authPending ? null : EMPTY_ACCESS);
       return () => {
         disposed = true;
@@ -42,7 +43,7 @@ export function useBlossomWorkspaceAccess() {
     return () => {
       disposed = true;
     };
-  }, [authPending, user?.id]);
+  }, [authPending, userId]);
 
   return {
     access: access ?? EMPTY_ACCESS,

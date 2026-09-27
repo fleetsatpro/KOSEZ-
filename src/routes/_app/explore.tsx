@@ -15,14 +15,14 @@ import {
 import { getPublishedContentOnServer } from "@/lib/blossom/content.api";
 import { getSavedExploreItemsOnServer, toggleSavedExploreItemOnServer } from "@/lib/blossom/domain.api";
 import { useBlossom } from "@/lib/blossom/store";
-import { formatLongDate } from "@/lib/utils";
+import { formatLongDate, parseKosezEventDate } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/explore")({
   component: ExplorePage,
 });
 
 function eventDate(event: EventItem): Date {
-  return new Date(`${event.date}T${event.time}:00+04:00`);
+  return parseKosezEventDate(event.date, event.time);
 }
 
 function escapeIcs(value: string): string {
@@ -161,7 +161,7 @@ function ExplorePage() {
     .filter((event) => eventDate(event).getTime() > now)
     .sort((a, b) => eventDate(a).getTime() - eventDate(b).getTime());
   const filteredEvents = upcomingEvents
-    .filter((event) => scope === "all" || scope === "events")
+    .filter(() => scope === "all" || scope === "events")
     .filter(eventMatches);
   const filteredProgrammes = programmes
     .filter(() => scope === "all" || scope === "programmes")

@@ -13,12 +13,19 @@ type MessageReport = Awaited<ReturnType<typeof getAdminMessageReportsOnServer>>[
 export function AdminMessageReports() {
   const [rows, setRows] = useState<MessageReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   async function load() {
     setLoading(true);
-    try { setRows(await getAdminMessageReportsOnServer()); }
-    catch { setRows([]); }
-    finally { setLoading(false); }
+    setError(false);
+    try {
+      setRows(await getAdminMessageReportsOnServer());
+    } catch {
+      setRows([]);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -52,6 +59,11 @@ export function AdminMessageReports() {
         </div>
         {loading ? (
           <div className="mt-5 flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" /> Chargement…</div>
+        ) : error ? (
+          <div className="mt-5">
+            <p className="text-sm text-muted">Les signalements n’ont pas pu être chargés.</p>
+            <Button className="mt-3" size="sm" variant="secondary" onClick={() => void load()}>Réessayer</Button>
+          </div>
         ) : rows.length === 0 ? (
           <p className="mt-5 text-sm text-muted">Aucun signalement de message.</p>
         ) : (

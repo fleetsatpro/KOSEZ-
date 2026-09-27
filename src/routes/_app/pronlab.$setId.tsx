@@ -2,10 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Leaf, Target, Volume2 } from "lucide-react";
 import { RecordControl } from "@/components/app/record-control";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { Eyebrow, Page, Sparkline, DualWave, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { findPronlabSet, LEARNER_MEMORY, PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
+import { findPronlabSet, LEARNER_MEMORY, setsForLanguage } from "@/lib/blossom/data";
 import { summarisePronlabItem, type PronlabAttempt } from "@/lib/blossom/engine";
 import { influenceFromState } from "@/lib/blossom/influence";
 import { isSetUnlocked, useBlossom } from "@/lib/blossom/store";
@@ -14,12 +15,15 @@ import {
   clearCurriculumLessonContext,
   readCurriculumLessonContext,
 } from "@/lib/blossom/curriculum-context";
-import { transcribeSpeakTurn } from "@/lib/blossom/speech.api";
-import { blobToBase64, captureOnlyEvidence } from "@/lib/blossom/speech-stt";
+import { resolveSpeechEvidence } from "@/lib/blossom/speech-stt";
 import { learnLanguageDef } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_app/pronlab/$setId")({
-  component: PronlabSetPage,
+  component: () => (
+    <LearningSurfaceGate surface="pronlab">
+      <PronlabSetPage />
+    </LearningSurfaceGate>
+  ),
 });
 
 function highlight(phrase: string, segment: string) {
@@ -282,24 +286,10 @@ function PronlabSetPage() {
             cta={heard ? "Maintenir pour dire" : "Écoutez, ou tentez"}
             onFinished={async ({ seconds, blob, mimeType }) => {
               const beforeMastered = summarisePronlabItem(item.id, useBlossom.getState().pronlabAttempts).mastered;
-              let evidence = captureOnlyEvidence(seconds);
-              if (blob) {
-                try {
-                  const audioBase64 = await blobToBase64(blob);
-                  if (audioBase64) {
-                    evidence = await transcribeSpeakTurn({
-                      data: {
-                        audioBase64,
-                        mimeType,
-                        seconds,
-                        fileName: `kosez-pronlab-${item.id}.webm`,
-                      },
-                    });
-                  }
-                } catch {
-                  evidence = captureOnlyEvidence(seconds);
-                }
-              }
+              const evidence = await resolveSpeechEvidence(
+                { seconds, blob, mimeType },
+                { fileName: `kosez-pronlab-${item.id}.webm` },
+              );
               const attempt = record(item.id, seconds, {
                 assessment: evidence.assessment,
                 provider: evidence.providerId ?? "speech-evidence",
@@ -335,6 +325,8 @@ function PronlabSetPage() {
                       ? "Prise transcrite. Aucune note phonétique n'est inventée."
                       : "Prise enregistrée. K'Osez n'invente pas de note sans moteur phonétique.",
                 );
+              } else {
+                toast("Aucune prise enregistrée. Vous pouvez réessayer.");
               }
             }}
           />

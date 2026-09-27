@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
 import { causalNextGesture, type MineralKey } from "@/lib/blossom/organism";
@@ -64,23 +64,81 @@ export function GrowthCeremony({
   className?: string;
 }) {
   const [phase, setPhase] = useState<"enter" | "hold" | "exit">("enter");
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const closeTimerRef = useRef<number | null>(null);
+  const eventId = event?.id;
+  const eventIntensity = event?.intensity ?? 0;
+
+  const close = useCallback(() => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+    }
+    setPhase("exit");
+    closeTimerRef.current = window.setTimeout(() => {
+      onDismiss();
+      returnFocusRef.current?.focus();
+      returnFocusRef.current = null;
+      closeTimerRef.current = null;
+    }, 180);
+  }, [onDismiss]);
 
   useEffect(() => {
-    if (!open || !event) return;
+    if (!open || eventId == null) return;
+    returnFocusRef.current =
+      typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     setPhase("enter");
-    const intensity = Math.min(1, Math.max(0.2, event.intensity));
+    const intensity = Math.min(1, Math.max(0.2, eventIntensity));
     const holdMs = 380 + Math.round(intensity * 180);
-    const totalMs = 3200 + Math.round(intensity * 1800);
     const hold = window.setTimeout(() => setPhase("hold"), holdMs);
-    const auto = window.setTimeout(() => {
-      setPhase("exit");
-      window.setTimeout(onDismiss, 360);
-    }, totalMs);
+    const focus = window.setTimeout(() => closeRef.current?.focus(), holdMs + 50);
     return () => {
       window.clearTimeout(hold);
-      window.clearTimeout(auto);
+      window.clearTimeout(focus);
     };
-  }, [open, event?.id, event?.intensity, onDismiss]);
+  }, [open, eventId, eventIntensity]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]),a[href],input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      const active = document.activeElement;
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, close]);
+
+  useEffect(() => () => {
+    if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
+  }, []);
 
   const meta = event ? KIND_META[event.kind] : null;
 
@@ -101,7 +159,7 @@ export function GrowthCeremony({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Cérémonie de croissance"
+      aria-labelledby="growth-ceremony-title"
       className={cn(
         "fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center",
         className,
@@ -111,19 +169,17 @@ export function GrowthCeremony({
         type="button"
         aria-label="Fermer"
         className={cn(
-          "absolute inset-0 bg-black/55 backdrop-blur-[2px] transition-opacity duration-300",
+          "absolute inset-0 bg-black/55 backdrop-blur-[2px] transition-opacity duration-300 motion-reduce:transition-none",
           phase === "exit" ? "opacity-0" : "opacity-100",
         )}
-        onClick={() => {
-          setPhase("exit");
-          window.setTimeout(onDismiss, 320);
-        }}
+        onClick={close}
       />
 
       <div
+        ref={dialogRef}
         className={cn(
           "relative w-full max-w-sm overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-[0_24px_80px_-20px_rgba(0,0,0,0.65)]",
-          "transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          "transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           phase === "enter" && "translate-y-6 scale-[0.97] opacity-0",
           phase === "hold" && "translate-y-0 scale-100 opacity-100",
           phase === "exit" && "translate-y-4 scale-[0.98] opacity-0",
@@ -154,7 +210,7 @@ export function GrowthCeremony({
           <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.22em] text-subtle">
             {meta.title} · intensité {Math.round(event.intensity * 100)}%
           </p>
-          <h2 className="mt-2 font-display text-2xl tracking-tight text-fg">
+          <h2 id="growth-ceremony-title" className="mt-2 font-display text-2xl tracking-tight text-fg">
             {event.label}
           </h2>
           <p className="mt-2 text-sm leading-6 text-muted">{meta.whisper}</p>
@@ -191,14 +247,17 @@ export function GrowthCeremony({
             </ul>
           ) : null}
 
-          <CausalDoor minerals={minerals} onNavigate={onDismiss} />
+          <CausalDoor
+            minerals={minerals}
+            onNavigate={() => {
+              setPhase("exit");
+            }}
+          />
 
           <button
+            ref={closeRef}
             type="button"
-            onClick={() => {
-              setPhase("exit");
-              window.setTimeout(onDismiss, 320);
-            }}
+            onClick={close}
             className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full border border-border/80 bg-transparent px-5 text-sm font-medium text-muted transition-colors hover:text-fg"
           >
             Continuer

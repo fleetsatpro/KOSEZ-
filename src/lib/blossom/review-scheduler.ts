@@ -123,7 +123,7 @@ export function buildReviewPlan(
     const latest = latestReview(scopedSubmissions, sourceKey);
     const anchor = latest?.createdAt ?? word.updatedAt ?? word.firstSavedAt ?? now;
     const dueAt = latest
-      ? addDays(latest.createdAt, intervalForSubmission(latest, submissions))
+      ? addDays(latest.createdAt, intervalForSubmission(latest, scopedSubmissions))
       : anchor;
     items.push({
       id: `review-word-${word.word}`,

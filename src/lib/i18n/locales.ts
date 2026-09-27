@@ -161,7 +161,7 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
     engine: "active",
     contentPacks: ["missions-a2", "missions-b1", "pronlab-en", "speak-rooms", "tandem-en"],
     speechLocale: "en-GB",
-    surfaces: ["pronlab", "mission", "osez", "tandem", "library", "pulse"],
+    surfaces: ["pronlab", "mission", "osez", "tandem", "library", "pulse", "curriculum", "labs"],
     levels: ["A1", "A2", "B1", "B2"],
     culturalAnchor: {
       fr: "Parcours principal du centre — anglais international, ancré Réunion.",
@@ -200,20 +200,20 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
     surfaces: ["pulse"],
     levels: ["A1", "A2", "B1"],
     culturalAnchor: {
-      fr: "Français langue cible — packs centre et phonèmes FR.",
-      en: "French as target — centre packs and FR phonemes.",
-      es: "Francés como meta — packs del centro y fonemas FR.",
-      pt: "Francês como alvo — packs do centro e fonemas FR.",
-      de: "Französisch als Ziel — Zentrumspakete und FR-Phoneme.",
-      it: "Francese come target — pack del centro e fonemi FR.",
+      fr: "Français — moteur générique ; aucun pack local FR n'est actuellement activé.",
+      en: "French — generic engine; no dedicated FR content pack is currently active.",
+      es: "Francés — motor genérico; actualmente no hay pack local FR activo.",
+      pt: "Francês — motor genérico; atualmente não há pack local FR ativo.",
+      de: "Französisch — generische Engine; derzeit ist kein lokales FR-Paket aktiv.",
+      it: "Francese — motore generico; nessun pack locale FR è attivo al momento.",
     },
     switchImpact: {
-      fr: "Active Pron'Lab FR, missions FR et rooms FR. Tandem reste multi-langue.",
-      en: "Activates Pron'Lab FR, missions FR and rooms FR. Tandem stays multi-language.",
-      es: "Activa Pron'Lab FR, misiones FR y salas FR. El tándem sigue multilingüe.",
-      pt: "Ativa Pron'Lab FR, missões FR e salas FR. O tandem permanece multilingue.",
-      de: "Aktiviert Pron'Lab FR, Missionen FR und Räume FR. Tandem bleibt mehrsprachig.",
-      it: "Attiva Pron'Lab FR, missioni FR e stanze FR. Il tandem resta multilingue.",
+      fr: "Active le moteur générique et le speech FR. Les packs mission, room et Pron'Lab FR dédiés ne sont pas encore actifs.",
+      en: "Activates the generic engine and FR speech. Dedicated French mission, room and Pron'Lab packs are not active yet.",
+      es: "Activa el motor genérico y el habla FR. Los packs dedicados de misiones, salas y Pron'Lab FR aún no están activos.",
+      pt: "Ativa o motor genérico e o speech FR. Os packs dedicados de missões, salas e Pron'Lab FR ainda não estão ativos.",
+      de: "Aktiviert die generische Engine und FR-Sprachausgabe. Dedizierte FR-Pakete für Missionen, Räume und Pron'Lab sind noch nicht aktiv.",
+      it: "Attiva il motore generico e la voce FR. I pack dedicati per missioni, stanze e Pron'Lab FR non sono ancora attivi.",
     },
     blurb: {
       fr: "Même moteur de pratique, packs français du centre.",
@@ -272,20 +272,20 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
     surfaces: ["pulse"],
     levels: ["A1", "A2"],
     culturalAnchor: {
-      fr: "Portugais européen — packs phonèmes PT.",
-      en: "European Portuguese — PT phoneme packs.",
-      es: "Portugués europeo — packs de fonemas PT.",
-      pt: "Português europeu — packs de fonemas PT.",
-      de: "Europäisches Portugiesisch — PT-Phonem-Pakete.",
-      it: "Portoghese europeo — pack fonemi PT.",
+      fr: "Portugais européen — moteur générique ; aucun pack local PT n'est actuellement activé.",
+      en: "European Portuguese — generic engine; no dedicated PT content pack is currently active.",
+      es: "Portugués europeo — motor genérico; actualmente no hay pack local PT activo.",
+      pt: "Português europeu — motor genérico; atualmente não há pack local PT ativo.",
+      de: "Europäisches Portugiesisch — generische Engine; derzeit ist kein lokales PT-Paket aktiv.",
+      it: "Portoghese europeo — motore generico; nessun pack locale PT è attivo al momento.",
     },
     switchImpact: {
-      fr: "Active Pron'Lab PT. Missions et tandem en mode générique.",
-      en: "Activates Pron'Lab PT. Missions and tandem in generic mode.",
-      es: "Activa Pron'Lab PT. Misiones y tándem en modo genérico.",
-      pt: "Ativa Pron'Lab PT. Missões e tandem em modo genérico.",
-      de: "Aktiviert Pron'Lab PT. Missionen und Tandem im generischen Modus.",
-      it: "Attiva Pron'Lab PT. Missioni e tandem in modalità generica.",
+      fr: "Active le moteur générique et le speech PT. Les packs mission, room et Pron'Lab PT dédiés ne sont pas encore actifs.",
+      en: "Activates the generic engine and PT speech. Dedicated Portuguese mission, room and Pron'Lab packs are not active yet.",
+      es: "Activa el motor genérico y el habla PT. Los packs dedicados de misiones, salas y Pron'Lab PT aún no están activos.",
+      pt: "Ativa o motor genérico e o speech PT. Os packs dedicados de missões, salas e Pron'Lab PT ainda não estão ativos.",
+      de: "Aktiviert die generische Engine und PT-Sprachausgabe. Dedizierte PT-Pakete für Missionen, Räume und Pron'Lab sind noch nicht aktiv.",
+      it: "Attiva il motore generico e la voce PT. I pack dedicati per missioni, stanze e Pron'Lab PT non sono ancora attivi.",
     },
     blurb: {
       fr: "Même moteur de pratique, autre langue.",
@@ -384,7 +384,7 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
     engine: "module",
     contentPacks: ["centre-creole"],
     speechLocale: "fr-FR",
-    surfaces: ["mission", "library"],
+    surfaces: ["pulse"],
     levels: ["A1", "A2"],
     culturalAnchor: {
       fr: "Module ancré dans le territoire — selon disponibilité du centre Saint-Pierre.",
@@ -427,7 +427,7 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
     engine: "sign",
     contentPacks: ["pronlab-lsf"],
     speechLocale: "fr-FR",
-    surfaces: ["pronlab", "library"],
+    surfaces: ["pronlab", "pulse"],
     levels: ["A1"],
     culturalAnchor: {
       fr: "Module LSF — selon disponibilité du centre et des formateurs.",
@@ -466,6 +466,15 @@ export function learnLanguageDef(id: string): LearnLanguageDef {
 
 export function isUiLocaleId(id: string): id is UiLocaleId {
   return UI_LOCALES.some((l) => l.id === id);
+}
+
+export type LearnSurface = "pronlab" | "mission" | "osez" | "tandem" | "library" | "pulse" | "curriculum" | "labs";
+
+export function isLearnSurfaceAvailable(
+  languageId: LearnLanguageId,
+  surface: LearnSurface,
+): boolean {
+  return learnLanguageDef(languageId).surfaces.includes(surface);
 }
 
 export function isLearnLanguageId(id: string): id is LearnLanguageId {

@@ -6,6 +6,7 @@ import { createMutation, enqueueMutation } from "./sync-client";
 import type { SyncJsonValue } from "./sync-types";
 import {
   activityBelongsToLanguage,
+  activityLanguageMatches,
   hasSource,
   journeySnapshot,
   summarisePronlabItem,
@@ -13,7 +14,6 @@ import {
   type ActivityType,
   type PronlabAttempt,
 } from "./engine";
-import { mergeMissionSessions } from "./sync-merge";
 import {
   activeMissionRun,
   appendMissionAttempt,
@@ -42,6 +42,7 @@ import {
   composeLeoLetter,
   computeMinerals,
   growthEventForActivity,
+  isConfirmedActivity,
   pushGrowthEvent,
   type GrowthEvent,
   type LeoLetter,
@@ -169,8 +170,8 @@ type AppState = {
   recordMissionSupport: (missionId: string) => boolean;
   saveMissionReflection: (missionId: string, reflection: MissionReflection) => boolean;
   reopenMissionSession: (missionId: string) => boolean;
-  completeMissionSession: (missionId: string, rewardSourceId?: string | null) => { ok: boolean; reason?: string; evaluation?: ReturnType<typeof evaluateMission> };
-  completeActivity: (type: ActivityType, sourceId: string, note?: string, metadata?: Record<string, string | number | boolean>) => { ok: boolean; reason?: string; event?: GrowthEvent; previousMinerals?: MineralSnapshot; minerals?: MineralSnapshot };
+  completeMissionSession: (missionId: string, rewardSourceId?: string | null) => { ok: boolean; reason?: string; pending?: boolean; evaluation?: ReturnType<typeof evaluateMission> };
+  completeActivity: (type: ActivityType, sourceId: string, note?: string, metadata?: Record<string, string | number | boolean>) => { ok: boolean; reason?: string; pending?: boolean; event?: GrowthEvent; previousMinerals?: MineralSnapshot; minerals?: MineralSnapshot };
   joinEvent: (id: string) => void;
   leaveEvent: (id: string) => void;
   enroll: (id: string) => void;
@@ -332,7 +333,11 @@ export const useBlossom = create<AppState>()(
         voidProfileSync(learner, current.languageId, current.plan, current.warmup, current.exportConsent, current.tandemOpen);
       },
       startMissionRun: (missionId, mode, challenge = "core") => {
-        const current = get().missionSessions[missionId] ?? createMissionSession(missionId);
+        const existing = get().missionSessions[missionId];
+        const current =
+          existing && (!existing.languageId || existing.languageId === get().languageId)
+            ? { ...existing, languageId: existing.languageId ?? get().languageId }
+            : createMissionSession(missionId, get().languageId);
         const next = beginMissionRun(current, mode, challenge);
         const active = activeMissionRun(next);
         if (next === current || !active) return active?.id ?? null;
@@ -410,7 +415,15 @@ export const useBlossom = create<AppState>()(
         const current = get();
         const log = current.activityLog;
         const scopedLog = activeLanguageActivityLog(log, current.languageId);
-        if (hasSource(scopedLog, sourceId, type)) return { ok: false, reason: "already" };
+        const languageLog = log.filter((event) =>
+          activityLanguageMatches(event, current.languageId),
+        );
+        if (hasSource(languageLog, sourceId, type)) {
+          const scopedExisting = scopedLog.some(
+            (event) => event.sourceId === sourceId && event.type === type,
+          );
+          return { ok: false, reason: scopedExisting ? "already" : "pending" };
+        }
         const before = journeySnapshot(scopedLog).stage.id;
         const previousMinerals = computeMinerals(scopedLog);
         const mutation = createMutation({
@@ -420,15 +433,16 @@ export const useBlossom = create<AppState>()(
             eventType: type,
             sourceId,
             note: note ?? null,
-            metadata: { ...(metadata ?? {}), languageId: get().languageId },
+            metadata: { ...(metadata ?? {}), languageId: get().languageId, syncState: "pending" },
             occurredAt: new Date().toISOString(),
           },
         });
         const activityMetadata = {
           ...(metadata ?? {}),
           languageId: current.languageId,
+          syncState: "pending" as const,
         };
-        const event = {
+        const event: ActivityEvent = {
           id: mutation.mutationId,
           type,
           createdAt: String(mutation.payload.occurredAt),
@@ -437,30 +451,25 @@ export const useBlossom = create<AppState>()(
           metadata: activityMetadata,
         };
         const nextLog = [...log, event];
-        const ge = growthEventForActivity(type, sourceId, event.createdAt);
-        const languageGrowthEvent = ge ? { ...ge, languageId: current.languageId } : null;
-        const growthEvents = languageGrowthEvent
-          ? pushGrowthEvent(get().growthEvents, languageGrowthEvent)
-          : get().growthEvents;
-        const mineralSnapshot = computeMinerals(activeLanguageActivityLog(nextLog, current.languageId));
+        // Pending activity is visible to the history layer but is deliberately
+        // excluded from points/minerals/stage/growth until the server confirms it.
+        const nextConfirmedLog = activeLanguageActivityLog(nextLog, current.languageId);
+        const mineralSnapshot = computeMinerals(nextConfirmedLog);
         const phonemeLeaves = buildPhonemeLeaves(
           current.pronlabAttempts,
           setsForLanguage(current.languageId).flatMap((setDef) => setDef.items),
         );
-        let leoLetters = get().leoLetters;
-        const letter = composeLeoLetter(mineralSnapshot, growthEvents, get().learner.firstName);
-        if (!leoLetters.some((l) => l.id === letter.id)) leoLetters = [letter, ...leoLetters].slice(0, 12);
-        set({ activityLog: nextLog, growthEvents, mineralSnapshot, phonemeLeaves, leoLetters });
+        set({ activityLog: nextLog, mineralSnapshot, phonemeLeaves });
         void enqueueMutation(mutation);
-        const after = journeySnapshot(activeLanguageActivityLog(nextLog, current.languageId)).stage.id;
-        if (type === "MISSION_COMPLETED") track("mission_completed");
-        if (type === "SPEAK_COMPLETED") track("speak_completed");
-        if (type === "PRONLAB_COMPLETED") track("pronlab_attempted");
-        if (type === "TANDEM_COMPLETED") track("tandem_completed");
-        if (type === "IMMERSION_ATTENDED") track("immersion_attended");
-        if (type === "EVENT_ATTENDED") track("event_joined");
+        const after = journeySnapshot(nextConfirmedLog).stage.id;
+        if (type === "MISSION_COMPLETED") track("mission_completed_pending");
+        if (type === "SPEAK_COMPLETED") track("speak_completed_pending");
+        if (type === "PRONLAB_COMPLETED") track("pronlab_attempted_pending");
+        if (type === "TANDEM_COMPLETED") track("tandem_completed_pending");
+        if (type === "IMMERSION_ATTENDED") track("immersion_attended_pending");
+        if (type === "EVENT_ATTENDED") track("event_joined_pending");
         if (before !== after) track("blossom_stage_changed", { stage: after });
-        return { ok: true, event: ge ?? undefined, previousMinerals, minerals: mineralSnapshot };
+        return { ok: true, pending: true, previousMinerals, minerals: mineralSnapshot };
       },
       joinEvent: (id) => {
         if (get().joinedEventIds.includes(id)) return;
@@ -514,10 +523,18 @@ export const useBlossom = create<AppState>()(
             : 0;
         const metadata = {
           ...(evidenceMetadata ?? {}),
+          languageId: get().languageId,
           assessment,
           provider: (evidenceMetadata?.provider as string | undefined) ?? (evidenceMetadata?.providerId as string | undefined) ?? "speech-evidence",
         };
         const safeSeconds = Math.max(0, Math.round(seconds));
+        if (
+          assessment === "skipped" &&
+          safeSeconds <= 0 &&
+          !String(evidenceMetadata?.transcript ?? "").trim()
+        ) {
+          return null;
+        }
         const mutation = createMutation({
           operation: "pronlab.attempt",
           entityId: itemId,
@@ -534,7 +551,6 @@ export const useBlossom = create<AppState>()(
         };
         const nextAttempts = [...get().pronlabAttempts, attempt];
         void enqueueMutation(mutation);
-        const allItems = PRONLAB_SETS.flatMap((s) => s.items);
         const phonemeLeaves = buildPhonemeLeaves(nextAttempts, setsForLanguage(get().languageId).flatMap((s) => s.items));
         set({ pronlabAttempts: nextAttempts, phonemeLeaves });
         track("pronlab_attempted", { itemId, assessment, score: scoreFromEvidence, seconds: safeSeconds });
@@ -554,8 +570,17 @@ export const useBlossom = create<AppState>()(
         return attempt;
       },
       setTandemStatus: (partnerId, status) => {
+        const previousStatus = get().tandemStatus[partnerId];
         set({ tandemStatus: { ...get().tandemStatus, [partnerId]: status } });
-        voidSyncMutation({ operation: "tandem.status", entityId: partnerId, payload: { status, metadata: {} } });
+        voidSyncMutation({
+          operation: "tandem.status",
+          entityId: partnerId,
+          payload: {
+            status,
+            ...(previousStatus ? { previousStatus } : {}),
+            metadata: {},
+          },
+        });
       },
       setTandemOpen: (value) => {
         set({ tandemOpen: value });
@@ -581,12 +606,31 @@ export const useBlossom = create<AppState>()(
         return { count, escalated: count >= 3 };
       },
       addTeacherNote: (studentId, tags, text) => {
-        const note: TeacherNote = { id: `note-${Date.now()}`, studentId, tags, text, createdAt: new Date().toISOString() };
+        const now = new Date().toISOString();
+        const mutation = createMutation({
+          operation: "teacher.note",
+          entityId: studentId,
+          payload: {
+            learnerUserId: studentId,
+            tags,
+            note: text,
+          },
+        });
+        const note: TeacherNote = {
+          id: mutation.mutationId,
+          studentId,
+          tags,
+          text,
+          createdAt: now,
+        };
         set({ teacherNotes: [note, ...get().teacherNotes] });
+        void enqueueMutation(mutation);
       },
       saveLearningSubmission: (input) => {
         const now = new Date().toISOString();
-        const existing = get().learningSubmissions.find((s) => s.taskId === input.taskId);
+        const existing = get().learningSubmissions.find(
+          (s) => s.taskId === input.taskId && s.result?.languageId === get().languageId,
+        );
         const languageId = get().languageId;
         const submissionResult = {
           ...input.result,
@@ -601,6 +645,9 @@ export const useBlossom = create<AppState>()(
             content: input.content,
             checks: input.checks,
             result: submissionResult as SyncJsonValue,
+            ...(existing
+              ? { rollback: { existed: true, submission: existing as unknown as SyncJsonValue } }
+              : { rollback: { existed: false } }),
           },
         });
         if (existing) {
@@ -626,14 +673,65 @@ export const useBlossom = create<AppState>()(
       },
       saveHomeworkDraft: (studentId, title, body) => {
         const now = new Date().toISOString();
-        const hw: Homework = { id: `hw-${Date.now()}`, studentId, title, body, status: "draft", createdAt: now, updatedAt: now };
+        const mutation = createMutation({
+          operation: "teacher.homework",
+          entityId: studentId,
+          payload: {
+            learnerUserId: studentId,
+            title,
+            body,
+            status: "draft",
+          },
+        });
+        const hw: Homework = {
+          id: mutation.mutationId,
+          studentId,
+          title,
+          body,
+          status: "draft",
+          createdAt: now,
+          updatedAt: now,
+        };
         set({ homework: [hw, ...get().homework] });
+        void enqueueMutation(mutation);
       },
       sendHomework: (id) => {
-        set({ homework: get().homework.map((h) => (h.id === id ? { ...h, status: "sent", updatedAt: new Date().toISOString() } : h)) });
+        const current = get().homework.find((h) => h.id === id);
+        if (!current) return;
+        const now = new Date().toISOString();
+        set({
+          homework: get().homework.map((h) =>
+            h.id === id ? { ...h, status: "sent", updatedAt: now } : h,
+          ),
+        });
+        const mutation = createMutation({
+          operation: "teacher.homework",
+          entityId: id,
+          payload: {
+            id,
+            learnerUserId: current.studentId,
+            title: current.title,
+            body: current.body,
+            status: "sent",
+          },
+        });
+        void enqueueMutation(mutation);
       },
       completeHomework: (id) => {
-        set({ homework: get().homework.map((h) => (h.id === id ? { ...h, status: "done", updatedAt: new Date().toISOString() } : h)) });
+        const current = get().homework.find((h) => h.id === id);
+        if (!current || current.status === "done") return;
+        set({
+          homework: get().homework.map((h) =>
+            h.id === id ? { ...h, status: "done", updatedAt: new Date().toISOString() } : h,
+          ),
+        });
+        const mutation = createMutation({
+          operation: "homework.complete",
+          entityId: id,
+          payload: { homeworkId: id },
+        });
+        void enqueueMutation(mutation);
+        get().completeActivity("HOMEWORK_COMPLETED", id, "Devoir terminé");
       },
       setExportConsent: (value) => {
         set({ exportConsent: value });
@@ -651,6 +749,16 @@ export const useBlossom = create<AppState>()(
             word,
             gloss,
             metadata,
+            rollback: existing
+              ? {
+                  existed: true,
+                  word: existing.word,
+                  gloss: existing.gloss,
+                  firstSavedAt: existing.firstSavedAt ?? now,
+                  updatedAt: existing.updatedAt ?? now,
+                  metadata: existing.metadata ?? { languageId: current.languageId },
+                }
+              : { existed: false },
           },
         });
         const existing = current.vocabulary.find(
@@ -707,7 +815,10 @@ export const useBlossom = create<AppState>()(
           current.pronlabAttempts,
           setsForLanguage(id).flatMap((setDef) => setDef.items),
         );
-        set({ languageId: id, learner, phonemeLeaves });
+        const mineralSnapshot = computeMinerals(
+          activeLanguageActivityLog(current.activityLog, id),
+        );
+        set({ languageId: id, learner, phonemeLeaves, mineralSnapshot });
         voidProfileSync(learner, id, current.plan, current.warmup, current.exportConsent, current.tandemOpen);
         track("language_changed", { languageId: id });
       },
@@ -751,6 +862,25 @@ export const useBlossom = create<AppState>()(
       },
       refreshOrganism: () => {
         const current = get();
+        const confirmedActivity = current.activityLog
+          .filter(isConfirmedActivity)
+          .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+        const rebuiltGrowth = confirmedActivity.reduce<GrowthEvent[]>(
+          (events, event) => {
+            const growth = growthEventForActivity(
+              event.type,
+              event.sourceId,
+              event.createdAt,
+            );
+            if (!growth) return events;
+            const tagged = event.metadata?.languageId;
+            return pushGrowthEvent(events, {
+              ...growth,
+              languageId: typeof tagged === "string" ? tagged : "en",
+            });
+          },
+          [],
+        );
         const mineralSnapshot = computeMinerals(
           activeLanguageActivityLog(current.activityLog, current.languageId),
         );
@@ -758,7 +888,21 @@ export const useBlossom = create<AppState>()(
           current.pronlabAttempts,
           setsForLanguage(current.languageId).flatMap((setDef) => setDef.items),
         );
-        set({ mineralSnapshot, phonemeLeaves });
+        let leoLetters = current.leoLetters;
+        const latestLetter = composeLeoLetter(
+          mineralSnapshot,
+          rebuiltGrowth,
+          current.learner.firstName,
+        );
+        if (!leoLetters.some((letter) => letter.id === latestLetter.id)) {
+          leoLetters = [latestLetter, ...leoLetters].slice(0, 12);
+        }
+        set({
+          growthEvents: rebuiltGrowth,
+          mineralSnapshot,
+          phonemeLeaves,
+          leoLetters,
+        });
       },
       resetJourney: () => {
         set({

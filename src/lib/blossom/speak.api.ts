@@ -14,7 +14,7 @@ const inputSchema = z.object({
 
 export const generateSpeakRoom = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(inputSchema)
+  .validator(inputSchema)
   .handler(async ({ data, context }) => {
     const { composeSpeakRoom } = await import("./speak-server.server");
     return composeSpeakRoom(data, context.userId);

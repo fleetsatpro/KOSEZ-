@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { toast } from "sonner";
 import {
   ArrowRight,
@@ -84,9 +85,17 @@ export function LearnDashboard() {
   );
   const completeHomework = useBlossom((s) => s.completeHomework);
   const vocab = useBlossom((s) => s.vocabulary);
+  const languageId = useBlossom((s) => s.languageId);
+  const languageVocabulary = useMemo(
+    () =>
+      vocab.filter((entry) => {
+        const tagged = entry.metadata?.languageId;
+        return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+      }),
+    [vocab, languageId],
+  );
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const submissions = useBlossom((s) => s.learningSubmissions);
-  const languageId = useBlossom((s) => s.languageId);
   const assigned = useBlossom((s) => s.assignedSetIds);
   const plan = useBlossom((s) => s.plan);
   const journey = useJourney();
@@ -94,12 +103,12 @@ export function LearnDashboard() {
   const growthEvents = useBlossom((s) => s.growthEvents);
   const nextGesture = causalNextGesture(minerals);
   const atelierGrowth = growthEvents.filter((event) => event.mineral === "atelier").slice(0, 3);
-  const skillProfile = buildSkillProfile(log, attempts, vocab, languageId);
-  const reviewPlan = buildReviewPlan(submissions, attempts, vocab, new Date().toISOString(), languageId);
+  const skillProfile = buildSkillProfile(log, attempts, languageVocabulary, languageId);
+  const reviewPlan = buildReviewPlan(submissions, attempts, languageVocabulary, new Date().toISOString(), languageId);
   const intelligence = buildLearningIntelligence(
     log,
     attempts,
-    vocab,
+    languageVocabulary,
     submissions,
     reviewPlan,
     new Date().toISOString(),
@@ -108,7 +117,7 @@ export function LearnDashboard() {
   const weeklyBrief = buildWeeklyLearningBrief(
     log,
     attempts,
-    vocab,
+    languageVocabulary,
     submissions,
     new Date().toISOString(),
     languageId,
@@ -169,7 +178,7 @@ export function LearnDashboard() {
               {journey.points} points
             </span>
             <span className="rounded-full bg-surface-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
-              {vocab.length} mot{vocab.length === 1 ? "" : "s"} gardé{vocab.length === 1 ? "" : "s"}
+              {languageVocabulary.length} mot{languageVocabulary.length === 1 ? "" : "s"} gardé{languageVocabulary.length === 1 ? "" : "s"}
             </span>
           </div>
         </div>
@@ -516,20 +525,20 @@ export function LearnDashboard() {
           <Eyebrow>Vocabulaire vivant</Eyebrow>
           <div className="mt-3 flex items-end justify-between gap-4">
             <div>
-              <p className="font-display text-4xl leading-none tabular-nums">{vocab.length}</p>
+              <p className="font-display text-4xl leading-none tabular-nums">{languageVocabulary.length}</p>
               <p className="mt-1 text-xs text-muted">mots gardés pour revenir plus tard</p>
             </div>
             <BookOpen className="size-5 text-primary" strokeWidth={1.7} />
           </div>
 
-          {vocab.length === 0 ? (
+          {languageVocabulary.length === 0 ? (
             <p className="mt-6 rounded-xl bg-surface-2/60 p-4 text-sm leading-6 text-muted">
               Touchez un mot dans la bibliothèque. Il devient un repère, pas une
               ligne de plus dans une liste.
             </p>
           ) : (
             <div className="mt-6 flex flex-wrap gap-2">
-              {vocab.slice(-8).map((word) => (
+              {languageVocabulary.slice(-8).map((word) => (
                 <span
                   key={word.word}
                   className="rounded-full bg-surface-2 px-3 py-1.5 text-xs font-medium"

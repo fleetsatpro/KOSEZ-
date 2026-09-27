@@ -29,9 +29,17 @@ export const authMiddleware = createMiddleware({ type: "function" })
   .client(async ({ next }) => {
     // Live preview (partitioned iframe): the session rides a bearer token, not a
     // cookie, so forward it to the server. Null when deployed (cookie auth), so
-    // this is a no-op there.
-    const { getBearerToken } = await import("./client");
-    return next({ sendContext: { bearerToken: getBearerToken() ?? undefined } });
+    // this is a no-op there. Keep this tiny browser-only read here instead of
+    // dynamically importing auth/client — auth/client is also statically used
+    // by the shell and login route, so that dynamic import could never split it.
+    const BEARER_KEY = "grok-auth.bearer-token";
+    let bearerToken: string | undefined;
+    try {
+      bearerToken = window.sessionStorage.getItem(BEARER_KEY) ?? undefined;
+    } catch {
+      bearerToken = undefined;
+    }
+    return next({ sendContext: { bearerToken } });
   })
   .server(async ({ next, context }) => {
     // ONLY import `*.server` modules here. This file is dual client/server

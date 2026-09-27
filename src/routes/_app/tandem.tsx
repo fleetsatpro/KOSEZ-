@@ -1,8 +1,9 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, Clock, Heart, MapPin, Pause, RefreshCw, Users, Leaf } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Initials, Page, Surface } from "@/components/app/primitives";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,12 +18,17 @@ import {
   causalNextGesture,
   computeMinerals,
 } from "@/lib/blossom/organism";
+import { activityBelongsToLanguage } from "@/lib/blossom/engine";
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 import { describeLearnLanguage, useUiLocale } from "@/lib/i18n";
 
 export const Route = createFileRoute("/_app/tandem")({
-  component: TandemPage,
+  component: () => (
+    <LearningSurfaceGate surface="tandem">
+      <TandemPage />
+    </LearningSurfaceGate>
+  ),
 });
 
 type Candidate = Awaited<ReturnType<typeof getTandemCandidatesOnServer>>[number];
@@ -38,13 +44,20 @@ function TandemHub() {
   const learner = useBlossom((s) => s.learner);
   const uiLocale = useUiLocale();
   const languageId = useBlossom((s) => s.languageId);
-  const languageLabel = (id: string) => describeLearnLanguage(id, uiLocale).label;
+  const languageLabel = useCallback(
+    (id: string) => describeLearnLanguage(id, uiLocale).label,
+    [uiLocale],
+  );
   const statusMap = useBlossom((s) => s.tandemStatus);
   const setStatus = useBlossom((s) => s.setTandemStatus);
   const tandemOpen = useBlossom((s) => s.tandemOpen);
   const setTandemOpen = useBlossom((s) => s.setTandemOpen);
   const plan = useBlossom((s) => s.plan);
   const log = useBlossom((s) => s.activityLog);
+  const scopedLog = useMemo(
+    () => log.filter((event) => activityBelongsToLanguage(event, languageId)),
+    [log, languageId],
+  );
   const growthEvents = useBlossom((s) => s.growthEvents);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
@@ -52,7 +65,7 @@ function TandemHub() {
   const influence = useMemo(
     () =>
       influenceFromState({
-        activityLog: log,
+        activityLog: scopedLog,
         pronlabAttempts: attempts,
         growthEvents,
         phonemeLeaves,
@@ -62,15 +75,20 @@ function TandemHub() {
         memoryOn: planAllows(plan, "memory"),
         languageId,
       }),
-    [log, attempts, growthEvents, phonemeLeaves, missionSessions, plan, languageId],
+    [scopedLog, attempts, growthEvents, phonemeLeaves, missionSessions, plan, languageId],
   );
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const minerals = useMemo(() => computeMinerals(log), [log]);
+  const minerals = useMemo(() => computeMinerals(scopedLog), [scopedLog]);
   const nextGesture = causalNextGesture(minerals);
   const socialGrowth = growthEvents
+    .filter((g) => {
+      const tagged = g.languageId;
+      if (typeof tagged === "string") return tagged === languageId;
+      return languageId === "en";
+    })
     .filter((g) => g.mineral === "social" || g.kind === "flower")
     .slice(0, 3);
 
@@ -82,21 +100,21 @@ function TandemHub() {
       interests: learner.interests,
       window: learner.practiceWindow,
     }),
-    [languageId, uiLocale, learner.interests, learner.level, learner.nativeLanguage, learner.practiceWindow],
+    [languageId, languageLabel, learner.interests, learner.level, learner.nativeLanguage, learner.practiceWindow],
   );
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     setError(null);
     void getTandemCandidatesOnServer()
       .then(setCandidates)
       .catch(() => setError("Impossible de charger les profils compatibles."))
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const ranked = useMemo(() => {
     const bias = influence.tandem.partnerBias;
@@ -126,7 +144,7 @@ function TandemHub() {
       })
       .filter((row) => row.status !== "blocked")
       .sort((a, b) => b.score - a.score);
-  }, [candidates, me, statusMap, influence.tandem.partnerBias]);
+  }, [candidates, languageLabel, me, statusMap, influence.tandem.partnerBias]);
 
   const accepted = ranked.filter((row) => row.status === "accepted");
   const pending = ranked.filter((row) => row.status === "pending");

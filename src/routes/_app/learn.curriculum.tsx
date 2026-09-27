@@ -1,13 +1,18 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { ArrowRight, BookOpenCheck, BrainCircuit, CircleCheck, Clock3, Sprout } from "lucide-react";
+import { ArrowRight, BookOpenCheck, BrainCircuit, Clock3, Sprout } from "lucide-react";
 import { Eyebrow, Page } from "@/components/app/primitives";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { CURRICULUM_UNITS, buildSkillProfile, curriculumUnitProgress } from "@/lib/blossom/learning-os";
 import { useBlossom } from "@/lib/blossom/store";
 
 export const Route = createFileRoute("/_app/learn/curriculum")({
-  component: Curriculum,
+  component: () => (
+    <LearningSurfaceGate surface="curriculum">
+      <Curriculum />
+    </LearningSurfaceGate>
+  ),
 });
 
 function Curriculum() {
@@ -23,7 +28,8 @@ function CurriculumIndex() {
   const log = useBlossom((s) => s.activityLog);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const vocabulary = useBlossom((s) => s.vocabulary);
-  const profile = buildSkillProfile(log, attempts, vocabulary);
+  const languageId = useBlossom((s) => s.languageId);
+  const profile = buildSkillProfile(log, attempts, vocabulary, languageId);
   const averageCoverage = Math.round(profile.reduce((sum, item) => sum + item.coverage, 0) / Math.max(1, profile.length));
 
   return (

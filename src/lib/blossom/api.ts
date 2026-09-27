@@ -44,7 +44,7 @@ export const getBlossomBackendState = createServerFn({ method: "GET" })
 
 export const saveBlossomProfile = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       displayName: z.string().trim().max(120).nullable().optional(),
       targetLanguage: z.string().trim().min(2).max(16).refine(isLearnLanguageId, "unsupported-language"),
@@ -63,7 +63,7 @@ export const saveBlossomProfile = createServerFn({ method: "POST" })
 
 export const recordBlossomActivity = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       eventType: z.enum(ACTIVITY_EVENT_TYPES),
       sourceId: z.string().trim().max(200).nullable().optional(),
@@ -95,7 +95,7 @@ export const recordBlossomActivity = createServerFn({ method: "POST" })
 
 export const persistBlossomMissionSession = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       missionId: z.string().trim().min(1).max(120),
       sessionJson: z.string().trim().min(2).max(200000),

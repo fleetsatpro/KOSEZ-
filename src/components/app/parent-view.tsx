@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { HeartHandshake, MessageCircle, Users } from "lucide-react";
-import { calendarFilename, teacherSessionToIcs } from "@/lib/blossom/calendar";
 import { Button } from "@/components/ui/button";
 import { Eyebrow, Initials, Page, Surface } from "./primitives";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
@@ -12,24 +11,6 @@ import { ConversationPanel } from "./conversation-panel";
 type GuardianRow = Awaited<ReturnType<typeof getGuardianWorkspaceOnServer>>[number];
 type GuardianTeacherContact = Awaited<ReturnType<typeof getGuardianTeacherContactsOnServer>>[number];
 type GuardianSession = Awaited<ReturnType<typeof getGuardianSessionsOnServer>>[number];
-
-function downloadSessionCalendar(session: {
-  id: string;
-  title: string;
-  startsAt: string;
-  durationMinutes: number;
-  teacherName: string;
-  learnerName: string;
-}) {
-  const ics = teacherSessionToIcs(session);
-  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = calendarFilename(session.title);
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
 
 function relative(value: string | null) {
   if (!value) return "Aucune activité enregistrée";
@@ -50,6 +31,7 @@ export function ParentView() {
   const [error, setError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<GuardianSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState(false);
 
   useEffect(() => {
     let disposed = false;
@@ -86,21 +68,26 @@ export function ParentView() {
   }, [access.isGuardian, accessPending]);
 
   const selected = children.find((child) => child.id === selectedId) ?? children[0];
+  const selectedLearnerId = selected?.id;
+
   useEffect(() => {
-    if (!selected) {
+    if (!selectedLearnerId) {
       setSessions([]);
       return;
     }
     let disposed = false;
     setSessionsLoading(true);
     void getGuardianSessionsOnServer({
-      data: { learnerUserId: selected.id, limit: 12 },
+      data: { learnerUserId: selectedLearnerId, limit: 12 },
     })
       .then((rows) => {
         if (!disposed) setSessions(rows);
       })
       .catch(() => {
-        if (!disposed) setSessions([]);
+        if (!disposed) {
+          setSessions([]);
+          setSessionsError(true);
+        }
       })
       .finally(() => {
         if (!disposed) setSessionsLoading(false);
@@ -108,7 +95,7 @@ export function ParentView() {
     return () => {
       disposed = true;
     };
-  }, [selected?.id]);
+  }, [selectedLearnerId]);
 
   if (accessPending || loading) {
     return (

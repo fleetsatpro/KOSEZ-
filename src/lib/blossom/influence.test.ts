@@ -21,6 +21,7 @@ test("recent growth creates an explicit transfer consequence", () => {
       intensity: 1,
       label: "Croissance récente",
       mineral: "social",
+      languageId: "es",
     }],
     phonemeLeaves: [],
     missionSessions: {},
@@ -86,4 +87,126 @@ test("tandem struggle prompt follows the selected learning language", () => {
   const fr = computeInfluence({ ...strugglingBase, languageId: "fr" });
   assert.match(es.tandem.openPrompt ?? "", /¿Puedes/);
   assert.match(fr.tandem.openPrompt ?? "", /Tu peux/);
+});
+
+
+test("causal influence ignores activity and growth from another learning language", () => {
+  const now = new Date().toISOString();
+  const foreign = computeInfluence({
+    log: [{
+      id: "en-1",
+      type: "SPEAK_COMPLETED",
+      createdAt: now,
+      sourceId: "en-room",
+      metadata: { languageId: "en" },
+    }],
+    attempts: [],
+    allItems: [],
+    growthEvents: [{
+      id: "en-growth",
+      at: now,
+      kind: "flower",
+      intensity: 1,
+      label: "Croissance anglaise",
+      mineral: "social",
+      languageId: "en",
+    }],
+    phonemeLeaves: [],
+    missionSessions: {},
+    memory: neutralMemory,
+    memoryOn: false,
+    languageId: "es",
+  });
+  assert.equal(foreign.minerals.parole, 0);
+  assert.equal(
+    foreign.mission.reasons.some((reason) => reason.code === "recent-growth"),
+    false,
+  );
+});
+
+
+test("pending activity cannot create causal mineral pressure", () => {
+  const now = new Date().toISOString();
+  const result = computeInfluence({
+    log: [{
+      id: "pending-speak",
+      type: "SPEAK_COMPLETED",
+      createdAt: now,
+      sourceId: "speak-pending",
+      metadata: { languageId: "en", syncState: "pending" },
+    }],
+    attempts: [],
+    allItems: [],
+    growthEvents: [],
+    phonemeLeaves: [],
+    missionSessions: {},
+    memory: neutralMemory,
+    memoryOn: false,
+    languageId: "en",
+  });
+  assert.equal(result.minerals.parole, 0);
+  assert.equal(result.mission.reasons.some((reason) => reason.code === "balanced"), true);
+});
+
+
+test("mission influence ignores friction from another learning language", () => {
+  const now = new Date().toISOString();
+  const enSession = {
+    missionId: "mission-en",
+    languageId: "en" as const,
+    runs: [{
+      id: "en-run",
+      mode: "practice" as const,
+      challenge: "core" as const,
+      startedAt: now,
+      lastUpdatedAt: now,
+      attempts: [],
+      reflection: {
+        objectiveAchieved: false,
+        stayedInTargetLanguage: "no" as const,
+        confidence: 2,
+        friction: "switching" as const,
+      },
+      completedAt: now,
+      supportUsed: false,
+    }],
+    activeRunId: "en-run",
+  };
+  const esSession = {
+    missionId: "mission-es",
+    languageId: "es" as const,
+    runs: [{
+      id: "es-run",
+      mode: "practice" as const,
+      challenge: "core" as const,
+      startedAt: now,
+      lastUpdatedAt: now,
+      attempts: [],
+      reflection: {
+        objectiveAchieved: true,
+        stayedInTargetLanguage: "yes" as const,
+        confidence: 5,
+        friction: "none" as const,
+      },
+      completedAt: now,
+      supportUsed: false,
+    }],
+    activeRunId: "es-run",
+  };
+  const result = computeInfluence({
+    log: [],
+    attempts: [],
+    allItems: [],
+    growthEvents: [],
+    phonemeLeaves: [],
+    missionSessions: {
+      en: enSession,
+      es: esSession,
+    },
+    memory: neutralMemory,
+    memoryOn: false,
+    languageId: "es",
+  });
+  assert.equal(result.mission.reasons.some((reason) => reason.code === "mission-friction"), false);
+  assert.equal(result.mission.reasons.some((reason) => reason.code === "mission-outcome" && /même geste|passage n/.test(reason.line)), false);
 });

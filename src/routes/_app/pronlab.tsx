@@ -1,11 +1,12 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Lock, Target, Leaf } from "lucide-react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
-import { summarisePronlabItem } from "@/lib/blossom/engine";
+import { setsForLanguage } from "@/lib/blossom/data";
+import { activityBelongsToLanguage, summarisePronlabItem } from "@/lib/blossom/engine";
 import {
   causalNextGesture,
   computeMinerals,
@@ -15,7 +16,11 @@ import { isSetUnlocked, useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/pronlab")({
-  component: PronlabHub,
+  component: () => (
+    <LearningSurfaceGate surface="pronlab">
+      <PronlabHub />
+    </LearningSurfaceGate>
+  ),
 });
 
 function PronlabHub() {
@@ -37,18 +42,24 @@ function PronlabIndex() {
     (h) => h.status === "sent" && h.studentId === syncOwnerUserId,
   );
   const sets = setsForLanguage(languageId);
-  const allItems = PRONLAB_SETS.flatMap((s) => s.items);
-  const struggle = strugglingFocus(attempts, allItems);
-  const minerals = computeMinerals(log);
+  const activeItems = sets.flatMap((s) => s.items);
+  const activeLog = log.filter((event) => activityBelongsToLanguage(event, languageId));
+  const struggle = strugglingFocus(attempts, activeItems);
+  const minerals = computeMinerals(activeLog);
   const nextGesture = causalNextGesture(minerals);
   const recentLeaves = growthEvents
-    .filter((g) => g.kind === "leaf" || g.kind === "mineral")
+    .filter((g) => {
+      const tagged = g.languageId;
+      return (typeof tagged === "string" ? tagged === languageId : languageId === "en") &&
+        (g.kind === "leaf" || g.kind === "mineral");
+    })
+    .filter((g) => !g.mineral || g.mineral === "pron")
     .slice(0, 3);
 
-  const totalMastered = allItems.filter(
+  const totalMastered = activeItems.filter(
     (item) => summarisePronlabItem(item.id, attempts).mastered,
   ).length;
-  const totalAttempted = allItems.filter(
+  const totalAttempted = activeItems.filter(
     (item) => summarisePronlabItem(item.id, attempts).attemptCount > 0,
   ).length;
 
@@ -150,7 +161,7 @@ function PronlabIndex() {
                   to="/pronlab/$setId"
                   params={{
                     setId:
-                      PRONLAB_SETS.find((s) =>
+                      sets.find((s) =>
                         s.items.some((i) => i.id === struggle.id),
                       )?.id ?? sets[0]?.id ?? "th",
                   }}

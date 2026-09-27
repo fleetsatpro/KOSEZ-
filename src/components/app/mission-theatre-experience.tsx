@@ -13,9 +13,9 @@ import { AmbientParticles } from "@/components/app/ambient-particles";
 import { BlossomPlant } from "@/components/app/plant";
 import { Eyebrow, Wordmark } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
-import { LEARNER_MEMORY, planAllows, PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
 import {
   journeySnapshot,
+  activityBelongsToLanguage,
   hasSource,
   personaliseMission,
   resolveMemory,
@@ -33,6 +33,7 @@ import {
   type MissionReflection,
   type MissionStep,
 } from "@/lib/blossom/mission";
+import { LEARNER_MEMORY, planAllows, setsForLanguage } from "@/lib/blossom/data";
 import { todayMissionForLevel } from "@/lib/blossom/mission-today";
 import { useBlossom } from "@/lib/blossom/store";
 import {
@@ -58,6 +59,7 @@ type GrowthSnapshot = {
   before: ReturnType<typeof journeySnapshot>;
   after: ReturnType<typeof journeySnapshot>;
   evaluation: ReturnType<typeof evaluateMission>;
+  credit: "confirmed" | "pending" | "local-only";
 };
 
 function CinematicTop({ step, language }: { step: MissionStep; language: string }) {
@@ -112,12 +114,13 @@ export function MissionTheatreExperience() {
     : null;
   const history = summariseMissionHistory(session?.runs ?? []);
   const recommendedChallenge = nextMissionChallenge(previousEvaluation?.outcome);
-  const already = hasSource(log, todayMission.id);
+  const activeLog = log.filter((event) => activityBelongsToLanguage(event, languageId));
+  const already = hasSource(activeLog, todayMission.id);
   const memoryOn = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
   const personalised = personaliseMission(todayMission, memory, memoryOn);
   const influence = influenceFromState({
-    activityLog: log,
+    activityLog: activeLog,
     pronlabAttempts: attempts,
     growthEvents,
     phonemeLeaves,
@@ -152,6 +155,7 @@ export function MissionTheatreExperience() {
   const [closing, setClosing] = useState(false);
   const [serverRunSessionId, setServerRunSessionId] = useState<string | null>(null);
   const [serverEvidenceAvailable, setServerEvidenceAvailable] = useState(false);
+  const [rewardSourceId, setRewardSourceId] = useState<string | null>(null);
 
   async function start() {
     if (starting || closing) return;
@@ -180,18 +184,25 @@ export function MissionTheatreExperience() {
   }
 
   function finishAttempt(seconds: number) {
-    recordMissionAttempt(todayMission.id, "mission", "microphone", seconds);
-    setStep("reflect");
+    if (!Number.isFinite(seconds) || seconds <= 0) {
+      toast("Aucune prise vocale détectée. Parlez au moins un instant avant de continuer.");
+      return;
+    }
+    const recorded = recordMissionAttempt(todayMission.id, "mission", "microphone", seconds);
+    if (recorded) setStep("reflect");
   }
 
   function finishRealWorld() {
-    recordMissionAttempt(
-      todayMission.id,
-      "mission",
-      "manual",
-      Math.max(60, todayMission.durationMin * 60),
-    );
-    setStep("reflect");
+    const startedAt = run?.startedAt ? Date.parse(run.startedAt) : NaN;
+    const seconds = Number.isFinite(startedAt)
+      ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
+      : 0;
+    if (seconds <= 0) {
+      toast("Commencez le geste avant de le consigner.");
+      return;
+    }
+    const recorded = recordMissionAttempt(todayMission.id, "mission", "manual", seconds);
+    if (recorded) setStep("reflect");
   }
 
   function useSupport() {
@@ -211,6 +222,14 @@ export function MissionTheatreExperience() {
 
   async function finishSession() {
     if (closing) return;
+    const startedAt = run?.startedAt ? Date.parse(run.startedAt) : NaN;
+    const elapsedSeconds = Number.isFinite(startedAt)
+      ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
+      : 0;
+    if (serverRunSessionId && elapsedSeconds < 60) {
+      toast("La session doit durer au moins 1 minute avant validation. Le geste reste ouvert.");
+      return;
+    }
     setClosing(true);
     let rewardSourceId: string | null = null;
     if (serverRunSessionId) {
@@ -229,18 +248,27 @@ export function MissionTheatreExperience() {
       }
     }
 
-    const before = journeySnapshot(log);
+    const before = journeySnapshot(activeLog);
     const result = completeMissionSession(todayMission.id, rewardSourceId);
     if (!result.ok) {
       setClosing(false);
       toast("Session non close.");
       return;
     }
-    const after = journeySnapshot(useBlossom.getState().activityLog);
+    const currentConfirmedLog = useBlossom
+      .getState()
+      .activityLog.filter((event) => activityBelongsToLanguage(event, languageId));
+    const after = journeySnapshot(currentConfirmedLog);
     const evaluation = evaluateMission(reflection);
     setServerRunSessionId(null);
     setServerEvidenceAvailable(false);
-    setGrowth({ before, after, evaluation });
+    setRewardSourceId(rewardSourceId);
+    setGrowth({
+      before,
+      after,
+      evaluation,
+      credit: rewardSourceId ? "pending" : "local-only",
+    });
     track("mission_completed", {
       missionId: todayMission.id,
       mode,
@@ -250,11 +278,35 @@ export function MissionTheatreExperience() {
     setClosing(false);
   }
 
+  useEffect(() => {
+    if (!growth || growth.credit !== "pending" || !rewardSourceId) return;
+    const confirmed = activeLog.some(
+      (event) =>
+        event.type === "MISSION_COMPLETED" &&
+        event.sourceId === rewardSourceId,
+    );
+    if (!confirmed) return;
+    setGrowth((current) =>
+      current
+        ? {
+            ...current,
+            after: journeySnapshot(activeLog),
+            credit: "confirmed",
+          }
+        : current,
+    );
+    setRewardSourceId(null);
+  }, [activeLog, growth, rewardSourceId]);
+
   if (growth) {
     const pointDelta = growth.after.points - growth.before.points;
     const stageChanged = growth.after.stage.id !== growth.before.stage.id;
     const progressDelta = Math.round((growth.after.progress - growth.before.progress) * 100);
-    const latestGrowth = growthEvents[0] ?? null;
+    const latestGrowth =
+      growthEvents.find((event) => {
+        const tagged = event.languageId;
+        return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+      }) ?? null;
     const nextDoor = causalNextGesture(minerals);
     const intensity = Math.min(1, 0.4 + Math.max(0, progressDelta) / 100);
 
@@ -268,15 +320,23 @@ export function MissionTheatreExperience() {
         <div className="relative z-10 mx-auto flex min-h-[calc(100svh-4rem)] max-w-5xl flex-col justify-center">
           <div className="text-center">
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-primary">
-              Post-crédit · BLOSSOM
+              {growth.credit === "confirmed"
+                ? "Post-crédit · BLOSSOM"
+                : growth.credit === "pending"
+                  ? "Crédit en synchronisation · BLOSSOM"
+                  : "Pratique locale · BLOSSOM"}
             </p>
             <h1 className="mt-4 font-display text-[clamp(3rem,8vw,6rem)] leading-[0.88] tracking-[-0.06em]">
               Un geste. Une racine.
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-muted sm:text-base">
-              Votre action vient d'être enregistrée. Voici la conséquence exacte — sans score à jouer, sans flamme à protéger.
+              {growth.credit === "pending"
+                ? "Votre session est clôturée et le crédit attend la confirmation serveur. Aucune croissance n'est présentée comme acquise avant cette confirmation."
+                : growth.credit === "local-only"
+                  ? "Votre pratique est consignée localement, mais aucun crédit BLOSSOM n'est acquis sans session serveur confirmée."
+                  : "Votre action vient d'être enregistrée. Voici la conséquence exacte — sans score à jouer, sans flamme à protéger."}
             </p>
-            {latestGrowth ? (
+            {growth.credit === "confirmed" && latestGrowth ? (
               <p className="mx-auto mt-3 max-w-md rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm text-primary">
                 {latestGrowth.label}
               </p>
@@ -302,7 +362,9 @@ export function MissionTheatreExperience() {
             <div className="rounded-[26px] border border-primary/15 bg-surface p-4 magnetic-surface">
               <div className="flex items-center justify-between px-1 pb-3">
                 <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Après</span>
-                <span className="text-xs tabular-nums text-primary">+{pointDelta} pts</span>
+                <span className="text-xs tabular-nums text-primary">
+                  {growth.credit === "confirmed" ? "+" + pointDelta + " pts" : "En attente"}
+                </span>
               </div>
               <BlossomPlant
                 linked={false}

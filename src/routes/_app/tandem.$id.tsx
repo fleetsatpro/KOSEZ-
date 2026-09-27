@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Flag, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Surface } from "@/components/app/primitives";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { Button } from "@/components/ui/button";
 import { GrowthCeremony } from "@/components/app/growth-ceremony";
 import { ConversationPanel } from "@/components/app/conversation-panel";
@@ -18,12 +19,17 @@ import {
   startTandemSessionOnServer,
 } from "@/lib/blossom/domain.api";
 import { useBlossom } from "@/lib/blossom/store";
+import { TANDEM_HALF_DURATION_SECONDS } from "@/lib/blossom/tandem-contract";
 
 export const Route = createFileRoute("/_app/tandem/$id")({
-  component: TandemSession,
+  component: () => (
+    <LearningSurfaceGate surface="tandem">
+      <TandemSession />
+    </LearningSurfaceGate>
+  ),
 });
 
-const HALF_SECONDS = 30 * 60;
+const HALF_SECONDS = TANDEM_HALF_DURATION_SECONDS;
 
 type CeremonyState = {
   event: GrowthEvent;
@@ -192,7 +198,12 @@ function TandemSession() {
       "TANDEM_COMPLETED",
       `tandem-session-${sessionId}`,
       note,
-      { minutes: 60, sessionId, reflectionRecorded: true },
+      {
+        minutes: Math.max(1, Math.floor((HALF_SECONDS - left) / 60)),
+        durationSeconds: Math.max(0, HALF_SECONDS - left),
+        sessionId,
+        reflectionRecorded: true,
+      },
     );
     if (growth.ok && growth.event && growth.minerals && growth.previousMinerals) {
       setCeremony({

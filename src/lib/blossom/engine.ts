@@ -26,7 +26,9 @@ export type ActivityType =
   | "CURRICULUM_EVIDENCE_RECORDED"
   | "LIBRARY_COMPLETED";
 
-export type ActivityMetadata = Record<string, string | number | boolean>;
+export type ActivityMetadata = Record<string, string | number | boolean> & {
+  syncState?: "pending" | "confirmed";
+};
 
 export type ActivityEvent = {
   id: string;
@@ -37,12 +39,22 @@ export type ActivityEvent = {
   metadata?: ActivityMetadata;
 };
 
-export function activityBelongsToLanguage(
+export function activityLanguageMatches(
   event: ActivityEvent,
   languageId: string,
 ): boolean {
   const tagged = event.metadata?.languageId;
   return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+}
+
+export function activityBelongsToLanguage(
+  event: ActivityEvent,
+  languageId: string,
+): boolean {
+  return (
+    event.metadata?.syncState !== "pending" &&
+    activityLanguageMatches(event, languageId)
+  );
 }
 
 export const POINTS: Record<ActivityType, number> = {
@@ -116,8 +128,15 @@ export const STAGE_REQUIREMENTS: Record<
   independent: { missions: 24, speak: 8, pronlab: 6 },
 };
 
+export function isConfirmedActivity(event: ActivityEvent): boolean {
+  return event.metadata?.syncState !== "pending";
+}
+
 export function pointsFromLog(log: ActivityEvent[]): number {
-  return log.reduce((sum, event) => sum + POINTS[event.type], 0);
+  return log.reduce(
+    (sum, event) => sum + (isConfirmedActivity(event) ? POINTS[event.type] : 0),
+    0,
+  );
 }
 
 export function stageFromPoints(points: number) {
@@ -154,7 +173,9 @@ export function stageFromLog(log: ActivityEvent[]) {
 }
 
 export function countByType(log: ActivityEvent[], type: ActivityType): number {
-  return log.filter((event) => event.type === type).length;
+  return log.filter(
+    (event) => event.type === type && isConfirmedActivity(event),
+  ).length;
 }
 
 export function hasSource(log: ActivityEvent[], sourceId: string, type?: ActivityType): boolean {
@@ -280,6 +301,33 @@ export type TandemPartner = {
   avatar: string | null;
 };
 
+function normaliseTandemLanguage(value: string): string {
+  const normalized = value.trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+  const aliases: Record<string, string> = {
+    anglais: "en",
+    english: "en",
+    french: "fr",
+    francais: "fr",
+    français: "fr",
+    espagnol: "es",
+    spanish: "es",
+    portugues: "pt",
+    português: "pt",
+    portuguese: "pt",
+    italien: "it",
+    italian: "it",
+    allemand: "de",
+    deutsch: "de",
+    german: "de",
+    creole: "cr",
+    créole: "cr",
+    "creole reunionnais": "cr",
+    "créole réunionnais": "cr",
+    lsf: "lsf",
+  };
+  return aliases[normalized] ?? normalized;
+}
+
 export function tandemMatchScore(
   me: {
     speaks: string;
@@ -291,9 +339,11 @@ export function tandemMatchScore(
   partner: TandemPartner,
 ): number {
   let score = 0;
-  const langFit =
-    partner.speaks.toLowerCase().startsWith(me.wants.toLowerCase().slice(0, 3)) &&
-    partner.wants.toLowerCase().startsWith(me.speaks.toLowerCase().slice(0, 3));
+  const mySpeaks = normaliseTandemLanguage(me.speaks);
+  const myWants = normaliseTandemLanguage(me.wants);
+  const partnerSpeaks = normaliseTandemLanguage(partner.speaks);
+  const partnerWants = normaliseTandemLanguage(partner.wants);
+  const langFit = partnerSpeaks === myWants && partnerWants === mySpeaks;
   if (langFit) score += 40;
   const bands = ["A1", "A2", "B1", "B2", "C1", "C2"];
   const myBand = bands.indexOf(me.level);

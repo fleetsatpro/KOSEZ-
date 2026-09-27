@@ -9,20 +9,26 @@ const bridgePath = join(root, "src/components/blossom-sync-bridge.tsx");
 const syncServerPath = join(root, "src/lib/blossom/sync.server.ts");
 const syncClientPath = join(root, "src/lib/blossom/sync-client.ts");
 const libraryRoutePath = join(root, "src/routes/_app/library.$id.tsx");
+const tandemMigrationPath = join(root, "migrations/0033_tandem_language_integrity.sql");
+const domainServerPath = join(root, "src/lib/blossom/domain.server.ts");
 
 let store = "";
 let bridge = "";
 let syncServer = "";
 let syncClient = "";
 let libraryRoute = "";
+let tandemMigration = "";
+let domainServer = "";
 
 test.before(async () => {
-  [store, bridge, syncServer, syncClient, libraryRoute] = await Promise.all([
+  [store, bridge, syncServer, syncClient, libraryRoute, tandemMigration, domainServer] = await Promise.all([
     readFile(storePath, "utf8"),
     readFile(bridgePath, "utf8"),
     readFile(syncServerPath, "utf8"),
     readFile(syncClientPath, "utf8"),
     readFile(libraryRoutePath, "utf8"),
+    readFile(tandemMigrationPath, "utf8"),
+    readFile(domainServerPath, "utf8"),
   ]);
 });
 
@@ -49,9 +55,11 @@ test("P0 identity reset clears the entire learner-scoped replica", () => {
   }
 });
 
-test("P0 activity deduplication is type + source aware", () => {
-  assert.ok(store.includes("hasSource(scopedLog, sourceId, type)"));
-  assert.ok(bridge.includes("`${event.type}:source:${event.sourceId}`"));
+test("P0 activity deduplication is type + source aware and pending-safe", () => {
+  assert.ok(store.includes("hasSource("));
+  assert.ok(store.includes('syncState: "pending"'));
+  assert.ok(store.includes("languageId: get().languageId"));
+  assert.ok(bridge.includes("localActivityKey"));
 });
 
 test("P0 library completion cannot outrun the server dwell contract", () => {
@@ -79,4 +87,14 @@ test("P0 bridge preserves remote PronLab evidence metadata", () => {
 
 test("P0 sync queue uses monotonic causal timestamps", () => {
   assert.ok(syncClient.includes("createdAt: nextMutationCreatedAt()"));
+});
+
+
+test("P0 Tandem session evidence is language-bound", () => {
+  assert.ok(tandemMigration.includes("add column if not exists language_id"));
+  assert.ok(domainServer.includes("partnerLanguageId"));
+  assert.ok(domainServer.includes("partner_language_id"));
+  assert.ok(domainServer.includes("currentLanguageId"));
+  assert.ok(store.includes("previousStatus"));
+  assert.ok(domainServer.includes("durationSeconds <= 0") || domainServer.includes("input.seconds <= 0"));
 });

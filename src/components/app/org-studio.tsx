@@ -18,6 +18,7 @@ export function OrgStudio() {
   const [error, setError] = useState<string | null>(null);
   const [groups, setGroups] = useState<Awaited<ReturnType<typeof getOrganizationGroupsOnServer>>>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
+  const [groupsError, setGroupsError] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [groupKind, setGroupKind] = useState<"class" | "cohort">("class");
   const [groupTeacher, setGroupTeacher] = useState("");
@@ -40,10 +41,12 @@ export function OrgStudio() {
         setWorkspace(data);
         if (data) {
           setGroupsLoading(true);
+          setGroupsError(false);
           try {
             setGroups(await getOrganizationGroupsOnServer({ data: { organizationId: data.id } }));
           } catch {
             setGroups([]);
+            setGroupsError(true);
           } finally {
             setGroupsLoading(false);
           }
@@ -330,6 +333,13 @@ export function OrgStudio() {
 
         {groupsLoading ? (
           <p className="mt-5 text-sm text-muted">Chargement des groupes…</p>
+        ) : groupsError ? (
+          <Surface className="mt-4">
+            <p className="text-sm text-muted">Les groupes n’ont pas pu être chargés.</p>
+            <Button className="mt-3" size="sm" variant="secondary" onClick={() => window.location.reload()}>
+              Réessayer
+            </Button>
+          </Surface>
         ) : groups.length === 0 ? (
           <div className="mt-5 rounded-xl border border-dashed border-border p-5">
             <p className="text-sm text-muted">Aucune classe ou cohorte persistante pour cette organisation.</p>

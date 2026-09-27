@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, GraduationCap, Headphones, PenLine, RotateCcw, Sparkles, Target } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure, speakSyntheticEnglish, type LabLevel } from "@/lib/blossom/lab-content";
@@ -16,7 +17,13 @@ import {
   readCurriculumLessonContext,
 } from "@/lib/blossom/curriculum-context";
 
-export const Route = createFileRoute("/_app/learn/labs")({ component: LearningLabs });
+export const Route = createFileRoute("/_app/learn/labs")({
+  component: () => (
+    <LearningSurfaceGate surface="labs">
+      <LearningLabs />
+    </LearningSurfaceGate>
+  ),
+});
 
 type Lab = "grammar" | "listening" | "writing" | "diagnostic";
 type CeremonyState = {
@@ -100,7 +107,7 @@ function GrammarLab({ level }: { level: LabLevel }) {
   }
   if (finished) return (
     <>
-      <LabComplete title="Grammaire terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. La séance a nourri le minéral atelier ; cette trace ne prétend pas mesurer un niveau CEFR.`} />
+      <LabComplete title="Grammaire terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. La trace est préparée ; le minéral atelier ne bougera qu’après confirmation de synchronisation. Cette activité ne prétend pas mesurer un niveau CEFR.`} />
       {ceremony ? (
         <GrowthCeremony
           event={ceremony.event}
@@ -169,7 +176,7 @@ function ListeningLab({ level }: { level: LabLevel }) {
   }
   if (finished) return (
     <>
-      <LabComplete title="Écoute terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. La séance a nourri le minéral atelier ; vous avez travaillé des détails concrets : heure, lieu, prix et option.`} />
+      <LabComplete title="Écoute terminée" detail={`${correct} bonnes réponses sur ${tasks.length}. La trace est préparée ; le minéral atelier ne bougera qu’après confirmation de synchronisation. Vous avez travaillé des détails concrets : heure, lieu, prix et option.`} />
       {ceremony ? (
         <GrowthCeremony
           event={ceremony.event}
@@ -365,7 +372,7 @@ function DiagnosticLab() {
         <GraduationCap className="size-6 text-primary" />
         <Eyebrow className="mt-5">REPÈRE ENREGISTRÉ</Eyebrow>
         <h2 className="mt-2 font-display text-3xl tracking-tight">{level} · {score}/10</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-muted">{diagnosticSummary(score)}</p>
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-muted">{diagnosticSummary(score)} Le niveau choisi est visible localement pendant la synchronisation ; le profil confirmé reste celui du serveur.</p>
         <div className="mt-6 flex flex-wrap gap-2">
           <Button asChild><Link to="/learn/curriculum">Ouvrir le parcours <ArrowRight className="size-4" /></Link></Button>
           <Button variant="secondary" onClick={() => setSaved(false)}>Refaire</Button>

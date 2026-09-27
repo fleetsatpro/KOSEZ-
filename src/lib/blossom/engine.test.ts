@@ -4,6 +4,8 @@ import { INITIAL_LOG, INITIAL_PRONLAB_ATTEMPTS, LEARNER } from "./data.fixtures.
 import { planAllows, setsForLanguage } from "./data.ts";
 import {
   cafeMemoryHint,
+  activityBelongsToLanguage,
+  isConfirmedActivity,
   countByType,
   hasSource,
   journeySnapshot,
@@ -241,4 +243,88 @@ test("setsForLanguage keeps English as default and isolates LSF", () => {
   assert.ok(en.length >= 3);
   assert.ok(en.every((s) => (s.language ?? "en") === "en"));
   assert.ok(lsf.every((s) => s.language === "lsf"));
+});
+
+
+test("tandem language fit survives localized labels", () => {
+  const score = tandemMatchScore(
+    {
+      speaks: "Français",
+      wants: "Anglais",
+      level: "A2",
+      interests: [],
+      window: "12:00",
+    },
+    {
+      id: "partner",
+      name: "Alex",
+      city: "Saint-Pierre",
+      speaks: "English",
+      speaksLevel: "B1",
+      wants: "French",
+      wantsLevel: "A2",
+      interests: [],
+      window: "12:00",
+      goal: "",
+      initials: "A",
+      avatar: null,
+    },
+  );
+  assert.ok(score >= 40);
+});
+
+
+test("pending activity cannot change points or organism language state", () => {
+  const now = new Date().toISOString();
+  const pending: ActivityEvent = {
+    id: "pending-1",
+    type: "SPEAK_COMPLETED",
+    createdAt: now,
+    sourceId: "speak-pending",
+    metadata: { languageId: "en", syncState: "pending" },
+  };
+  const confirmed: ActivityEvent = {
+    id: "confirmed-1",
+    type: "SPEAK_COMPLETED",
+    createdAt: now,
+    sourceId: "speak-confirmed",
+    metadata: { languageId: "en", syncState: "confirmed" },
+  };
+  assert.equal(activityBelongsToLanguage(pending, "en"), false);
+  assert.equal(activityBelongsToLanguage(confirmed, "en"), true);
+  assert.equal(pointsFromLog([pending]), 10);
+  assert.equal(journeySnapshot([pending]).points, 10);
+  assert.equal(
+    journeySnapshot([pending].filter((event) => activityBelongsToLanguage(event, "en"))).points,
+    0,
+  );
+  assert.equal(journeySnapshot([confirmed]).points, 10);
+});
+
+
+test("core activity derivation fails closed for pending events", () => {
+  const pending: ActivityEvent = {
+    id: "pending-core",
+    type: "MISSION_COMPLETED",
+    createdAt: new Date().toISOString(),
+    sourceId: "pending-mission",
+    metadata: { languageId: "en", syncState: "pending" },
+  };
+  assert.equal(isConfirmedActivity(pending), false);
+  assert.equal(pointsFromLog([pending]), 0);
+  assert.equal(countByType([pending], "MISSION_COMPLETED"), 0);
+});
+
+
+test("activity deduplication keeps identical source keys independent across languages", () => {
+  const event: ActivityEvent = {
+    id: "fr-1",
+    type: "REVIEW_COMPLETED",
+    createdAt: new Date().toISOString(),
+    sourceId: "review-2026-09-27",
+    metadata: { languageId: "fr", syncState: "confirmed" },
+  };
+  assert.equal(activityLanguageMatches(event, "fr"), true);
+  assert.equal(activityLanguageMatches(event, "en"), false);
+  assert.equal(activityBelongsToLanguage(event, "fr"), true);
 });

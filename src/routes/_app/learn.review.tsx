@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, LibraryBig, Mic2, RotateCcw, Target } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GrowthCeremony } from "@/components/app/growth-ceremony";
 import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
@@ -65,45 +65,9 @@ function Review() {
   const [reviewed, setReviewed] = useState(0);
   const [misses, setMisses] = useState<Record<string, number>>({});
   const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
+  const initializedLanguageId = useRef(languageId);
 
-  useEffect(() => {
-    setQueue(initial);
-    setSessionTotal(Math.max(initial.length, 1));
-    setReviewed(0);
-    setMisses({});
-    setRevealed(false);
-    setDone(false);
-    setCeremony(null);
-  }, [languageId]);
-
-  const current = queue[0];
-  const total = sessionTotal;
-  const finished = reviewed >= total && !current;
-
-  function answer(correct: boolean) {
-    if (!current) return;
-    const nextMiss = (misses[current.id] ?? 0) + (correct ? 0 : 1);
-    saveLearningSubmission({
-      taskId: current.sourceKey,
-      kind: "review",
-      content: correct ? "correct" : "again",
-      checks: [correct ? "correct" : "again"],
-      result: {
-        correct,
-        sourceKind: current.kind,
-        reviewedAt: new Date().toISOString(),
-      },
-    });
-    setMisses((value) => ({ ...value, [current.id]: nextMiss }));
-    setQueue((items) => {
-      const [, ...rest] = items;
-      return correct || nextMiss >= 2 ? rest : [...rest, current];
-    });
-    setReviewed((value) => value + 1);
-    setRevealed(false);
-  }
-
-  function finish() {
+  const finish = useCallback(() => {
     const day = new Date().toISOString().slice(0, 10);
     const reviewSourceId = `review-${day}`;
     let growth = completeActivity(
@@ -128,6 +92,50 @@ function Review() {
       });
     }
     setDone(true);
+  }, [completeActivity, curriculumLessonId, plan.due.length, reviewed]);
+
+  useEffect(() => {
+    if (initializedLanguageId.current === languageId) return;
+    initializedLanguageId.current = languageId;
+    setQueue(initial);
+    setSessionTotal(Math.max(initial.length, 1));
+    setReviewed(0);
+    setMisses({});
+    setRevealed(false);
+    setDone(false);
+    setCeremony(null);
+  }, [initial, languageId]);
+
+  const current = queue[0];
+  const total = sessionTotal;
+  const finished = reviewed >= total && !current;
+
+  useEffect(() => {
+    if (!finished || done) return;
+    finish();
+  }, [done, finish, finished]);
+
+  function answer(correct: boolean) {
+    if (!current) return;
+    const nextMiss = (misses[current.id] ?? 0) + (correct ? 0 : 1);
+    saveLearningSubmission({
+      taskId: current.sourceKey,
+      kind: "review",
+      content: correct ? "correct" : "again",
+      checks: [correct ? "correct" : "again"],
+      result: {
+        correct,
+        sourceKind: current.kind,
+        reviewedAt: new Date().toISOString(),
+      },
+    });
+    setMisses((value) => ({ ...value, [current.id]: nextMiss }));
+    setQueue((items) => {
+      const [, ...rest] = items;
+      return correct || nextMiss >= 2 ? rest : [...rest, current];
+    });
+    setReviewed((value) => value + 1);
+    setRevealed(false);
   }
 
   if (done || finished) {

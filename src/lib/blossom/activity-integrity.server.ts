@@ -1,5 +1,6 @@
 import { getSql } from "@/lib/db";
-import { isLearnLanguageId } from "@/lib/i18n/locales";
+import { TANDEM_TOTAL_DURATION_SECONDS, TANDEM_CONTRACT } from "./tandem-contract";
+import { isLearnLanguageId, isLearnSurfaceAvailable } from "@/lib/i18n/locales";
 import { CURRICULUM_UNITS, type LessonKind } from "./learning-os";
 import { LIBRARY, PRONLAB_SETS, setsForLanguage } from "./data";
 import { EXTRA_LIBRARY } from "./library-extra";
@@ -20,7 +21,7 @@ function missionRunHasMissionAttempt(value: unknown): boolean {
       typeof attempt.startedAt === "string" &&
       typeof attempt.endedAt === "string" &&
       Number.isFinite(Number(attempt.seconds)) &&
-      Number(attempt.seconds) >= 0
+      Number(attempt.seconds) > 0
     );
   });
 }
@@ -33,21 +34,6 @@ function missionRunHasReflection(value: unknown): boolean {
     [1, 2, 3, 4, 5].includes(Number(reflection.confidence)) &&
     ["hesitation", "vocabulary", "switching", "confidence", "none"].includes(String(reflection.friction))
   );
-}
-
-function hasCompletedMissionSession(value: unknown): boolean {
-  const session = jsonObject(value);
-  if (!Array.isArray(session.runs)) return false;
-  return session.runs.some((runValue) => {
-    const run = jsonObject(runValue);
-    return (
-      typeof run.id === "string" &&
-      typeof run.completedAt === "string" &&
-      Boolean(run.completedAt) &&
-      missionRunHasReflection(run) &&
-      missionRunHasMissionAttempt(run)
-    );
-  });
 }
 
 function missionRunById(value: unknown, runId: string): Record<string, unknown> | null {
@@ -82,6 +68,17 @@ export async function assertMissionSessionMutation(
   const session = jsonObject(value);
   if (stringValue(session.missionId) !== missionId) {
     throw new Error("mission-session-id-mismatch");
+  }
+  const profile = await (await getSql()).query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const expectedLanguageId = isLearnLanguageId(String(profile[0]?.target_language ?? ""))
+    ? String(profile[0].target_language)
+    : "en";
+  const sessionLanguageId = stringValue(session.languageId, "en");
+  if (sessionLanguageId !== expectedLanguageId) {
+    throw new Error("mission-session-language-mismatch");
   }
   const activeRunId = stringValue(session.activeRunId);
   const runs = Array.isArray(session.runs) ? session.runs : [];
@@ -273,21 +270,30 @@ export async function assertCurriculumEvidence(
 ) {
   const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find((item) => item.id === lessonId);
   if (!lesson) throw new Error("curriculum-lesson-unknown");
+  const profile = await (await getSql()).query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const rawLanguageId = String(profile[0]?.target_language ?? "en");
+  const languageId = isLearnLanguageId(rawLanguageId) ? rawLanguageId : "en";
+  if (!isLearnSurfaceAvailable(languageId, "curriculum")) {
+    throw new Error("curriculum-language-unavailable");
+  }
   const supportId = stringValue(metadata.supportId);
   if (!supportId) throw new Error("curriculum-evidence-missing-support");
 
   const sql = await getSql();
   const checks: Record<LessonKind, () => Promise<boolean>> = {
-    mission: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'MISSION_COMPLETED' and source_id = $2 limit 1", [userId, supportId]))[0]),
-    speak: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'SPEAK_COMPLETED' and source_id = $2 limit 1", [userId, supportId]))[0]),
-    pronlab: async () => Boolean((await sql.query("select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 limit 1", [userId, supportId]))[0]),
-    review: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'REVIEW_COMPLETED' and source_id = $2 limit 1", [userId, supportId]))[0]),
-    grammar: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'grammar' limit 1", [userId, supportId]))[0]),
-    listening: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'listening' limit 1", [userId, supportId]))[0]),
-    writing: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'writing' limit 1", [userId, supportId]))[0]),
+    mission: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'MISSION_COMPLETED' and source_id = $2 and coalesce(payload->'metadata'->>'languageId', 'en') = $3 limit 1", [userId, supportId, languageId]))[0]),
+    speak: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'SPEAK_COMPLETED' and source_id = $2 and coalesce(payload->'metadata'->>'languageId', 'en') = $3 limit 1", [userId, supportId, languageId]))[0]),
+    pronlab: async () => Boolean((await sql.query("select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 and coalesce(metadata->>'languageId', 'en') = $3 and seconds > 0 limit 1", [userId, supportId, languageId]))[0]),
+    review: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'REVIEW_COMPLETED' and source_id = $2 and coalesce(payload->'metadata'->>'languageId', 'en') = $3 limit 1", [userId, supportId, languageId]))[0]),
+    grammar: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'grammar' and coalesce(result->>'languageId', 'en') = $3 limit 1", [userId, supportId, languageId]))[0]),
+    listening: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'listening' and coalesce(result->>'languageId', 'en') = $3 limit 1", [userId, supportId, languageId]))[0]),
+    writing: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'writing' and coalesce(result->>'languageId', 'en') = $3 limit 1", [userId, supportId, languageId]))[0]),
     library: async () => Boolean((await sql.query(
-      "select 1 from blossom_activity_event where user_id = $1 and event_type = 'LIBRARY_COMPLETED' and source_id = $2 limit 1",
-      [userId, supportId],
+      "select 1 from blossom_activity_event where user_id = $1 and event_type = 'LIBRARY_COMPLETED' and source_id = $2 and coalesce(payload->'metadata'->>'languageId', 'en') = $3 limit 1",
+      [userId, supportId, languageId],
     ))[0]),
   };
 
@@ -322,7 +328,11 @@ export async function assertActivityAppend(
   if (typeof claimedLanguageId !== "string" || claimedLanguageId !== expectedLanguageId) {
     throw new Error("activity-language-mismatch");
   }
-  const safeMetadata = { ...metadata, languageId: expectedLanguageId };
+  const safeMetadata = {
+    ...metadata,
+    languageId: expectedLanguageId,
+    syncState: "confirmed" as const,
+  };
 
   if (eventType === "CURRICULUM_EVIDENCE_RECORDED") {
     await assertCurriculumEvidence(userId, sid || stringValue(metadata.lessonId), metadata);
@@ -348,6 +358,10 @@ export async function assertActivityAppend(
       [serverSessionId, userId],
     );
     if (!serverRun[0]) throw new Error("activity-mission-without-server-session");
+    const missionDurationSeconds = Number(serverRun[0].duration_seconds ?? 0);
+    if (!Number.isFinite(missionDurationSeconds) || missionDurationSeconds < 60) {
+      throw new Error("activity-mission-insufficient-duration");
+    }
     const missionId = String(serverRun[0].mission_id);
     const missionRows = await sql.query(
       "select session from blossom_mission_session where user_id = $1 and mission_id = $2 limit 1",
@@ -409,10 +423,17 @@ export async function assertActivityAppend(
       throw new Error("activity-tandem-invalid-session-source");
     }
     const rows = await sql.query(
-      "select started_at, ended_at from blossom_tandem_session where id = $1::uuid and (user_id = $2 or partner_user_id = $2) and status = 'completed' and ended_at is not null limit 1",
+      "select user_id, partner_user_id, started_at, ended_at, language_id, partner_language_id from blossom_tandem_session where id = $1::uuid and (user_id = $2 or partner_user_id = $2) and status = 'completed' and ended_at is not null limit 1",
       [sessionId, userId],
     );
     if (!rows[0]) throw new Error("activity-tandem-without-session");
+    const isInitiator = String(rows[0].user_id) === userId;
+    const sessionLanguageId = isInitiator
+      ? String(rows[0].language_id ?? "en")
+      : String(rows[0].partner_language_id ?? "en");
+    if (sessionLanguageId !== expectedLanguageId) {
+      throw new Error("activity-tandem-language-mismatch");
+    }
     const durationSeconds = Math.floor(
       (new Date(String(rows[0].ended_at)).getTime() - new Date(String(rows[0].started_at)).getTime()) / 1000,
     );
@@ -425,7 +446,7 @@ export async function assertActivityAppend(
     );
     const distinctParticipants = prompts.length;
     const totalPrompts = prompts.reduce((sum, row) => sum + Number(row.count ?? 0), 0);
-    if (!Number.isFinite(durationSeconds) || durationSeconds < 120 || distinctParticipants < 2 || totalPrompts < 2) {
+    if (!Number.isFinite(durationSeconds) || durationSeconds < TANDEM_TOTAL_DURATION_SECONDS || distinctParticipants < TANDEM_CONTRACT.minParticipants || totalPrompts < TANDEM_CONTRACT.minPrompts) {
       throw new Error("activity-tandem-insufficient-evidence");
     }
     return {
@@ -512,6 +533,9 @@ export async function assertActivityAppend(
     if (!sid) throw new Error("activity-library-missing-source");
     const known = knownLibraryDocument(sid);
     if (!known) throw new Error("activity-library-unknown-source");
+    if (libraryLanguageId(known.language) !== expectedLanguageId) {
+      throw new Error("activity-library-language-mismatch");
+    }
     const completed = await sql.query(
       "select 1 from blossom_library_reading where user_id = $1 and document_id = $2 and completed_at is not null limit 1",
       [userId, sid],
@@ -561,8 +585,8 @@ export async function assertActivityAppend(
       throw new Error("activity-review-invalid-source");
     }
     const rows = await sql.query(
-      "select 1 from blossom_learning_submission where user_id = $1 and kind = 'review' and created_at >= current_date limit 1",
-      [userId],
+      "select 1 from blossom_learning_submission where user_id = $1 and kind = 'review' and created_at >= current_date and coalesce(result->>'languageId', '') = $2 limit 1",
+      [userId, expectedLanguageId],
     );
     if (!rows[0]) throw new Error("activity-review-without-submission");
     return safeMetadata;
@@ -573,13 +597,16 @@ export async function assertActivityAppend(
   }
 
   if (eventType === "GRAMMAR_COMPLETED" || eventType === "LISTENING_COMPLETED" || eventType === "WRITING_COMPLETED") {
+    if (!isLearnSurfaceAvailable(expectedLanguageId, "labs")) {
+      throw new Error("activity-learning-surface-unavailable");
+    }
     const kind = eventType.startsWith("GRAMMAR") ? "grammar" : eventType.startsWith("LISTENING") ? "listening" : "writing";
     const match = new RegExp("^lab:" + kind + ":([^:]+):\\d{4}-\\d{2}-\\d{2}$").exec(sid);
     if (!match?.[1]) throw new Error("activity-learning-invalid-source");
     const taskId = match[1];
     const rows = await sql.query(
-      "select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = $3 limit 1",
-      [userId, taskId, kind],
+      "select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = $3 and coalesce(result->>'languageId', '') = $4 limit 1",
+      [userId, taskId, kind, expectedLanguageId],
     );
     if (!rows[0]) throw new Error("activity-learning-without-submission");
   }
@@ -589,7 +616,44 @@ export async function assertActivityAppend(
   }
 
   if (eventType === "SPEAK_COMPLETED") {
-    throw new Error("activity-speak-completion-server-only");
+    if (!/^speak-session-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sid)) {
+      throw new Error("activity-speak-invalid-session-source");
+    }
+    const sessionId = sid.slice("speak-session-".length);
+    const rows = await sql.query(
+      `select room_id, language_id, status, duration_seconds, evidence_seconds, turn_count, ended_at
+       from blossom_speak_session
+       where id = $1::uuid and user_id = $2 and status = 'completed'
+         and duration_seconds is not null and ended_at is not null
+       limit 1`,
+      [sessionId, userId],
+    );
+    if (!rows[0]) throw new Error("activity-speak-without-session");
+    if (String(rows[0].language_id) !== expectedLanguageId) {
+      throw new Error("activity-speak-language-mismatch");
+    }
+    const durationSeconds = Number(rows[0].duration_seconds ?? 0);
+    const evidenceSeconds = Number(rows[0].evidence_seconds ?? 0);
+    const turnCount = Number(rows[0].turn_count ?? 0);
+    if (
+      !Number.isFinite(durationSeconds) ||
+      durationSeconds < 1 ||
+      durationSeconds > 3600 ||
+      !Number.isFinite(evidenceSeconds) ||
+      evidenceSeconds < 1 ||
+      !Number.isFinite(turnCount) ||
+      turnCount < 1
+    ) {
+      throw new Error("activity-speak-insufficient-evidence");
+    }
+    return {
+      ...safeMetadata,
+      speakSessionId: sessionId,
+      roomId: String(rows[0].room_id),
+      durationSeconds,
+      evidenceSeconds,
+      turnCount,
+    };
   }
 
   return safeMetadata;

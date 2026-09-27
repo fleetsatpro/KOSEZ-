@@ -1,18 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
-import {
-  Leaf,
-  Shield,
-  BookOpen,
-  Calendar,
-  CalendarClock,
-  Sparkles,
-  ChevronRight,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { BookOpen, Calendar, CalendarClock, Sparkles } from "lucide-react";
 import { LanguageSettings } from "@/components/app/language-settings";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -20,7 +11,6 @@ import {
   EVENTS,
   LEARNER_MEMORY,
   planAllows,
-  PLANS,
   PLANT_IMAGE,
 } from "@/lib/blossom/data";
 import { countByType, resolveMemory } from "@/lib/blossom/engine";
@@ -30,9 +20,11 @@ import {
   organismStatusLine,
 } from "@/lib/blossom/organism";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
+import { activityBelongsToLanguage } from "@/lib/blossom/engine";
 import { LeoLetterCard } from "@/components/app/leo-letter-card";
 import { formatShortDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { calendarFilename, teacherSessionToIcs } from "@/lib/blossom/calendar";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { MoiSettings } from "@/components/app/moi-settings";
 import { EvidenceTimeline } from "@/components/app/evidence-timeline";
@@ -40,7 +32,6 @@ import { ConversationPanel } from "@/components/app/conversation-panel";
 import { ConversationInbox } from "@/components/app/conversation-inbox";
 import { LearnerFeedback } from "@/components/app/learner-feedback";
 import { OrganismMineralsPanel } from "@/components/app/organism-minerals-panel";
-import { calendarFilename, teacherSessionToIcs } from "@/lib/blossom/calendar";
 import { getLearnerSessionsOnServer } from "@/lib/blossom/domain.api";
 
 export const Route = createFileRoute("/_app/moi")({
@@ -73,6 +64,7 @@ function MoiPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Awaited<ReturnType<typeof getLearnerSessionsOnServer>>>([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsError, setSessionsError] = useState(false);
   const [selectedConversationKind, setSelectedConversationKind] = useState<"support" | "tandem" | "teacher">("support");
   const [selectedConversationPeerId, setSelectedConversationPeerId] = useState<string | null>(null);
   const [selectedConversationPeerName, setSelectedConversationPeerName] = useState<string | null>(null);
@@ -86,7 +78,7 @@ function MoiPage() {
   const setOrgMode = useBlossom((s) => s.setOrgMode);
   const setAdminMode = useBlossom((s) => s.setAdminMode);
   const setChildMode = useBlossom((s) => s.setChildMode);
-  const { access, pending: accessPending } = useBlossomWorkspaceAccess();
+  const { access } = useBlossomWorkspaceAccess();
   const resetJourney = useBlossom((s) => s.resetJourney);
   const leoLetters = useBlossom((s) => s.leoLetters);
   const markLeoLetterRead = useBlossom((s) => s.markLeoLetterRead);
@@ -96,6 +88,18 @@ function MoiPage() {
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
+  const languageId = useBlossom((s) => s.languageId);
+  const scopedLog = useMemo(
+    () => log.filter((event) => activityBelongsToLanguage(event, languageId)),
+    [log, languageId],
+  );
+  const scopedGrowthEvents = useMemo(
+    () => growthEvents.filter((event) => {
+      const tagged = event.languageId;
+      return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+    }),
+    [growthEvents, languageId],
+  );
   const memoryOn = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
   const completeHomework = useBlossom((s) => s.completeHomework);
@@ -109,9 +113,9 @@ function MoiPage() {
     missions: journey.missions.current,
     speak: journey.speak.current,
     pronlab: journey.pronlab.current,
-    tandem: countByType(log, "TANDEM_COMPLETED"),
+    tandem: countByType(scopedLog, "TANDEM_COMPLETED"),
   });
-  const cells = courageRibbon(courageDaysFromLog(log));
+  const cells = courageRibbon(courageDaysFromLog(scopedLog));
   const spoken = cells.filter(Boolean).length;
   const leoLine = organismStatusLine(minerals);
   const plantSrc = PLANT_IMAGE[journey.stage.id];
@@ -122,12 +126,17 @@ function MoiPage() {
 
   useEffect(() => {
     let disposed = false;
+    setSessionsLoading(true);
+    setSessionsError(false);
     void getLearnerSessionsOnServer({ data: { limit: 12 } })
       .then((rows) => {
         if (!disposed) setSessions(rows);
       })
       .catch(() => {
-        if (!disposed) setSessions([]);
+        if (!disposed) {
+          setSessions([]);
+          setSessionsError(true);
+        }
       })
       .finally(() => {
         if (!disposed) setSessionsLoading(false);
@@ -248,7 +257,7 @@ function MoiPage() {
         </p>
       </section>
 
-      <OrganismMineralsPanel minerals={minerals} growthEvents={growthEvents} />
+      <OrganismMineralsPanel minerals={minerals} growthEvents={scopedGrowthEvents} />
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         <Surface className="!p-5">
@@ -291,6 +300,16 @@ function MoiPage() {
         </div>
         {sessionsLoading ? (
           <p className="mt-4 text-sm text-muted">Lecture du planning…</p>
+        ) : sessionsError ? (
+          <Surface className="mt-5">
+            <p className="font-display text-xl">Vos séances n’ont pas pu être chargées.</p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              Rien n’est présenté comme vide lorsque la source n’a pas répondu.
+            </p>
+            <Button variant="secondary" className="mt-4" onClick={() => window.location.reload()}>
+              Réessayer
+            </Button>
+          </Surface>
         ) : sessions.length === 0 ? (
           <p className="mt-4 text-sm text-subtle">Aucune séance programmée pour le moment.</p>
         ) : (
