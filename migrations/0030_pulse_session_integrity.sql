@@ -20,3 +20,11 @@ create index if not exists blossom_pulse_session_user_idx
 create unique index if not exists blossom_pulse_session_active_user_uidx
   on blossom_pulse_session (user_id)
   where status = 'active';
+-- A completed Pulse is one reward-bearing event per server session.
+-- Legacy PULSE_COMPLETED rows use dare ids; the secure path is session-bound
+-- via the `pulse-session-<uuid>` source prefix, so old history is untouched.
+
+create unique index if not exists blossom_activity_pulse_session_uidx
+  on blossom_activity_event (user_id, source_id)
+  where event_type = 'PULSE_COMPLETED'
+    and source_id like 'pulse-session-%';
