@@ -53,12 +53,12 @@ export function isBootstrapAdminEmail(email: string | null | undefined): boolean
 export const ADMIN_LOGIN_HINTS = [
   {
     email: "admin@kosez.app",
-    passwordHint: "Choose any password ≥ 8 chars on first signup (local only unless listed in ADMIN_BOOTSTRAP_EMAILS)",
+    passwordHint: "Choose any password ≥ 12 chars on first signup (local only unless listed in ADMIN_BOOTSTRAP_EMAILS)",
     role: "platform admin",
   },
   {
     email: "owner@kosez.app",
-    passwordHint: "Choose any password ≥ 8 chars on first signup (local only unless listed in ADMIN_BOOTSTRAP_EMAILS)",
+    passwordHint: "Choose any password ≥ 12 chars on first signup (local only unless listed in ADMIN_BOOTSTRAP_EMAILS)",
     role: "platform admin",
   },
 ] as const;
