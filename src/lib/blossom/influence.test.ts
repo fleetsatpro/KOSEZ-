@@ -21,6 +21,7 @@ test("recent growth creates an explicit transfer consequence", () => {
       intensity: 1,
       label: "Croissance récente",
       mineral: "social",
+      languageId: "es",
     }],
     phonemeLeaves: [],
     missionSessions: {},
