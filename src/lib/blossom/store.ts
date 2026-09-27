@@ -586,8 +586,25 @@ export const useBlossom = create<AppState>()(
         return { count, escalated: count >= 3 };
       },
       addTeacherNote: (studentId, tags, text) => {
-        const note: TeacherNote = { id: `note-${Date.now()}`, studentId, tags, text, createdAt: new Date().toISOString() };
+        const now = new Date().toISOString();
+        const mutation = createMutation({
+          operation: "teacher.note",
+          entityId: studentId,
+          payload: {
+            learnerUserId: studentId,
+            tags,
+            note: text,
+          },
+        });
+        const note: TeacherNote = {
+          id: mutation.mutationId,
+          studentId,
+          tags,
+          text,
+          createdAt: now,
+        };
         set({ teacherNotes: [note, ...get().teacherNotes] });
+        void enqueueMutation(mutation);
       },
       saveLearningSubmission: (input) => {
         const now = new Date().toISOString();
@@ -631,14 +648,65 @@ export const useBlossom = create<AppState>()(
       },
       saveHomeworkDraft: (studentId, title, body) => {
         const now = new Date().toISOString();
-        const hw: Homework = { id: `hw-${Date.now()}`, studentId, title, body, status: "draft", createdAt: now, updatedAt: now };
+        const mutation = createMutation({
+          operation: "teacher.homework",
+          entityId: studentId,
+          payload: {
+            learnerUserId: studentId,
+            title,
+            body,
+            status: "draft",
+          },
+        });
+        const hw: Homework = {
+          id: mutation.mutationId,
+          studentId,
+          title,
+          body,
+          status: "draft",
+          createdAt: now,
+          updatedAt: now,
+        };
         set({ homework: [hw, ...get().homework] });
+        void enqueueMutation(mutation);
       },
       sendHomework: (id) => {
-        set({ homework: get().homework.map((h) => (h.id === id ? { ...h, status: "sent", updatedAt: new Date().toISOString() } : h)) });
+        const current = get().homework.find((h) => h.id === id);
+        if (!current) return;
+        const now = new Date().toISOString();
+        set({
+          homework: get().homework.map((h) =>
+            h.id === id ? { ...h, status: "sent", updatedAt: now } : h,
+          ),
+        });
+        const mutation = createMutation({
+          operation: "teacher.homework",
+          entityId: current.studentId,
+          payload: {
+            id,
+            learnerUserId: current.studentId,
+            title: current.title,
+            body: current.body,
+            status: "sent",
+          },
+        });
+        void enqueueMutation(mutation);
       },
       completeHomework: (id) => {
-        set({ homework: get().homework.map((h) => (h.id === id ? { ...h, status: "done", updatedAt: new Date().toISOString() } : h)) });
+        const current = get().homework.find((h) => h.id === id);
+        if (!current || current.status === "done") return;
+        set({
+          homework: get().homework.map((h) =>
+            h.id === id ? { ...h, status: "done", updatedAt: new Date().toISOString() } : h,
+          ),
+        });
+        const mutation = createMutation({
+          operation: "homework.complete",
+          entityId: id,
+          payload: { homeworkId: id },
+        });
+        void enqueueMutation(mutation);
+        get().completeActivity("HOMEWORK_COMPLETED", id, "Devoir terminé");
       },
       setExportConsent: (value) => {
         set({ exportConsent: value });
