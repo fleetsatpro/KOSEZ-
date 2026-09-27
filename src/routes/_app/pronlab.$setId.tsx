@@ -320,6 +320,8 @@ function PronlabSetPage() {
                       ? "Prise transcrite. Aucune note phonétique n'est inventée."
                       : "Prise enregistrée. K'Osez n'invente pas de note sans moteur phonétique.",
                 );
+              } else {
+                toast("Aucune prise enregistrée. Vous pouvez réessayer.");
               }
             }}
           />
