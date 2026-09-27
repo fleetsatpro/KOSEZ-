@@ -578,7 +578,44 @@ export async function assertActivityAppend(
   }
 
   if (eventType === "SPEAK_COMPLETED") {
-    throw new Error("activity-speak-completion-server-only");
+    if (!/^speak-session-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sid)) {
+      throw new Error("activity-speak-invalid-session-source");
+    }
+    const sessionId = sid.slice("speak-session-".length);
+    const rows = await sql.query(
+      `select room_id, language_id, status, duration_seconds, evidence_seconds, turn_count, ended_at
+       from blossom_speak_session
+       where id = $1::uuid and user_id = $2 and status = 'completed'
+         and duration_seconds is not null and ended_at is not null
+       limit 1`,
+      [sessionId, userId],
+    );
+    if (!rows[0]) throw new Error("activity-speak-without-session");
+    if (String(rows[0].language_id) !== expectedLanguageId) {
+      throw new Error("activity-speak-language-mismatch");
+    }
+    const durationSeconds = Number(rows[0].duration_seconds ?? 0);
+    const evidenceSeconds = Number(rows[0].evidence_seconds ?? 0);
+    const turnCount = Number(rows[0].turn_count ?? 0);
+    if (
+      !Number.isFinite(durationSeconds) ||
+      durationSeconds < 1 ||
+      durationSeconds > 3600 ||
+      !Number.isFinite(evidenceSeconds) ||
+      evidenceSeconds < 1 ||
+      !Number.isFinite(turnCount) ||
+      turnCount < 1
+    ) {
+      throw new Error("activity-speak-insufficient-evidence");
+    }
+    return {
+      ...safeMetadata,
+      speakSessionId: sessionId,
+      roomId: String(rows[0].room_id),
+      durationSeconds,
+      evidenceSeconds,
+      turnCount,
+    };
   }
 
   return safeMetadata;
