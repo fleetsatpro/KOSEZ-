@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 const read = (path) => readFileSync(path, "utf8");
 const sync = read("src/lib/blossom/sync.server.ts");
+const syncTypes = read("src/lib/blossom/sync-types.ts");
 const integrity = read("src/lib/blossom/activity-integrity.server.ts");
 const bootstrap = read("src/lib/auth/admin-bootstrap.ts");
 const gate = read("src/lib/auth/gate-session.server.ts");
@@ -30,6 +31,16 @@ test("activity mutations are enum-gated and pass through server integrity checks
   assert.match(api, /await assertActivityAppend\(/);
   assert.match(api, /await assertMissionSessionMutation\(/);
   assert.match(integrity, /activity-library-unknown-source/);
+  assert.match(integrity, /activity-library-without-reading/);
+  assert.match(integrity, /library-reading-too-fast/);
+  assert.match(integrity, /assertLibraryReadingMutation/);
+  assert.match(syncTypes, /"library.start"/);
+  assert.match(syncTypes, /"library.complete"/);
+  assert.match(sync, /case "library.start"/);
+  assert.match(sync, /case "library.complete"/);
+  assert.match(sync, /review-pron-without-attempt/);
+  assert.match(sync, /review-vocab-without-word/);
+  assert.match(sync, /unknown-review-source/);
   assert.match(integrity, /activity-pulse-unknown-source/);
   assert.match(integrity, /activity-review-invalid-source/);
   assert.match(integrity, /activity-legacy-reward-server-only/);
