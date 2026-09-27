@@ -66,7 +66,9 @@ export async function reportTandem(
   });
 
   const admins = await sql.query(
-    "select user_id from blossom_platform_admin where status = 'active' and user_id <> $1",
+    `select user_id from blossom_platform_admin where status = 'active' and user_id <> $1
+     union
+     select user_id from blossom_role_grant where role = 'admin' and status = 'active' and user_id <> $1`,
     [reporterUserId],
   );
   for (const admin of admins) {
@@ -97,6 +99,7 @@ export async function updateAdminSafetyReport(
   reportId: string,
   status: "reviewing" | "resolved" | "dismissed",
 ) {
+  await enforceRateLimit(userId, "admin.safety-report-update", 60, 60);
   const sql = await getSql();
   const admin = await sql.query(
     `select 1
@@ -212,6 +215,7 @@ export async function updateAdminMessageReport(
   reportId: string,
   status: "reviewing" | "resolved" | "dismissed",
 ) {
+  await enforceRateLimit(userId, "admin.message-report-update", 60, 60);
   const reports = await getAdminMessageReports(userId);
   const current = reports.find((report) => report.id === reportId);
   if (!current) throw new Error("message-report-not-found");
@@ -308,6 +312,7 @@ export async function updateAdminSafetyCase(
     status: "reviewing" | "resolved" | "dismissed";
   },
 ) {
+  await enforceRateLimit(userId, "admin.safety-case-update", 60, 60);
   const sql = await getSql();
   const admin = await sql.query(
     `select 1
