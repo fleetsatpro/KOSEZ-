@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
+import { TANDEM_TOTAL_DURATION_SECONDS, TANDEM_CONTRACT } from "./tandem-contract";
 import { normalizeMutationTime } from "./sync-causality";
 import { IMMERSION, PRONLAB_SETS, setsForLanguage } from "./data";
 import { LEARN_LANGUAGES } from "@/lib/i18n/locales";
@@ -1797,7 +1798,7 @@ export async function endTandemSession(
       0,
       Math.floor((Date.now() - new Date(String(current[0].started_at)).getTime()) / 1000),
     );
-    if (elapsedSeconds < 3600 || distinctParticipants < 2 || totalPrompts < 2) {
+    if (elapsedSeconds < TANDEM_TOTAL_DURATION_SECONDS || distinctParticipants < TANDEM_CONTRACT.minParticipants || totalPrompts < TANDEM_CONTRACT.minPrompts) {
       throw new BlossomForbiddenError(
         "La session tandem doit respecter le cadre 30 + 30 minutes et contenir un échange enregistré des deux côtés avant d'être validée.",
       );
