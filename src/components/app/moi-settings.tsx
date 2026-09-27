@@ -58,61 +58,62 @@ export function MoiSettings() {
           <Field label="Nom" value={draft.lastName} onChange={(value) => setDraft({ ...draft, lastName: value })} />
           <Field label="Ville" value={draft.city} onChange={(value) => setDraft({ ...draft, city: value })} />
           <Field label="Fenêtre de pratique" value={draft.practiceWindow} onChange={(value) => setDraft({ ...draft, practiceWindow: value })} />
-          <Field label="Coach" value={draft.coach} onChange={(value) => setDraft({ ...draft, coach: value })} />
-          <Field label="Voix du coach" value={draft.coachVoice} onChange={(value) => setDraft({ ...draft, coachVoice: value })} />
           <Field label="Objectif" value={draft.goal} multiline onChange={(value) => setDraft({ ...draft, goal: value })} />
           <Field
-            label="Intérêts (séparés par des virgules)"
+            label="Centres d’intérêt"
             value={draft.interests.join(", ")}
+            placeholder="voyage, cuisine, tech…"
             onChange={(value) =>
               setDraft({
                 ...draft,
-                interests: value.split(",").map((item) => item.trim()).filter(Boolean),
+                interests: value
+                  .split(",")
+                  .map((item) => item.trim())
+                  .filter(Boolean),
               })
             }
           />
-          <Field label="Avatar (URL)" value={draft.avatar} onChange={(value) => setDraft({ ...draft, avatar: value })} />
-        </div>
-
-        <div className="mt-6 space-y-3">
-          <label className="block">
+          <label className="block sm:col-span-2">
             <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">Langue cible</span>
             <select
+              className="mt-2 h-11 w-full rounded-xl border border-border bg-bg px-3 text-sm outline-none focus:border-primary/50"
               value={languageId}
               onChange={(event) => {
                 const next = event.target.value;
                 if (isLearnLanguageId(next)) setLanguage(next);
               }}
-              className="mt-2 h-11 w-full rounded-xl border border-border bg-bg px-3 text-sm outline-none focus:border-primary/50"
             >
-              {LANGUAGE_MODULES.map((mod) => (
-                <option key={mod.id} value={mod.id}>
-                  {mod.label}
-                </option>
-              ))}
+              {LANGUAGE_MODULES.map((language) => <option key={language.id} value={language.id}>{language.name}</option>)}
             </select>
           </label>
+          <Field label="Niveau" value={draft.level} placeholder="A2, A2+, B1…" onChange={(value) => setDraft({ ...draft, level: value })} />
+          <Field label="Coach" value={draft.coach} onChange={(value) => setDraft({ ...draft, coach: value })} />
+          <Field label="Voix du coach" value={draft.coachVoice} multiline onChange={(value) => setDraft({ ...draft, coachVoice: value })} />
+          <Field label="Avatar (URL)" value={draft.avatar} placeholder="https://…" onChange={(value) => setDraft({ ...draft, avatar: value })} />
+        </div>
 
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <Toggle
             label="Tandem ouvert"
-            detail="Autoriser les suggestions de partenaires pour pratiquer ensemble."
+            detail="Autoriser de nouvelles propositions de partenaire."
             checked={tandemOpen}
             onChange={setTandemOpen}
           />
           <Toggle
-            label="Consentement d'export"
-            detail="Autoriser l'export de vos preuves d'apprentissage vers des supports pédagogiques."
+            label="Export audio"
+            detail="Autoriser les futures fonctions d’export de vos propres prises."
             checked={exportConsent}
             onChange={setExportConsent}
           />
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-6 flex flex-wrap gap-2">
           <Button onClick={save}>{saved ? "Enregistré localement · sync en attente" : "Enregistrer mes préférences"} <Check className="size-4" /></Button>
+          <Button asChild variant="secondary"><Link to="/learn/progress">Voir mes compétences</Link></Button>
         </div>
       </Surface>
 
-      <nav className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <nav className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3" aria-label="Raccourcis">
         <QuickLink to="/mission" label="Missions" />
         <QuickLink to="/osez" label="OSEZ" />
         <QuickLink to="/pronlab" label="Pron’Lab" />
