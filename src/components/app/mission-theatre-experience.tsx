@@ -59,6 +59,7 @@ type GrowthSnapshot = {
   before: ReturnType<typeof journeySnapshot>;
   after: ReturnType<typeof journeySnapshot>;
   evaluation: ReturnType<typeof evaluateMission>;
+  pending?: boolean;
 };
 
 function CinematicTop({ step, language }: { step: MissionStep; language: string }) {
@@ -257,7 +258,7 @@ export function MissionTheatreExperience() {
     const evaluation = evaluateMission(reflection);
     setServerRunSessionId(null);
     setServerEvidenceAvailable(false);
-    setGrowth({ before, after, evaluation });
+    setGrowth({ before, after, evaluation, pending: Boolean(result.pending) });
     track("mission_completed", {
       missionId: todayMission.id,
       mode,
@@ -295,9 +296,11 @@ export function MissionTheatreExperience() {
               Un geste. Une racine.
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-muted sm:text-base">
-              Votre action vient d'être enregistrée. Voici la conséquence exacte — sans score à jouer, sans flamme à protéger.
+              {growth.pending
+                ? "Votre session est clôturée localement et attend la confirmation serveur. Aucune croissance n'est présentée comme acquise avant cette confirmation."
+                : "Votre action vient d'être enregistrée. Voici la conséquence exacte — sans score à jouer, sans flamme à protéger."}
             </p>
-            {latestGrowth ? (
+            {!growth.pending && latestGrowth ? (
               <p className="mx-auto mt-3 max-w-md rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm text-primary">
                 {latestGrowth.label}
               </p>
