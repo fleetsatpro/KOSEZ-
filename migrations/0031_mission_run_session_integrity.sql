@@ -33,7 +33,7 @@ from ranked r
 where s.id = r.id and r.rn > 1;
 
 create unique index if not exists blossom_mission_run_session_active_uidx
-  on blossom_mission_run_session (user_id, mission_id, run_id)
+  on blossom_mission_run_session (user_id, mission_id)
   where status = 'active';
 
 create index if not exists blossom_mission_run_session_user_time_idx
