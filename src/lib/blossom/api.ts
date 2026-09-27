@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
+import { isLearnLanguageId } from "@/lib/i18n/locales";
 import {
   appendBlossomActivity,
   readBlossomState,
@@ -45,7 +46,7 @@ export const saveBlossomProfile = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       displayName: z.string().trim().max(120).nullable().optional(),
-      targetLanguage: z.string().trim().min(2).max(16),
+      targetLanguage: z.string().trim().min(2).max(16).refine(isLearnLanguageId, "unsupported-language"),
       level: z.string().trim().max(16).nullable().optional(),
       timezone: z.string().trim().max(80).nullable().optional(),
       preferencesJson: jsonObject,
@@ -84,7 +85,7 @@ export const recordBlossomActivity = createServerFn({ method: "POST" })
     );
     await appendBlossomActivity(context.userId, {
       ...data,
-      payload: { ...payload, metadata: safeMetadata },
+      payload: { ...payload, metadata: safeMetadata as JsonObject },
     });
     return { ok: true as const };
   });
