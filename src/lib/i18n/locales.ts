@@ -384,7 +384,7 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
     engine: "module",
     contentPacks: ["centre-creole"],
     speechLocale: "fr-FR",
-    surfaces: ["mission", "library"],
+    surfaces: ["pulse"],
     levels: ["A1", "A2"],
     culturalAnchor: {
       fr: "Module ancré dans le territoire — selon disponibilité du centre Saint-Pierre.",
@@ -427,7 +427,7 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
     engine: "sign",
     contentPacks: ["pronlab-lsf"],
     speechLocale: "fr-FR",
-    surfaces: ["pronlab", "library"],
+    surfaces: ["pronlab", "pulse"],
     levels: ["A1"],
     culturalAnchor: {
       fr: "Module LSF — selon disponibilité du centre et des formateurs.",
@@ -466,6 +466,15 @@ export function learnLanguageDef(id: string): LearnLanguageDef {
 
 export function isUiLocaleId(id: string): id is UiLocaleId {
   return UI_LOCALES.some((l) => l.id === id);
+}
+
+export type LearnSurface = "pronlab" | "mission" | "osez" | "tandem" | "library" | "pulse";
+
+export function isLearnSurfaceAvailable(
+  languageId: LearnLanguageId,
+  surface: LearnSurface,
+): boolean {
+  return learnLanguageDef(languageId).surfaces.includes(surface);
 }
 
 export function isLearnLanguageId(id: string): id is LearnLanguageId {
