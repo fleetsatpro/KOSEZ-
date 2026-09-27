@@ -96,5 +96,5 @@ test("P0 Tandem session evidence is language-bound", () => {
   assert.ok(domainServer.includes("partner_language_id"));
   assert.ok(domainServer.includes("currentLanguageId"));
   assert.ok(store.includes("previousStatus"));
-  assert.ok(domainServer.includes("duration positive"));
+  assert.ok(domainServer.includes("durationSeconds <= 0") || domainServer.includes("input.seconds <= 0"));
 });
