@@ -7,16 +7,19 @@ const root = process.cwd();
 const storePath = join(root, "src/lib/blossom/store.ts");
 const bridgePath = join(root, "src/components/blossom-sync-bridge.tsx");
 const syncServerPath = join(root, "src/lib/blossom/sync.server.ts");
+const syncClientPath = join(root, "src/lib/blossom/sync-client.ts");
 
 let store = "";
 let bridge = "";
 let syncServer = "";
+let syncClient = "";
 
 test.before(async () => {
-  [store, bridge, syncServer] = await Promise.all([
+  [store, bridge, syncServer, syncClient] = await Promise.all([
     readFile(storePath, "utf8"),
     readFile(bridgePath, "utf8"),
     readFile(syncServerPath, "utf8"),
+    readFile(syncClientPath, "utf8"),
   ]);
 });
 
@@ -58,5 +61,5 @@ test("P0 bridge preserves remote PronLab evidence metadata", () => {
 });
 
 test("P0 sync queue uses monotonic causal timestamps", () => {
-  assert.ok(store.includes("createdAt: nextMutationCreatedAt()"));
+  assert.ok(syncClient.includes("createdAt: nextMutationCreatedAt()"));
 });
