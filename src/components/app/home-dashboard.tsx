@@ -75,7 +75,7 @@ export function HomeDashboard() {
         memoryOn,
         languageId,
       }),
-    [log, attempts, growthEvents, phonemeLeaves, missionSessions, memory, memoryOn, languageId],
+    [scopedLog, attempts, growthEvents, phonemeLeaves, missionSessions, memory, memoryOn, languageId],
   );
 
   const recentGrowth = growthEvents
