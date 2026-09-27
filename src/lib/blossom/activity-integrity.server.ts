@@ -192,6 +192,79 @@ export const ACTIVITY_EVENT_TYPES = [
 
 export type AllowedActivityEventType = (typeof ACTIVITY_EVENT_TYPES)[number];
 
+export function knownLibraryDocument(documentId: string) {
+  return [...LIBRARY, ...EXTRA_LIBRARY].find((item) => item.id === documentId) ?? null;
+}
+
+function libraryLanguageId(language: string): string {
+  const normalized = language.trim().toLowerCase();
+  return normalized === "english" ? "en"
+    : normalized === "french" ? "fr"
+      : normalized === "spanish" ? "es"
+        : normalized === "portuguese" ? "pt"
+          : normalized === "italian" ? "it"
+            : normalized === "german" ? "de"
+              : normalized === "lsf" ? "lsf"
+                : normalized === "creole" ? "cr"
+                  : "";
+}
+
+export async function assertLibraryReadingMutation(
+  userId: string,
+  documentId: string,
+  action: "start" | "complete",
+  mutationCreatedAt: string,
+): Promise<void> {
+  const document = knownLibraryDocument(documentId);
+  if (!document) throw new Error("library-document-unknown");
+  const profile = await (await getSql()).query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const languageId = isLearnLanguageId(String(profile[0]?.target_language ?? "")) ? String(profile[0].target_language) : "en";
+  if (libraryLanguageId(document.language) !== languageId) {
+    throw new Error("library-language-mismatch");
+  }
+  const sql = await getSql();
+  const mutationTime = Date.parse(mutationCreatedAt);
+  if (!Number.isFinite(mutationTime)) throw new Error("library-invalid-mutation-time");
+  const effectiveTime = new Date(Math.min(Date.now(), mutationTime));
+  if (action === "start") {
+    await sql.query(
+      `insert into blossom_library_reading (user_id, document_id, started_at)
+       values ($1, $2, $3::timestamptz)
+       on conflict (user_id, document_id) do update
+         set started_at = case
+           when blossom_library_reading.completed_at is null
+             and blossom_library_reading.started_at > $3::timestamptz
+           then $3::timestamptz
+           else blossom_library_reading.started_at
+         end`,
+      [userId, documentId, effectiveTime.toISOString()],
+    );
+    return;
+  }
+
+  const rows = await sql.query(
+    "select started_at, completed_at from blossom_library_reading where user_id = $1 and document_id = $2 limit 1",
+    [userId, documentId],
+  );
+  if (!rows[0]) throw new Error("library-completion-without-start");
+  if (rows[0].completed_at) return;
+  const startedAt = new Date(String(rows[0].started_at)).getTime();
+  const completedAt = effectiveTime.getTime();
+  const minimumSeconds = Math.max(30, Number(document.minutes) * 20);
+  if (!Number.isFinite(startedAt) || completedAt - startedAt < minimumSeconds * 1000) {
+    throw new Error("library-reading-too-fast");
+  }
+  await sql.query(
+    "update blossom_library_reading set completed_at = $3::timestamptz where user_id = $1 and document_id = $2 and completed_at is null",
+    [userId, documentId, effectiveTime.toISOString()],
+  );
+}
+
+
+
 function stringValue(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
@@ -376,8 +449,13 @@ export async function assertActivityAppend(
 
   if (eventType === "LIBRARY_COMPLETED") {
     if (!sid) throw new Error("activity-library-missing-source");
-    const known = [...LIBRARY, ...EXTRA_LIBRARY].some((item) => item.id === sid);
+    const known = knownLibraryDocument(sid);
     if (!known) throw new Error("activity-library-unknown-source");
+    const completed = await sql.query(
+      "select 1 from blossom_library_reading where user_id = $1 and document_id = $2 and completed_at is not null limit 1",
+      [userId, sid],
+    );
+    if (!completed[0]) throw new Error("activity-library-without-reading");
     return safeMetadata;
   }
 
