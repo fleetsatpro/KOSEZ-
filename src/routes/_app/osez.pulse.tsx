@@ -79,15 +79,11 @@ function PulsePage() {
       setServerSessionId(null);
       setServerTimerAvailable(false);
     }
-    mineralsBefore.current = minerals;
-    setClosing(false);
-    setPhase("recording");
-    setElapsed(0);
+    mineralsBefore.current = useBlossom.getState().mineralSnapshot;
     startedAt.current = Date.now();
-    if (!sessionId) {
-      const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
-      setOffline(isOffline);
-    }
+    setElapsed(0);
+    setPhase("recording");
+    setClosing(false);
     // The local clock is display-only. It keeps the exercise usable during a
     // transient outage, but only a server session can produce reward-bearing time.
     timer.current = window.setInterval(() => {
@@ -116,11 +112,13 @@ function PulsePage() {
     const localSeconds = Math.max(1, Math.floor((Date.now() - startedAt.current) / 1000));
     setElapsed(authoritativeSeconds ?? localSeconds);
     setPhase("done");
-    if (authoritativeSeconds !== null) {
+    if (authoritativeSeconds !== null && serverSessionId) {
       completePulse(`pulse-session-${serverSessionId}`, authoritativeSeconds, false);
+      setClosing(false);
+      setCeremonyOpen(true);
+    } else {
+      setClosing(false);
     }
-    setClosing(false);
-    setCeremonyOpen(true);
   }
 
   return (
@@ -200,10 +198,9 @@ function PulsePage() {
 
       <GrowthCeremony
         open={ceremonyOpen}
-        event={growthEvents[0] ?? null}
-        minerals={minerals}
-        previousMinerals={mineralsBefore.current}
-        onDismiss={() => setCeremonyOpen(false)}
+        onClose={() => setCeremonyOpen(false)}
+        mineralsBefore={mineralsBefore.current}
+        mineralsAfter={useBlossom.getState().mineralSnapshot}
       />
     </Page>
   );
