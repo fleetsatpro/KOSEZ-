@@ -115,7 +115,7 @@ export function ChildHome() {
 
       <Progress className="mt-6" value={progress * 100} />
       <p className="mt-2 text-center text-xs text-subtle">
-        Un adulte voit la semaine. Il ne peut pas parler à ta place.
+        Un adulte autorisé peut suivre le parcours confirmé. Il ne peut pas parler à ta place.
       </p>
 
       <Button
