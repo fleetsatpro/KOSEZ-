@@ -192,7 +192,12 @@ function TandemSession() {
       "TANDEM_COMPLETED",
       `tandem-session-${sessionId}`,
       note,
-      { minutes: 60, sessionId, reflectionRecorded: true },
+      {
+        minutes: Math.max(1, Math.floor((HALF_SECONDS - left) / 60)),
+        durationSeconds: Math.max(0, HALF_SECONDS - left),
+        sessionId,
+        reflectionRecorded: true,
+      },
     );
     if (growth.ok && growth.event && growth.minerals && growth.previousMinerals) {
       setCeremony({
