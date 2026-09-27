@@ -1797,9 +1797,9 @@ export async function endTandemSession(
       0,
       Math.floor((Date.now() - new Date(String(current[0].started_at)).getTime()) / 1000),
     );
-    if (elapsedSeconds < 120 || distinctParticipants < 2 || totalPrompts < 2) {
+    if (elapsedSeconds < 3600 || distinctParticipants < 2 || totalPrompts < 2) {
       throw new BlossomForbiddenError(
-        "La session tandem doit contenir au moins deux minutes et un échange des deux côtés avant d'être validée.",
+        "La session tandem doit respecter le cadre 30 + 30 minutes et contenir un échange enregistré des deux côtés avant d'être validée.",
       );
     }
   }
