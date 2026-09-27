@@ -33,6 +33,7 @@ import {
 } from "./activity-integrity.server";
 import { isLearnLanguageId } from "@/lib/i18n/locales";
 import { enforceRateLimit } from "./rate-limit.server";
+import { MAX_FUTURE_MUTATION_SKEW_MS } from "./sync-causality";
 
 const SYNC_TIMEOUT_MS = 120_000;
 
@@ -640,6 +641,15 @@ export async function syncBlossomBatch(
       });
       continue;
     }
+    const parsedCreatedAtMs = Date.parse(parsed.data.createdAt);
+    if (!Number.isFinite(parsedCreatedAtMs) || parsedCreatedAtMs > Date.now() + MAX_FUTURE_MUTATION_SKEW_MS) {
+      results.push({
+        mutationId: parsed.data.mutationId,
+        status: "rejected",
+        errorCode: "invalid-mutation-time",
+      });
+      continue;
+    }
     const normalizedMutation: SyncMutation = {
       mutationId: parsed.data.mutationId,
       deviceId: parsed.data.deviceId,
@@ -711,7 +721,11 @@ export async function syncBlossomBatch(
 
   const sql = await getSql();
   await sql.query(
-    "update blossom_sync_device set last_seen_at = current_timestamp where user_id = $1 and device_id = $2",
+    `insert into blossom_sync_device (user_id, device_id, last_seen_at, last_sync_at)
+     values ($1, $2, current_timestamp, current_timestamp)
+     on conflict (user_id, device_id) do update
+       set last_seen_at = current_timestamp,
+           last_sync_at = current_timestamp`,
     [userId, deviceId],
   );
   return results;

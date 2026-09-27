@@ -19,6 +19,8 @@ test("activity mutations are enum-gated and pass through server integrity checks
   assert.match(sync, /eventType: z\.enum\(ACTIVITY_EVENT_TYPES\)/);
   assert.match(sync, /await assertActivityAppend\(/);
   assert.match(integrity, /activity-mastery-server-only/);
+  assert.match(integrity, /activity-diagnostic-server-only/);
+  assert.match(integrity, /activity-tandem-insufficient-evidence/);
   assert.match(integrity, /activity-event-without-attendance/);
   assert.match(integrity, /activity-pronlab-without-attempt/);
   assert.match(integrity, /tandem-session-/);
@@ -28,9 +30,15 @@ test("activity mutations are enum-gated and pass through server integrity checks
   assert.match(integrity, /mission-completion-without-prior-session/);
   assert.match(sync, /assertMissionSessionMutation/);
   assert.match(sync, /mutation\.deviceId !== deviceId/);
+  assert.match(sync, /MAX_FUTURE_MUTATION_SKEW_MS/);
+  assert.match(sync, /invalid-mutation-time/);
+  assert.match(sync, /insert into blossom_sync_device/);
   assert.match(api, /z\.enum\(ACTIVITY_EVENT_TYPES\)/);
   assert.match(api, /await assertActivityAppend\(/);
   assert.match(api, /await assertMissionSessionMutation\(/);
+  assert.match(api, /enforceRateLimit\(context\.userId, "activity\.append"/);
+  assert.match(api, /enforceRateLimit\(context\.userId, "mission\.save"/);
+  assert.match(api, /enforceRateLimit\(context\.userId, "profile\.upsert"/);
   assert.match(integrity, /activity-library-unknown-source/);
   assert.match(integrity, /activity-library-without-reading/);
   assert.match(integrity, /library-reading-too-fast/);
@@ -60,6 +68,7 @@ test("authenticated abuse surfaces use the distributed Postgres limiter", () => 
   assert.match(read("src/lib/blossom/messaging.server.ts"), /communication\.report/);
   assert.match(read("src/lib/blossom/safety.server.ts"), /safety\.tandem-report/);
   assert.match(read("src/lib/blossom/speech-server.server.ts"), /speech\.transcribe/);
+  assert.match(read("src/lib/blossom/domain.server.ts"), /tandem\.end-session/);
 });
 
 test("Better Auth uses persistent rate limiting and stronger password floor", () => {

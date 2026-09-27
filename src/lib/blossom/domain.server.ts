@@ -1627,6 +1627,7 @@ export async function endTandemSession(
   sessionId: string,
   status: "completed" | "cancelled",
 ) {
+  await enforceRateLimit(userId, "tandem.end-session", 10, 60);
   const sql = await getSql();
   const current = await sql.query(
     `select id, user_id, partner_user_id, status, started_at

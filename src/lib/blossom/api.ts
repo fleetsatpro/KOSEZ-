@@ -15,6 +15,7 @@ import {
   assertActivityAppend,
   assertMissionSessionMutation,
 } from "./activity-integrity.server";
+import { enforceRateLimit } from "./rate-limit.server";
 
 const jsonObject = z.string().trim().max(20000).optional();
 
@@ -52,12 +53,13 @@ export const saveBlossomProfile = createServerFn({ method: "POST" })
       preferencesJson: jsonObject,
     }),
   )
-  .handler(async ({ context, data }) =>
-    upsertBlossomProfile(context.userId, {
+  .handler(async ({ context, data }) => {
+    await enforceRateLimit(context.userId, "profile.upsert", 20, 60);
+    return upsertBlossomProfile(context.userId, {
       ...data,
       preferences: parseJsonObject(data.preferencesJson),
-    }),
-  );
+    });
+  });
 
 export const recordBlossomActivity = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -71,6 +73,7 @@ export const recordBlossomActivity = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ context, data }) => {
+    await enforceRateLimit(context.userId, "activity.append", 30, 60);
     const payload = parseJsonObject(data.payloadJson);
     const rawMetadata = payload.metadata;
     const metadata =
@@ -100,6 +103,7 @@ export const persistBlossomMissionSession = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ context, data }) => {
+    await enforceRateLimit(context.userId, "mission.save", 60, 60);
     const session = parseJsonValue(data.sessionJson);
     await assertMissionSessionMutation(context.userId, data.missionId, session);
     return saveBlossomMissionSession(

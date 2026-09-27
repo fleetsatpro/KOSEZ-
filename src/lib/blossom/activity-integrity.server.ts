@@ -388,10 +388,21 @@ export async function assertActivityAppend(
       [sessionId, userId],
     );
     if (!rows[0]) throw new Error("activity-tandem-without-session");
-    const durationSeconds = Math.max(
-      0,
-      Math.floor((new Date(String(rows[0].ended_at)).getTime() - new Date(String(rows[0].started_at)).getTime()) / 1000),
+    const durationSeconds = Math.floor(
+      (new Date(String(rows[0].ended_at)).getTime() - new Date(String(rows[0].started_at)).getTime()) / 1000,
     );
+    const prompts = await sql.query(
+      `select user_id, count(*)::integer as count
+       from blossom_tandem_prompt_log
+       where session_id = $1::uuid
+       group by user_id`,
+      [sessionId],
+    );
+    const distinctParticipants = prompts.length;
+    const totalPrompts = prompts.reduce((sum, row) => sum + Number(row.count ?? 0), 0);
+    if (!Number.isFinite(durationSeconds) || durationSeconds < 120 || distinctParticipants < 2 || totalPrompts < 2) {
+      throw new Error("activity-tandem-insufficient-evidence");
+    }
     return {
       ...safeMetadata,
       sessionId,
@@ -457,14 +468,10 @@ export async function assertActivityAppend(
   }
 
   if (eventType === "DIAGNOSTIC_COMPLETED") {
-    if (!/^lab:diagnostic:placement:\d{4}-\d{2}-\d{2}$/.test(sid)) {
-      throw new Error("activity-diagnostic-invalid-source");
-    }
-    const score = Number(metadata.score);
-    if (!Number.isFinite(score) || score < 0 || score > 10) {
-      throw new Error("activity-diagnostic-invalid-score");
-    }
-    return safeMetadata;
+    // Placement/diagnostic outcomes are privileged learner-state mutations.
+    // There is no client-backed diagnostic evidence table in the current product,
+    // so an activity append cannot be allowed to manufacture this reward.
+    throw new Error("activity-diagnostic-server-only");
   }
 
   if (eventType === "REAL_WORLD_BONUS" || eventType === "LESSON_COMPLETED") {
@@ -493,7 +500,6 @@ export async function assertActivityAppend(
     "CLASS_ATTENDED",
     "IMMERSION_ATTENDED",
     "PULSE_COMPLETED",
-    "DIAGNOSTIC_COMPLETED",
     "LESSON_COMPLETED",
     "REAL_WORLD_BONUS",
   ];
