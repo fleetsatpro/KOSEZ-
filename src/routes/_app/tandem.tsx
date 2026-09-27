@@ -39,10 +39,6 @@ function TandemHub() {
   const learner = useBlossom((s) => s.learner);
   const uiLocale = useUiLocale();
   const languageId = useBlossom((s) => s.languageId);
-  const scopedLog = useMemo(
-    () => log.filter((event) => activityBelongsToLanguage(event, languageId)),
-    [log, languageId],
-  );
   const languageLabel = useCallback(
     (id: string) => describeLearnLanguage(id, uiLocale).label,
     [uiLocale],
@@ -53,6 +49,10 @@ function TandemHub() {
   const setTandemOpen = useBlossom((s) => s.setTandemOpen);
   const plan = useBlossom((s) => s.plan);
   const log = useBlossom((s) => s.activityLog);
+  const scopedLog = useMemo(
+    () => log.filter((event) => activityBelongsToLanguage(event, languageId)),
+    [log, languageId],
+  );
   const growthEvents = useBlossom((s) => s.growthEvents);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
