@@ -4,7 +4,6 @@ import { normalizeMutationTime } from "./sync-causality";
 import { IMMERSION, PRONLAB_SETS, setsForLanguage } from "./data";
 import { LEARN_LANGUAGES } from "@/lib/i18n/locales";
 import { fullMissionBank } from "./mission-today";
-import { appendBlossomActivity } from "./backend.server";
 import type { JsonObject } from "./backend.server";
 
 import { getPublishedContent } from "./content.server";
