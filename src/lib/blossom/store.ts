@@ -38,10 +38,7 @@ import {
 } from "./data";
 import {
   buildPhonemeLeaves,
-  composeLeoLetter,
   computeMinerals,
-  growthEventForActivity,
-  pushGrowthEvent,
   type GrowthEvent,
   type LeoLetter,
   type MineralSnapshot,
