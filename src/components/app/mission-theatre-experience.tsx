@@ -545,6 +545,11 @@ export function MissionTheatreExperience() {
               <p className="mt-5 max-w-2xl text-base leading-7 text-muted sm:text-lg">
                 Trois repères honnêtes. Puis BLOSSOM choisit la prochaine petite pression — et écrit la racine.
               </p>
+              <p className="mt-3 max-w-2xl text-xs leading-5 text-muted">
+                {serverEvidenceAvailable
+                  ? "Session chronométrée et validée côté serveur : le crédit peut être écrit."
+                  : "Pratique locale disponible, mais aucun crédit de durée ne sera écrit sans validation serveur."}
+              </p>
             </header>
             <ReflectionStage
               draft={reflection}
