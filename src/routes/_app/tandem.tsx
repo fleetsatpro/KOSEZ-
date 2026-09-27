@@ -79,6 +79,11 @@ function TandemHub() {
   const minerals = useMemo(() => computeMinerals(scopedLog), [scopedLog]);
   const nextGesture = causalNextGesture(minerals);
   const socialGrowth = growthEvents
+    .filter((g) => {
+      const tagged = g.languageId;
+      if (typeof tagged === "string") return tagged === languageId;
+      return languageId === "en";
+    })
     .filter((g) => g.mineral === "social" || g.kind === "flower")
     .slice(0, 3);
 
