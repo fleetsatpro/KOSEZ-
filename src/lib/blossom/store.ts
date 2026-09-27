@@ -169,7 +169,7 @@ type AppState = {
   saveMissionReflection: (missionId: string, reflection: MissionReflection) => boolean;
   reopenMissionSession: (missionId: string) => boolean;
   completeMissionSession: (missionId: string, rewardSourceId?: string | null) => { ok: boolean; reason?: string; evaluation?: ReturnType<typeof evaluateMission> };
-  completeActivity: (type: ActivityType, sourceId: string, note?: string, metadata?: Record<string, string | number | boolean>) => { ok: boolean; reason?: string; event?: GrowthEvent; previousMinerals?: MineralSnapshot; minerals?: MineralSnapshot };
+  completeActivity: (type: ActivityType, sourceId: string, note?: string, metadata?: Record<string, string | number | boolean>) => { ok: boolean; reason?: string; pending?: boolean; event?: GrowthEvent; previousMinerals?: MineralSnapshot; minerals?: MineralSnapshot };
   joinEvent: (id: string) => void;
   leaveEvent: (id: string) => void;
   enroll: (id: string) => void;
@@ -419,15 +419,16 @@ export const useBlossom = create<AppState>()(
             eventType: type,
             sourceId,
             note: note ?? null,
-            metadata: { ...(metadata ?? {}), languageId: get().languageId },
+            metadata: { ...(metadata ?? {}), languageId: get().languageId, syncState: "pending" },
             occurredAt: new Date().toISOString(),
           },
         });
         const activityMetadata = {
           ...(metadata ?? {}),
           languageId: current.languageId,
+          syncState: "pending" as const,
         };
-        const event = {
+        const event: ActivityEvent = {
           id: mutation.mutationId,
           type,
           createdAt: String(mutation.payload.occurredAt),
@@ -436,30 +437,25 @@ export const useBlossom = create<AppState>()(
           metadata: activityMetadata,
         };
         const nextLog = [...log, event];
-        const ge = growthEventForActivity(type, sourceId, event.createdAt);
-        const languageGrowthEvent = ge ? { ...ge, languageId: current.languageId } : null;
-        const growthEvents = languageGrowthEvent
-          ? pushGrowthEvent(get().growthEvents, languageGrowthEvent)
-          : get().growthEvents;
-        const mineralSnapshot = computeMinerals(activeLanguageActivityLog(nextLog, current.languageId));
+        // Pending activity is visible to the history layer but is deliberately
+        // excluded from points/minerals/stage/growth until the server confirms it.
+        const nextConfirmedLog = activeLanguageActivityLog(nextLog, current.languageId);
+        const mineralSnapshot = computeMinerals(nextConfirmedLog);
         const phonemeLeaves = buildPhonemeLeaves(
           current.pronlabAttempts,
           setsForLanguage(current.languageId).flatMap((setDef) => setDef.items),
         );
-        let leoLetters = get().leoLetters;
-        const letter = composeLeoLetter(mineralSnapshot, growthEvents, get().learner.firstName);
-        if (!leoLetters.some((l) => l.id === letter.id)) leoLetters = [letter, ...leoLetters].slice(0, 12);
-        set({ activityLog: nextLog, growthEvents, mineralSnapshot, phonemeLeaves, leoLetters });
+        set({ activityLog: nextLog, mineralSnapshot, phonemeLeaves });
         void enqueueMutation(mutation);
-        const after = journeySnapshot(activeLanguageActivityLog(nextLog, current.languageId)).stage.id;
-        if (type === "MISSION_COMPLETED") track("mission_completed");
-        if (type === "SPEAK_COMPLETED") track("speak_completed");
-        if (type === "PRONLAB_COMPLETED") track("pronlab_attempted");
-        if (type === "TANDEM_COMPLETED") track("tandem_completed");
-        if (type === "IMMERSION_ATTENDED") track("immersion_attended");
-        if (type === "EVENT_ATTENDED") track("event_joined");
+        const after = journeySnapshot(nextConfirmedLog).stage.id;
+        if (type === "MISSION_COMPLETED") track("mission_completed_pending");
+        if (type === "SPEAK_COMPLETED") track("speak_completed_pending");
+        if (type === "PRONLAB_COMPLETED") track("pronlab_attempted_pending");
+        if (type === "TANDEM_COMPLETED") track("tandem_completed_pending");
+        if (type === "IMMERSION_ATTENDED") track("immersion_attended_pending");
+        if (type === "EVENT_ATTENDED") track("event_joined_pending");
         if (before !== after) track("blossom_stage_changed", { stage: after });
-        return { ok: true, event: ge ?? undefined, previousMinerals, minerals: mineralSnapshot };
+        return { ok: true, pending: true, previousMinerals, minerals: mineralSnapshot };
       },
       joinEvent: (id) => {
         if (get().joinedEventIds.includes(id)) return;
