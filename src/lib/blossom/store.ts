@@ -675,7 +675,6 @@ export const useBlossom = create<AppState>()(
       },
       resetJourney: () => {
         set({
-          hasEntered: false,
           parentMode: false,
           teacherMode: false,
           orgMode: false,
