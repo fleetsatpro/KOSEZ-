@@ -1,6 +1,6 @@
-import type { ActivityEvent, ActivityType, PronlabAttempt } from "./engine.ts";
+import { activityBelongsToLanguage, type ActivityEvent, type ActivityType, type PronlabAttempt } from "./engine.ts";
 import type { MissionSession } from "./mission.ts";
-import { PRONLAB_SETS, TODAY_MISSION, type PronlabItem } from "./data.ts";
+import { PRONLAB_SETS, setsForLanguage, TODAY_MISSION, type PronlabItem } from "./data.ts";
 import { summarisePronlabItem } from "./engine.ts";
 
 export type LearningDomainId =
@@ -307,9 +307,19 @@ const cap = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 export function buildSkillProfile(
   log: ActivityEvent[],
   attempts: PronlabAttempt[],
-  vocabulary: Array<{ word: string; gloss: string }>,
+  vocabulary: Array<{ word: string; gloss: string; metadata?: { languageId?: string } }>,
+  languageId = "en",
 ): SkillEvidence[] {
-  const count = (type: ActivityType) => log.filter((event) => event.type === type).length;
+  const scopedLog = log.filter((event) => activityBelongsToLanguage(event, languageId));
+  const scopedVocabulary = vocabulary.filter((entry) => {
+    const tagged = entry.metadata?.languageId;
+    return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+  });
+  const languageItems = setsForLanguage(languageId).flatMap((set) => set.items);
+  const languageItemIds = new Set(languageItems.map((item) => item.id));
+  const scopedAttempts = attempts.filter((attempt) => languageItemIds.has(attempt.itemId));
+
+  const count = (type: ActivityType) => scopedLog.filter((event) => event.type === type).length;
   const missions = count("MISSION_COMPLETED");
   const speak = count("SPEAK_COMPLETED");
   const tandem = count("TANDEM_COMPLETED");
@@ -319,7 +329,7 @@ export function buildSkillProfile(
   const writing = count("WRITING_COMPLETED");
   const library = count("LIBRARY_COMPLETED");
   const lessonIds = new Set(
-    log
+    scopedLog
       .filter((event) => event.type === "CURRICULUM_EVIDENCE_RECORDED" && event.sourceId)
       .map((event) => event.sourceId as string),
   );
@@ -334,18 +344,18 @@ export function buildSkillProfile(
   );
   const lessonEvidence = (domain: LearningDomainId) =>
     lessonDomains.filter((id) => id === domain).length;
-  const masteredPron = PRONLAB_SETS.flatMap((set) => set.items)
-    .filter((item) => summarisePronlabItem(item.id, attempts).mastered)
+  const masteredPron = languageItems
+    .filter((item) => summarisePronlabItem(item.id, scopedAttempts).mastered)
     .length;
 
   const raw: Record<LearningDomainId, { coverage: number; evidence: number; signal: string }> = {
     speaking: { coverage: missions * 10 + speak * 9 + tandem * 8, evidence: missions + speak + tandem, signal: missions ? "Les missions apportent une preuve située." : "Une première prise de parole donnera un signal utile." },
     interaction: { coverage: missions * 12 + tandem * 10 + speak * 7, evidence: missions + tandem + speak, signal: missions ? "Les gestes réels montrent déjà comment vous entrez dans l'échange." : "Le système attend encore une situation d'interaction." },
     listening: { coverage: speak * 4 + tandem * 5 + reviews * 5 + listening * 18, evidence: speak + tandem + reviews + listening, signal: listening ? "Le lab d'écoute commence à documenter la compréhension de détails concrets." : "Pas assez de données d'écoute pour conclure." },
-    reading: { coverage: vocabulary.length * 3 + library * 14 + lessonEvidence("reading") * 3, evidence: vocabulary.length + library + lessonEvidence("reading"), signal: library ? "Des lectures ont été parcourues jusqu'au bout ; une tâche de compréhension renforcera encore la preuve." : vocabulary.length ? "Le vocabulaire sauvé indique une première exposition écrite." : lessonEvidence("reading") ? "Le parcours contient des pratiques de lecture déclarées ; une trace de compréhension directe renforcera cette branche." : "La bibliothèque peut commencer cette branche." },
+    reading: { coverage: scopedVocabulary.length * 3 + library * 14 + lessonEvidence("reading") * 3, evidence: scopedVocabulary.length + library + lessonEvidence("reading"), signal: library ? "Des lectures ont été parcourues jusqu'au bout ; une tâche de compréhension renforcera encore la preuve." : scopedVocabulary.length ? "Le vocabulaire sauvé indique une première exposition écrite." : lessonEvidence("reading") ? "Le parcours contient des pratiques de lecture déclarées ; une trace de compréhension directe renforcera cette branche." : "La bibliothèque peut commencer cette branche." },
     writing: { coverage: writing * 22 + lessonEvidence("writing") * 3, evidence: writing + lessonEvidence("writing"), signal: writing ? "Une production écrite est maintenant enregistrée comme trace de travail." : lessonEvidence("writing") ? "Le parcours contient des pratiques écrites déclarées ; une production reste à créer pour renforcer la preuve." : "Aucune production écrite enregistrée pour l'instant." },
-    pronunciation: { coverage: masteredPron * 16 + attempts.length * 2, evidence: attempts.length, signal: attempts.length ? "Pron'Lab apporte une trace directe des sons travaillés." : "Un passage Pron'Lab donnera une première mesure." },
-    vocabulary: { coverage: vocabulary.length * 8 + reviews * 6, evidence: vocabulary.length + reviews, signal: vocabulary.length ? "Les mots sauvés peuvent maintenant entrer dans le rappel espacé." : "Le vocabulaire n'est pas encore enregistré comme mémoire active." },
+    pronunciation: { coverage: masteredPron * 16 + scopedAttempts.length * 2, evidence: scopedAttempts.length, signal: scopedAttempts.length ? "Pron'Lab apporte une trace directe des sons travaillés." : "Un passage Pron'Lab donnera une première mesure." },
+    vocabulary: { coverage: scopedVocabulary.length * 8 + reviews * 6, evidence: scopedVocabulary.length + reviews, signal: scopedVocabulary.length ? "Les mots sauvés peuvent maintenant entrer dans le rappel espacé." : "Le vocabulaire n'est pas encore enregistré comme mémoire active." },
     grammar: { coverage: missions * 2 + speak * 2 + reviews * 3 + grammar * 18, evidence: missions + speak + reviews + grammar, signal: grammar ? "Le lab de grammaire apporte désormais une trace directe sur les structures ciblées." : "La grammaire est encore évaluée indirectement ; les prochains exercices doivent isoler les structures." },
     mediation: { coverage: tandem * 3 + lessonEvidence("mediation") * 3, evidence: tandem + lessonEvidence("mediation"), signal: tandem || lessonEvidence("mediation") ? "Des traces de transmission existent ; les tâches dédiées permettront de mieux distinguer pratique déclarée et performance observée." : "La médiation sera mieux documentée par des tâches de transmission dédiées." },
   };
@@ -361,24 +371,20 @@ export function buildSkillProfile(
   });
 }
 
-export type ReviewItem = {
-  id: string;
-  kind: "pronunciation" | "vocabulary" | "mission";
-  title: string;
-  prompt: string;
-  answer: string;
-  reason: string;
-  priority: "haute" | "normale" | "nouvelle";
-  link: "pronlab" | "mission" | "library";
-};
-
 export function buildReviewQueue(
   attempts: PronlabAttempt[],
-  vocabulary: Array<{ word: string; gloss: string }>,
+  vocabulary: Array<{ word: string; gloss: string; metadata?: { languageId?: string } }>,
+  languageId = "en",
 ): ReviewItem[] {
   const items: ReviewItem[] = [];
-  const pronItems = PRONLAB_SETS.flatMap((set) => set.items);
-  const struggling = pronItems.filter((item) => summarisePronlabItem(item.id, attempts).struggling);
+  const pronItems = setsForLanguage(languageId).flatMap((set) => set.items);
+  const languageItemIds = new Set(pronItems.map((item) => item.id));
+  const scopedAttempts = attempts.filter((attempt) => languageItemIds.has(attempt.itemId));
+  const scopedVocabulary = vocabulary.filter((entry) => {
+    const tagged = entry.metadata?.languageId;
+    return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+  });
+  const struggling = pronItems.filter((item) => summarisePronlabItem(item.id, scopedAttempts).struggling);
 
   for (const item of struggling.slice(0, 4)) {
     items.push({
@@ -393,7 +399,7 @@ export function buildReviewQueue(
     });
   }
 
-  for (const word of vocabulary.slice().reverse().slice(0, 6)) {
+  for (const word of scopedVocabulary.slice().reverse().slice(0, 6)) {
     items.push({
       id: `review-word-${word.word}`,
       kind: "vocabulary",
@@ -406,7 +412,7 @@ export function buildReviewQueue(
     });
   }
 
-  if (items.length < 6) {
+  if (items.length < 6 && languageId === "en") {
     for (const kit of TODAY_MISSION.scene?.languageKit ?? []) {
       items.push({
         id: `review-kit-${kit.phrase}`,
@@ -428,11 +434,12 @@ export function buildReviewQueue(
 export function nextLearningAction(
   log: ActivityEvent[],
   attempts: PronlabAttempt[],
-  vocabulary: Array<{ word: string; gloss: string }>,
+  vocabulary: Array<{ word: string; gloss: string; metadata?: { languageId?: string } }>,
+  languageId = "en",
 ): { eyebrow: string; title: string; body: string; kind: ReviewItem["link"] } {
-  const profile = buildSkillProfile(log, attempts, vocabulary);
+  const profile = buildSkillProfile(log, attempts, vocabulary, languageId);
   const weak = [...profile].sort((a, b) => a.coverage - b.coverage)[0]!;
-  const queue = buildReviewQueue(attempts, vocabulary);
+  const queue = buildReviewQueue(attempts, vocabulary, languageId);
 
   if (queue[0]?.priority === "haute") {
     return {
