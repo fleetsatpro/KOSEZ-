@@ -169,7 +169,7 @@ type AppState = {
   recordMissionSupport: (missionId: string) => boolean;
   saveMissionReflection: (missionId: string, reflection: MissionReflection) => boolean;
   reopenMissionSession: (missionId: string) => boolean;
-  completeMissionSession: (missionId: string) => { ok: boolean; reason?: string; evaluation?: ReturnType<typeof evaluateMission> };
+  completeMissionSession: (missionId: string, rewardSourceId?: string | null) => { ok: boolean; reason?: string; evaluation?: ReturnType<typeof evaluateMission> };
   completeActivity: (type: ActivityType, sourceId: string, note?: string, metadata?: Record<string, string | number | boolean>) => { ok: boolean; reason?: string; event?: GrowthEvent; previousMinerals?: MineralSnapshot; minerals?: MineralSnapshot };
   joinEvent: (id: string) => void;
   leaveEvent: (id: string) => void;
@@ -382,7 +382,7 @@ export const useBlossom = create<AppState>()(
         track("mission_reflection_saved", { missionId, outcome: evaluation.outcome, evidence: evaluation.evidenceCount, confidence: reflection.confidence });
         return true;
       },
-      completeMissionSession: (missionId) => {
+      completeMissionSession: (missionId, rewardSourceId = null) => {
         const current = get().missionSessions[missionId];
         const active = current ? activeMissionRun(current) : null;
         if (!active?.reflection) return { ok: false, reason: "reflection-required" };
@@ -391,8 +391,19 @@ export const useBlossom = create<AppState>()(
         if (finished === current) return { ok: false, reason: "session-not-finishable", evaluation };
         const revisions = voidMissionSync(missionId, finished, get().backendMissionRevisions);
         set({ missionSessions: { ...get().missionSessions, [missionId]: finished }, backendMissionRevisions: revisions });
-        const result = get().completeActivity("MISSION_COMPLETED", missionId, "Evidence " + String(evaluation.evidenceCount) + "/3 · " + evaluation.outcome);
-        track("mission_session_completed", { missionId, outcome: evaluation.outcome, evidence: evaluation.evidenceCount });
+        const result = rewardSourceId
+          ? get().completeActivity(
+              "MISSION_COMPLETED",
+              rewardSourceId,
+              "Evidence " + String(evaluation.evidenceCount) + "/3 · " + evaluation.outcome,
+            )
+          : { ok: true as const };
+        track("mission_session_completed", {
+          missionId,
+          outcome: evaluation.outcome,
+          evidence: evaluation.evidenceCount,
+          rewarded: Boolean(rewardSourceId),
+        });
         return { ...result, evaluation };
       },
       completeActivity: (type, sourceId, note, metadata) => {
