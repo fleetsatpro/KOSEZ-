@@ -134,7 +134,13 @@ type AppState = {
   learningSubmissions: LearningSubmission[];
   warmup: string | null;
   exportConsent: boolean;
-  vocabulary: { word: string; gloss: string; firstSavedAt?: string; updatedAt?: string }[];
+  vocabulary: {
+    word: string;
+    gloss: string;
+    firstSavedAt?: string;
+    updatedAt?: string;
+    metadata?: { languageId?: LearnLanguageId };
+  }[];
   immersionPhase: "pre" | "during" | "post";
   immersionDone: string[];
   plan: PlanId;
@@ -387,9 +393,26 @@ export const useBlossom = create<AppState>()(
         const mutation = createMutation({
           operation: "activity.append",
           entityId: sourceId,
-          payload: { eventType: type, sourceId, note: note ?? null, metadata: metadata ?? {}, occurredAt: new Date().toISOString() },
+          payload: {
+            eventType: type,
+            sourceId,
+            note: note ?? null,
+            metadata: { ...(metadata ?? {}), languageId: get().languageId },
+            occurredAt: new Date().toISOString(),
+          },
         });
-        const event = { id: mutation.mutationId, type, createdAt: String(mutation.payload.occurredAt), sourceId, note };
+        const activityMetadata = {
+          ...(metadata ?? {}),
+          languageId: current.languageId,
+        };
+        const event = {
+          id: mutation.mutationId,
+          type,
+          createdAt: String(mutation.payload.occurredAt),
+          sourceId,
+          note,
+          metadata: activityMetadata,
+        };
         const nextLog = [...log, event];
         const ge = growthEventForActivity(type, sourceId, event.createdAt);
         const growthEvents = ge ? pushGrowthEvent(get().growthEvents, ge) : get().growthEvents;
@@ -539,6 +562,11 @@ export const useBlossom = create<AppState>()(
       saveLearningSubmission: (input) => {
         const now = new Date().toISOString();
         const existing = get().learningSubmissions.find((s) => s.taskId === input.taskId);
+        const languageId = get().languageId;
+        const submissionResult = {
+          ...input.result,
+          languageId,
+        };
         const mutation = createMutation({
           operation: "learning.submission",
           entityId: input.taskId,
@@ -547,19 +575,19 @@ export const useBlossom = create<AppState>()(
             kind: input.kind,
             content: input.content,
             checks: input.checks,
-            result: input.result as SyncJsonValue,
+            result: submissionResult as SyncJsonValue,
           },
         });
         if (existing) {
           set({
             learningSubmissions: get().learningSubmissions.map((s) =>
-              s.taskId === input.taskId ? { ...s, ...input, updatedAt: now } : s,
+              s.taskId === input.taskId ? { ...s, ...input, result: submissionResult, updatedAt: now } : s,
             ),
           });
         } else {
           set({
             learningSubmissions: [
-              { ...input, id: mutation.mutationId, createdAt: now, updatedAt: now },
+              { ...input, id: mutation.mutationId, result: submissionResult, createdAt: now, updatedAt: now },
               ...get().learningSubmissions,
             ],
           });
@@ -590,20 +618,32 @@ export const useBlossom = create<AppState>()(
       saveWord: (word, gloss) => {
         const now = new Date().toISOString();
         const current = get();
+        const metadata = { languageId: current.languageId };
         const mutation = createMutation({
           operation: "vocabulary.upsert",
           entityId: word.toLowerCase(),
           payload: {
             word,
             gloss,
-            metadata: { languageId: current.languageId },
+            metadata,
           },
         });
-        const existing = current.vocabulary.find((v) => v.word.toLowerCase() === word.toLowerCase());
+        const existing = current.vocabulary.find(
+          (v) => v.word.toLowerCase() === word.toLowerCase() && v.metadata?.languageId === current.languageId,
+        );
         if (existing) {
-          set({ vocabulary: current.vocabulary.map((v) => (v.word.toLowerCase() === word.toLowerCase() ? { ...v, gloss, updatedAt: now } : v)) });
+          set({
+            vocabulary: current.vocabulary.map((v) =>
+              v === existing ? { ...v, gloss, metadata, updatedAt: now } : v,
+            ),
+          });
         } else {
-          set({ vocabulary: [{ word, gloss, firstSavedAt: now, updatedAt: now }, ...current.vocabulary] });
+          set({
+            vocabulary: [
+              { word, gloss, metadata, firstSavedAt: now, updatedAt: now },
+              ...current.vocabulary,
+            ],
+          });
         }
         void enqueueMutation(mutation);
       },
