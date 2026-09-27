@@ -84,6 +84,14 @@ export function LearnDashboard() {
   );
   const completeHomework = useBlossom((s) => s.completeHomework);
   const vocab = useBlossom((s) => s.vocabulary);
+  const languageVocabulary = useMemo(
+    () =>
+      vocab.filter((entry) => {
+        const tagged = entry.metadata?.languageId;
+        return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+      }),
+    [vocab, languageId],
+  );
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const submissions = useBlossom((s) => s.learningSubmissions);
   const languageId = useBlossom((s) => s.languageId);
@@ -169,7 +177,7 @@ export function LearnDashboard() {
               {journey.points} points
             </span>
             <span className="rounded-full bg-surface-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">
-              {vocab.length} mot{vocab.length === 1 ? "" : "s"} gardé{vocab.length === 1 ? "" : "s"}
+              {languageVocabulary.length} mot{vocab.length === 1 ? "" : "s"} gardé{vocab.length === 1 ? "" : "s"}
             </span>
           </div>
         </div>
@@ -522,14 +530,14 @@ export function LearnDashboard() {
             <BookOpen className="size-5 text-primary" strokeWidth={1.7} />
           </div>
 
-          {vocab.length === 0 ? (
+          {languageVocabulary.length === 0 ? (
             <p className="mt-6 rounded-xl bg-surface-2/60 p-4 text-sm leading-6 text-muted">
               Touchez un mot dans la bibliothèque. Il devient un repère, pas une
               ligne de plus dans une liste.
             </p>
           ) : (
             <div className="mt-6 flex flex-wrap gap-2">
-              {vocab.slice(-8).map((word) => (
+              {languageVocabulary.slice(-8).map((word) => (
                 <span
                   key={word.word}
                   className="rounded-full bg-surface-2 px-3 py-1.5 text-xs font-medium"
