@@ -1,5 +1,6 @@
 import type { StageId } from "./engine";
 import { LEARN_LANGUAGES, isLearnLanguageId } from "../i18n/locales.ts";
+import { kosezEventDayFromToday } from "../utils";
 type PronlabKind = "word" | "sentence" | "phoneme" | "spontaneous";
 
 export const PLANT_IMAGE: Record<StageId, string> = {
@@ -11,20 +12,17 @@ export const PLANT_IMAGE: Record<StageId, string> = {
 };
 
 function dateFromToday(daysAhead: number): string {
-  const date = new Date();
-  date.setUTCHours(12, 0, 0, 0);
-  date.setUTCDate(date.getUTCDate() + daysAhead);
-  return date.toISOString().slice(0, 10);
+  return kosezEventDayFromToday(daysAhead);
 }
 
 function rangeLabelFromToday(startDays: number, endDays: number): string {
   const format = new Intl.DateTimeFormat("fr-FR", {
     day: "numeric",
     month: "long",
-    timeZone: "UTC",
+    timeZone: "Indian/Reunion",
   });
-  const start = format.format(new Date(dateFromToday(startDays) + "T12:00:00Z"));
-  const end = format.format(new Date(dateFromToday(endDays) + "T12:00:00Z"));
+  const start = format.format(new Date(dateFromToday(startDays) + "T12:00:00+04:00"));
+  const end = format.format(new Date(dateFromToday(endDays) + "T12:00:00+04:00"));
   const [startDay, ...startMonthParts] = start.split(" ");
   const [endDay, ...endMonthParts] = end.split(" ");
   const startMonth = startMonthParts.join(" ");
