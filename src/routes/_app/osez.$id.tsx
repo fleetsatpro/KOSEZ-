@@ -52,17 +52,21 @@ function SpeakRoom() {
   const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
   const missionSessions = useBlossom((s) => s.missionSessions);
   const memoryOn = planAllows(plan, "memory");
-  const influence = influenceFromState({
-    activityLog: log,
-    pronlabAttempts: attempts,
-    growthEvents,
-    phonemeLeaves,
-    missionSessions,
-    allItems: setsForLanguage(languageId).flatMap((s) => s.items),
-    memory: LEARNER_MEMORY,
-    memoryOn,
-    languageId,
-  });
+  const influence = useMemo(
+    () =>
+      influenceFromState({
+        activityLog: log,
+        pronlabAttempts: attempts,
+        growthEvents,
+        phonemeLeaves,
+        missionSessions,
+        allItems: setsForLanguage(languageId).flatMap((s) => s.items),
+        memory: LEARNER_MEMORY,
+        memoryOn,
+        languageId,
+      }),
+    [log, attempts, growthEvents, phonemeLeaves, missionSessions, languageId, memoryOn],
+  );
   const friction = influence.speak.friction ?? (memoryOn ? LEARNER_MEMORY.hesitation : null);
   const kitBoost = influence.speak.kitBoost;
   const pressureHint = influence.speak.pressureHint;
