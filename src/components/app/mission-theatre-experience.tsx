@@ -212,6 +212,10 @@ export function MissionTheatreExperience() {
 
   async function finishSession() {
     if (closing) return;
+    if (serverRunSessionId && elapsed < 60) {
+      toast("La session doit durer au moins 1 minute avant validation. Le geste reste ouvert.");
+      return;
+    }
     setClosing(true);
     let rewardSourceId: string | null = null;
     if (serverRunSessionId) {
@@ -221,14 +225,6 @@ export function MissionTheatreExperience() {
         });
         if (ended.missionId !== todayMission.id) {
           throw new Error("mission-session-mismatch");
-        }
-        if (ended.durationSeconds < 60) {
-          reopenMissionSession(todayMission.id);
-          setSaved(false);
-          setStep("execute");
-          setClosing(false);
-          toast("La session doit durer au moins 1 minute avant validation. Le geste reste ouvert.");
-          return;
         }
         rewardSourceId = `mission-session-${ended.id}`;
       } catch {
