@@ -434,8 +434,18 @@ async function flushOutbox(): Promise<void> {
             waitlistIds: state.waitlistIds.filter((id) => id !== mutation.entityId),
           });
         } else if (mutation.operation === "tandem.status") {
+          const payload = mutation.payload as { previousStatus?: string };
           const next = { ...state.tandemStatus };
-          delete next[mutation.entityId];
+          const previousStatus =
+            payload.previousStatus === "pending" ||
+            payload.previousStatus === "accepted" ||
+            payload.previousStatus === "paused" ||
+            payload.previousStatus === "blocked" ||
+            payload.previousStatus === "suggested"
+              ? payload.previousStatus
+              : undefined;
+          if (previousStatus) next[mutation.entityId] = previousStatus as typeof state.tandemStatus[string];
+          else delete next[mutation.entityId];
           useBlossom.setState({ tandemStatus: next });
         } else if (mutation.operation === "tandem.report") {
           const payload = mutation.payload as {
