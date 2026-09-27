@@ -28,16 +28,24 @@ function ConnectPage() {
   const [peers, setPeers] = useState<ConnectPeer[]>([]);
   const [conversationPeerId, setConversationPeerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [peersUnavailable, setPeersUnavailable] = useState(false);
 
   useEffect(() => {
     let disposed = false;
     setLoading(true);
+    setPeersUnavailable(false);
     void getConnectPeersOnServer()
       .then((rows) => {
-        if (!disposed) setPeers(rows);
+        if (!disposed) {
+          setPeers(rows);
+          setPeersUnavailable(false);
+        }
       })
       .catch(() => {
-        if (!disposed) setPeers([]);
+        if (!disposed) {
+          setPeers([]);
+          setPeersUnavailable(true);
+        }
       })
       .finally(() => {
         if (!disposed) setLoading(false);
@@ -121,12 +129,16 @@ function ConnectPage() {
       <section className="mt-8 grid gap-3 sm:grid-cols-3" aria-label="Résumé de connexion">
         <Surface className="!p-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">Présences</p>
-          <p className="mt-2 font-display text-2xl tabular-nums">{peers.length}</p>
-          <p className="mt-1 text-xs leading-5 text-muted">personne{peers.length === 1 ? "" : "s"} réellement reliée{peers.length === 1 ? "" : "s"} à vos rendez-vous</p>
+          <p className="mt-2 font-display text-2xl tabular-nums">{peersUnavailable ? "—" : peers.length}</p>
+          <p className="mt-1 text-xs leading-5 text-muted">
+            {peersUnavailable
+              ? "indisponible pour le moment"
+              : `personne${peers.length === 1 ? "" : "s"} réellement reliée${peers.length === 1 ? "" : "s"} à vos rendez-vous`}
+          </p>
         </Surface>
         <Surface className="!p-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-subtle">Rencontres partagées</p>
-          <p className="mt-2 font-display text-2xl tabular-nums">{sharedEncounterCount}</p>
+          <p className="mt-2 font-display text-2xl tabular-nums">{peersUnavailable ? "—" : sharedEncounterCount}</p>
           <p className="mt-1 text-xs leading-5 text-muted">points de contact observés dans le cercle</p>
         </Surface>
         <Surface className="!p-4">
@@ -215,6 +227,36 @@ function ConnectPage() {
         {loading ? (
           <Surface className="mt-5">
             <p className="text-sm text-muted">Recherche des présences partagées…</p>
+          </Surface>
+        ) : peersUnavailable ? (
+          <Surface className="mt-5">
+            <UserRound className="size-5 text-primary" strokeWidth={1.7} />
+            <h3 className="mt-4 font-display text-2xl">Présences temporairement indisponibles.</h3>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
+              Le cercle n’a pas pu être chargé. Réessayez dans un instant —
+              aucun profil fictif n’est affiché en attendant.
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              className="mt-5"
+              onClick={() => {
+                setLoading(true);
+                setPeersUnavailable(false);
+                void getConnectPeersOnServer()
+                  .then((rows) => {
+                    setPeers(rows);
+                    setPeersUnavailable(false);
+                  })
+                  .catch(() => {
+                    setPeers([]);
+                    setPeersUnavailable(true);
+                  })
+                  .finally(() => setLoading(false));
+              }}
+            >
+              Réessayer
+            </Button>
           </Surface>
         ) : peers.length === 0 ? (
           <Surface className="mt-5">
