@@ -315,7 +315,7 @@ export function HomeDashboard() {
             </p>
             <p className="mt-1 text-sm text-fg/90">{primaryDoor.line}</p>
             <p className="mt-1 text-[11px] text-subtle">
-              Priorité {primaryDoor.priority} — calculée depuis Pron'Lab, missions et minéraux, pas un classement arbitraire.
+              Suggestion calculée depuis vos minéraux et votre pratique récente — pas un classement.
             </p>
             <Link
               to={primaryDoor.door as "/osez" | "/pronlab" | "/mission" | "/tandem" | "/learn/labs"}
