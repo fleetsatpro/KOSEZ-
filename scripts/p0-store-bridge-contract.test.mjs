@@ -51,9 +51,11 @@ test("P0 activity deduplication is type + source aware", () => {
   assert.ok(bridge.includes("`${event.type}:source:${event.sourceId}`"));
 });
 
-test("P0 PronLab semantics stay language-scoped and verified-only for mastery growth", () => {
+test("P0 PronLab semantics stay language-scoped and client cannot mint mastery growth", () => {
   assert.ok(store.includes("setsForLanguage(get().languageId).flatMap"));
-  assert.ok(store.includes("!before.verifiedMastered && after.verifiedMastered"));
+  assert.ok(store.includes("Mastery is now server-authoritative"));
+  assert.ok(store.includes('operation: "pronlab.attempt"'));
+  assert.ok(syncServer.includes('activity-mastery-server-only'));
 });
 
 test("P0 bridge preserves remote PronLab evidence metadata", () => {
