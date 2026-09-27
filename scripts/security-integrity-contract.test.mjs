@@ -90,8 +90,15 @@ test("activity mutations are enum-gated and pass through server integrity checks
   assert.match(sync, /updated_at < current_timestamp - interval '5 minutes'/);
   assert.match(domain, /duration_seconds = greatest/);
   assert.match(domain, /durationSeconds: Math\.max/);
+  assert.match(integrity, /activity-pulse-without-session/);
+  assert.match(integrity, /activity-pulse-invalid-server-duration/);
+  assert.match(integrity, /from blossom_pulse_session/);
+  assert.match(domain, /pulse\.start-session/);
+  assert.match(domain, /pulse\.end-session/);
   assert.match(read("migrations/0029_tandem_session_integrity.sql"), /create unique index if not exists blossom_tandem_session_active_pair_uidx/);
   assert.match(read("migrations/0029_tandem_session_integrity.sql"), /alter table blossom_tandem_session/);
+  assert.match(read("migrations/0030_pulse_session_integrity.sql"), /create table if not exists blossom_pulse_session/);
+  assert.match(read("migrations/0030_pulse_session_integrity.sql"), /create unique index if not exists blossom_pulse_session_active_user_uidx/);
   assert.match(domainApi, /ensureBootstrapAdmin\(context\.userId, identity\.email, identity\.emailVerified\)/);
 });
 
