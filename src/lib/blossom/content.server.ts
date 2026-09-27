@@ -223,7 +223,7 @@ export async function getContentRevisionHistory(
   userId: string,
   contentKeyInput: string,
 ): Promise<ContentRevision[]> {
-  await enforceRateLimit(userId, "admin.content-archive", 30, 60);
+  await enforceRateLimit(userId, "admin.content-history", 120, 60);
   await assertAdmin(userId);
   const contentKey = contentKeySchema.parse(contentKeyInput);
   const sql = await getSql();
@@ -427,6 +427,7 @@ export async function archiveContent(
   contentKeyInput: string,
   expectedPublishedRevision: number,
 ) {
+  await enforceRateLimit(userId, "admin.content-archive", 30, 60);
   await assertAdmin(userId);
   const contentKey = contentKeySchema.parse(contentKeyInput);
   const sql = await getSql();
