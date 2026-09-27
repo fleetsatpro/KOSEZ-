@@ -488,9 +488,25 @@ async function applyMutation(
     case "library.start":
       await assertLibraryReadingMutation(userId, mutation.entityId, "start", mutation.createdAt);
       return { mutationId: mutation.mutationId, status: "applied" };
-    case "library.complete":
+    case "library.complete": {
       await assertLibraryReadingMutation(userId, mutation.entityId, "complete", mutation.createdAt);
+      // LIBRARY_COMPLETED is a server-authoritative consequence of the
+      // validated reading session. Never mint it optimistically on the client.
+      const languageId = await activeLanguageId(userId);
+      const safeMetadata = await assertActivityAppend(
+        userId,
+        "LIBRARY_COMPLETED",
+        mutation.entityId,
+        { languageId },
+      );
+      await appendBlossomActivity(userId, {
+        eventType: "LIBRARY_COMPLETED",
+        sourceId: mutation.entityId,
+        payload: { metadata: safeMetadata },
+        idempotencyKey: mutation.mutationId,
+      });
       return { mutationId: mutation.mutationId, status: "applied" };
+    }
     case "tandem.status": {
       const payload = tandemPayloadSchema.parse(mutation.payload);
       await setTandemStatus(userId, {
