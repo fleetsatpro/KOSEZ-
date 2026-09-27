@@ -478,7 +478,7 @@ export async function assertActivityAppend(
     if (!completed[0]) throw new Error("activity-pulse-without-session");
 
     const dareId = String(completed[0].dare_id);
-    if (dareId !== "pulse-terrain" && dareId !== "pulse-social" && !dareId.startsWith("pulse-struggle-")) {
+    if (dareId !== "pulse-local" && dareId !== "pulse-terrain" && dareId !== "pulse-social" && !dareId.startsWith("pulse-struggle-")) {
       throw new Error("activity-pulse-unknown-source");
     }
     if (dareId.startsWith("pulse-struggle-")) {
