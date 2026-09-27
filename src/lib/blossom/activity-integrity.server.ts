@@ -20,7 +20,7 @@ function missionRunHasMissionAttempt(value: unknown): boolean {
       typeof attempt.startedAt === "string" &&
       typeof attempt.endedAt === "string" &&
       Number.isFinite(Number(attempt.seconds)) &&
-      Number(attempt.seconds) >= 0
+      Number(attempt.seconds) > 0
     );
   });
 }
