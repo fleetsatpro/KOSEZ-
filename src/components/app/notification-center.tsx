@@ -23,14 +23,17 @@ export function NotificationCenter({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<BlossomNotification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
   const unread = items.filter((item) => !item.readAt).length;
 
   async function load() {
     setLoading(true);
+    setError(false);
     try {
       setItems(await getNotificationsOnServer({ data: { limit: 40 } }));
     } catch {
       setItems([]);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -106,7 +109,14 @@ export function NotificationCenter({ compact = false }: { compact?: boolean }) {
             </button>
           </div>
           <div className="max-h-[22rem] overflow-y-auto">
-            {items.length === 0 ? (
+            {error ? (
+              <div className="px-5 py-9 text-center text-sm text-muted">
+                <p>Les notifications n’ont pas pu être chargées.</p>
+                <Button className="mt-3" size="sm" variant="secondary" onClick={() => void load()}>
+                  Réessayer
+                </Button>
+              </div>
+            ) : items.length === 0 ? (
               <div className="px-5 py-9 text-center">
                 <Check className="mx-auto size-5 text-primary" />
                 <p className="mt-3 font-display text-lg">Tout est calme.</p>
