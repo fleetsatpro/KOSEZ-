@@ -81,6 +81,7 @@ function SpeakRoom() {
   const [done, setDone] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [ceremonyOpen, setCeremonyOpen] = useState(false);
+  const [pendingRewardSourceId, setPendingRewardSourceId] = useState<string | null>(null);
   const [yourTurns, setYourTurns] = useState(0);
   const [showRescue, setShowRescue] = useState(false);
   const [speechSummary, setSpeechSummary] = useState<SessionSpeechSummary>(() => emptySpeechSummary());
@@ -291,12 +292,34 @@ function SpeakRoom() {
         }
       }
       setDone(true);
-      toast("Session close. La tige s'épaissit.");
-      setCeremonyOpen(true);
+      if (result.pending) {
+        setPendingRewardSourceId(sourceId);
+        toast("Session clôturée. La croissance apparaîtra après confirmation serveur.");
+      } else {
+        const confirmedGrowth = useBlossom.getState().growthEvents.find(
+          (growth) => growth.sourceId === sourceId,
+        );
+        if (confirmedGrowth) setCeremonyOpen(true);
+      }
     } catch {
       toast("La séance n’a pas pu être confirmée. Vérifiez votre connexion puis réessayez.");
     }
   }
+
+  useEffect(() => {
+    if (!pendingRewardSourceId) return;
+    const confirmed = log.some(
+      (event) =>
+        event.type === "SPEAK_COMPLETED" &&
+        event.sourceId === pendingRewardSourceId,
+    );
+    if (!confirmed) return;
+    setPendingRewardSourceId(null);
+    const confirmedGrowth = growthEvents.find(
+      (growth) => growth.sourceId === pendingRewardSourceId,
+    );
+    if (confirmedGrowth) setCeremonyOpen(true);
+  }, [growthEvents, log, pendingRewardSourceId]);
 
   if (loading || !room) {
     return (
@@ -477,13 +500,19 @@ function SpeakRoom() {
           </div>
 
           <p className="mt-6 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm leading-6 text-fg">
-            Clôturer écrit une <span className="font-semibold text-primary">tige</span> sur BLOSSOM
-            et nourrit le minéral <span className="font-semibold text-primary">parole</span>.
+            {pendingRewardSourceId
+              ? "La séance est clôturée. La tige et le minéral parole seront affichés après confirmation serveur."
+              : "La clôture confirmée écrit une tige sur BLOSSOM et nourrit le minéral parole."}
           </p>
-          <Button className="mt-4 h-12 w-full" onClick={finish}>
-            {speechSummary.spokenSeconds > 0 || speechSummary.transcriptCount > 0
-              ? "Clore la session"
-              : "Fermer sans croissance"}
+          <Button
+            className="mt-4 h-12 w-full"
+            onClick={finish}
+            disabled={Boolean(pendingRewardSourceId)}
+            {pendingRewardSourceId
+              ? "Synchronisation…"
+              : speechSummary.spokenSeconds > 0 || speechSummary.transcriptCount > 0
+                ? "Clore la session"
+                : "Fermer sans croissance"}
           </Button>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <Button variant="secondary" onClick={() => void reshuffle()}>
