@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { LIBRARY as LIBRARY_CORE, LIBRARY_GLOSS as GLOSS_CORE } from "@/lib/blossom/data";
 import { EXTRA_LIBRARY, EXTRA_LIBRARY_GLOSS } from "@/lib/blossom/library-extra";
 import { useBlossom } from "@/lib/blossom/store";
+import { activityBelongsToLanguage } from "@/lib/blossom/engine";
 import {
   clearCurriculumLessonContext,
   readCurriculumLessonContext,
@@ -41,35 +42,58 @@ function LibraryDocPage() {
     if (curriculumLessonId) clearCurriculumLessonContext();
   }, [curriculumLessonId]);
   const readingEndRef = useRef<HTMLDivElement | null>(null);
-  const [readingCompleted, setReadingCompleted] = useState(false);
+  const activityLog = useBlossom((s) => s.activityLog);
+  const languageId = useBlossom((s) => s.languageId);
   const vocab = useBlossom((s) => s.vocabulary);
   const [picked, setPicked] = useState<string | null>(null);
   const docId = doc?.id ?? null;
+  const readingCompleted = Boolean(
+    docId &&
+      activityLog.some(
+        (event) =>
+          event.type === "LIBRARY_COMPLETED" &&
+          event.sourceId === docId &&
+          activityBelongsToLanguage(event, languageId),
+      ),
+  );
+  const curriculumEvidenceRecorded = Boolean(
+    curriculumLessonId &&
+      activityLog.some(
+        (event) =>
+          event.type === "CURRICULUM_EVIDENCE_RECORDED" &&
+          event.sourceId === curriculumLessonId &&
+          activityBelongsToLanguage(event, languageId),
+      ),
+  );
 
   const recordReadingCompletion = useCallback(() => {
     if (!docId || readingCompleted) return;
-    const sourceId = docId;
-    completeLibraryReading(sourceId);
-    completeActivity("LIBRARY_COMPLETED", sourceId, `Lecture · ${docId}`);
-    if (curriculumLessonId) {
-      const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find(
-        (item) => item.id === curriculumLessonId,
-      );
-      if (lesson?.kind === "library" && lesson.taskId === docId) {
-        completeActivity(
-          "CURRICULUM_EVIDENCE_RECORDED",
-          curriculumLessonId,
-          `Preuve curriculum · lecture · ${docId}`,
-          { supportId: sourceId },
-        );
-      }
-    }
-    setReadingCompleted(true);
-  }, [completeActivity, curriculumLessonId, docId, readingCompleted]);
+    completeLibraryReading(docId);
+  }, [completeLibraryReading, docId, readingCompleted]);
 
   useEffect(() => {
     if (docId) startLibraryReading(docId);
   }, [docId, startLibraryReading]);
+
+  useEffect(() => {
+    if (!readingCompleted || !curriculumLessonId || curriculumEvidenceRecorded || !docId) return;
+    const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find(
+      (item) => item.id === curriculumLessonId,
+    );
+    if (lesson?.kind !== "library" || lesson.taskId !== docId) return;
+    completeActivity(
+      "CURRICULUM_EVIDENCE_RECORDED",
+      curriculumLessonId,
+      `Preuve curriculum · lecture · ${docId}`,
+      { supportId: docId },
+    );
+  }, [
+    completeActivity,
+    curriculumEvidenceRecorded,
+    curriculumLessonId,
+    docId,
+    readingCompleted,
+  ]);
 
   useEffect(() => {
     const end = readingEndRef.current;
