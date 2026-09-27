@@ -333,6 +333,10 @@ export async function assertActivityAppend(
       [serverSessionId, userId],
     );
     if (!serverRun[0]) throw new Error("activity-mission-without-server-session");
+    const missionDurationSeconds = Number(serverRun[0].duration_seconds ?? 0);
+    if (!Number.isFinite(missionDurationSeconds) || missionDurationSeconds < 60) {
+      throw new Error("activity-mission-insufficient-duration");
+    }
     const missionId = String(serverRun[0].mission_id);
     const missionRows = await sql.query(
       "select session from blossom_mission_session where user_id = $1 and mission_id = $2 limit 1",
