@@ -167,11 +167,20 @@ export function computeInfluence(input: {
   languageId: LearnLanguageId;
 }): OrganismInfluence {
   const at = new Date().toISOString();
-  const minerals = computeMinerals(input.log);
-  const struggle = strugglingFocus(input.attempts, input.allItems);
-  const leaves = input.phonemeLeaves;
+  const scopedLog = input.log.filter((event) => {
+    const tagged = event.metadata?.languageId;
+    return typeof tagged === "string" ? tagged === input.languageId : input.languageId === "en";
+  });
+  const activeItemIds = new Set(input.allItems.map((item) => item.id));
+  const scopedAttempts = input.attempts.filter((attempt) => activeItemIds.has(attempt.itemId));
+  const minerals = computeMinerals(scopedLog);
+  const struggle = strugglingFocus(scopedAttempts, input.allItems);
+  const leaves = input.phonemeLeaves.filter((leaf) => activeItemIds.has(leaf.itemId));
   const recentGrowth = [...input.growthEvents]
     .filter((event) => {
+      const tagged = event.languageId;
+      if (typeof tagged === "string" && tagged !== input.languageId) return false;
+      if (typeof tagged !== "string" && input.languageId !== "en") return false;
       const delta = Date.now() - Date.parse(event.at);
       return Number.isFinite(delta) && delta >= 0 && delta <= 7 * 86_400_000;
     })
