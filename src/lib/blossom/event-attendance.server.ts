@@ -18,7 +18,14 @@ export type AdminEventAttendanceRow = {
 async function assertAdmin(userId: string) {
   const sql = await getSql();
   const rows = await sql.query(
-    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    `select 1
+     from blossom_platform_admin
+     where user_id = $1 and status = 'active'
+     union all
+     select 1
+     from blossom_role_grant
+     where user_id = $1 and role = 'admin' and status = 'active'
+     limit 1`,
     [userId],
   );
   if (!rows[0]) throw new BlossomForbiddenError("Admin access is required.");
