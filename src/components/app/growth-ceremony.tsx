@@ -122,7 +122,7 @@ export function GrowthCeremony({
         type="button"
         aria-label="Fermer"
         className={cn(
-          "absolute inset-0 bg-black/55 backdrop-blur-[2px] transition-opacity duration-300",
+          "absolute inset-0 bg-black/55 backdrop-blur-[2px] transition-opacity duration-300 motion-reduce:transition-none",
           phase === "exit" ? "opacity-0" : "opacity-100",
         )}
         onClick={() => {
@@ -134,7 +134,7 @@ export function GrowthCeremony({
       <div
         className={cn(
           "relative w-full max-w-sm overflow-hidden rounded-3xl border border-border/80 bg-surface shadow-[0_24px_80px_-20px_rgba(0,0,0,0.65)]",
-          "transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          "transition-all duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           phase === "enter" && "translate-y-6 scale-[0.97] opacity-0",
           phase === "hold" && "translate-y-0 scale-100 opacity-100",
           phase === "exit" && "translate-y-4 scale-[0.98] opacity-0",
@@ -202,7 +202,7 @@ export function GrowthCeremony({
             </ul>
           ) : null}
 
-          <CausalDoor minerals={minerals} onNavigate={onDismiss} />
+          <CausalDoor minerals={minerals} onNavigate={close} />
 
           <button
             ref={closeRef}
