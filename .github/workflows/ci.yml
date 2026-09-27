@@ -1,5 +1,7 @@
 name: CI
 
+# Every hardening pass must leave the repository at zero-warning green.
+
 # Strict verification: lockfile, tests, types, lint, production build
 
 concurrency:
