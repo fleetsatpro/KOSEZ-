@@ -1,6 +1,7 @@
 import { getSql } from "@/lib/db";
 import { getPublishedContent } from "./content.server";
 import { BlossomForbiddenError, writeAuditEvent } from "./domain.server";
+import { enforceRateLimit } from "./rate-limit.server";
 
 export type SavedExploreItemType = "event" | "catalogue";
 
@@ -20,6 +21,7 @@ export async function toggleSavedExploreItem(
   userId: string,
   input: { itemType: SavedExploreItemType; itemId: string },
 ) {
+  await enforceRateLimit(userId, "explore.saved-toggle", 120, 60);
   const published = await getPublishedContent();
   const exists =
     input.itemType === "event"
