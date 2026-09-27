@@ -39,13 +39,22 @@ export type ActivityEvent = {
   metadata?: ActivityMetadata;
 };
 
+export function activityLanguageMatches(
+  event: ActivityEvent,
+  languageId: string,
+): boolean {
+  const tagged = event.metadata?.languageId;
+  return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+}
+
 export function activityBelongsToLanguage(
   event: ActivityEvent,
   languageId: string,
 ): boolean {
-  if (event.metadata?.syncState === "pending") return false;
-  const tagged = event.metadata?.languageId;
-  return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+  return (
+    event.metadata?.syncState !== "pending" &&
+    activityLanguageMatches(event, languageId)
+  );
 }
 
 export const POINTS: Record<ActivityType, number> = {
