@@ -153,3 +153,15 @@ describe("weekKey", () => {
     assert.match(weekKey(new Date("2026-09-22")), /^2026-W\d{2}$/);
   });
 });
+
+
+test("pending activity does not nourish minerals", () => {
+  const pending = [{
+    id: "pending",
+    type: "SPEAK_COMPLETED",
+    createdAt: new Date().toISOString(),
+    sourceId: "pending-speak",
+    metadata: { languageId: "en", syncState: "pending" as const },
+  }];
+  assert.equal(computeMinerals(pending).parole, 0);
+});
