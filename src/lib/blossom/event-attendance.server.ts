@@ -73,6 +73,11 @@ export async function recordEventAttendance(
   if (note.length > 500) throw new BlossomForbiddenError("La note de présence est limitée à 500 caractères.");
 
   const sql = await getSql();
+  const profile = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [input.learnerUserId],
+  );
+  const languageId = String(profile[0]?.target_language ?? "en");
   const registration = await sql.query(
     "select 1 from blossom_event_registration where event_id = $1 and user_id = $2 and status = 'joined' limit 1",
     [input.eventId, input.learnerUserId],
@@ -98,7 +103,13 @@ export async function recordEventAttendance(
         input.learnerUserId,
         randomUUID(),
         input.eventId,
-        JSON.stringify({ metadata: { eventId: input.eventId, recordedBy: userId } }),
+        JSON.stringify({
+          metadata: {
+            eventId: input.eventId,
+            recordedBy: userId,
+            languageId,
+          },
+        }),
       ],
     );
     await writeAuditEvent(userId, {
