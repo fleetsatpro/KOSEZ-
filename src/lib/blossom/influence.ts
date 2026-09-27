@@ -167,10 +167,9 @@ export function computeInfluence(input: {
   languageId: LearnLanguageId;
 }): OrganismInfluence {
   const at = new Date().toISOString();
-  const scopedLog = input.log.filter((event) => {
-    const tagged = event.metadata?.languageId;
-    return typeof tagged === "string" ? tagged === input.languageId : input.languageId === "en";
-  });
+  const scopedLog = input.log.filter((event) =>
+    activityBelongsToLanguage(event, input.languageId),
+  );
   const activeItemIds = new Set(input.allItems.map((item) => item.id));
   const scopedAttempts = input.attempts.filter((attempt) => activeItemIds.has(attempt.itemId));
   const minerals = computeMinerals(scopedLog);
