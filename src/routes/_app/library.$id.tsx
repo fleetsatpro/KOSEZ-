@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Volume2, BookMarked, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { Button } from "@/components/ui/button";
 import { LIBRARY as LIBRARY_CORE, LIBRARY_GLOSS as GLOSS_CORE } from "@/lib/blossom/data";
 import { EXTRA_LIBRARY, EXTRA_LIBRARY_GLOSS } from "@/lib/blossom/library-extra";
@@ -22,7 +23,11 @@ const LIBRARY_GLOSS: Record<string, string> = {
 };
 
 export const Route = createFileRoute("/_app/library/$id")({
-  component: LibraryDocPage,
+  component: () => (
+    <LearningSurfaceGate surface="library">
+      <LibraryDocPage />
+    </LearningSurfaceGate>
+  ),
 });
 
 /**
