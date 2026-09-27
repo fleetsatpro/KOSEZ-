@@ -354,6 +354,7 @@ export async function appendBlossomActivity(
   const sql = await getSql();
   const key = input.idempotencyKey ?? null;
   const id = key ?? randomUUID();
+  const occurredAt = normalizeMutationTime(input.occurredAt);
 
   if (key) {
     const existing = await sql.query(
@@ -373,7 +374,7 @@ export async function appendBlossomActivity(
         input.eventType,
         input.sourceId ?? null,
         JSON.stringify(input.payload ?? {}),
-        input.occurredAt ?? null,
+        occurredAt,
       ],
     );
     if (!rows[0]) throw new Error("activity-write-failed");
