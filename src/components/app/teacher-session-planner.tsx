@@ -38,6 +38,7 @@ function downloadCalendar(session: Session) {
 export function TeacherSessionPlanner({ roster }: { roster: TeacherRow[] }) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [learnerUserId, setLearnerUserId] = useState(roster[0]?.id ?? "");
   const [title, setTitle] = useState("Séance de pratique");
   const [startsAt, setStartsAt] = useState("");
@@ -52,12 +53,16 @@ export function TeacherSessionPlanner({ roster }: { roster: TeacherRow[] }) {
   useEffect(() => {
     let disposed = false;
     setLoading(true);
+    setLoadError(false);
     void getTeacherSessionsOnServer({ data: { limit: 20 } })
       .then((rows) => {
         if (!disposed) setSessions(rows);
       })
       .catch(() => {
-        if (!disposed) setSessions([]);
+        if (!disposed) {
+          setSessions([]);
+          setLoadError(true);
+        }
       })
       .finally(() => {
         if (!disposed) setLoading(false);
@@ -187,6 +192,13 @@ export function TeacherSessionPlanner({ roster }: { roster: TeacherRow[] }) {
         <Eyebrow>À venir</Eyebrow>
         {loading ? (
           <p className="mt-3 text-sm text-muted">Lecture du planning…</p>
+        ) : loadError ? (
+          <div className="mt-3 rounded-xl border border-border p-4 text-sm leading-6 text-muted">
+            <p>Le planning n’a pas pu être chargé.</p>
+            <Button className="mt-3" size="sm" variant="secondary" onClick={() => window.location.reload()}>
+              Réessayer
+            </Button>
+          </div>
         ) : sessions.length === 0 ? (
           <p className="mt-3 rounded-xl border border-dashed border-border p-4 text-sm leading-6 text-muted">
             Aucune séance programmée.
