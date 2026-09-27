@@ -3,6 +3,7 @@ import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
 import { IMMERSION, PRONLAB_SETS, setsForLanguage } from "./data";
 import { isLearnLanguageId } from "@/lib/i18n/locales";
+import { fullMissionBank } from "./mission-today";
 import type { JsonObject } from "./backend.server";
 
 import { getPublishedContent } from "./content.server";
@@ -1201,6 +1202,68 @@ export async function completeHomeworkForLearner(
     resourceId: homeworkId,
   });
   return rows[0];
+}
+
+export async function startMissionRunSession(userId: string, missionId: string) {
+  await enforceRateLimit(userId, "mission.start-session", 20, 60);
+  const normalizedMissionId = missionId.trim();
+  if (!fullMissionBank().some((mission) => mission.id === normalizedMissionId)) {
+    throw new BlossomForbiddenError("Cette mission n\u0027est pas disponible.");
+  }
+  const sql = await getSql();
+  const active = await sql.query(
+    `select id from blossom_mission_run_session
+     where user_id = $1 and mission_id = $2 and status = 'active'
+     order by created_at desc limit 1`,
+    [userId, normalizedMissionId],
+  );
+  if (active[0]) return { id: String(active[0].id), missionId: normalizedMissionId };
+  const sessionId = randomUUID();
+  try {
+    await sql.query(
+      `insert into blossom_mission_run_session
+        (id, user_id, mission_id, status, started_at)
+       values ($1::uuid, $2, $3, 'active', current_timestamp)`,
+      [sessionId, userId, normalizedMissionId],
+    );
+  } catch (error) {
+    if ((error as { code?: string })?.code !== "23505") throw error;
+    const raced = await sql.query(
+      `select id, mission_id from blossom_mission_run_session
+       where user_id = $1 and mission_id = $2 and status = 'active'
+       order by created_at desc limit 1`,
+      [userId, normalizedMissionId],
+    );
+    if (!raced[0]) throw new Error("mission-session-create-race");
+    return { id: String(raced[0].id), missionId: String(raced[0].mission_id) };
+  }
+  return { id: sessionId, missionId: normalizedMissionId };
+}
+
+export async function endMissionRunSession(userId: string, sessionId: string) {
+  await enforceRateLimit(userId, "mission.end-session", 20, 60);
+  const sql = await getSql();
+  const rows = await sql.query(
+    `update blossom_mission_run_session
+     set status = 'completed',
+         ended_at = coalesce(ended_at, current_timestamp),
+         duration_seconds = greatest(
+           0,
+           extract(epoch from (coalesce(ended_at, current_timestamp) - started_at))::integer
+         ),
+         updated_at = current_timestamp
+     where id = $1::uuid and user_id = $2 and status = 'active'
+     returning id, mission_id, status, ended_at, duration_seconds`,
+    [sessionId, userId],
+  );
+  if (!rows[0]) throw new BlossomForbiddenError("Cette session de mission n\u0027est plus active.");
+  return {
+    id: String(rows[0].id),
+    missionId: String(rows[0].mission_id),
+    status: "completed" as const,
+    endedAt: new Date(String(rows[0].ended_at)).toISOString(),
+    durationSeconds: Math.max(0, Number(rows[0].duration_seconds ?? 0)),
+  };
 }
 
 export async function writeAuditEvent(
