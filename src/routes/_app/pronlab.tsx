@@ -4,7 +4,7 @@ import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
+import { setsForLanguage } from "@/lib/blossom/data";
 import { activityBelongsToLanguage, summarisePronlabItem } from "@/lib/blossom/engine";
 import {
   causalNextGesture,
@@ -47,8 +47,7 @@ function PronlabIndex() {
     .filter((g) => {
       const tagged = g.languageId;
       return (typeof tagged === "string" ? tagged === languageId : languageId === "en") &&
-        (g.kind === "leaf" || g.kind === "mineral") &&
-        (g.id ? true : true);
+        (g.kind === "leaf" || g.kind === "mineral");
     })
     .filter((g) => !g.mineral || g.mineral === "pron")
     .slice(0, 3);
