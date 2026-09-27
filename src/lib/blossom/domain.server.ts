@@ -510,6 +510,18 @@ export async function getOrganizationWorkspace(
       on m.organization_id = o.id
      and m.status = 'active'
     left join blossom_profile p on p.user_id = m.user_id
+    where (
+      me.role in ('owner','admin')
+      or m.role <> 'learner'
+      or exists (
+        select 1
+        from blossom_organization_group g
+        join blossom_organization_group_member gm on gm.group_id = g.id and gm.user_id = m.user_id
+        where g.organization_id = o.id
+          and g.teacher_user_id = $1
+          and g.status = 'active'
+      )
+    )
     order by m.role, display_name`,
     [userId],
   );
@@ -539,8 +551,28 @@ export async function getOrganizationWorkspace(
        ), 0)::integer as speaking_minutes
      from blossom_organization_member m
      left join blossom_activity_event a on a.user_id = m.user_id
-     where m.organization_id = $1 and m.status = 'active'`,
-    [organizationId],
+     where m.organization_id = $1
+       and m.status = 'active'
+       and (
+         exists (
+           select 1
+           from blossom_organization_member me
+           where me.organization_id = $1
+             and me.user_id = $2
+             and me.status = 'active'
+             and me.role in ('owner','admin')
+         )
+         or m.role <> 'learner'
+         or exists (
+           select 1
+           from blossom_organization_group g
+           join blossom_organization_group_member gm on gm.group_id = g.id and gm.user_id = m.user_id
+           where g.organization_id = $1
+             and g.teacher_user_id = $2
+             and g.status = 'active'
+         )
+       )`,
+    [organizationId, userId],
   );
   const stats = statsRows[0] ?? {};
   const metadata =
