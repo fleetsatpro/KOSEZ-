@@ -1216,8 +1216,28 @@ export async function startMissionRunSession(userId: string, missionId: string, 
   if (!normalizedRunId || normalizedRunId.length > 200) {
     throw new BlossomForbiddenError("Cette session de mission est invalide.");
   }
-  if (!fullMissionBank().some((mission) => mission.id === normalizedMissionId)) {
+  const mission = fullMissionBank().find((item) => item.id === normalizedMissionId);
+  if (!mission) {
     throw new BlossomForbiddenError("Cette mission n\u0027est pas disponible.");
+  }
+  const profileRows = await (await getSql()).query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const languageId = String(profileRows[0]?.target_language ?? "en");
+  const missionLanguage = String(mission.language ?? "en").trim().toLowerCase();
+  const missionLanguageId =
+    missionLanguage === "english" ? "en" :
+    missionLanguage === "french" ? "fr" :
+    missionLanguage === "spanish" ? "es" :
+    missionLanguage === "portuguese" ? "pt" :
+    missionLanguage === "german" ? "de" :
+    missionLanguage === "italian" ? "it" :
+    missionLanguage === "lsf" ? "lsf" :
+    missionLanguage === "creole" || missionLanguage === "creole reunionnais" ? "cr" :
+    missionLanguage;
+  if (missionLanguageId !== languageId) {
+    throw new BlossomForbiddenError("Cette mission n'est pas disponible dans votre langue d'apprentissage active.");
   }
   const sql = await getSql();
   const active = await sql.query(
