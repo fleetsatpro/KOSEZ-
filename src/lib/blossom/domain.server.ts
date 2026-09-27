@@ -1871,7 +1871,7 @@ export async function logTandemPrompt(
   await enforceRateLimit(userId, "tandem.prompt", 60, 60);
   const sql = await getSql();
   const rows = await sql.query(
-    `select user_id, partner_user_id, language_id, status from blossom_tandem_session
+    `select user_id, partner_user_id, language_id, partner_language_id, status from blossom_tandem_session
      where id = $1::uuid and (user_id = $2 or partner_user_id = $2) limit 1`,
     [input.sessionId, userId],
   );
@@ -1883,7 +1883,11 @@ export async function logTandemPrompt(
     [userId],
   );
   const currentLanguageId = String(currentProfile[0]?.target_language ?? "en");
-  if (String(rows[0].language_id ?? "en") !== currentLanguageId) {
+  const isInitiator = String(rows[0].user_id) === userId;
+  const sessionLanguageId = isInitiator
+    ? String(rows[0].language_id ?? "en")
+    : String(rows[0].partner_language_id ?? "en");
+  if (sessionLanguageId !== currentLanguageId) {
     throw new BlossomForbiddenError("La langue de cette session tandem a changé. Recommencez le tandem.");
   }
   const row = await sql.query(
@@ -1903,7 +1907,7 @@ export async function endTandemSession(
   await enforceRateLimit(userId, "tandem.end-session", 10, 60);
   const sql = await getSql();
   const current = await sql.query(
-    `select id, user_id, partner_user_id, language_id, status, started_at
+    `select id, user_id, partner_user_id, language_id, partner_language_id, status, started_at
      from blossom_tandem_session
      where id = $1::uuid and (user_id = $2 or partner_user_id = $2)
      limit 1`,
@@ -1917,7 +1921,11 @@ export async function endTandemSession(
       [userId],
     );
     const currentLanguageId = String(profileRows[0]?.target_language ?? "en");
-    if (String(current[0].language_id ?? "en") !== currentLanguageId) {
+    const isInitiator = String(current[0].user_id) === userId;
+    const sessionLanguageId = isInitiator
+      ? String(current[0].language_id ?? "en")
+      : String(current[0].partner_language_id ?? "en");
+    if (sessionLanguageId !== currentLanguageId) {
       throw new BlossomForbiddenError("La langue de cette session tandem a changé. Recommencez le tandem.");
     }
     const prompts = await sql.query(
