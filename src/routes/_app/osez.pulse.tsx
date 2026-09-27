@@ -90,11 +90,8 @@ function PulsePage() {
       const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
       setOffline(isOffline);
     }
-    if (!timerAvailable) {
-      // Keep the exercise usable when the API is unavailable, but do not
-      // create a reward-bearing completion event without server evidence.
-      return;
-    }
+    // The local clock is display-only. It keeps the exercise usable during a
+    // transient outage, but only a server session can produce reward-bearing time.
     timer.current = window.setInterval(() => {
       setElapsed(Math.floor((Date.now() - startedAt.current) / 1000));
     }, 250);
@@ -163,7 +160,12 @@ function PulsePage() {
         {phase === "recording" ? (
           <div className="mt-8 space-y-4">
             <p className="font-display text-4xl tabular-nums text-primary">{elapsed}s</p>
-            <Button className="w-full" variant="secondary" onClick={finish}>
+            <p className="text-xs text-muted">
+              {serverTimerAvailable
+                ? "Temps certifié par le serveur."
+                : "Temps affiché localement ; aucune durée ne sera créditée sans validation serveur."}
+            </p>
+            <Button className="w-full" variant="secondary" disabled={closing} onClick={() => void finish()}>
               {closing ? "Clôture…" : "Terminer"}
             </Button>
           </div>
@@ -174,9 +176,11 @@ function PulsePage() {
             <div className="flex items-center gap-2 text-primary">
               <Check className="size-5" />
               <span className="font-medium">
-                {offline
-                  ? "Enregistré hors connexion — sera synchronisé."
-                  : `Environ ${elapsed}s de courage. La terre s'en souvient.`}
+                {!serverTimerAvailable
+                  ? "Pratique enregistrée sans durée certifiée. Aucun crédit de temps n’a été attribué."
+                  : offline
+                    ? "Session serveur terminée ; la connexion locale était indisponible après la mesure."
+                    : `Environ ${elapsed}s de courage. La terre s'en souvient.`}
               </span>
             </div>
             <div className="flex gap-2">
