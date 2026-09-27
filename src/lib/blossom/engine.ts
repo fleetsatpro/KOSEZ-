@@ -119,8 +119,15 @@ export const STAGE_REQUIREMENTS: Record<
   independent: { missions: 24, speak: 8, pronlab: 6 },
 };
 
+export function isConfirmedActivity(event: ActivityEvent): boolean {
+  return event.metadata?.syncState !== "pending";
+}
+
 export function pointsFromLog(log: ActivityEvent[]): number {
-  return log.reduce((sum, event) => sum + POINTS[event.type], 0);
+  return log.reduce(
+    (sum, event) => sum + (isConfirmedActivity(event) ? POINTS[event.type] : 0),
+    0,
+  );
 }
 
 export function stageFromPoints(points: number) {
@@ -157,7 +164,9 @@ export function stageFromLog(log: ActivityEvent[]) {
 }
 
 export function countByType(log: ActivityEvent[], type: ActivityType): number {
-  return log.filter((event) => event.type === type).length;
+  return log.filter(
+    (event) => event.type === type && isConfirmedActivity(event),
+  ).length;
 }
 
 export function hasSource(log: ActivityEvent[], sourceId: string, type?: ActivityType): boolean {
