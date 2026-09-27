@@ -1,14 +1,16 @@
 import { createRouter, Link } from "@tanstack/react-router";
 import { AppErrorComponent } from "@/lib/error-component";
+import { useMessages } from "@/lib/i18n";
 import { routeTree } from "./routeTree.gen";
 
 function NotFound() {
+  const m = useMessages();
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-bg px-6 text-center text-fg">
-      <p className="font-display text-2xl tracking-tight">Page introuvable</p>
-      <p className="mt-2 text-sm text-muted">Ce chemin n'existe pas dans le voyage.</p>
+      <p className="font-display text-2xl tracking-tight">{m.errors.notFound}</p>
+      <p className="mt-2 text-sm text-muted">{m.errors.notFoundDetail}</p>
       <Link to="/" className="mt-6 text-sm text-primary">
-        Retour à BLOSSOM
+        {m.errors.backToBlossom}
       </Link>
     </main>
   );
