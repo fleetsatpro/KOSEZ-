@@ -59,12 +59,22 @@ function Review() {
     [plan.due, fallback],
   );
   const [queue, setQueue] = useState<ScheduledReviewItem[]>(() => initial);
-  const [sessionTotal] = useState(() => Math.max(initial.length, 1));
+  const [sessionTotal, setSessionTotal] = useState(() => Math.max(initial.length, 1));
   const [revealed, setRevealed] = useState(false);
   const [done, setDone] = useState(false);
   const [reviewed, setReviewed] = useState(0);
   const [misses, setMisses] = useState<Record<string, number>>({});
   const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
+
+  useEffect(() => {
+    setQueue(initial);
+    setSessionTotal(Math.max(initial.length, 1));
+    setReviewed(0);
+    setMisses({});
+    setRevealed(false);
+    setDone(false);
+    setCeremony(null);
+  }, [languageId]);
 
   const current = queue[0];
   const total = sessionTotal;
