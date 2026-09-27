@@ -147,3 +147,66 @@ test("pending activity cannot create causal mineral pressure", () => {
   assert.equal(result.minerals.parole, 0);
   assert.equal(result.mission.reasons.some((reason) => reason.code === "balanced"), true);
 });
+
+
+test("mission influence ignores friction from another learning language", () => {
+  const now = new Date().toISOString();
+  const enSession = {
+    missionId: "mission-en",
+    languageId: "en" as const,
+    runs: [{
+      id: "en-run",
+      mode: "practice" as const,
+      challenge: "core" as const,
+      startedAt: now,
+      lastUpdatedAt: now,
+      attempts: [],
+      reflection: {
+        objectiveAchieved: false,
+        stayedInTargetLanguage: "no" as const,
+        confidence: 2,
+        friction: "switching" as const,
+      },
+      completedAt: now,
+      supportUsed: false,
+    }],
+    activeRunId: "en-run",
+  };
+  const esSession = {
+    missionId: "mission-es",
+    languageId: "es" as const,
+    runs: [{
+      id: "es-run",
+      mode: "practice" as const,
+      challenge: "core" as const,
+      startedAt: now,
+      lastUpdatedAt: now,
+      attempts: [],
+      reflection: {
+        objectiveAchieved: true,
+        stayedInTargetLanguage: "yes" as const,
+        confidence: 5,
+        friction: "none" as const,
+      },
+      completedAt: now,
+      supportUsed: false,
+    }],
+    activeRunId: "es-run",
+  };
+  const result = computeInfluence({
+    log: [],
+    attempts: [],
+    allItems: [],
+    growthEvents: [],
+    phonemeLeaves: [],
+    missionSessions: {
+      en: enSession,
+      es: esSession,
+    },
+    memory: neutralMemory,
+    memoryOn: false,
+    languageId: "es",
+  });
+  assert.equal(result.mission.reasons.some((reason) => reason.code === "mission-friction"), false);
+  assert.equal(result.mission.reasons.some((reason) => reason.code === "mission-outcome" && /même geste|passage n/.test(reason.line)), false);
+});
