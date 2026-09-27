@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookOpen, Calendar, CalendarClock, Sparkles } from "lucide-react";
 import { LanguageSettings } from "@/components/app/language-settings";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
@@ -20,6 +20,7 @@ import {
   organismStatusLine,
 } from "@/lib/blossom/organism";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
+import { activityBelongsToLanguage } from "@/lib/blossom/engine";
 import { LeoLetterCard } from "@/components/app/leo-letter-card";
 import { formatShortDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -87,6 +88,14 @@ function MoiPage() {
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
+  const languageId = useBlossom((s) => s.languageId);
+  const scopedGrowthEvents = useMemo(
+    () => growthEvents.filter((event) => {
+      const tagged = event.languageId;
+      return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+    }),
+    [growthEvents, languageId],
+  );
   const memoryOn = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
   const completeHomework = useBlossom((s) => s.completeHomework);
@@ -244,7 +253,7 @@ function MoiPage() {
         </p>
       </section>
 
-      <OrganismMineralsPanel minerals={minerals} growthEvents={growthEvents} />
+      <OrganismMineralsPanel minerals={minerals} growthEvents={scopedGrowthEvents} />
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         <Surface className="!p-5">
