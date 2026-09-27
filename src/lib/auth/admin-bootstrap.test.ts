@@ -37,7 +37,7 @@ describe("admin bootstrap fail-closed", () => {
 });
 
 
-test("bootstrap promotion requires verified email", async () => {
+it("bootstrap promotion requires verified email", async () => {
   const mod = await import("../lib/blossom/admin-roles.server.ts");
   process.env.ADMIN_BOOTSTRAP_EMAILS = "ops@example.com";
   process.env.DATABASE_URL = "postgres://example.invalid/db";
