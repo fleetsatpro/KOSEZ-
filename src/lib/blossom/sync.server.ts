@@ -144,7 +144,7 @@ async function claimMutation(
   if (status === "applied" || status === "conflict" || status === "rejected") return "duplicate";
 
   const claimed = await sql.query(
-    "update blossom_sync_mutation set status = 'processing', updated_at = current_timestamp where mutation_id = $1::uuid and user_id = $2 and (status = 'pending' or (status = 'processing' and updated_at < current_timestamp - interval '2 minutes')) returning mutation_id",
+    "update blossom_sync_mutation set status = 'processing', updated_at = current_timestamp where mutation_id = $1::uuid and user_id = $2 and (status = 'pending' or (status = 'processing' and updated_at < current_timestamp - interval '5 minutes')) returning mutation_id",
     [mutation.mutationId, userId],
   );
   return claimed[0] ? "claimed" : "busy";
