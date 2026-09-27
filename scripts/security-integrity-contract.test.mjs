@@ -81,6 +81,9 @@ test("activity mutations are enum-gated and pass through server integrity checks
   assert.match(domain, /teacher\.note-save/);
   assert.match(domain, /homework\.complete/);
   assert.match(domain, /learning\.submission/);
+  assert.match(domain, /m\.role <> 'learner'/);
+  assert.match(domain, /g\.teacher_user_id = \$2/);
+  assert.match(sync, /updated_at < current_timestamp - interval '5 minutes'/);
   assert.match(domainApi, /ensureBootstrapAdmin\(context\.userId, identity\.email, identity\.emailVerified\)/);
 });
 
