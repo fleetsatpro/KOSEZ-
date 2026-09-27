@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buildReviewPlan } from "./review-scheduler.ts";
+import { setsForLanguage } from "./data.ts";
 import type { LearningSubmission } from "./store.ts";
 
 const iso = (daysAgo: number) => {
@@ -71,4 +72,50 @@ test("a failed review collapses the next interval to one day", () => {
   const item = plan.due.find((entry) => entry.sourceKey === "vocab:recommend");
   assert.ok(item);
   assert.equal(item.intervalDays, 1);
+});
+
+
+test("review plan isolates Pron'Lab, vocabulary and review history by language", () => {
+  const esItem = setsForLanguage("es").flatMap((set) => set.items)[0]!;
+  const enItem = setsForLanguage("en").flatMap((set) => set.items)[0]!;
+  const attempts = [
+    {
+      id: "es-attempt",
+      itemId: esItem.id,
+      score: 0,
+      seconds: 4,
+      createdAt: "2026-09-20T10:00:00.000Z",
+    },
+    {
+      id: "en-attempt",
+      itemId: enItem.id,
+      score: 0,
+      seconds: 4,
+      createdAt: "2026-09-20T10:00:00.000Z",
+    },
+  ];
+  const submissions: LearningSubmission[] = [
+    {
+      id: "es-review",
+      taskId: `pron:${esItem.id}`,
+      kind: "review",
+      content: "again",
+      checks: ["again"],
+      result: { correct: false, languageId: "es" },
+      createdAt: "2026-09-21T10:00:00.000Z",
+      updatedAt: "2026-09-21T10:00:00.000Z",
+    },
+  ];
+  const vocabulary = [
+    { word: "hola", gloss: "bonjour", metadata: { languageId: "es" } },
+    { word: "hello", gloss: "bonjour", metadata: { languageId: "en" } },
+  ];
+
+  const es = buildReviewPlan(submissions, attempts, vocabulary, "2026-09-22T12:00:00.000Z", "es");
+  const en = buildReviewPlan(submissions, attempts, vocabulary, "2026-09-22T12:00:00.000Z", "en");
+
+  assert.ok(es.due.some((item) => item.sourceKey === `pron:${esItem.id}`));
+  assert.ok(!en.due.some((item) => item.sourceKey === `pron:${esItem.id}`));
+  assert.ok(es.due.some((item) => item.sourceKey === "vocab:hola"));
+  assert.ok(!en.due.some((item) => item.sourceKey === "vocab:hola"));
 });
