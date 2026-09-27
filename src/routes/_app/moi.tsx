@@ -89,6 +89,10 @@ function MoiPage() {
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
   const languageId = useBlossom((s) => s.languageId);
+  const scopedLog = useMemo(
+    () => log.filter((event) => activityBelongsToLanguage(event, languageId)),
+    [log, languageId],
+  );
   const scopedGrowthEvents = useMemo(
     () => growthEvents.filter((event) => {
       const tagged = event.languageId;
@@ -109,9 +113,9 @@ function MoiPage() {
     missions: journey.missions.current,
     speak: journey.speak.current,
     pronlab: journey.pronlab.current,
-    tandem: countByType(log, "TANDEM_COMPLETED"),
+    tandem: countByType(scopedLog, "TANDEM_COMPLETED"),
   });
-  const cells = courageRibbon(courageDaysFromLog(log));
+  const cells = courageRibbon(courageDaysFromLog(scopedLog));
   const spoken = cells.filter(Boolean).length;
   const leoLine = organismStatusLine(minerals);
   const plantSrc = PLANT_IMAGE[journey.stage.id];
