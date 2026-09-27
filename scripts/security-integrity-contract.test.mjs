@@ -24,7 +24,7 @@ test("activity mutations are enum-gated and pass through server integrity checks
   assert.match(integrity, /activity-language-mismatch/);
   assert.match(sync, /activeLanguageId/);
   assert.match(sync, /targetLanguage: z\.enum/);
-  assert.match(sync, /mission-completion-without-prior-session/);
+  assert.match(integrity, /mission-completion-without-prior-session/);
   assert.match(sync, /assertMissionSessionMutation/);
   assert.match(api, /z\.enum\(ACTIVITY_EVENT_TYPES\)/);
   assert.match(api, /await assertActivityAppend\(/);
