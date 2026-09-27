@@ -207,12 +207,14 @@ export const auth = betterAuth({
     encryptOAuthTokens: true,
     accountLinking: {
       enabled: true,
+      // Trusted providers are still available for explicit linkSocial flows,
+      // but OAuth sign-in must never implicitly attach an unverified identity
+      // to an existing account.
+      disableImplicitLinking: true,
       trustedProviders: [
         ...GROK_PROVIDERS.map((p) => p.providerId),
         GATE_PROVIDER_ID,
       ],
-      // X's synthetic email is never "verified", so don't gate linking on the
-      // local user's email-verified state.
       requireLocalEmailVerified: false,
     },
   },
