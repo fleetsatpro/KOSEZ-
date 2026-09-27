@@ -16,6 +16,8 @@ export const SYNC_OPERATIONS = [
   "vocabulary.upsert",
   "event.register",
   "challenge.complete",
+  "library.start",
+  "library.complete",
   "tandem.status",
   "tandem.report",
   "learning.submission",
