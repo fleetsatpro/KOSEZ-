@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, Check, GraduationCap, Headphones, PenLine, RotateCcw, Sparkles, Target } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
+import { LearningSurfaceGate } from "@/components/app/learning-surface-gate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure, speakSyntheticEnglish, type LabLevel } from "@/lib/blossom/lab-content";
@@ -16,7 +17,13 @@ import {
   readCurriculumLessonContext,
 } from "@/lib/blossom/curriculum-context";
 
-export const Route = createFileRoute("/_app/learn/labs")({ component: LearningLabs });
+export const Route = createFileRoute("/_app/learn/labs")({
+  component: () => (
+    <LearningSurfaceGate surface="labs">
+      <LearningLabs />
+    </LearningSurfaceGate>
+  ),
+});
 
 type Lab = "grammar" | "listening" | "writing" | "diagnostic";
 type CeremonyState = {
