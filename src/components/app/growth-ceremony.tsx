@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { GrowthEvent, MineralSnapshot } from "@/lib/blossom/organism";
 import { causalNextGesture, type MineralKey } from "@/lib/blossom/organism";
@@ -64,6 +64,7 @@ export function GrowthCeremony({
   className?: string;
 }) {
   const [phase, setPhase] = useState<"enter" | "hold" | "exit">("enter");
+  const closeRef = useRef<HTMLButtonElement | null>(null);
   const eventId = event?.id;
   const eventIntensity = event?.intensity ?? 0;
 
@@ -72,17 +73,25 @@ export function GrowthCeremony({
     setPhase("enter");
     const intensity = Math.min(1, Math.max(0.2, eventIntensity));
     const holdMs = 380 + Math.round(intensity * 180);
-    const totalMs = 3200 + Math.round(intensity * 1800);
     const hold = window.setTimeout(() => setPhase("hold"), holdMs);
-    const auto = window.setTimeout(() => {
-      setPhase("exit");
-      window.setTimeout(onDismiss, 360);
-    }, totalMs);
+    const focus = window.setTimeout(() => closeRef.current?.focus(), holdMs + 50);
     return () => {
       window.clearTimeout(hold);
-      window.clearTimeout(auto);
+      window.clearTimeout(focus);
     };
-  }, [open, eventId, eventIntensity, onDismiss]);
+  }, [open, eventId, eventIntensity]);
+  
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setPhase("exit");
+      window.setTimeout(onDismiss, 320);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onDismiss]);
 
   const meta = event ? KIND_META[event.kind] : null;
 
@@ -102,8 +111,9 @@ export function GrowthCeremony({
   return (
     <div
       role="dialog"
+      role="dialog"
       aria-modal="true"
-      aria-label="Cérémonie de croissance"
+      aria-labelledby="growth-ceremony-title"
       className={cn(
         "fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center",
         className,
@@ -156,7 +166,7 @@ export function GrowthCeremony({
           <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.22em] text-subtle">
             {meta.title} · intensité {Math.round(event.intensity * 100)}%
           </p>
-          <h2 className="mt-2 font-display text-2xl tracking-tight text-fg">
+          <h2 id="growth-ceremony-title" className="mt-2 font-display text-2xl tracking-tight text-fg">
             {event.label}
           </h2>
           <p className="mt-2 text-sm leading-6 text-muted">{meta.whisper}</p>
@@ -196,6 +206,7 @@ export function GrowthCeremony({
           <CausalDoor minerals={minerals} onNavigate={onDismiss} />
 
           <button
+            ref={closeRef}
             type="button"
             onClick={() => {
               setPhase("exit");
