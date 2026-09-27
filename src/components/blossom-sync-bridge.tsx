@@ -98,7 +98,7 @@ function mergeBackendState(remote: BackendState): void {
   for (const event of remote.activity) {
     if (!isActivityType(event.eventType)) continue;
     const rawMetadata = event.payload.metadata;
-    const activityMetadata =
+    const activityMetadata: ActivityEvent["metadata"] =
       rawMetadata && typeof rawMetadata === "object" && !Array.isArray(rawMetadata)
         ? Object.fromEntries(
             Object.entries(rawMetadata).filter(
@@ -107,7 +107,7 @@ function mergeBackendState(remote: BackendState): void {
                 typeof value === "number" ||
                 typeof value === "boolean",
             ),
-          )
+          ) as ActivityEvent["metadata"]
         : undefined;
     const mapped: ActivityEvent = {
       id: event.id,
