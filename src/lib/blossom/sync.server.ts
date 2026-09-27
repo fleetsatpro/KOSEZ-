@@ -24,6 +24,7 @@ import { reportTandem } from "./safety.server";
 import { SYNC_OPERATIONS, type SyncJsonObject, type SyncMutation, type SyncResult } from "./sync-types";
 import { CURRICULUM_UNITS, type LessonKind } from "./learning-os";
 import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure } from "./lab-content";
+import { TODAY_MISSION, setsForLanguage } from "./data";
 import {
   ACTIVITY_EVENT_TYPES,
   assertActivityAppend,
@@ -454,8 +455,8 @@ async function applyMutation(
     }
     case "learning.submission": {
       const payload = submissionPayloadSchema.parse(mutation.payload);
-      const validated = validateLearningSubmission(payload);
       const languageId = await activeLanguageId(userId);
+      const validated = await validateLearningSubmission(userId, payload, languageId);
       await saveLearningSubmission(userId, {
         id: mutation.mutationId,
         taskId: payload.taskId,
