@@ -434,6 +434,12 @@ async function applyMutation(
     case "challenge.complete":
       await completeChallenge(userId, mutation.entityId);
       return { mutationId: mutation.mutationId, status: "applied" };
+    case "library.start":
+      await assertLibraryReadingMutation(userId, mutation.entityId, "start", mutation.createdAt);
+      return { mutationId: mutation.mutationId, status: "applied" };
+    case "library.complete":
+      await assertLibraryReadingMutation(userId, mutation.entityId, "complete", mutation.createdAt);
+      return { mutationId: mutation.mutationId, status: "applied" };
     case "tandem.status": {
       const payload = tandemPayloadSchema.parse(mutation.payload);
       await setTandemStatus(userId, {
