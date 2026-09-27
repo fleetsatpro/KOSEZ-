@@ -5,6 +5,7 @@ import { track } from "@/lib/analytics";
 import { createMutation, enqueueMutation } from "./sync-client";
 import type { SyncJsonValue } from "./sync-types";
 import {
+  activityBelongsToLanguage,
   hasSource,
   journeySnapshot,
   summarisePronlabItem,
@@ -219,6 +220,13 @@ function voidMissionSync(
   return { ...currentRevisions, [missionId]: expectedRevision + 1 };
 }
 
+function activeLanguageActivityLog(
+  log: ActivityEvent[],
+  languageId: LearnLanguageId,
+): ActivityEvent[] {
+  return log.filter((event) => activityBelongsToLanguage(event, languageId));
+}
+
 function localTimezone(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -390,9 +398,10 @@ export const useBlossom = create<AppState>()(
       completeActivity: (type, sourceId, note, metadata) => {
         const current = get();
         const log = current.activityLog;
-        if (hasSource(log, sourceId, type)) return { ok: false, reason: "already" };
-        const before = journeySnapshot(log).stage.id;
-        const previousMinerals = computeMinerals(log);
+        const scopedLog = activeLanguageActivityLog(log, current.languageId);
+        if (hasSource(scopedLog, sourceId, type)) return { ok: false, reason: "already" };
+        const before = journeySnapshot(scopedLog).stage.id;
+        const previousMinerals = computeMinerals(scopedLog);
         const mutation = createMutation({
           operation: "activity.append",
           entityId: sourceId,
@@ -418,8 +427,11 @@ export const useBlossom = create<AppState>()(
         };
         const nextLog = [...log, event];
         const ge = growthEventForActivity(type, sourceId, event.createdAt);
-        const growthEvents = ge ? pushGrowthEvent(get().growthEvents, ge) : get().growthEvents;
-        const mineralSnapshot = computeMinerals(nextLog);
+        const languageGrowthEvent = ge ? { ...ge, languageId: current.languageId } : null;
+        const growthEvents = languageGrowthEvent
+          ? pushGrowthEvent(get().growthEvents, languageGrowthEvent)
+          : get().growthEvents;
+        const mineralSnapshot = computeMinerals(activeLanguageActivityLog(nextLog, current.languageId));
         const phonemeLeaves = buildPhonemeLeaves(
           current.pronlabAttempts,
           setsForLanguage(current.languageId).flatMap((setDef) => setDef.items),
@@ -429,7 +441,7 @@ export const useBlossom = create<AppState>()(
         if (!leoLetters.some((l) => l.id === letter.id)) leoLetters = [letter, ...leoLetters].slice(0, 12);
         set({ activityLog: nextLog, growthEvents, mineralSnapshot, phonemeLeaves, leoLetters });
         void enqueueMutation(mutation);
-        const after = journeySnapshot(nextLog).stage.id;
+        const after = journeySnapshot(activeLanguageActivityLog(nextLog, current.languageId)).stage.id;
         if (type === "MISSION_COMPLETED") track("mission_completed");
         if (type === "SPEAK_COMPLETED") track("speak_completed");
         if (type === "PRONLAB_COMPLETED") track("pronlab_attempted");
@@ -728,7 +740,9 @@ export const useBlossom = create<AppState>()(
       },
       refreshOrganism: () => {
         const current = get();
-        const mineralSnapshot = computeMinerals(current.activityLog);
+        const mineralSnapshot = computeMinerals(
+          activeLanguageActivityLog(current.activityLog, current.languageId),
+        );
         const phonemeLeaves = buildPhonemeLeaves(
           current.pronlabAttempts,
           setsForLanguage(current.languageId).flatMap((setDef) => setDef.items),
@@ -782,8 +796,11 @@ export const useBlossom = create<AppState>()(
 );
 
 export function useJourney() {
-  const log = useBlossom((s) => s.activityLog);
-  return journeySnapshot(log);
+  const { activityLog, languageId } = useBlossom((s) => ({
+    activityLog: s.activityLog,
+    languageId: s.languageId,
+  }));
+  return journeySnapshot(activeLanguageActivityLog(activityLog, languageId));
 }
 
 export function isSetUnlocked(setId: string, attempts: PronlabAttempt[], assigned: string[]): boolean {
