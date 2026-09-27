@@ -1,4 +1,4 @@
-import { PRONLAB_SETS, TODAY_MISSION } from "./data.ts";
+import { setsForLanguage, TODAY_MISSION } from "./data.ts";
 import { summarisePronlabItem, type PronlabAttempt } from "./engine.ts";
 import type { LearningSubmission } from "./store.ts";
 import type { ReviewItem } from "./learning-os.ts";
@@ -70,10 +70,12 @@ export function buildReviewPlan(
   attempts: PronlabAttempt[],
   vocabulary: Array<{ word: string; gloss: string; firstSavedAt?: string; updatedAt?: string }>,
   now = new Date().toISOString(),
+  languageId = "en",
 ): ReviewPlan {
   const items: ScheduledReviewItem[] = [];
 
-  const pronItems = PRONLAB_SETS.flatMap((set) => set.items);
+  // Target-language isolation: only Pron'Lab items for the active learning language.
+  const pronItems = setsForLanguage(languageId).flatMap((set) => set.items);
   for (const item of pronItems) {
     const summary = summarisePronlabItem(item.id, attempts);
     if (!summary.attemptCount) continue;
