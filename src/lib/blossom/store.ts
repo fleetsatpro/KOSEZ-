@@ -39,7 +39,11 @@ import {
 } from "./data";
 import {
   buildPhonemeLeaves,
+  composeLeoLetter,
   computeMinerals,
+  growthEventForActivity,
+  isConfirmedActivity,
+  pushGrowthEvent,
   type GrowthEvent,
   type LeoLetter,
   type MineralSnapshot,
@@ -858,6 +862,25 @@ export const useBlossom = create<AppState>()(
       },
       refreshOrganism: () => {
         const current = get();
+        const confirmedActivity = current.activityLog
+          .filter(isConfirmedActivity)
+          .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+        const rebuiltGrowth = confirmedActivity.reduce<GrowthEvent[]>(
+          (events, event) => {
+            const growth = growthEventForActivity(
+              event.type,
+              event.sourceId,
+              event.createdAt,
+            );
+            if (!growth) return events;
+            const tagged = event.metadata?.languageId;
+            return pushGrowthEvent(events, {
+              ...growth,
+              languageId: typeof tagged === "string" ? tagged : "en",
+            });
+          },
+          [],
+        );
         const mineralSnapshot = computeMinerals(
           activeLanguageActivityLog(current.activityLog, current.languageId),
         );
@@ -865,7 +888,21 @@ export const useBlossom = create<AppState>()(
           current.pronlabAttempts,
           setsForLanguage(current.languageId).flatMap((setDef) => setDef.items),
         );
-        set({ mineralSnapshot, phonemeLeaves });
+        let leoLetters = current.leoLetters;
+        const latestLetter = composeLeoLetter(
+          mineralSnapshot,
+          rebuiltGrowth,
+          current.learner.firstName,
+        );
+        if (!leoLetters.some((letter) => letter.id === latestLetter.id)) {
+          leoLetters = [latestLetter, ...leoLetters].slice(0, 12);
+        }
+        set({
+          growthEvents: rebuiltGrowth,
+          mineralSnapshot,
+          phonemeLeaves,
+          leoLetters,
+        });
       },
       resetJourney: () => {
         set({
