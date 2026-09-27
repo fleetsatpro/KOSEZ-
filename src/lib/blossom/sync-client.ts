@@ -8,6 +8,10 @@ const OUTBOX_FALLBACK_KEY = "kosez-blossom-outbox-v1";
 const DEVICE_KEY = "kosez-blossom-device-id";
 const CHANGE_EVENT = "kosez:sync-needed";
 let activeOwnerId: string | null = null;
+// Ownerless mutations can be created during the short auth-hydration window.
+// They may only be claimed by the first authenticated owner in that same page
+// session; signing out rotates the claim window so a later user cannot inherit it.
+let ownerlessScopeStartedAtMs = Date.now();
 const enqueueQueue = createSerialQueue();
 const MUTATION_CLOCK_KEY = "kosez-blossom-mutation-clock-v1";
 let lastMutationCreatedAtMs = 0;
@@ -72,6 +76,49 @@ function emitSyncNeeded(): void {
   }
 }
 
+async function bindOwnerlessMutations(
+  userId: string,
+  scopeStartedAtMs: number,
+): Promise<void> {
+  const cutoff = scopeStartedAtMs;
+  if (hasIndexedDb()) {
+    try {
+      const rows = await txRequest<StoredMutation[]>("readonly", (store) => store.getAll());
+      const claimable = rows.filter(
+        (row) =>
+          row.state === "pending" &&
+          !row.ownerUserId &&
+          Number.isFinite(Date.parse(row.createdAt)) &&
+          Date.parse(row.createdAt) >= cutoff,
+      );
+      for (const row of claimable) {
+        row.ownerUserId = userId;
+        await txRequest("readwrite", (store) => store.put(row));
+      }
+    } catch {
+      // Fall through to localStorage.
+    }
+  }
+  const fallback = readFallback();
+  if (fallback.length) {
+    let changed = false;
+    const claimed = fallback.map((row) => {
+      if (
+        row.state === "pending" &&
+        !row.ownerUserId &&
+        Number.isFinite(Date.parse(row.createdAt)) &&
+        Date.parse(row.createdAt) >= cutoff
+      ) {
+        changed = true;
+        return { ...row, ownerUserId: userId };
+      }
+      return row;
+    });
+    if (changed) writeFallback(claimed);
+  }
+  emitSyncNeeded();
+}
+
 function openDb(): Promise<IDBDatabase> {
   if (!hasIndexedDb()) return Promise.reject(new Error("indexeddb-unavailable"));
   return new Promise((resolve, reject) => {
@@ -129,6 +176,12 @@ export function syncChangeEventName(): string {
 }
 
 export function setSyncOwner(userId: string | null): void {
+  if (activeOwnerId && !userId) {
+    ownerlessScopeStartedAtMs = Date.now();
+  }
+  if (!activeOwnerId && userId) {
+    void bindOwnerlessMutations(userId, ownerlessScopeStartedAtMs);
+  }
   activeOwnerId = userId;
   emitSyncNeeded();
 }
