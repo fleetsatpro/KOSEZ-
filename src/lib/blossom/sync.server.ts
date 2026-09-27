@@ -28,6 +28,7 @@ import { TODAY_MISSION, setsForLanguage } from "./data";
 import {
   ACTIVITY_EVENT_TYPES,
   assertActivityAppend,
+  assertLibraryReadingMutation,
   assertMissionSessionMutation,
 } from "./activity-integrity.server";
 import { isLearnLanguageId } from "@/lib/i18n/locales";
