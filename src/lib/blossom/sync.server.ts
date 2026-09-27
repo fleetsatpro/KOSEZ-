@@ -209,7 +209,11 @@ const submissionPayloadSchema = z.object({
   result: z.record(z.string(), z.unknown()).optional(),
 });
 
-function validateLearningSubmission(payload: z.infer<typeof submissionPayloadSchema>) {
+async function validateLearningSubmission(
+  userId: string,
+  payload: z.infer<typeof submissionPayloadSchema>,
+  languageId: string,
+) {
   if (payload.kind === "grammar") {
     const task = GRAMMAR_TASKS.find((item) => item.id === payload.taskId);
     if (!task) throw new Error("unknown-grammar-task");
@@ -254,10 +258,56 @@ function validateLearningSubmission(payload: z.infer<typeof submissionPayloadSch
       },
     };
   }
-  return {
-    checks: payload.checks ?? [],
-    result: payload.result ?? {},
-  };
+
+  if (payload.kind === "review") {
+    const expectedChecks = [payload.content === "correct" ? "correct" : payload.content === "again" ? "again" : ""];
+    if (!expectedChecks[0]) throw new Error("forged-review-answer");
+    if (JSON.stringify(payload.checks ?? []) !== JSON.stringify(expectedChecks)) {
+      throw new Error("forged-review-checks");
+    }
+
+    if (payload.taskId.startsWith("pron:")) {
+      const itemId = payload.taskId.slice("pron:".length);
+      const activeItemIds = new Set(
+        setsForLanguage(languageId).flatMap((setDef) => setDef.items.map((item) => item.id)),
+      );
+      if (!activeItemIds.has(itemId)) throw new Error("unknown-review-source");
+      const attempts = await getSql().then((sql) =>
+        sql.query(
+          "select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 limit 1",
+          [userId, itemId],
+        ),
+      );
+      if (!attempts[0]) throw new Error("review-pron-without-attempt");
+    } else if (payload.taskId.startsWith("vocab:")) {
+      const word = payload.taskId.slice("vocab:".length).trim().toLowerCase();
+      if (!word || word.length > 120) throw new Error("unknown-review-source");
+      const rows = await getSql().then((sql) =>
+        sql.query(
+          "select 1 from blossom_vocabulary where user_id = $1 and language_id = $2 and word = $3 limit 1",
+          [userId, languageId, word],
+        ),
+      );
+      if (!rows[0]) throw new Error("review-vocab-without-word");
+    } else if (payload.taskId.startsWith("mission:")) {
+      const phrase = payload.taskId.slice("mission:".length);
+      const known = languageId === "en" && (TODAY_MISSION.scene?.languageKit ?? []).some((kit) => kit.phrase === phrase);
+      if (!known) throw new Error("unknown-review-source");
+    } else {
+      throw new Error("unknown-review-source");
+    }
+
+    return {
+      checks: expectedChecks,
+      result: {
+        ...objectValue(payload.result),
+        correct: payload.content === "correct",
+        sourceKind: payload.taskId.split(":")[0],
+      },
+    };
+  }
+
+  throw new Error("unsupported-learning-submission-kind");
 }
 
 const profilePayloadSchema = z.object({
