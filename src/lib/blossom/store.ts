@@ -681,7 +681,7 @@ export const useBlossom = create<AppState>()(
         });
         const mutation = createMutation({
           operation: "teacher.homework",
-          entityId: current.studentId,
+          entityId: id,
           payload: {
             id,
             learnerUserId: current.studentId,
@@ -780,7 +780,10 @@ export const useBlossom = create<AppState>()(
           current.pronlabAttempts,
           setsForLanguage(id).flatMap((setDef) => setDef.items),
         );
-        set({ languageId: id, learner, phonemeLeaves });
+        const mineralSnapshot = computeMinerals(
+          activeLanguageActivityLog(current.activityLog, id),
+        );
+        set({ languageId: id, learner, phonemeLeaves, mineralSnapshot });
         voidProfileSync(learner, id, current.plan, current.warmup, current.exportConsent, current.tandemOpen);
         track("language_changed", { languageId: id });
       },
