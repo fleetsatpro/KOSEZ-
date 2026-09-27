@@ -63,6 +63,7 @@ export type BlossomVocabularyRecord = {
   word: string;
   gloss: string;
   metadata: JsonObject;
+  languageId: string;
   firstSavedAt: string;
   updatedAt: string;
 };
@@ -173,7 +174,7 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
       [userId],
     ),
     sql.query(
-      "select word, gloss, metadata, first_saved_at, updated_at from blossom_vocabulary where user_id = $1 order by updated_at desc",
+      "select word, gloss, metadata, language_id, first_saved_at, updated_at from blossom_vocabulary where user_id = $1 order by updated_at desc",
       [userId],
     ),
     sql.query(
@@ -253,7 +254,11 @@ export async function readBlossomState(userId: string): Promise<BlossomBackendSt
     vocabulary: vocabulary.map((row) => ({
       word: String(row.word),
       gloss: String(row.gloss),
-      metadata: jsonObject(row.metadata),
+      metadata: {
+        ...jsonObject(row.metadata),
+        languageId: String(row.language_id),
+      },
+      languageId: String(row.language_id),
       firstSavedAt: iso(row.first_saved_at),
       updatedAt: iso(row.updated_at),
     })),
