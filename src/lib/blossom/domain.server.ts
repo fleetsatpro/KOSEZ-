@@ -732,6 +732,9 @@ export async function recordPronlabAttempt(
   if (!knownItem || !activeItems.has(input.itemId)) {
     throw new BlossomForbiddenError("Cet exercice Pron'Lab n'est pas disponible pour votre langue active.");
   }
+  if (!Number.isFinite(input.seconds) || input.seconds <= 0) {
+    throw new BlossomForbiddenError("Une prise Pron'Lab doit contenir une durée positive.");
+  }
 
   const recordId = input.idempotencyKey ?? randomUUID();
   const metadata = input.metadata ?? {};
