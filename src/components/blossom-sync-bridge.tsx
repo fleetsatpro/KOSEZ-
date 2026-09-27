@@ -36,8 +36,10 @@ function timestamp(value: string | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function localActivityKey(event: Pick<ActivityEvent, "id" | "sourceId">): string {
-  return event.sourceId ? `source:${event.sourceId}` : `id:${event.id}`;
+function localActivityKey(event: Pick<ActivityEvent, "id" | "sourceId" | "type">): string {
+  return event.sourceId
+    ? `${event.type}:source:${event.sourceId}`
+    : `${event.type}:id:${event.id}`;
 }
 
 function mergeBackendState(remote: BackendState): void {
@@ -124,6 +126,7 @@ function mergeBackendState(remote: BackendState): void {
       tip: attempt.tip ?? "",
       createdAt: attempt.createdAt,
       seconds: attempt.seconds,
+      metadata: attempt.metadata,
     });
   }
 
