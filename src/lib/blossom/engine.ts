@@ -280,6 +280,33 @@ export type TandemPartner = {
   avatar: string | null;
 };
 
+function normaliseTandemLanguage(value: string): string {
+  const normalized = value.trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+  const aliases: Record<string, string> = {
+    anglais: "en",
+    english: "en",
+    french: "fr",
+    francais: "fr",
+    français: "fr",
+    espagnol: "es",
+    spanish: "es",
+    portugues: "pt",
+    português: "pt",
+    portuguese: "pt",
+    italien: "it",
+    italian: "it",
+    allemand: "de",
+    deutsch: "de",
+    german: "de",
+    creole: "cr",
+    créole: "cr",
+    "creole reunionnais": "cr",
+    "créole réunionnais": "cr",
+    lsf: "lsf",
+  };
+  return aliases[normalized] ?? normalized;
+}
+
 export function tandemMatchScore(
   me: {
     speaks: string;
@@ -291,9 +318,11 @@ export function tandemMatchScore(
   partner: TandemPartner,
 ): number {
   let score = 0;
-  const langFit =
-    partner.speaks.toLowerCase().startsWith(me.wants.toLowerCase().slice(0, 3)) &&
-    partner.wants.toLowerCase().startsWith(me.speaks.toLowerCase().slice(0, 3));
+  const mySpeaks = normaliseTandemLanguage(me.speaks);
+  const myWants = normaliseTandemLanguage(me.wants);
+  const partnerSpeaks = normaliseTandemLanguage(partner.speaks);
+  const partnerWants = normaliseTandemLanguage(partner.wants);
+  const langFit = partnerSpeaks === myWants && partnerWants === mySpeaks;
   if (langFit) score += 40;
   const bands = ["A1", "A2", "B1", "B2", "C1", "C2"];
   const myBand = bands.indexOf(me.level);
