@@ -44,15 +44,15 @@ test("P0 identity reset clears the entire learner-scoped replica", () => {
 });
 
 test("P0 activity deduplication is type + source aware", () => {
-  assert.match(store, /hasSource\\(log, sourceId, type\\)/);
-  assert.match(bridge, /\\$\\{event\\.type\\}:source:\\$\\{event\\.sourceId\\}/);
+  assert.ok(store.includes("hasSource(log, sourceId, type)"));
+  assert.ok(bridge.includes("`${event.type}:source:${event.sourceId}`"));
 });
 
 test("P0 PronLab semantics stay language-scoped and verified-only for mastery growth", () => {
-  assert.match(store, /setsForLanguage\\(get\\(\\)\\.languageId\\)\\.flatMap/);
-  assert.match(store, /before\\.verifiedMastered && after\\.verifiedMastered/);
+  assert.ok(store.includes("setsForLanguage(get().languageId).flatMap"));
+  assert.ok(store.includes("!before.verifiedMastered && after.verifiedMastered"));
 });
 
 test("P0 bridge preserves remote PronLab evidence metadata", () => {
-  assert.match(bridge, /metadata: attempt\\.metadata/);
+  assert.ok(bridge.includes("metadata: attempt.metadata"));
 });
