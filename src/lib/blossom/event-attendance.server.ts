@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
+import { enforceRateLimit } from "./rate-limit.server";
 import { getPublishedContent } from "./content.server";
 import { BlossomForbiddenError, createNotification, writeAuditEvent } from "./domain.server";
 import { eventStartEpoch } from "./event-attendance";
@@ -18,7 +19,14 @@ export type AdminEventAttendanceRow = {
 async function assertAdmin(userId: string) {
   const sql = await getSql();
   const rows = await sql.query(
-    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    `select 1
+     from blossom_platform_admin
+     where user_id = $1 and status = 'active'
+     union all
+     select 1
+     from blossom_role_grant
+     where user_id = $1 and role = 'admin' and status = 'active'
+     limit 1`,
     [userId],
   );
   if (!rows[0]) throw new BlossomForbiddenError("Admin access is required.");
@@ -62,6 +70,7 @@ export async function recordEventAttendance(
   userId: string,
   input: { eventId: string; learnerUserId: string; note?: string },
 ) {
+  await enforceRateLimit(userId, "admin.event-attendance", 120, 60);
   await assertAdmin(userId);
   const { events } = await getPublishedContent();
   const event = events.find((entry) => entry.id === input.eventId);

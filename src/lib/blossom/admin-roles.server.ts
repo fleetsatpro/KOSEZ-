@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { isBootstrapAdminEmail } from "@/lib/auth/admin-bootstrap";
+import { enforceRateLimit } from "./rate-limit.server";
 
 class AdminForbiddenError extends Error {
   readonly status = 403;
@@ -187,6 +188,7 @@ export async function setUserPlatformRole(
   role: PlatformRole,
   active: boolean,
 ): Promise<{ ok: true }> {
+  await enforceRateLimit(actorUserId, "admin.role-change", 20, 60);
   await assertAdmin(actorUserId);
   if (!targetUserId.trim()) {
     throw new AdminForbiddenError("Invalid user id.");

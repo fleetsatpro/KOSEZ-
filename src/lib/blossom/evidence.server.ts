@@ -44,7 +44,14 @@ async function assertEvidenceAccess(actorUserId: string, learnerUserId: string) 
   if (actorUserId === learnerUserId) return;
   const sql = await getSql();
   const admin = await sql.query(
-    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    `select 1
+     from blossom_platform_admin
+     where user_id = $1 and status = 'active'
+     union all
+     select 1
+     from blossom_role_grant
+     where user_id = $1 and role = 'admin' and status = 'active'
+     limit 1`,
     [actorUserId],
   );
   if (admin[0]) return;

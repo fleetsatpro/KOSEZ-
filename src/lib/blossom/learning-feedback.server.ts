@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
+import { enforceRateLimit } from "./rate-limit.server";
 import type { JsonObject } from "./backend.server";
 import {
   BlossomForbiddenError,
@@ -151,6 +152,7 @@ export async function saveLearningFeedback(
     rubric?: Record<string, string | number | boolean | null>;
   },
 ): Promise<LearningFeedbackRow> {
+  await enforceRateLimit(teacherUserId, "teacher.feedback-save", 60, 60);
   await assertTeacherRelation(teacherUserId, input.learnerUserId);
   const body = input.body.trim();
   if (body.length < 1 || body.length > 4000) {
@@ -200,7 +202,14 @@ export async function getLearnerFeedback(
   if (actorUserId !== learnerUserId) {
     const sql = await getSql();
     const allowed = await sql.query(
-      "select 1 from blossom_teacher_link where teacher_user_id = $1 and learner_user_id = $2 and status = 'active' union all select 1 from blossom_guardian_link where guardian_user_id = $1 and learner_user_id = $2 and status = 'active' union all select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+      `select 1 from blossom_teacher_link where teacher_user_id = $1 and learner_user_id = $2 and status = 'active'
+       union all
+       select 1 from blossom_guardian_link where guardian_user_id = $1 and learner_user_id = $2 and status = 'active'
+       union all
+       select 1 from blossom_platform_admin where user_id = $1 and status = 'active'
+       union all
+       select 1 from blossom_role_grant where user_id = $1 and role = 'admin' and status = 'active'
+       limit 1`,
       [actorUserId, learnerUserId],
     );
     if (!allowed[0]) throw new BlossomForbiddenError("Vous n'avez pas accès à ces retours.");

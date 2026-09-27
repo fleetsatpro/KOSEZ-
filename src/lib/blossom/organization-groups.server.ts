@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
+import { enforceRateLimit } from "./rate-limit.server";
 import { BlossomForbiddenError, createNotification, writeAuditEvent } from "./domain.server";
 
 export type OrganizationGroupKind = "class" | "cohort";
@@ -178,6 +179,7 @@ export async function createOrganizationGroup(
     teacherUserId?: string | null;
   },
 ) {
+  await enforceRateLimit(userId, "organization.group-create", 30, 60);
   await assertOrganizationManager(userId, input.organizationId);
   const name = input.name.trim();
   if (name.length < 2 || name.length > 100) {
@@ -234,6 +236,7 @@ export async function setOrganizationGroupTeacher(
   userId: string,
   input: { groupId: string; teacherUserId: string | null },
 ) {
+  await enforceRateLimit(userId, "organization.group-teacher", 60, 60);
   const group = await assertGroupAccess(userId, input.groupId, true);
   if (group.status !== "active") throw new BlossomForbiddenError("Une classe archivée ne peut plus être reassignée.");
   if (input.teacherUserId) {
@@ -278,6 +281,7 @@ export async function addOrganizationGroupMember(
   userId: string,
   input: { groupId: string; learnerUserId: string },
 ) {
+  await enforceRateLimit(userId, "organization.group-member-add", 120, 60);
   const group = await assertGroupMemberManager(userId, input.groupId);
   if (group.status !== "active") throw new BlossomForbiddenError("Une classe archivée ne peut plus recevoir d'apprenants.");
   await assertOrganizationMember(group.organizationId, input.learnerUserId, "learner");
@@ -303,6 +307,7 @@ export async function removeOrganizationGroupMember(
   userId: string,
   input: { groupId: string; learnerUserId: string },
 ) {
+  await enforceRateLimit(userId, "organization.group-member-remove", 120, 60);
   const group = await assertGroupMemberManager(userId, input.groupId);
   const sql = await getSql();
   const rows = await sql.query(
@@ -329,6 +334,7 @@ export async function removeOrganizationGroupMember(
 }
 
 export async function archiveOrganizationGroup(userId: string, groupId: string) {
+  await enforceRateLimit(userId, "organization.group-archive", 30, 60);
   const group = await assertGroupAccess(userId, groupId, true);
   if (group.status === "archived") {
     return { id: group.id, status: "archived" as const };

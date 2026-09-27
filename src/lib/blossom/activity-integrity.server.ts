@@ -336,15 +336,40 @@ export async function assertActivityAppend(
   }
 
   if (eventType === "MISSION_COMPLETED") {
-    if (!sid) throw new Error("activity-mission-missing-source");
-    const rows = await sql.query(
-      "select session from blossom_mission_session where user_id = $1 and mission_id = $2 limit 1",
-      [userId, sid],
-    );
-    if (!rows[0] || !hasCompletedMissionSession(rows[0].session)) {
-      throw new Error("activity-mission-without-completed-session");
+    if (!/^mission-session-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sid)) {
+      throw new Error("activity-mission-invalid-session-source");
     }
-    return safeMetadata;
+    const serverSessionId = sid.slice("mission-session-".length);
+    const serverRun = await sql.query(
+      `select mission_id, run_id, duration_seconds, ended_at
+       from blossom_mission_run_session
+       where id = $1::uuid and user_id = $2 and status = 'completed' and duration_seconds is not null and ended_at is not null
+       limit 1`,
+      [serverSessionId, userId],
+    );
+    if (!serverRun[0]) throw new Error("activity-mission-without-server-session");
+    const missionId = String(serverRun[0].mission_id);
+    const missionRows = await sql.query(
+      "select session from blossom_mission_session where user_id = $1 and mission_id = $2 limit 1",
+      [userId, missionId],
+    );
+    if (!missionRows[0]) throw new Error("activity-mission-without-completed-session");
+    const localRun = missionRunById(missionRows[0].session, String(serverRun[0].run_id));
+    if (!localRun || typeof localRun.completedAt !== "string" || !localRun.completedAt || !missionRunHasMissionAttempt(localRun) || !missionRunHasReflection(localRun)) {
+      throw new Error("activity-mission-without-matched-run");
+    }
+    const completedAtMs = Date.parse(String(localRun.completedAt));
+    const serverEndedAtMs = Date.parse(String(serverRun[0].ended_at));
+    if (!Number.isFinite(completedAtMs) || !Number.isFinite(serverEndedAtMs)) {
+      throw new Error("activity-mission-invalid-completion-time");
+    }
+    return {
+      ...safeMetadata,
+      missionId,
+      runId: String(serverRun[0].run_id),
+      serverSessionId,
+      durationSeconds: Math.max(0, Number(serverRun[0].duration_seconds ?? 0)),
+    };
   }
 
   if (eventType === "PRONLAB_COMPLETED") {
@@ -432,16 +457,32 @@ export async function assertActivityAppend(
   }
 
   if (eventType === "PULSE_COMPLETED") {
-    if (!sid) throw new Error("activity-pulse-invalid-source");
-    const seconds = Number(metadata.seconds);
-    if (!Number.isFinite(seconds) || seconds < 1 || seconds > 3600) {
-      throw new Error("activity-pulse-invalid-duration");
+    if (!/^pulse-session-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sid)) {
+      throw new Error("activity-pulse-invalid-session-source");
     }
-    if (sid !== "pulse-terrain" && sid !== "pulse-social" && !sid.startsWith("pulse-struggle-")) {
+
+    // Reward-bearing Pulse activity is bound to one server-created session.
+    // The client-provided dare id and seconds are never trusted as evidence.
+    const sessionId = sid.slice("pulse-session-".length);
+    const completed = await sql.query(
+      `select dare_id, duration_seconds, ended_at
+       from blossom_pulse_session
+       where id = $1::uuid
+         and user_id = $2
+         and status = 'completed'
+         and duration_seconds is not null
+         and ended_at is not null
+       limit 1`,
+      [sessionId, userId],
+    );
+    if (!completed[0]) throw new Error("activity-pulse-without-session");
+
+    const dareId = String(completed[0].dare_id);
+    if (dareId !== "pulse-local" && dareId !== "pulse-terrain" && dareId !== "pulse-social" && !dareId.startsWith("pulse-struggle-")) {
       throw new Error("activity-pulse-unknown-source");
     }
-    if (sid.startsWith("pulse-struggle-")) {
-      const itemId = sid.slice("pulse-struggle-".length);
+    if (dareId.startsWith("pulse-struggle-")) {
+      const itemId = dareId.slice("pulse-struggle-".length);
       const activeItemIds = new Set(
         setsForLanguage(expectedLanguageId).flatMap((setDef) => setDef.items.map((item) => item.id)),
       );
@@ -452,7 +493,19 @@ export async function assertActivityAppend(
       );
       if (!attempt[0]) throw new Error("activity-pulse-without-pronlab-evidence");
     }
-    return safeMetadata;
+
+    const durationSeconds = Number(completed[0].duration_seconds);
+    if (!Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 3600) {
+      throw new Error("activity-pulse-invalid-server-duration");
+    }
+    return {
+      ...safeMetadata,
+      pulseSessionId: sessionId,
+      dareId,
+      seconds: durationSeconds,
+      durationSeconds,
+      minutes: Math.max(1, Math.floor(durationSeconds / 60)),
+    };
   }
 
   if (eventType === "LIBRARY_COMPLETED") {

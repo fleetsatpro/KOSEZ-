@@ -33,6 +33,10 @@ import {
   startTandemSession,
   logTandemPrompt,
   endTandemSession,
+  startPulseSession,
+  endPulseSession,
+  startMissionRunSession,
+  endMissionRunSession,
 } from "./domain.server";
 import type { JsonObject } from "./backend.server";
 import { getAdminEventAttendance, recordEventAttendance } from "./event-attendance.server";
@@ -61,14 +65,20 @@ import {
 
 const metadataJson = z.string().trim().max(20000).optional();
 
-async function resolveUserEmail(userId: string): Promise<string | null> {
+async function resolveUserIdentity(userId: string): Promise<{ email: string | null; emailVerified: boolean }> {
   const sql = await getSql();
   try {
-    const rows = await sql.query(`select email from "user" where id = $1 limit 1`, [userId]);
+    const rows = await sql.query(
+      `select email, "emailVerified" as email_verified from "user" where id = $1 limit 1`,
+      [userId],
+    );
     const email = rows[0]?.email;
-    return typeof email === "string" ? email : null;
+    return {
+      email: typeof email === "string" ? email : null,
+      emailVerified: rows[0]?.email_verified === true,
+    };
   } catch {
-    return null;
+    return { email: null, emailVerified: false };
   }
 }
 
@@ -113,6 +123,41 @@ export const cancelTeacherSessionOnServer = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) =>
     cancelTeacherSession(context.userId, data.sessionId),
   );
+
+export const startMissionRunSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({
+    missionId: z.string().trim().min(1).max(200),
+    runId: z.string().trim().min(1).max(200),
+  }))
+  .handler(async ({ context, data }) =>
+    startMissionRunSession(context.userId, data.missionId, data.runId),
+  );
+
+export const endMissionRunSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ sessionId: z.string().uuid() }))
+  .handler(async ({ context, data }) => endMissionRunSession(context.userId, data.sessionId));
+
+export const startPulseSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ dareId: z.string().trim().min(1).max(200) }))
+  .handler(async ({ context, data }) =>
+    startPulseSession(context.userId, data.dareId),
+  );
+
+export const endPulseSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      sessionId: z.string().uuid(),
+      status: z.enum(["completed", "cancelled"]),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    endPulseSession(context.userId, data.sessionId, data.status),
+  );
+
 
 export const getAdminWorkspaceOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -170,8 +215,8 @@ export const getAdminSafetySummaryOnServer = createServerFn({ method: "GET" })
 export const getBlossomWorkspaceAccess = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
-    const email = await resolveUserEmail(context.userId);
-    await ensureBootstrapAdmin(context.userId, email);
+    const identity = await resolveUserIdentity(context.userId);
+    await ensureBootstrapAdmin(context.userId, identity.email, identity.emailVerified);
     const access = await getBlossomAccessContext(context.userId);
 
     // Merge role_grant flags (table may be empty on older DBs before migrate)

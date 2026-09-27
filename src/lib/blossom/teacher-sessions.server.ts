@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
+import { enforceRateLimit } from "./rate-limit.server";
 import { BlossomForbiddenError, createNotification, writeAuditEvent } from "./domain.server";
 import { validateTeacherSessionDraft } from "./teacher-session-rules";
 
@@ -135,6 +136,7 @@ export async function createTeacherSession(
     notes?: string | null;
   },
 ): Promise<TeacherSession> {
+  await enforceRateLimit(teacherUserId, "teacher.session-create", 20, 60);
   await assertTeacherLearnerRelation(teacherUserId, input.learnerUserId);
   const validation = validateTeacherSessionDraft(input);
   if (!validation.ok) {
@@ -218,6 +220,7 @@ export async function createTeacherSession(
 }
 
 export async function cancelTeacherSession(teacherUserId: string, sessionId: string) {
+  await enforceRateLimit(teacherUserId, "teacher.session-cancel", 30, 60);
   const sql = await getSql();
   const rows = await sql.query(
     `update blossom_teacher_session

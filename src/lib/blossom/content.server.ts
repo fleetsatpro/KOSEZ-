@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { getSql } from "@/lib/db";
+import { enforceRateLimit } from "./rate-limit.server";
 import {
   CATALOGUE,
   EVENTS,
@@ -91,7 +92,14 @@ export type PublishedContent = {
 async function assertAdmin(userId: string) {
   const sql = await getSql();
   const rows = await sql.query(
-    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    `select 1
+     from blossom_platform_admin
+     where user_id = $1 and status = 'active'
+     union all
+     select 1
+     from blossom_role_grant
+     where user_id = $1 and role = 'admin' and status = 'active'
+     limit 1`,
     [userId],
   );
   if (!rows[0]) throw new ContentForbiddenError("Admin access is required.");
@@ -215,6 +223,7 @@ export async function getContentRevisionHistory(
   userId: string,
   contentKeyInput: string,
 ): Promise<ContentRevision[]> {
+  await enforceRateLimit(userId, "admin.content-history", 120, 60);
   await assertAdmin(userId);
   const contentKey = contentKeySchema.parse(contentKeyInput);
   const sql = await getSql();
@@ -354,6 +363,7 @@ export async function saveContentDraft(
     expectedDraftRevision: number;
   },
 ) {
+  await enforceRateLimit(userId, "admin.content-draft", 60, 60);
   await assertAdmin(userId);
   const contentKey = contentKeySchema.parse(input.contentKey);
   const payload = validatePayload(input.kind, input.payload);
@@ -417,6 +427,7 @@ export async function archiveContent(
   contentKeyInput: string,
   expectedPublishedRevision: number,
 ) {
+  await enforceRateLimit(userId, "admin.content-archive", 30, 60);
   await assertAdmin(userId);
   const contentKey = contentKeySchema.parse(contentKeyInput);
   const sql = await getSql();
@@ -463,6 +474,7 @@ export async function publishContent(
   contentKeyInput: string,
   expectedDraftRevision: number,
 ) {
+  await enforceRateLimit(userId, "admin.content-publish", 30, 60);
   await assertAdmin(userId);
   const contentKey = contentKeySchema.parse(contentKeyInput);
   const sql = await getSql();
@@ -536,6 +548,7 @@ export async function restoreContentDraft(
     expectedDraftRevision: number;
   },
 ) {
+  await enforceRateLimit(userId, "admin.content-restore", 60, 60);
   await assertAdmin(userId);
   const contentKey = contentKeySchema.parse(input.contentKey);
   const sql = await getSql();

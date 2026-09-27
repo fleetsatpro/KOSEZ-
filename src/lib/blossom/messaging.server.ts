@@ -191,24 +191,46 @@ export async function getOrCreateConversation(
 }
 
 export async function listConversations(userId: string): Promise<ConversationSummary[]> {
+  await enforceRateLimit(userId, "communication.list", 60, 60);
   const sql = await getSql();
   const rows = await sql.query(
-    "select c.id, c.kind, c.updated_at, peer.user_id as peer_user_id, coalesce(nullif(p.display_name, ''), peer.user_id, 'K’Osez') as peer_name, coalesce(unread.unread_count, 0)::integer as unread_count, last.body as last_message_body, last.created_at as last_message_at from blossom_conversation c join blossom_conversation_member mine on mine.conversation_id = c.id and mine.user_id = $1 left join lateral (select cm.user_id from blossom_conversation_member cm where cm.conversation_id = c.id and cm.user_id <> $1 order by cm.joined_at asc limit 1) peer on true left join blossom_profile p on p.user_id = peer.user_id left join lateral (select count(*)::integer as unread_count from blossom_message m where m.conversation_id = c.id and m.sender_user_id <> $1 and (mine.last_read_at is null or m.created_at > mine.last_read_at)) unread on true left join lateral (select m.body, m.created_at from blossom_message m where m.conversation_id = c.id order by m.created_at desc limit 1) last on true order by c.updated_at desc",
+    "select c.id, c.kind, c.updated_at, peer.user_id as peer_user_id, coalesce(nullif(p.display_name, ''), peer.user_id, 'K’Osez') as peer_name, coalesce(unread.unread_count, 0)::integer as unread_count, last.body as last_message_body, last.created_at as last_message_at from blossom_conversation c join blossom_conversation_member mine on mine.conversation_id = c.id and mine.user_id = $1 left join lateral (select cm.user_id from blossom_conversation_member cm where cm.conversation_id = c.id and cm.user_id <> $1 order by cm.joined_at asc limit 1) peer on true left join blossom_profile p on p.user_id = peer.user_id left join lateral (select count(*)::integer as unread_count from blossom_message m where m.conversation_id = c.id and m.sender_user_id <> $1 and (mine.last_read_at is null or m.created_at > mine.last_read_at)) unread on true left join lateral (select m.body, m.created_at from blossom_message m where m.conversation_id = c.id order by m.created_at desc limit 1) last on true order by c.updated_at desc limit 100",
     [userId],
   );
-  return rows.map((row) => ({
-    id: String(row.id),
-    kind: String(row.kind) as ConversationKind,
-    peerUserId: row.peer_user_id ? String(row.peer_user_id) : null,
-    peerName: String(row.peer_name),
-    unreadCount: Number(row.unread_count ?? 0),
-    lastMessageBody: row.last_message_body ? String(row.last_message_body) : null,
-    lastMessageAt: row.last_message_at ? new Date(String(row.last_message_at)).toISOString() : null,
-    updatedAt: new Date(String(row.updated_at)).toISOString(),
-  }));
+
+  const summaries: ConversationSummary[] = [];
+  for (const row of rows) {
+    const conversationId = String(row.id);
+    const kind = String(row.kind) as ConversationKind;
+
+    // Membership is durable, but the underlying relationship can later be
+    // revoked/blocked. Re-validate before returning the last message body so a
+    // former participant cannot retain read access through a stale membership
+    // row alone.
+    if (kind !== "support") {
+      try {
+        await assertConversationAccess(userId, conversationId);
+      } catch {
+        continue;
+      }
+    }
+
+    summaries.push({
+      id: conversationId,
+      kind,
+      peerUserId: row.peer_user_id ? String(row.peer_user_id) : null,
+      peerName: String(row.peer_name),
+      unreadCount: Number(row.unread_count ?? 0),
+      lastMessageBody: row.last_message_body ? String(row.last_message_body) : null,
+      lastMessageAt: row.last_message_at ? new Date(String(row.last_message_at)).toISOString() : null,
+      updatedAt: new Date(String(row.updated_at)).toISOString(),
+    });
+  }
+  return summaries;
 }
 
 export async function getConversationMessages(userId: string, conversationId: string, limit = 60) {
+  await enforceRateLimit(userId, "communication.read", 120, 60);
   await assertConversationAccess(userId, conversationId);
   const sql = await getSql();
   const bounded = Math.min(100, Math.max(1, Math.round(limit)));

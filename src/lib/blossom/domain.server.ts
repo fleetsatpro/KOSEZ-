@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
 import { IMMERSION, PRONLAB_SETS, setsForLanguage } from "./data";
+import { LEARN_LANGUAGES } from "@/lib/i18n/locales";
+import { fullMissionBank } from "./mission-today";
 import type { JsonObject } from "./backend.server";
 
 import { getPublishedContent } from "./content.server";
@@ -26,7 +28,14 @@ export type BlossomAccessContext = {
 async function assertAdmin(userId: string) {
   const sql = await getSql();
   const rows = await sql.query(
-    "select 1 from blossom_platform_admin where user_id = $1 and status = 'active' limit 1",
+    `select 1
+     from blossom_platform_admin
+     where user_id = $1 and status = 'active'
+     union all
+     select 1
+     from blossom_role_grant
+     where user_id = $1 and role = 'admin' and status = 'active'
+     limit 1`,
     [userId],
   );
   if (!rows[0]) {
@@ -319,6 +328,7 @@ export type ConnectPeer = {
 };
 
 export async function getConnectPeers(userId: string): Promise<ConnectPeer[]> {
+  await enforceRateLimit(userId, "communication.connect-peers", 60, 60);
   const sql = await getSql();
   const rows = await sql.query(
     `select
@@ -395,6 +405,7 @@ function prefStringArray(preferences: Record<string, unknown>, key: string) {
 }
 
 export async function getTandemCandidates(userId: string): Promise<TandemCandidate[]> {
+  await enforceRateLimit(userId, "tandem.candidates", 60, 60);
   assertFeaturePlan(await getServerPlan(userId), "tandem");
   const sql = await getSql();
   const rows = await sql.query(
@@ -419,7 +430,8 @@ export async function getTandemCandidates(userId: string): Promise<TandemCandida
       )
       and coalesce(mine.status, 'suggested') <> 'blocked'
       and coalesce(incoming.status, 'none') <> 'blocked'
-    order by display_name asc`,
+    order by display_name asc
+    limit 100`,
     [userId],
   );
 
@@ -503,6 +515,18 @@ export async function getOrganizationWorkspace(
       on m.organization_id = o.id
      and m.status = 'active'
     left join blossom_profile p on p.user_id = m.user_id
+    where (
+      me.role in ('owner','admin')
+      or m.role <> 'learner'
+      or exists (
+        select 1
+        from blossom_organization_group g
+        join blossom_organization_group_member gm on gm.group_id = g.id and gm.user_id = m.user_id
+        where g.organization_id = o.id
+          and g.teacher_user_id = $1
+          and g.status = 'active'
+      )
+    )
     order by m.role, display_name`,
     [userId],
   );
@@ -532,8 +556,28 @@ export async function getOrganizationWorkspace(
        ), 0)::integer as speaking_minutes
      from blossom_organization_member m
      left join blossom_activity_event a on a.user_id = m.user_id
-     where m.organization_id = $1 and m.status = 'active'`,
-    [organizationId],
+     where m.organization_id = $1
+       and m.status = 'active'
+       and (
+         exists (
+           select 1
+           from blossom_organization_member me
+           where me.organization_id = $1
+             and me.user_id = $2
+             and me.status = 'active'
+             and me.role in ('owner','admin')
+         )
+         or m.role <> 'learner'
+         or exists (
+           select 1
+           from blossom_organization_group g
+           join blossom_organization_group_member gm on gm.group_id = g.id and gm.user_id = m.user_id
+           where g.organization_id = $1
+             and g.teacher_user_id = $2
+             and g.status = 'active'
+         )
+       )`,
+    [organizationId, userId],
   );
   const stats = statsRows[0] ?? {};
   const metadata =
@@ -568,6 +612,7 @@ export async function requestCatalogueBooking(
   userId: string,
   catalogueItemId: string,
 ) {
+  await enforceRateLimit(userId, "commerce.booking-request", 10, 3600);
   const { catalogue } = await getPublishedContent();
   if (!catalogue.some((item) => item.id === catalogueItemId)) {
     throw new Error("unknown-catalogue-item");
@@ -622,6 +667,7 @@ export async function requestCatalogueBooking(
 }
 
 export async function requestWaitlist(userId: string, itemId: string) {
+  await enforceRateLimit(userId, "commerce.waitlist-request", 10, 3600);
   const { catalogue } = await getPublishedContent();
   const item = catalogue.find((entry) => entry.id === itemId && entry.kind === "immersion");
   if (!item) throw new Error("unknown-waitlist-item");
@@ -671,6 +717,7 @@ export async function recordPronlabAttempt(
   userId: string,
   input: PronlabAttemptInput,
 ) {
+  await enforceRateLimit(userId, "learning.pronlab-attempt", 60, 60);
   const sql = await getSql();
   const profileRows = await sql.query(
     "select target_language from blossom_profile where user_id = $1 limit 1",
@@ -735,6 +782,7 @@ export async function saveVocabulary(
     mutationCreatedAt?: string;
   },
 ) {
+  await enforceRateLimit(userId, "learning.vocabulary-upsert", 120, 60);
   const sql = await getSql();
   const metadata = input.metadata ?? {};
   const profileRows = await sql.query(
@@ -776,6 +824,7 @@ export async function setTandemStatus(
     metadata?: JsonObject;
   },
 ) {
+  await enforceRateLimit(userId, "tandem.status", 30, 60);
   assertFeaturePlan(await getServerPlan(userId), "tandem");
   if (userId === input.partnerUserId) {
     throw new BlossomForbiddenError("A tandem partner must be a different learner.");
@@ -884,6 +933,7 @@ export async function registerEvent(
   eventId: string,
   status: "joined" | "waitlist" | "cancelled",
 ) {
+  await enforceRateLimit(userId, "event.register", 20, 60);
   const sql = await getSql();
   const publishedEvents = await getPublishedContent();
   const event = publishedEvents.events.find((item) => item.id === eventId);
@@ -967,6 +1017,7 @@ export async function registerEvent(
 }
 
 export async function completeChallenge(userId: string, challengeId: string) {
+  await enforceRateLimit(userId, "immersion.challenge-complete", 30, 60);
   if (!IMMERSION.challenges.includes(challengeId)) {
     throw new BlossomForbiddenError("Ce défi d'immersion n'existe pas.");
   }
@@ -1064,6 +1115,7 @@ export async function saveHomework(
     status: "draft" | "sent" | "done";
   },
 ) {
+  await enforceRateLimit(actorUserId, "teacher.homework-save", 60, 60);
   await assertLearnerAccess(actorUserId, input.learnerUserId, "teacher");
   if (input.status === "done") {
     throw new BlossomForbiddenError("La fin d’un devoir est réservée à l’apprenant.");
@@ -1109,10 +1161,11 @@ export async function addTeacherNote(
     note: string;
   },
 ) {
+  await enforceRateLimit(actorUserId, "teacher.note-save", 60, 60);
   await assertLearnerAccess(actorUserId, input.learnerUserId, "teacher");
   const sql = await getSql();
   const rows = await sql.query(
-    "insert into blossom_teacher_note (id, teacher_user_id, learner_user_id, tags, note) values ($1::uuid, $2, $3, $4::jsonb, $5) returning id, teacher_user_id, learner_user_id, tags, note, created_at, updated_at",
+    "insert into blossom_teacher_note (id, teacher_user_id, learner_user_id, tags, note) values ($1::uuid, $2, $3, $4::jsonb, $5) on conflict (id) do update set tags = excluded.tags, note = excluded.note where blossom_teacher_note.teacher_user_id = excluded.teacher_user_id and blossom_teacher_note.learner_user_id = excluded.learner_user_id returning id, teacher_user_id, learner_user_id, tags, note, created_at, updated_at",
     [
       input.id ?? randomUUID(),
       actorUserId,
@@ -1129,6 +1182,7 @@ export async function completeHomeworkForLearner(
   learnerUserId: string,
   homeworkId: string,
 ) {
+  await enforceRateLimit(learnerUserId, "homework.complete", 30, 60);
   const sql = await getSql();
   const rows = await sql.query(
     "update blossom_homework set status = 'done', updated_at = current_timestamp where id = $1::uuid and learner_user_id = $2 and status = 'sent' returning id, author_user_id, learner_user_id, title, body, status, created_at, updated_at",
@@ -1148,6 +1202,80 @@ export async function completeHomeworkForLearner(
     resourceId: homeworkId,
   });
   return rows[0];
+}
+
+export async function startMissionRunSession(userId: string, missionId: string, runId: string) {
+  await enforceRateLimit(userId, "mission.start-session", 20, 60);
+  const normalizedMissionId = missionId.trim();
+  const normalizedRunId = runId.trim();
+  if (!normalizedRunId || normalizedRunId.length > 200) {
+    throw new BlossomForbiddenError("Cette session de mission est invalide.");
+  }
+  if (!fullMissionBank().some((mission) => mission.id === normalizedMissionId)) {
+    throw new BlossomForbiddenError("Cette mission n\u0027est pas disponible.");
+  }
+  const sql = await getSql();
+  const active = await sql.query(
+    `select id, run_id from blossom_mission_run_session
+     where user_id = $1 and mission_id = $2 and status = 'active'
+     order by created_at desc limit 1`,
+    [userId, normalizedMissionId],
+  );
+  if (active[0]) {
+    if (String(active[0].run_id) !== normalizedRunId) {
+      throw new BlossomForbiddenError("Cette session de mission est déjà liée à une autre exécution.");
+    }
+    return { id: String(active[0].id), missionId: normalizedMissionId, runId: normalizedRunId };
+  }
+  const sessionId = randomUUID();
+  try {
+    await sql.query(
+      `insert into blossom_mission_run_session
+        (id, user_id, mission_id, run_id, status, started_at)
+       values ($1::uuid, $2, $3, $4, 'active', current_timestamp)`,
+      [sessionId, userId, normalizedMissionId, normalizedRunId],
+    );
+  } catch (error) {
+    if ((error as { code?: string })?.code !== "23505") throw error;
+    const raced = await sql.query(
+      `select id, mission_id from blossom_mission_run_session
+       where user_id = $1 and mission_id = $2 and status = 'active'
+       order by created_at desc limit 1`,
+      [userId, normalizedMissionId],
+    );
+    if (!raced[0]) throw new Error("mission-session-create-race");
+    if (String(raced[0].run_id) !== normalizedRunId) {
+      throw new BlossomForbiddenError("Cette session de mission est déjà liée à une autre exécution.");
+    }
+    return { id: String(raced[0].id), missionId: String(raced[0].mission_id), runId: normalizedRunId };
+  }
+  return { id: sessionId, missionId: normalizedMissionId, runId: normalizedRunId };
+}
+
+export async function endMissionRunSession(userId: string, sessionId: string) {
+  await enforceRateLimit(userId, "mission.end-session", 20, 60);
+  const sql = await getSql();
+  const rows = await sql.query(
+    `update blossom_mission_run_session
+     set status = 'completed',
+         ended_at = coalesce(ended_at, current_timestamp),
+         duration_seconds = greatest(
+           0,
+           extract(epoch from (coalesce(ended_at, current_timestamp) - started_at))::integer
+         ),
+         updated_at = current_timestamp
+     where id = $1::uuid and user_id = $2 and status = 'active'
+     returning id, mission_id, status, ended_at, duration_seconds`,
+    [sessionId, userId],
+  );
+  if (!rows[0]) throw new BlossomForbiddenError("Cette session de mission n\u0027est plus active.");
+  return {
+    id: String(rows[0].id),
+    missionId: String(rows[0].mission_id),
+    status: "completed" as const,
+    endedAt: new Date(String(rows[0].ended_at)).toISOString(),
+    durationSeconds: Math.max(0, Number(rows[0].duration_seconds ?? 0)),
+  };
 }
 
 export async function writeAuditEvent(
@@ -1186,6 +1314,7 @@ export async function saveLearningSubmission(
     result?: Record<string, unknown>;
   },
 ) {
+  await enforceRateLimit(userId, "learning.submission", 60, 60);
   const sql = await getSql();
   const id = input.id ?? randomUUID();
   const rows = await sql.query(
@@ -1353,6 +1482,7 @@ export async function updateAdminBooking(
     providerReference?: string | null;
   },
 ): Promise<AdminBookingUpdateResult> {
+  await enforceRateLimit(userId, "admin.booking-update", 60, 60);
   await assertAdmin(userId);
   const sql = await getSql();
   const currentRows = await sql.query(
@@ -1584,12 +1714,27 @@ export async function startTandemSession(userId: string, partnerUserId: string) 
   if (active[0]) return String(active[0].id);
 
   const sessionId = randomUUID();
-  await sql.query(
-    `insert into blossom_tandem_session
-      (id, user_id, partner_user_id, status, started_at)
-     values ($1::uuid, $2, $3, 'active', current_timestamp)`,
-    [sessionId, userId, partnerUserId],
-  );
+  try {
+    await sql.query(
+      `insert into blossom_tandem_session
+        (id, user_id, partner_user_id, status, started_at)
+       values ($1::uuid, $2, $3, 'active', current_timestamp)`,
+      [sessionId, userId, partnerUserId],
+    );
+  } catch (error) {
+    if ((error as { code?: string })?.code !== "23505") throw error;
+    const raced = await sql.query(
+      `select id
+       from blossom_tandem_session
+       where ((user_id = $1 and partner_user_id = $2) or (user_id = $2 and partner_user_id = $1))
+         and status = 'active'
+       order by created_at desc
+       limit 1`,
+      [userId, partnerUserId],
+    );
+    if (raced[0]) return String(raced[0].id);
+    throw new Error("tandem-session-create-race");
+  }
   await writeAuditEvent(userId, {
     subjectUserId: partnerUserId,
     action: "tandem.session.started",
@@ -1661,10 +1806,21 @@ export async function endTandemSession(
 
   const rows = await sql.query(
     `update blossom_tandem_session
-     set status = $2, ended_at = coalesce(ended_at, current_timestamp), updated_at = current_timestamp
+     set status = $2,
+         ended_at = coalesce(ended_at, current_timestamp),
+         duration_seconds = greatest(
+           0,
+           extract(
+             epoch from (
+               coalesce(ended_at, current_timestamp)
+               - started_at
+             )
+           )::integer
+         ),
+         updated_at = current_timestamp
      where id = $1::uuid and (user_id = $3 or partner_user_id = $3)
        and status = 'active'
-     returning id, status, ended_at`,
+     returning id, status, ended_at, duration_seconds`,
     [sessionId, status, userId],
   );
   if (!rows[0]) throw new BlossomForbiddenError("Cette session tandem n'est plus active.");
@@ -1673,5 +1829,110 @@ export async function endTandemSession(
     resourceType: "tandem_session",
     resourceId: sessionId,
   });
-  return { id: String(rows[0].id), status: String(rows[0].status), endedAt: new Date(String(rows[0].ended_at)).toISOString() };
+  return {
+    id: String(rows[0].id),
+    status: String(rows[0].status),
+    endedAt: new Date(String(rows[0].ended_at)).toISOString(),
+    durationSeconds: Math.max(0, Number(rows[0].duration_seconds ?? 0)),
+  };
+}
+
+function validPulseDareId(dareId: string): boolean {
+  const id = dareId.trim();
+  return id === "pulse-local" || id === "pulse-terrain" || id === "pulse-social" || id.startsWith("pulse-struggle-");
+}
+
+export async function startPulseSession(userId: string, dareId: string) {
+  await enforceRateLimit(userId, "pulse.start-session", 20, 60);
+  const normalizedDareId = dareId.trim();
+  if (!validPulseDareId(normalizedDareId)) {
+    throw new BlossomForbiddenError("Cette impulsion n\u0027est pas disponible.");
+  }
+  const sql = await getSql();
+  if (normalizedDareId.startsWith("pulse-struggle-")) {
+    const itemId = normalizedDareId.slice("pulse-struggle-".length);
+    const profile = await sql.query(
+      "select target_language from blossom_profile where user_id = $1 limit 1",
+      [userId],
+    );
+    const rawLanguage = String(profile[0]?.target_language ?? "en");
+    const language = setsForLanguage(LEARN_LANGUAGES.some((item) => item.id === rawLanguage) ? rawLanguage : "en");
+    const activeItem = language.some((set) =>
+      set.items.some((item) => item.id === itemId),
+    );
+    if (!activeItem) {
+      throw new BlossomForbiddenError("Cette impulsion n\u0027est pas disponible dans votre langue.");
+    }
+  }
+
+  const active = await sql.query(
+    `select id, dare_id
+     from blossom_pulse_session
+     where user_id = $1 and status = 'active'
+     order by created_at desc
+     limit 1`,
+    [userId],
+  );
+  if (active[0]) {
+    return { id: String(active[0].id), dareId: String(active[0].dare_id) };
+  }
+
+  const sessionId = randomUUID();
+  try {
+    await sql.query(
+      `insert into blossom_pulse_session
+        (id, user_id, dare_id, status, started_at)
+       values ($1::uuid, $2, $3, 'active', current_timestamp)`,
+      [sessionId, userId, normalizedDareId],
+    );
+  } catch (error) {
+    if ((error as { code?: string })?.code !== "23505") throw error;
+    const raced = await sql.query(
+      `select id, dare_id
+       from blossom_pulse_session
+       where user_id = $1 and status = 'active'
+       order by created_at desc
+       limit 1`,
+      [userId],
+    );
+    if (!raced[0]) throw new Error("pulse-session-create-race");
+    return { id: String(raced[0].id), dareId: String(raced[0].dare_id) };
+  }
+
+  return { id: sessionId, dareId: normalizedDareId };
+}
+
+export async function endPulseSession(
+  userId: string,
+  sessionId: string,
+  status: "completed" | "cancelled",
+) {
+  await enforceRateLimit(userId, "pulse.end-session", 20, 60);
+  const sql = await getSql();
+  const rows = await sql.query(
+    `update blossom_pulse_session
+     set status = $2,
+         ended_at = coalesce(ended_at, current_timestamp),
+         duration_seconds = greatest(
+           0,
+           extract(
+             epoch from (
+               coalesce(ended_at, current_timestamp)
+               - started_at
+             )
+           )::integer
+         ),
+         updated_at = current_timestamp
+     where id = $1::uuid and user_id = $3 and status = 'active'
+     returning id, dare_id, status, ended_at, duration_seconds`,
+    [sessionId, status, userId],
+  );
+  if (!rows[0]) throw new BlossomForbiddenError("Cette impulsion n\u0027est plus active.");
+  return {
+    id: String(rows[0].id),
+    dareId: String(rows[0].dare_id),
+    status: String(rows[0].status) as "completed" | "cancelled",
+    endedAt: new Date(String(rows[0].ended_at)).toISOString(),
+    durationSeconds: Math.max(0, Number(rows[0].duration_seconds ?? 0)),
+  };
 }
