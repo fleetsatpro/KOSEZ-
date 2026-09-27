@@ -24,7 +24,16 @@ type LlmRoomPayload = {
   title?: string;
   setting?: string;
   cast?: { role: string; name: string; stance: string };
+  pressure?: { label: string; description: string };
+  turns?: Array<{ speaker: "ai" | "you"; line?: string; hint: string }>;
+  debrief?: { strength: string; improvement: string; model: string };
+  culturalNote?: string;
+  kit?: Array<{ phrase: string; use: string }>;
+};
 
+const REQUEST_WINDOW_MS = 60_000;
+const REQUEST_LIMIT = 12;
+const userWindows = new Map<string, number[]>();
 
 function env(key: string): string | undefined {
   const value = process.env[key]?.trim();
@@ -94,13 +103,6 @@ function resolveModelCascade(): SpeakModelSlot[] {
     return true;
   });
 }
-
-  pressure?: { label: string; description: string };
-  turns?: Array<{ speaker: "ai" | "you"; line?: string; hint: string }>;
-  debrief?: { strength: string; improvement: string; model: string };
-  culturalNote?: string;
-  kit?: Array<{ phrase: string; use: string }>;
-};
 
 function mergeLlmIntoRoom(base: LivingRoom, payload: LlmRoomPayload): LivingRoom {
   const turns =
