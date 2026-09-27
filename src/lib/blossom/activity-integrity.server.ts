@@ -1,4 +1,5 @@
 import { getSql } from "@/lib/db";
+import { TANDEM_TOTAL_DURATION_SECONDS, TANDEM_CONTRACT } from "./tandem-contract";
 import { isLearnLanguageId } from "@/lib/i18n/locales";
 import { CURRICULUM_UNITS, type LessonKind } from "./learning-os";
 import { LIBRARY, PRONLAB_SETS, setsForLanguage } from "./data";
@@ -418,7 +419,7 @@ export async function assertActivityAppend(
     );
     const distinctParticipants = prompts.length;
     const totalPrompts = prompts.reduce((sum, row) => sum + Number(row.count ?? 0), 0);
-    if (!Number.isFinite(durationSeconds) || durationSeconds < 3600 || distinctParticipants < 2 || totalPrompts < 2) {
+    if (!Number.isFinite(durationSeconds) || durationSeconds < TANDEM_TOTAL_DURATION_SECONDS || distinctParticipants < TANDEM_CONTRACT.minParticipants || totalPrompts < TANDEM_CONTRACT.minPrompts) {
       throw new Error("activity-tandem-insufficient-evidence");
     }
     return {
