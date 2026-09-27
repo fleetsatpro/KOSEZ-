@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
-import { summarisePronlabItem } from "@/lib/blossom/engine";
+import { activityBelongsToLanguage, summarisePronlabItem } from "@/lib/blossom/engine";
 import {
   causalNextGesture,
   computeMinerals,
@@ -37,18 +37,26 @@ function PronlabIndex() {
     (h) => h.status === "sent" && h.studentId === syncOwnerUserId,
   );
   const sets = setsForLanguage(languageId);
-  const allItems = PRONLAB_SETS.flatMap((s) => s.items);
-  const struggle = strugglingFocus(attempts, allItems);
-  const minerals = computeMinerals(log);
+  const activeItems = sets.flatMap((s) => s.items);
+  const activeItemIds = new Set(activeItems.map((item) => item.id));
+  const activeLog = log.filter((event) => activityBelongsToLanguage(event, languageId));
+  const struggle = strugglingFocus(attempts, activeItems);
+  const minerals = computeMinerals(activeLog);
   const nextGesture = causalNextGesture(minerals);
   const recentLeaves = growthEvents
-    .filter((g) => g.kind === "leaf" || g.kind === "mineral")
+    .filter((g) => {
+      const tagged = g.languageId;
+      return (typeof tagged === "string" ? tagged === languageId : languageId === "en") &&
+        (g.kind === "leaf" || g.kind === "mineral") &&
+        (g.id ? true : true);
+    })
+    .filter((g) => !g.mineral || g.mineral === "pron")
     .slice(0, 3);
 
-  const totalMastered = allItems.filter(
+  const totalMastered = activeItems.filter(
     (item) => summarisePronlabItem(item.id, attempts).mastered,
   ).length;
-  const totalAttempted = allItems.filter(
+  const totalAttempted = activeItems.filter(
     (item) => summarisePronlabItem(item.id, attempts).attemptCount > 0,
   ).length;
 
