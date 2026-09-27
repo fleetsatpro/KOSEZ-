@@ -123,3 +123,27 @@ test("causal influence ignores activity and growth from another learning languag
     false,
   );
 });
+
+
+test("pending activity cannot create causal mineral pressure", () => {
+  const now = new Date().toISOString();
+  const result = computeInfluence({
+    log: [{
+      id: "pending-speak",
+      type: "SPEAK_COMPLETED",
+      createdAt: now,
+      sourceId: "speak-pending",
+      metadata: { languageId: "en", syncState: "pending" },
+    }],
+    attempts: [],
+    allItems: [],
+    growthEvents: [],
+    phonemeLeaves: [],
+    missionSessions: {},
+    memory: neutralMemory,
+    memoryOn: false,
+    languageId: "en",
+  });
+  assert.equal(result.minerals.parole, 0);
+  assert.equal(result.mission.reasons.some((reason) => reason.code === "balanced"), true);
+});
