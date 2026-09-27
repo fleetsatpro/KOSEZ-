@@ -1760,3 +1760,98 @@ export async function endTandemSession(
     durationSeconds: Math.max(0, Number(rows[0].duration_seconds ?? 0)),
   };
 }
+
+function validPulseDareId(dareId: string): boolean {
+  const id = dareId.trim();
+  return id === "pulse-terrain" || id === "pulse-social" || id.startsWith("pulse-struggle-");
+}
+
+export async function startPulseSession(userId: string, dareId: string) {
+  await enforceRateLimit(userId, "pulse.start-session", 20, 60);
+  const normalizedDareId = dareId.trim();
+  if (!validPulseDareId(normalizedDareId)) {
+    throw new BlossomForbiddenError("Cette impulsion n\u0027est pas disponible.");
+  }
+  if (normalizedDareId.startsWith("pulse-struggle-")) {
+    const itemId = normalizedDareId.slice("pulse-struggle-".length);
+    const language = await getLearnerLanguage(userId);
+    const activeItem = setsForLanguage(language).some((set) =>
+      set.items.some((item) => item.id === itemId),
+    );
+    if (!activeItem) {
+      throw new BlossomForbiddenError("Cette impulsion n\u0027est pas disponible dans votre langue.");
+    }
+  }
+
+  const sql = await getSql();
+  const active = await sql.query(
+    `select id, dare_id
+     from blossom_pulse_session
+     where user_id = $1 and status = 'active'
+     order by created_at desc
+     limit 1`,
+    [userId],
+  );
+  if (active[0]) {
+    return { id: String(active[0].id), dareId: String(active[0].dare_id) };
+  }
+
+  const sessionId = randomUUID();
+  try {
+    await sql.query(
+      `insert into blossom_pulse_session
+        (id, user_id, dare_id, status, started_at)
+       values ($1::uuid, $2, $3, 'active', current_timestamp)`,
+      [sessionId, userId, normalizedDareId],
+    );
+  } catch (error) {
+    if ((error as { code?: string })?.code !== "23505") throw error;
+    const raced = await sql.query(
+      `select id, dare_id
+       from blossom_pulse_session
+       where user_id = $1 and status = 'active'
+       order by created_at desc
+       limit 1`,
+      [userId],
+    );
+    if (!raced[0]) throw new Error("pulse-session-create-race");
+    return { id: String(raced[0].id), dareId: String(raced[0].dare_id) };
+  }
+
+  return { id: sessionId, dareId: normalizedDareId };
+}
+
+export async function endPulseSession(
+  userId: string,
+  sessionId: string,
+  status: "completed" | "cancelled",
+) {
+  await enforceRateLimit(userId, "pulse.end-session", 20, 60);
+  const sql = await getSql();
+  const rows = await sql.query(
+    `update blossom_pulse_session
+     set status = $2,
+         ended_at = coalesce(ended_at, current_timestamp),
+         duration_seconds = greatest(
+           0,
+           extract(
+             epoch from (
+               coalesce(ended_at, current_timestamp)
+               - started_at
+             )
+           )::integer
+         ),
+         updated_at = current_timestamp
+     where id = $1::uuid and user_id = $3 and status = 'active'
+     returning id, dare_id, status, ended_at, duration_seconds`,
+    [sessionId, status, userId],
+  );
+  if (!rows[0]) throw new BlossomForbiddenError("Cette impulsion n\u0027est plus active.");
+  return {
+    id: String(rows[0].id),
+    dareId: String(rows[0].dare_id),
+    status: String(rows[0].status) as "completed" | "cancelled",
+    endedAt: new Date(String(rows[0].ended_at)).toISOString(),
+    durationSeconds: Math.max(0, Number(rows[0].duration_seconds ?? 0)),
+  };
+}
