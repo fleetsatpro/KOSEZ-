@@ -418,7 +418,7 @@ export async function assertActivityAppend(
     );
     const distinctParticipants = prompts.length;
     const totalPrompts = prompts.reduce((sum, row) => sum + Number(row.count ?? 0), 0);
-    if (!Number.isFinite(durationSeconds) || durationSeconds < 120 || distinctParticipants < 2 || totalPrompts < 2) {
+    if (!Number.isFinite(durationSeconds) || durationSeconds < 3600 || distinctParticipants < 2 || totalPrompts < 2) {
       throw new Error("activity-tandem-insufficient-evidence");
     }
     return {
