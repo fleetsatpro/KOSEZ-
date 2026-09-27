@@ -440,9 +440,12 @@ export async function assertActivityAppend(
 
   if (eventType === "GRAMMAR_COMPLETED" || eventType === "LISTENING_COMPLETED" || eventType === "WRITING_COMPLETED") {
     const kind = eventType.startsWith("GRAMMAR") ? "grammar" : eventType.startsWith("LISTENING") ? "listening" : "writing";
+    const match = new RegExp("^lab:" + kind + ":([^:]+):\\d{4}-\\d{2}-\\d{2}$").exec(sid);
+    if (!match?.[1]) throw new Error("activity-learning-invalid-source");
+    const taskId = match[1];
     const rows = await sql.query(
       "select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = $3 limit 1",
-      [userId, sid, kind],
+      [userId, taskId, kind],
     );
     if (!rows[0]) throw new Error("activity-learning-without-submission");
   }
