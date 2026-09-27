@@ -102,6 +102,7 @@ export type BackendVocabulary = {
   word: string;
   gloss: string;
   metadata: SyncJsonObject;
+  languageId?: string;
   firstSavedAt: string;
   updatedAt: string;
 };
