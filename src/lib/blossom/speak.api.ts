@@ -1,21 +1,36 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
+import {
+  startSpeakSession,
+  endSpeakSession,
+  getActiveSpeakSession,
+} from "./domain.server";
 
-const inputSchema = z.object({
-  topic: z.string().trim().min(1).max(120),
-  level: z.string().trim().max(16).optional(),
-  firstName: z.string().trim().max(80).optional(),
-  friction: z.string().trim().max(160).nullable().optional(),
-  interests: z.array(z.string().trim().max(80)).max(8).optional(),
-  archetype: z.string().trim().max(40).optional(),
-  entropy: z.string().trim().max(120).optional(),
-});
-
-export const generateSpeakRoom = createServerFn({ method: "POST" })
+export const startSpeakSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(inputSchema)
-  .handler(async ({ data, context }) => {
-    const { composeSpeakRoom } = await import("./speak-server.server");
-    return composeSpeakRoom(data, context.userId);
-  });
+  .inputValidator(
+    z.object({
+      roomId: z.string().trim().min(1).max(120),
+      languageId: z.string().trim().min(1).max(16),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    startSpeakSession(context.userId, data.roomId, data.languageId),
+  );
+
+export const endSpeakSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      sessionId: z.string().uuid(),
+      status: z.enum(["completed", "cancelled"]),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    endSpeakSession(context.userId, data.sessionId, data.status),
+  );
+
+export const getActiveSpeakSessionOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getActiveSpeakSession(context.userId));
