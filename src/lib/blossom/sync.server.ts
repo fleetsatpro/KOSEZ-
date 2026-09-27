@@ -31,7 +31,7 @@ import {
   assertLibraryReadingMutation,
   assertMissionSessionMutation,
 } from "./activity-integrity.server";
-import { isLearnLanguageId } from "@/lib/i18n/locales";
+import { isLearnLanguageId, isLearnSurfaceAvailable } from "@/lib/i18n/locales";
 import { enforceRateLimit } from "./rate-limit.server";
 import { MAX_FUTURE_MUTATION_SKEW_MS } from "./sync-causality";
 
@@ -56,7 +56,7 @@ export async function assertCurriculumEvidence(
   const checks: Record<LessonKind, () => Promise<boolean>> = {
     mission: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'MISSION_COMPLETED' and source_id = $2 limit 1", [userId, supportId]))[0]),
     speak: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'SPEAK_COMPLETED' and source_id = $2 limit 1", [userId, supportId]))[0]),
-    pronlab: async () => Boolean((await sql.query("select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 limit 1", [userId, supportId]))[0]),
+    pronlab: async () => Boolean((await sql.query("select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 and coalesce(metadata->>'languageId', '') = $3 and seconds > 0", [userId, supportId]))[0]),
     review: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'REVIEW_COMPLETED' and source_id = $2 limit 1", [userId, supportId]))[0]),
     grammar: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'grammar' limit 1", [userId, supportId]))[0]),
     listening: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'listening' limit 1", [userId, supportId]))[0]),
@@ -210,6 +210,15 @@ async function validateLearningSubmission(
   payload: z.infer<typeof submissionPayloadSchema>,
   languageId: string,
 ) {
+  if (
+    (payload.kind === "grammar" || payload.kind === "listening" || payload.kind === "writing") &&
+    !isLearnSurfaceAvailable(
+      isLearnLanguageId(languageId) ? languageId : "en",
+      "labs",
+    )
+  ) {
+    throw new Error("learning-surface-unavailable");
+  }
   if (payload.kind === "grammar") {
     const task = GRAMMAR_TASKS.find((item) => item.id === payload.taskId);
     if (!task) throw new Error("unknown-grammar-task");
@@ -271,7 +280,7 @@ async function validateLearningSubmission(
       const attempts = await getSql().then((sql) =>
         sql.query(
           "select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 limit 1",
-          [userId, itemId],
+          [userId, itemId, languageId],
         ),
       );
       if (!attempts[0]) throw new Error("review-pron-without-attempt");
