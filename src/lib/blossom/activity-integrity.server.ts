@@ -1,4 +1,5 @@
 import { getSql } from "@/lib/db";
+import { isLearnLanguageId } from "@/lib/i18n/locales";
 import { CURRICULUM_UNITS, type LessonKind } from "./learning-os";
 import { PRONLAB_SETS, setsForLanguage } from "./data";
 
@@ -101,7 +102,8 @@ export async function assertActivityAppend(
     "select target_language from blossom_profile where user_id = $1 limit 1",
     [userId],
   );
-  const expectedLanguageId = String(profile[0]?.target_language ?? "en");
+  const rawLanguageId = String(profile[0]?.target_language ?? "en");
+  const expectedLanguageId = isLearnLanguageId(rawLanguageId) ? rawLanguageId : "en";
   const claimedLanguageId = metadata.languageId;
   if (typeof claimedLanguageId !== "string" || claimedLanguageId !== expectedLanguageId) {
     throw new Error("activity-language-mismatch");
@@ -128,7 +130,7 @@ export async function assertActivityAppend(
     if (!rows[0] || !hasCompletedMissionSession(rows[0].session)) {
       throw new Error("activity-mission-without-completed-session");
     }
-    return;
+    return safeMetadata;
   }
 
   if (eventType === "PRONLAB_COMPLETED") {
