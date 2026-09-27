@@ -9,7 +9,11 @@ import {
   type JsonValue,
   upsertBlossomProfile,
 } from "./backend.server";
-import { assertCurriculumEvidence } from "./sync.server";
+import {
+  ACTIVITY_EVENT_TYPES,
+  assertActivityAppend,
+  assertMissionSessionMutation,
+} from "./activity-integrity.server";
 
 const jsonObject = z.string().trim().max(20000).optional();
 
@@ -58,7 +62,7 @@ export const recordBlossomActivity = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(
     z.object({
-      eventType: z.string().trim().min(1).max(100),
+      eventType: z.enum(ACTIVITY_EVENT_TYPES),
       sourceId: z.string().trim().max(200).nullable().optional(),
       payloadJson: jsonObject,
       idempotencyKey: z.string().uuid().nullable().optional(),
@@ -67,18 +71,20 @@ export const recordBlossomActivity = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     const payload = parseJsonObject(data.payloadJson);
-    if (data.eventType === "CURRICULUM_EVIDENCE_RECORDED") {
-      await assertCurriculumEvidence(
-        context.userId,
-        data.sourceId ?? "",
-        payload.metadata && typeof payload.metadata === "object" && !Array.isArray(payload.metadata)
-          ? payload.metadata
-          : {},
-      );
-    }
+    const rawMetadata = payload.metadata;
+    const metadata =
+      rawMetadata && typeof rawMetadata === "object" && !Array.isArray(rawMetadata)
+        ? rawMetadata
+        : {};
+    const safeMetadata = await assertActivityAppend(
+      context.userId,
+      data.eventType,
+      data.sourceId ?? "",
+      metadata,
+    );
     await appendBlossomActivity(context.userId, {
       ...data,
-      payload,
+      payload: { ...payload, metadata: safeMetadata },
     });
     return { ok: true as const };
   });
@@ -92,11 +98,13 @@ export const persistBlossomMissionSession = createServerFn({ method: "POST" })
       expectedRevision: z.number().int().nonnegative(),
     }),
   )
-  .handler(async ({ context, data }) =>
-    saveBlossomMissionSession(
+  .handler(async ({ context, data }) => {
+    const session = parseJsonValue(data.sessionJson);
+    await assertMissionSessionMutation(context.userId, data.missionId, session);
+    return saveBlossomMissionSession(
       context.userId,
       data.missionId,
-      parseJsonValue(data.sessionJson),
+      session,
       data.expectedRevision,
-    ),
-  );
+    );
+  });
