@@ -19,6 +19,7 @@ import {
   startTandemSessionOnServer,
 } from "@/lib/blossom/domain.api";
 import { useBlossom } from "@/lib/blossom/store";
+import { TANDEM_HALF_DURATION_SECONDS } from "@/lib/blossom/tandem-contract";
 
 export const Route = createFileRoute("/_app/tandem/$id")({
   component: () => (
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/_app/tandem/$id")({
   ),
 });
 
-const HALF_SECONDS = 30 * 60;
+const HALF_SECONDS = TANDEM_HALF_DURATION_SECONDS;
 
 type CeremonyState = {
   event: GrowthEvent;
