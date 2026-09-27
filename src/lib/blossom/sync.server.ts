@@ -341,15 +341,16 @@ async function applyMutation(
   switch (mutation.operation) {
     case "activity.append": {
       const payload = activityPayloadSchema.parse(mutation.payload);
+      const sourceId = payload.sourceId ?? mutation.entityId;
       const safeMetadata = await assertActivityAppend(
         userId,
         payload.eventType,
-        payload.sourceId ?? mutation.entityId,
+        sourceId,
         objectValue(payload.metadata),
       );
       await appendBlossomActivity(userId, {
         eventType: payload.eventType,
-        sourceId: payload.sourceId ?? null,
+        sourceId,
         payload: {
           ...objectValue(payload.payload),
           metadata: objectValue(safeMetadata),
