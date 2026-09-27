@@ -326,7 +326,7 @@ async function applyMutation(
   switch (mutation.operation) {
     case "activity.append": {
       const payload = activityPayloadSchema.parse(mutation.payload);
-      await assertActivityAppend(
+      const safeMetadata = await assertActivityAppend(
         userId,
         payload.eventType,
         payload.sourceId ?? mutation.entityId,
@@ -337,7 +337,7 @@ async function applyMutation(
         sourceId: payload.sourceId ?? null,
         payload: {
           ...objectValue(payload.payload),
-          metadata: objectValue(payload.metadata),
+          metadata: safeMetadata,
         },
         idempotencyKey: mutation.mutationId,
         occurredAt: payload.occurredAt,
