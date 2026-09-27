@@ -33,6 +33,8 @@ import {
   startTandemSession,
   logTandemPrompt,
   endTandemSession,
+  startPulseSession,
+  endPulseSession,
 } from "./domain.server";
 import type { JsonObject } from "./backend.server";
 import { getAdminEventAttendance, recordEventAttendance } from "./event-attendance.server";
@@ -119,6 +121,26 @@ export const cancelTeacherSessionOnServer = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) =>
     cancelTeacherSession(context.userId, data.sessionId),
   );
+
+export const startPulseSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ dareId: z.string().trim().min(1).max(200) }))
+  .handler(async ({ context, data }) =>
+    startPulseSession(context.userId, data.dareId),
+  );
+
+export const endPulseSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      sessionId: z.string().uuid(),
+      status: z.enum(["completed", "cancelled"]),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    endPulseSession(context.userId, data.sessionId, data.status),
+  );
+
 
 export const getAdminWorkspaceOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
