@@ -145,7 +145,7 @@ function mergeBackendState(remote: BackendState): void {
     });
   }
 
-  const vocabularyByWord = new Map(
+  const vocabularyByWord = new Map<string, (typeof current.vocabulary)[number]>(
     current.vocabulary.map((entry) => {
       const languageId = entry.metadata?.languageId ?? "en";
       return [`${languageId}:${entry.word.toLowerCase()}`, entry] as const;
