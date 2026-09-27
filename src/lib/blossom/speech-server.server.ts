@@ -99,7 +99,8 @@ export async function transcribeSpeechAudio(input: {
   mimeType?: string;
   seconds?: number;
   fileName?: string;
-}): Promise<SpeechTurnEvidence> {
+}, userId: string): Promise<SpeechTurnEvidence> {
+  await enforceRateLimit(userId, "speech.transcribe", 12, 60);
   const seconds = Math.max(0, Math.round(input.seconds ?? 0));
   const at = new Date().toISOString();
 
