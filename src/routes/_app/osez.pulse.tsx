@@ -119,7 +119,7 @@ function PulsePage() {
     setElapsed(authoritativeSeconds ?? localSeconds);
     setPhase("done");
     if (authoritativeSeconds !== null) {
-      completePulse(dare?.id ?? "pulse-local", authoritativeSeconds, false);
+      completePulse(`pulse-session-${serverSessionId}`, authoritativeSeconds, false);
     }
     setClosing(false);
     setCeremonyOpen(true);
