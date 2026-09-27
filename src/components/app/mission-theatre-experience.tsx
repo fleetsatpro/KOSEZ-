@@ -15,6 +15,7 @@ import { Eyebrow, Wordmark } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import {
   journeySnapshot,
+  activityBelongsToLanguage,
   hasSource,
   personaliseMission,
   resolveMemory,
@@ -112,7 +113,8 @@ export function MissionTheatreExperience() {
     : null;
   const history = summariseMissionHistory(session?.runs ?? []);
   const recommendedChallenge = nextMissionChallenge(previousEvaluation?.outcome);
-  const already = hasSource(log, todayMission.id);
+  const activeLog = log.filter((event) => activityBelongsToLanguage(event, languageId));
+  const already = hasSource(activeLog, todayMission.id);
   const memoryOn = planAllows(plan, "memory");
   const memory = resolveMemory(attempts, LEARNER_MEMORY);
   const personalised = personaliseMission(todayMission, memory, memoryOn);
@@ -254,7 +256,11 @@ export function MissionTheatreExperience() {
     const pointDelta = growth.after.points - growth.before.points;
     const stageChanged = growth.after.stage.id !== growth.before.stage.id;
     const progressDelta = Math.round((growth.after.progress - growth.before.progress) * 100);
-    const latestGrowth = growthEvents[0] ?? null;
+    const latestGrowth =
+      growthEvents.find((event) => {
+        const tagged = event.languageId;
+        return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+      }) ?? null;
     const nextDoor = causalNextGesture(minerals);
     const intensity = Math.min(1, 0.4 + Math.max(0, progressDelta) / 100);
 
