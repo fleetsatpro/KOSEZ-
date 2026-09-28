@@ -1,6 +1,6 @@
 -- Server-authoritative Speak (OSEZ) sessions.
--- The client may practice offline, but only a server-started and completed
--- session can produce a reward-bearing SPEAK_COMPLETED evidence event.
+-- The client may practice offline, but only a server-started, server-completed
+-- session can produce SPEAK_COMPLETED growth evidence.
 
 create table if not exists blossom_speak_session (
   id uuid primary key,
@@ -15,13 +15,12 @@ create table if not exists blossom_speak_session (
   updated_at timestamptz not null default current_timestamp
 );
 
--- At most one active Speak session per user.
+create index if not exists blossom_speak_session_user_idx
+  on blossom_speak_session (user_id, created_at desc);
+
 create unique index if not exists blossom_speak_session_active_user_uidx
   on blossom_speak_session (user_id)
   where status = 'active';
-
-create index if not exists blossom_speak_session_user_time_idx
-  on blossom_speak_session (user_id, started_at desc);
 
 -- One reward-bearing SPEAK_COMPLETED per server session.
 create unique index if not exists blossom_activity_speak_session_uidx
