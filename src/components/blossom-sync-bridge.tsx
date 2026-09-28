@@ -985,7 +985,10 @@ export function BlossomSyncBoundary({ children }: { children: ReactNode }) {
       setPersistHydrated(true);
       return;
     }
-    return subscribeBlossomHydration(() => setPersistHydrated(true));
+    const unsubscribe = subscribeBlossomHydration(() => setPersistHydrated(true));
+    return () => {
+      unsubscribe();
+    };
   }, [persistHydrated]);
 
   // Same-user reloads can render their tenant-bound local session immediately
