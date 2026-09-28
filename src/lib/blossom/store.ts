@@ -631,6 +631,7 @@ export const useBlossom = create<AppState>()(
             content: input.content,
             checks: input.checks,
             result: submissionResult as SyncJsonValue,
+            rollback: existing ? { existing } : { existing: null },
           },
         });
         if (existing) {
