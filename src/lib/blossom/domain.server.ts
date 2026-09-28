@@ -1252,7 +1252,11 @@ export async function startMissionRunSession(userId: string, missionId: string, 
   return { id: sessionId, missionId: normalizedMissionId, runId: normalizedRunId };
 }
 
-export async function endMissionRunSession(userId: string, sessionId: string) {
+export async function endMissionRunSession(
+  userId: string,
+  sessionId: string,
+  status: "completed" | "cancelled" = "completed",
+) {
   await enforceRateLimit(userId, "mission.end-session", 20, 60);
   const sql = await getSql();
   const rows = await sql.query(
@@ -1288,7 +1292,7 @@ export async function endMissionRunSession(userId: string, sessionId: string) {
   return {
     id: String(rows[0].id),
     missionId: String(rows[0].mission_id),
-    status: "completed" as const,
+    status: String(rows[0].status) as "completed" | "cancelled",
     endedAt: new Date(String(rows[0].ended_at)).toISOString(),
     durationSeconds: Math.max(0, Number(rows[0].duration_seconds ?? 0)),
   };
