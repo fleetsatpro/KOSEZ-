@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { LIBRARY as LIBRARY_CORE, planAllows } from "@/lib/blossom/data";
 import { EXTRA_LIBRARY } from "@/lib/blossom/library-extra";
 import { useBlossom } from "@/lib/blossom/store";
+import { LearningSurfaceAvailability } from "@/components/app/learning-surface-availability";
+import { canUseLearningSurface } from "@/lib/i18n/locales";
 
 const LIBRARY = [...LIBRARY_CORE, ...EXTRA_LIBRARY];
 
@@ -25,9 +27,14 @@ function LibraryPage() {
 }
 
 function LibraryIndex() {
+  const languageId = useBlossom((s) => s.languageId);
   const vocab = useBlossom((s) => s.vocabulary);
   const plan = useBlossom((s) => s.plan);
   const libraryOk = planAllows(plan, "library");
+
+  if (!canUseLearningSurface(languageId, "library")) {
+    return <LearningSurfaceAvailability languageId={languageId} surface="library" />;
+  }
 
   if (!libraryOk) {
     return (
