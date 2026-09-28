@@ -2000,14 +2000,7 @@ export async function finalizeSpeakSession(
       type: "SPEAK_COMPLETED" as const,
       sourceId: String(rows[0].activity_source_id),
       createdAt: new Date(String(rows[0].activity_occurred_at)).toISOString(),
-      metadata:
-        activityMetadata && typeof activityMetadata === "object" && !Array.isArray(activityMetadata)
-          ? Object.fromEntries(
-              Object.entries(activityMetadata as Record<string, unknown>).filter(
-                ([, value]) => typeof value === "string" || typeof value === "number" || typeof value === "boolean",
-              ),
-            )
-          : {},
+      metadata: activityMetadata,
     },
   };
 }
