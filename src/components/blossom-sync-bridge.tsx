@@ -21,7 +21,7 @@ import type { BackendState, SyncJsonValue, SyncMutation, SyncResult } from "@/li
 import { POINTS, type ActivityEvent, type PronlabAttempt } from "@/lib/blossom/engine";
 import { buildPhonemeLeaves } from "@/lib/blossom/organism";
 import { setsForLanguage } from "@/lib/blossom/data";
-import { useBlossom } from "@/lib/blossom/store";
+import { isBlossomHydrated, subscribeBlossomHydration, useBlossom } from "@/lib/blossom/store";
 import { isUiLocaleId, isLearnLanguageId, type LearnLanguageId } from "@/lib/i18n/locales";
 
 const SYNC_INTERVAL_MS = 45_000;
@@ -956,10 +956,10 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
       };
     };
 
-    if (useBlossom.persist.hasHydrated()) {
+    if (isBlossomHydrated()) {
       startSync();
     } else {
-      hydrationCleanup = useBlossom.persist.onFinishHydration(() => startSync());
+      hydrationCleanup = subscribeBlossomHydration(() => startSync());
     }
 
     return () => {
@@ -976,16 +976,16 @@ export function BlossomSyncBoundary({ children }: { children: ReactNode }) {
   const { user, isPending } = useCurrentUserState();
   const syncOwnerUserId = useBlossom((state) => state.syncOwnerUserId);
   const [readyKey, setReadyKey] = useState<string | null>(null);
-  const [persistHydrated, setPersistHydrated] = useState(() => useBlossom.persist.hasHydrated());
+  const [persistHydrated, setPersistHydrated] = useState(() => isBlossomHydrated());
   const identityKey = isPending ? null : user?.id ?? "__signed-out__";
 
   useEffect(() => {
     if (persistHydrated) return;
-    if (useBlossom.persist.hasHydrated()) {
+    if (isBlossomHydrated()) {
       setPersistHydrated(true);
       return;
     }
-    return useBlossom.persist.onFinishHydration(() => setPersistHydrated(true));
+    return subscribeBlossomHydration(() => setPersistHydrated(true));
   }, [persistHydrated]);
 
   // Same-user reloads can render their tenant-bound local session immediately
