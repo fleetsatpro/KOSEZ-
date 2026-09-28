@@ -7,6 +7,7 @@ const DB_VERSION = 1;
 const OUTBOX_FALLBACK_KEY = "kosez-blossom-outbox-v1";
 const DEVICE_KEY = "kosez-blossom-device-id";
 const CHANGE_EVENT = "kosez:sync-needed";
+const volatileProfileMutations = new Map<string, SyncMutation>();
 let activeOwnerId: string | null = null;
 // Ownerless mutations can be created during the short auth-hydration window.
 // They may only be claimed by the first authenticated owner in that same page
@@ -231,6 +232,9 @@ export function enqueueMutation(mutation: SyncMutation): Promise<void> {
 
 export async function listPendingMutations(): Promise<StoredMutation[]> {
   const ownerId = activeOwnerId;
+  const volatileProfiles = [...volatileProfileMutations.values()]
+    .filter((mutation) => !ownerId || mutation.ownerUserId === ownerId)
+    .map((mutation) => ({ ...mutation, state: "pending" as const }));
   if (!ownerId) return [];
 
   const canClaimOwnerless = (row: StoredMutation): boolean =>
@@ -305,6 +309,7 @@ export async function markConflict(
 }
 
 export async function removeMutation(mutationId: string): Promise<void> {
+  volatileProfileMutations.delete(mutationId);
   if (hasIndexedDb()) {
     try {
       await txRequest("readwrite", (store) => store.delete(mutationId));
