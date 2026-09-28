@@ -202,7 +202,7 @@ function mergeBackendState(remote: BackendState, pendingMutations: SyncMutation[
     }
   }
 
-  if (profileIntentActive) {
+  if (profileIntentActive && localProfileIntent) {
     const intent = localProfileIntent;
     if (typeof intent.targetLanguage === "string" && isLearnLanguageId(intent.targetLanguage)) {
       profileLanguageId = intent.targetLanguage;
