@@ -24,7 +24,7 @@ import {
 import { useBlossom } from "@/lib/blossom/store";
 import { track } from "@/lib/analytics";
 import { toast } from "sonner";
-import { startSpeakSessionOnServer, finalizeSpeakSessionOnServer } from "@/lib/blossom/domain.api";
+import { startSpeakSessionOnServer, endSpeakSessionOnServer, finalizeSpeakSessionOnServer } from "@/lib/blossom/domain.api";
 import { cn } from "@/lib/utils";
 import {
   clearCurriculumLessonContext,
@@ -94,6 +94,16 @@ function SpeakRoom() {
   const [serverSessionId, setServerSessionId] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
   const [rewardUnavailable, setRewardUnavailable] = useState(false);
+  const mountedRef = useRef(true);
+  const serverSessionRef = useRef<string | null>(null);
+  const completedServerSessionRef = useRef(false);
+  useEffect(() => () => {
+    mountedRef.current = false;
+    const sessionId = serverSessionRef.current;
+    if (sessionId && !completedServerSessionRef.current) {
+      void endSpeakSessionOnServer({ data: { sessionId, status: "cancelled" } }).catch(() => undefined);
+    }
+  }, []);
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
   useEffect(() => {
     if (curriculumLessonId) clearCurriculumLessonContext();
@@ -218,6 +228,12 @@ function SpeakRoom() {
     setRewardUnavailable(false);
     try {
       const session = await startSpeakSessionOnServer({ data: { roomId: room.id } });
+      serverSessionRef.current = session.id;
+      completedServerSessionRef.current = false;
+      if (!mountedRef.current) {
+        void endSpeakSessionOnServer({ data: { sessionId: session.id, status: "cancelled" } }).catch(() => undefined);
+        return;
+      }
       setServerSessionId(session.id);
     } catch {
       setServerSessionId(null);
@@ -288,6 +304,8 @@ function SpeakRoom() {
     }
 
     toast("Session close. La tige s'épaissit.");
+    completedServerSessionRef.current = true;
+    serverSessionRef.current = null;
     setServerSessionId(null);
     setRewardUnavailable(false);
     setClosing(false);
