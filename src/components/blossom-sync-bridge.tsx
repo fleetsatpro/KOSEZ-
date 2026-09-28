@@ -982,17 +982,25 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
 
 export function BlossomSyncBoundary({ children }: { children: ReactNode }) {
   const { user, isPending } = useCurrentUserState();
-  const identityKey = isPending ? null : user?.id ?? "__signed-out__";
+  const syncOwnerUserId = useBlossom((state) => state.syncOwnerUserId);
   const [readyKey, setReadyKey] = useState<string | null>(null);
+  const identityKey = isPending ? null : user?.id ?? "__signed-out__";
 
-  // Never block the application shell on network or persistence hydration.
-  // Zustand starts from the safe default state and replaces it with the
-  // tenant-bound persisted snapshot as soon as hydration completes. The sync
-  // bridge itself waits for that hydration before reconciling server state.
-  const ready = identityKey !== null;
+  // The auth-disabled smoke/dev user is a single, explicit non-production
+  // fallback and can safely render its local snapshot immediately. Auth-enabled
+  // sessions wait for the bridge to reconcile the persisted owner so a sign-out
+  // or account switch can never paint another tenant's state.
+  const localFallbackReady = user?.isDevFallback === true;
+  const ownerReady =
+    identityKey !== null && syncOwnerUserId === identityKey;
+  const ready =
+    identityKey !== null &&
+    (localFallbackReady || readyKey === identityKey || ownerReady);
 
   useEffect(() => {
     if (identityKey === null || ready) return;
+    // Never block indefinitely: the bridge calls onReady after its bootstrap
+    // pass, including offline/degraded states.
     const timer = window.setTimeout(() => setReadyKey(identityKey), 2500);
     return () => window.clearTimeout(timer);
   }, [identityKey, ready]);
