@@ -61,3 +61,4 @@ export function describeUiLocale(localeId: string, uiLocale: string) {
     note: def.note[ui] ?? def.note.fr,
   };
 }
+export * from "./learning-surface";
