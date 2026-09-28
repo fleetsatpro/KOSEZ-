@@ -32,12 +32,18 @@ export async function assertSpeakCompletedEvidence(
     [sessionId, userId],
   );
   if (!completed[0]) throw new Error("activity-speak-without-session");
-  const sessionLanguage = String(completed[0].language_id ?? "").trim().toLowerCase();
+  const sessionLanguage = String(completed[0].language_id ?? "")
+    .trim()
+    .toLowerCase();
   if (sessionLanguage && sessionLanguage !== expectedLanguageId) {
     throw new Error("activity-speak-language-mismatch");
   }
   const durationSeconds = Number(completed[0].duration_seconds);
-  if (!Number.isFinite(durationSeconds) || durationSeconds < 1 || durationSeconds > 7200) {
+  if (
+    !Number.isFinite(durationSeconds) ||
+    durationSeconds < 1 ||
+    durationSeconds > 7200
+  ) {
     throw new Error("activity-speak-invalid-server-duration");
   }
   return {
