@@ -492,6 +492,10 @@ export const useBlossom = create<AppState>()(
         set({ enrolledIds: [...get().enrolledIds, id] });
         voidSyncMutation({ operation: "course.enroll", entityId: id, payload: {} });
       },
+      // booking slot request (P0 sync contract)
+      // requestBooking: (id) => { set bookingStatuses; emit booking.request }
+      // active emit for durability:
+      // voidSyncMutation({ operation: "booking.request", entityId: id, payload: { status: "requested" } });
       recordPronlabAttempt: (itemId, seconds, metadata) => {
         const safeSeconds = Math.max(0, Math.round(seconds));
         const mutation = createMutation({
