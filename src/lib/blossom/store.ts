@@ -3,7 +3,7 @@ import { isLearnLanguageId, isUiLocaleId, uiLocaleDef, type LearnLanguageId, typ
 import { persist } from "zustand/middleware";
 import { track } from "@/lib/analytics";
 import { createMutation, enqueueMutation } from "./sync-client";
-import type { SyncJsonValue } from "./sync-types";
+import type { SyncJsonObject, SyncJsonValue } from "./sync-types";
 import {
   activityBelongsToLanguage,
   hasSource,
@@ -243,7 +243,7 @@ function voidProfileSync(
   warmup: string | null,
   exportConsent: boolean,
   tandemOpen: boolean,
-  rollback?: Record<string, unknown>,
+  rollback?: SyncJsonObject,
 ): void {
   const state = useBlossom.getState();
   voidSyncMutation({
@@ -661,7 +661,7 @@ export const useBlossom = create<AppState>()(
             content: input.content,
             checks: input.checks,
             result: submissionResult as SyncJsonValue,
-            rollback: existing ? { existing } : { existing: null },
+            rollback: existing ? { existing: existing as unknown as SyncJsonValue } : { existing: null },
           },
         });
         if (existing) {
@@ -712,7 +712,7 @@ export const useBlossom = create<AppState>()(
             word,
             gloss,
             metadata,
-            rollback: existing ? { existing } : { existing: null },
+            rollback: existing ? { existing: existing as unknown as SyncJsonValue } : { existing: null },
           },
         });
         const existing = current.vocabulary.find(
