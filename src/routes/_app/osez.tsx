@@ -58,13 +58,13 @@ const TOPIC_SUGGESTIONS = [
 ];
 
 function OsezPage() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
+  });
   const languageId = useBlossom((s) => s.languageId);
   if (!canUseLearningSurface(languageId, "osez")) {
     return <LearningSurfaceAvailability languageId={languageId} surface="osez" />;
   }
-  const pathname = useRouterState({
-    select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
-  });
 
   return pathname === "/osez" ? <OsezHub /> : <Outlet />;
 }
