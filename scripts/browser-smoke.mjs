@@ -288,18 +288,16 @@ try {
     }
     if (vp.name === "desktop" && expectedAuth === "disabled") {
       try {
-        const stored = await page.evaluate((storageKey) => {
-          const raw = localStorage.getItem(storageKey);
-          if (!raw) return null;
-          const parsed = JSON.parse(raw);
-          parsed.state ??= {};
-          parsed.state.languageId = "fr";
-          parsed.state.learner = { ...(parsed.state.learner ?? {}), targetLanguage: "fr" };
-          localStorage.setItem(storageKey, JSON.stringify(parsed));
-          return parsed;
-        }, SMOKE_STATE_KEY);
-        if (!stored) throw new Error("could not prepare language-gate state");
-        await page.reload({ waitUntil: "domcontentloaded", timeout: timeoutMs });
+        await gotoWithRetry(
+          page,
+          new URL("/moi", url).href,
+          { waitUntil: "domcontentloaded", timeout: timeoutMs },
+        );
+        const frenchLearningButton = page.getByRole("button", { name: /^Français —/ }).last();
+        await frenchLearningButton.waitFor({ state: "visible", timeout: 10000 });
+        await frenchLearningButton.click();
+        await page.waitForTimeout(500);
+
         await gotoWithRetry(
           page,
           new URL("/mission", url).href,
