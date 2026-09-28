@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate, Outlet } from "@tanstack/react-router";
 import { Toaster } from "sonner";
 import { AppShell } from "@/components/app/shell";
+import { BlossomSyncBoundary } from "@/components/blossom-sync-bridge";
 import { authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
@@ -27,15 +28,17 @@ function AppLayout() {
   }
 
   return (
-    <AppShell>
-      <Outlet />
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          className:
-            "!bg-surface !text-fg !border-border !shadow-[var(--shadow-border)]",
-        }}
-      />
-    </AppShell>
+    <BlossomSyncBoundary>
+      <AppShell>
+        <Outlet />
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            className:
+              "!bg-surface !text-fg !border-border !shadow-[var(--shadow-border)]",
+          }}
+        />
+      </AppShell>
+    </BlossomSyncBoundary>
   );
 }
