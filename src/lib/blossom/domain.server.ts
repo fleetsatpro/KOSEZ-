@@ -1915,7 +1915,7 @@ export async function finalizeSpeakSession(
        insert into blossom_activity_event
          (id, user_id, idempotency_key, event_type, source_id, payload, occurred_at)
        select
-         $1::uuid,
+         $6::uuid,
          $2,
          $1::uuid,
          'SPEAK_COMPLETED',
@@ -1955,7 +1955,7 @@ export async function finalizeSpeakSession(
      and a.event_type = 'SPEAK_COMPLETED'
      and a.source_id = 'speak-session-' || s.id
     limit 1`,
-    [sessionId, userId, spokenSeconds, transcriptCount, captureOnlyCount],
+    [sessionId, userId, spokenSeconds, transcriptCount, captureOnlyCount, randomUUID()],
   );
   if (!rows[0]) throw new BlossomForbiddenError("Cette session Speak n'est plus active.");
   const activityMetadata =
