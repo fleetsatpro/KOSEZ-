@@ -111,8 +111,20 @@ function LibraryIndex() {
         </Surface>
       )}
 
+      {languageLibrary.length === 0 ? (
+        <Surface className="mt-8 !p-6">
+          <Eyebrow>Aucun texte pour cette langue</Eyebrow>
+          <h2 className="mt-2 font-display text-2xl tracking-tight">
+            La ludothèque de cette langue arrive au fur et à mesure.
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Aucun document disponible ici ne sera remplacé silencieusement par un
+            texte d’une autre langue.
+          </p>
+        </Surface>
+      ) : (
       <div className="mt-8 grid gap-5 sm:grid-cols-2">
-        {LIBRARY.map((doc) => (
+        {languageLibrary.map((doc) => (
           <Link
             key={doc.id}
             to="/library/$id"
@@ -153,6 +165,7 @@ function LibraryIndex() {
           </Link>
         ))}
       </div>
+      )}
 
       <p className="mt-10 text-center text-xs leading-5 text-subtle">
         Les mots gardés reviennent dans les missions et les Speak rooms.
