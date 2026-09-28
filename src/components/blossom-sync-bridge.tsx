@@ -873,21 +873,31 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
     }
 
     let disposed = false;
-    const storedOwner = useBlossom.getState().syncOwnerUserId;
-    const userChanged = storedOwner !== user.id;
-    setSyncOwner(user.id);
+    let cleanupSync: (() => void) | undefined;
+    let hydrationCleanup: (() => void) | undefined;
 
-    if (userChanged) {
-      useBlossom.getState().resetJourney();
-    }
-    useBlossom.setState({ syncOwnerUserId: user.id });
+    const startSync = () => {
+      if (disposed || cleanupSync) return;
 
-    if (!navigator.onLine) {
-      onReadyRef.current?.();
-      return;
-    }
+      const storedOwner = useBlossom.getState().syncOwnerUserId;
+      const userChanged = storedOwner !== user.id;
+      setSyncOwner(user.id);
 
-    // Keep a second pass when mutations arrive during an active pass.
+      if (userChanged) {
+        useBlossom.getState().resetJourney();
+      }
+      useBlossom.setState({ syncOwnerUserId: user.id });
+
+      if (!navigator.onLine) {
+        onReadyRef.current?.();
+        cleanupSync = () => undefined;
+        return;
+      }
+
+      // Keep a second pass when mutations arrive during an active pass.
+    // This callback only runs after Zustand persistence has hydrated, so an
+    // authenticated user can never be mistaken for a changed owner merely
+    // because the persisted owner has not been read yet.
     // This is important for causal chains such as LIBRARY_COMPLETED ->
     // CURRICULUM_EVIDENCE_RECORDED: the dependent evidence must never be
     // allowed to outrun the source mutation on the server.
@@ -936,13 +946,26 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
     window.addEventListener("online", onOnline);
     const timer = window.setInterval(onChange, SYNC_INTERVAL_MS);
 
-    void run();
+      void run();
+
+      cleanupSync = () => {
+        disposed = true;
+        window.removeEventListener(eventName, onChange);
+        window.removeEventListener("online", onOnline);
+        window.clearInterval(timer);
+      };
+    };
+
+    if (useBlossom.persist.hasHydrated()) {
+      startSync();
+    } else {
+      hydrationCleanup = useBlossom.persist.onFinishHydration(() => startSync());
+    }
 
     return () => {
       disposed = true;
-      window.removeEventListener(eventName, onChange);
-      window.removeEventListener("online", onOnline);
-      window.clearInterval(timer);
+      hydrationCleanup?.();
+      cleanupSync?.();
     };
   }, [isPending, user?.id]);
 
