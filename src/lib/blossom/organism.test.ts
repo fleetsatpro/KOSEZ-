@@ -153,3 +153,12 @@ describe("weekKey", () => {
     assert.match(weekKey(new Date("2026-09-22")), /^2026-W\d{2}$/);
   });
 });
+
+test("causal gesture resolves supported child door before filtering", () => {
+  const gesture = causalNextGesture(
+    { pron: 20, parole: 0, mission: 30, social: 40, atelier: 50 },
+    new Set(["/osez/pulse"]),
+  );
+  assert.equal(gesture.mineral, "parole");
+  assert.equal(gesture.door, "/osez/pulse");
+});
