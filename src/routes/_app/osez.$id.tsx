@@ -24,7 +24,7 @@ import {
 import { useBlossom } from "@/lib/blossom/store";
 import { track } from "@/lib/analytics";
 import { toast } from "sonner";
-import { startSpeakSessionOnServer, endSpeakSessionOnServer } from "@/lib/blossom/domain.api";
+import { startSpeakSessionOnServer, finalizeSpeakSessionOnServer } from "@/lib/blossom/domain.api";
 import { cn } from "@/lib/utils";
 import {
   clearCurriculumLessonContext,
@@ -48,7 +48,7 @@ function SpeakRoomRoute() {
 function SpeakRoom() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const complete = useBlossom((s) => s.completeActivity);
+  const acceptConfirmedActivity = useBlossom((s) => s.acceptConfirmedActivity);
   const plan = useBlossom((s) => s.plan);
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
@@ -92,7 +92,6 @@ function SpeakRoom() {
   const mineralsBefore = useRef(minerals);
   const composeGeneration = useRef(0);
   const [serverSessionId, setServerSessionId] = useState<string | null>(null);
-  const [serverEvidenceAvailable, setServerEvidenceAvailable] = useState(false);
   const [closing, setClosing] = useState(false);
   const [rewardUnavailable, setRewardUnavailable] = useState(false);
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
@@ -220,10 +219,8 @@ function SpeakRoom() {
     try {
       const session = await startSpeakSessionOnServer({ data: { roomId: room.id } });
       setServerSessionId(session.id);
-      setServerEvidenceAvailable(true);
     } catch {
       setServerSessionId(null);
-      setServerEvidenceAvailable(false);
       setRewardUnavailable(true);
       toast("La room reste disponible, mais aucune croissance ne sera créditée sans validation serveur.");
     }
@@ -292,7 +289,6 @@ function SpeakRoom() {
 
     toast("Session close. La tige s'épaissit.");
     setServerSessionId(null);
-    setServerEvidenceAvailable(false);
     setRewardUnavailable(false);
     setClosing(false);
     setCeremonyOpen(true);
