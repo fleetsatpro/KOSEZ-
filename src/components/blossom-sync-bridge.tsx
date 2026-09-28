@@ -30,6 +30,7 @@ const PROFILE_INTENT_KEY = "kosez-blossom-profile-intent-v1";
 
 type LocalProfileIntent = {
   mutationId: string;
+  ownerUserId: string | null;
   createdAt: string;
   displayName?: string;
   targetLanguage?: string;
@@ -52,6 +53,7 @@ function readLocalProfileIntent(): LocalProfileIntent | null {
         : undefined;
     return {
       mutationId: record.mutationId,
+      ownerUserId: typeof record.ownerUserId === "string" ? record.ownerUserId : null,
       createdAt: record.createdAt,
       displayName: typeof record.displayName === "string" ? record.displayName : undefined,
       targetLanguage: typeof record.targetLanguage === "string" ? record.targetLanguage : undefined,
@@ -118,7 +120,13 @@ function mergeBackendState(remote: BackendState, pendingMutations: SyncMutation[
     !Array.isArray(pendingProfile.payload)
       ? pendingProfile.payload
       : null;
-  const localProfileIntent = readLocalProfileIntent();
+  const rawLocalProfileIntent = readLocalProfileIntent();
+  const localProfileIntent =
+    rawLocalProfileIntent &&
+    rawLocalProfileIntent.ownerUserId &&
+    rawLocalProfileIntent.ownerUserId === current.syncOwnerUserId
+      ? rawLocalProfileIntent
+      : null;
 
   if (remote.profile) {
     const displayName = remote.profile.displayName?.trim();
