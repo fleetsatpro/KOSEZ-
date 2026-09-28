@@ -315,6 +315,13 @@ try {
         // event before navigating into language-gated routes.
         await page.waitForTimeout(1500);
 
+        const frenchStateBeforeMission = await page.evaluate(() => ({
+          selectValue: [...document.querySelectorAll("select")].find(
+            (node) => node.closest("label")?.textContent?.includes("Langue cible"),
+          )?.value ?? null,
+          store: window.localStorage.getItem("kosez-blossom-v2"),
+          profileIntent: window.localStorage.getItem("kosez-blossom-profile-intent-v1"),
+        }));
         await gotoWithRetry(
           page,
           new URL("/mission", url).href,
@@ -322,7 +329,16 @@ try {
         );
         const gatedCopy = normalizeBodyText(await page.locator("body").innerText().catch(() => ""));
         if (!gatedCopy.includes("Surface non activée")) {
-          errors.pageErrors.push("unsupported French mission surface was not gated");
+          const frenchStateAfterMission = await page.evaluate(() => ({
+            store: window.localStorage.getItem("kosez-blossom-v2"),
+            profileIntent: window.localStorage.getItem("kosez-blossom-profile-intent-v1"),
+          }));
+          errors.pageErrors.push(
+            "unsupported French mission surface was not gated" +
+            " · before=" + JSON.stringify(frenchStateBeforeMission).slice(0, 2600) +
+            " · after=" + JSON.stringify(frenchStateAfterMission).slice(0, 2600) +
+            " · body=" + gatedCopy.slice(0, 1800),
+          );
         }
         await gotoWithRetry(
           page,
