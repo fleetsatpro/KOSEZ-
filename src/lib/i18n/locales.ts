@@ -384,7 +384,7 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
     engine: "module",
     contentPacks: ["centre-creole"],
     speechLocale: "fr-FR",
-    surfaces: ["mission", "library"],
+    surfaces: [],
     levels: ["A1", "A2"],
     culturalAnchor: {
       fr: "Module ancré dans le territoire — selon disponibilité du centre Saint-Pierre.",
@@ -395,12 +395,12 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
       it: "Modulo ancorato al territorio — secondo disponibilità del centro.",
     },
     switchImpact: {
-      fr: "Active le module centre créole. Speech via FR. Missions territoriales.",
-      en: "Activates centre Creole module. Speech via FR. Territorial missions.",
-      es: "Activa el módulo criollo del centro. Speech vía FR. Misiones territoriales.",
-      pt: "Ativa o módulo crioulo do centro. Speech via FR. Missões territoriais.",
-      de: "Aktiviert das Kreol-Modul des Zentrums. Sprache über FR. Territoriale Missionen.",
-      it: "Attiva il modulo creolo del centro. Speech via FR. Missioni territoriali.",
+      fr: "Le module créole reste en préparation dans BLOSSOM.",
+      en: "The Creole module is not yet exposed as an active learner surface.",
+      es: "El módulo criollo aún no está expuesto como superficie activa.",
+      pt: "O módulo crioulo ainda não está exposto como superfície ativa.",
+      de: "Das Kreol-Modul ist noch nicht als aktive Lernfläche verfügbar.",
+      it: "Il modulo creolo non è ancora esposto come superficie attiva.",
     },
     blurb: {
       fr: "Module ancré dans le territoire — selon disponibilité du centre.",
@@ -427,7 +427,7 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
     engine: "sign",
     contentPacks: ["pronlab-lsf"],
     speechLocale: "fr-FR",
-    surfaces: ["pronlab", "library"],
+    surfaces: ["pronlab"],
     levels: ["A1"],
     culturalAnchor: {
       fr: "Module LSF — selon disponibilité du centre et des formateurs.",
