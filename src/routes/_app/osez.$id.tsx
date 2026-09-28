@@ -30,10 +30,20 @@ import {
   clearCurriculumLessonContext,
   readCurriculumLessonContext,
 } from "@/lib/blossom/curriculum-context";
+import { LearningSurfaceAvailability } from "@/components/app/learning-surface-availability";
+import { canUseLearningSurface } from "@/lib/i18n/locales";
 
 export const Route = createFileRoute("/_app/osez/$id")({
-  component: SpeakRoom,
+  component: SpeakRoomRoute,
 });
+
+function SpeakRoomRoute() {
+  const languageId = useBlossom((s) => s.languageId);
+  if (!canUseLearningSurface(languageId, "osez")) {
+    return <LearningSurfaceAvailability languageId={languageId} surface="osez" />;
+  }
+  return <SpeakRoom />;
+}
 
 function SpeakRoom() {
   const { id } = Route.useParams();
@@ -44,9 +54,6 @@ function SpeakRoom() {
   const growthEvents = useBlossom((s) => s.growthEvents);
   const learner = useBlossom((s) => s.learner);
   const languageId = useBlossom((s) => s.languageId);
-  if (!canUseLearningSurface(languageId, "osez")) {
-    return <LearningSurfaceAvailability languageId={languageId} surface="osez" />;
-  }
   const log = useBlossom((s) => s.activityLog);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
