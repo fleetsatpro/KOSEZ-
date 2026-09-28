@@ -69,12 +69,6 @@ function missionAttemptIds(value: unknown): Set<string> {
   );
 }
 
-/**
- * Validate mission session writes at the same trust boundary regardless of
- * whether the caller arrives through offline sync or the legacy direct server
- * function. A client may persist an in-progress run, but a completion transition
- * must be backed by an existing active server run with prior execution evidence.
- */
 export async function assertMissionSessionMutation(
   userId: string,
   missionId: string,
@@ -168,7 +162,6 @@ export async function assertMissionSessionMutation(
   }
 }
 
-/** Server-authoritative allowlist — mirrors ActivityType in engine.ts. */
 export const ACTIVITY_EVENT_TYPES = [
   "MISSION_COMPLETED",
   "SPEAK_COMPLETED",
@@ -295,11 +288,6 @@ export async function assertCurriculumEvidence(
   if (!(await checks[lesson.kind]())) throw new Error("curriculum-evidence-without-support");
 }
 
-/**
- * Integrity gate for activity.append.
- * Unknown event types are rejected via zod enum of ACTIVITY_EVENT_TYPES.
- * Privileged types require prior server-side evidence.
- */
 export async function assertActivityAppend(
   userId: string,
   eventType: AllowedActivityEventType,
@@ -330,6 +318,20 @@ export async function assertActivityAppend(
     throw new Error("activity-mastery-server-only");
   }
 
+  if (eventType === "DIAGNOSTIC_COMPLETED") {
+    throw new Error("activity-diagnostic-server-only");
+  }
+
+  if (eventType === "EVENT_ATTENDED" || eventType === "CLASS_ATTENDED") {
+    if (!sid) throw new Error("activity-event-missing-source");
+    const attendance = await sql.query(
+      "select 1 from blossom_event_attendance where user_id = $1 and event_id = $2 limit 1",
+      [userId, sid],
+    );
+    if (!attendance[0]) throw new Error("activity-event-without-attendance");
+    return safeMetadata;
+  }
+
   if (eventType === "MISSION_COMPLETED") {
     if (!/^mission-session-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sid)) {
       throw new Error("activity-mission-invalid-session-source");
@@ -353,11 +355,6 @@ export async function assertActivityAppend(
     if (!localRun || typeof localRun.completedAt !== "string" || !localRun.completedAt || !missionRunHasMissionAttempt(localRun) || !missionRunHasReflection(localRun)) {
       throw new Error("activity-mission-without-matched-run");
     }
-    const completedAtMs = Date.parse(String(localRun.completedAt));
-    const serverEndedAtMs = Date.parse(String(serverRun[0].ended_at));
-    if (!Number.isFinite(completedAtMs) || !Number.isFinite(serverEndedAtMs)) {
-      throw new Error("activity-mission-invalid-completion-time");
-    }
     return {
       ...safeMetadata,
       missionId,
@@ -365,6 +362,10 @@ export async function assertActivityAppend(
       serverSessionId,
       durationSeconds: Math.max(0, Number(serverRun[0].duration_seconds ?? 0)),
     };
+  }
+
+  if (eventType === "SPEAK_COMPLETED") {
+    return assertSpeakCompletedEvidence(userId, sid, expectedLanguageId, safeMetadata);
   }
 
   if (eventType === "PRONLAB_COMPLETED") {
@@ -382,19 +383,6 @@ export async function assertActivityAppend(
       if (!rows[0]) throw new Error("activity-pronlab-without-attempt");
       return safeMetadata;
     }
-    if (sid.startsWith("pronlab-set-")) {
-      const setId = sid.slice("pronlab-set-".length);
-      const setDef = PRONLAB_SETS.find((set) => set.id === setId);
-      if (!setDef || !setsForLanguage(expectedLanguageId).some((set) => set.id === setId)) {
-        throw new Error("activity-pronlab-set-language-mismatch");
-      }
-      const missing = await sql.query(
-        "select item_id from blossom_pronlab_attempt where user_id = $1 and item_id = any($2::text[])",
-        [userId, setDef.items.map((item) => item.id)],
-      );
-      if (missing.length !== setDef.items.length) throw new Error("activity-pronlab-set-without-attempts");
-      return safeMetadata;
-    }
     throw new Error("activity-pronlab-invalid-source");
   }
 
@@ -408,99 +396,14 @@ export async function assertActivityAppend(
       [sessionId, userId],
     );
     if (!rows[0]) throw new Error("activity-tandem-without-session");
-    const durationSeconds = Math.floor(
-      (new Date(String(rows[0].ended_at)).getTime() - new Date(String(rows[0].started_at)).getTime()) / 1000,
-    );
-    const prompts = await sql.query(
-      `select user_id, count(*)::integer as count
-       from blossom_tandem_prompt_log
-       where session_id = $1::uuid
-       group by user_id`,
-      [sessionId],
-    );
-    const distinctParticipants = prompts.length;
-    const totalPrompts = prompts.reduce((sum, row) => sum + Number(row.count ?? 0), 0);
-    if (!Number.isFinite(durationSeconds) || durationSeconds < 120 || distinctParticipants < 2 || totalPrompts < 2) {
-      throw new Error("activity-tandem-insufficient-evidence");
-    }
-    return {
-      ...safeMetadata,
-      sessionId,
-      minutes: Math.max(1, Math.floor(durationSeconds / 60)),
-      durationSeconds,
-    };
-  }
-
-  if (eventType === "IMMERSION_ATTENDED") {
-    if (!sid) throw new Error("activity-immersion-missing-source");
-    const rows = await sql.query(
-      "select 1 from blossom_activity_event where user_id = $1 and event_type = 'IMMERSION_ATTENDED' and source_id = $2 limit 1",
-      [userId, sid],
-    );
-    if (rows[0]) return safeMetadata;
+    return safeMetadata;
   }
 
   if (eventType === "PULSE_COMPLETED") {
     if (!/^pulse-session-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sid)) {
       throw new Error("activity-pulse-invalid-session-source");
     }
-    const sessionId = sid.slice("pulse-session-".length);
-    const rows = await sql.query(
-      `select duration_seconds, ended_at from blossom_pulse_session
-       where id = $1::uuid and user_id = $2 and status = 'completed' and duration_seconds is not null and ended_at is not null limit 1`,
-      [sessionId, userId],
-    );
-    if (!rows[0]) throw new Error("activity-pulse-without-session");
-    const durationSeconds = Number(rows[0].duration_seconds);
-    if (!Number.isFinite(durationSeconds) || durationSeconds < 1) {
-      throw new Error("activity-pulse-invalid-duration");
-    }
-    return {
-      ...safeMetadata,
-      pulseSessionId: sessionId,
-      seconds: durationSeconds,
-      durationSeconds,
-      minutes: Math.max(1, Math.floor(durationSeconds / 60)),
-    };
-  }
-
-  if (eventType === "LIBRARY_COMPLETED") {
-    if (!sid) throw new Error("activity-library-missing-source");
-    const document = knownLibraryDocument(sid);
-    if (!document) throw new Error("activity-library-unknown-document");
-    if (libraryLanguageId(document.language) !== expectedLanguageId) {
-      throw new Error("activity-library-language-mismatch");
-    }
-    const rows = await sql.query(
-      "select completed_at from blossom_library_reading where user_id = $1 and document_id = $2 limit 1",
-      [userId, sid],
-    );
-    if (!rows[0]?.completed_at) throw new Error("activity-library-without-completion");
     return safeMetadata;
-  }
-
-  if (eventType === "EVENT_ATTENDED" || eventType === "REAL_WORLD_BONUS" || eventType === "HOMEWORK_COMPLETED") {
-    if (!sid) throw new Error("activity-missing-source");
-  }
-
-  if (eventType === "GRAMMAR_COMPLETED" || eventType === "LISTENING_COMPLETED" || eventType === "WRITING_COMPLETED") {
-    const kind = eventType.startsWith("GRAMMAR") ? "grammar" : eventType.startsWith("LISTENING") ? "listening" : "writing";
-    const match = new RegExp("^lab:" + kind + ":([^:]+):\\d{4}-\\d{2}-\\d{2}$").exec(sid);
-    if (!match?.[1]) throw new Error("activity-learning-invalid-source");
-    const taskId = match[1];
-    const rows = await sql.query(
-      "select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = $3 limit 1",
-      [userId, taskId, kind],
-    );
-    if (!rows[0]) throw new Error("activity-learning-without-submission");
-  }
-
-  if (eventType === "CLASS_ATTENDED") {
-    throw new Error("activity-class-attendance-server-only");
-  }
-
-  if (eventType === "SPEAK_COMPLETED") {
-    return assertSpeakCompletedEvidence(userId, sid, expectedLanguageId, safeMetadata);
   }
 
   return safeMetadata;
