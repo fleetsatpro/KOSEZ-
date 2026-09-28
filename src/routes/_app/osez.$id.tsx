@@ -258,8 +258,13 @@ function SpeakRoom() {
     }
     let ended;
     try {
-      ended = await endSpeakSessionOnServer({
-        data: { sessionId: serverSessionId, status: "completed" },
+      ended = await finalizeSpeakSessionOnServer({
+        data: {
+          sessionId: serverSessionId,
+          spokenSeconds: speechSummary.spokenSeconds,
+          transcriptCount: speechSummary.transcriptCount,
+          captureOnlyCount: speechSummary.captureOnlyCount,
+        },
       });
     } catch {
       setClosing(false);
@@ -267,25 +272,10 @@ function SpeakRoom() {
       return;
     }
 
-    const result = complete(
-      "SPEAK_COMPLETED",
-      `speak-session-${ended.id}`,
-      undefined,
-      {
-        roomId: ended.roomId,
-        seconds: ended.durationSeconds,
-        minutes: Math.max(1, Math.floor(ended.durationSeconds / 60)),
-        spokenSeconds: speechSummary.spokenSeconds,
-        transcriptCount: speechSummary.transcriptCount,
-        captureOnlyCount: speechSummary.captureOnlyCount,
-      },
-    );
-
-    if (!result.ok) {
-      setClosing(false);
-      toast("La session a été validée côté serveur, mais sa preuve locale n'a pas pu être enregistrée.");
-      return;
-    }
+    acceptConfirmedActivity(ended.activity);
+    completedServerSessionRef.current = true;
+    serverSessionRef.current = null;
+    setServerSessionId(null);
 
     if (curriculumLessonId) {
       const linked = useBlossom.getState().activityLog.some(
