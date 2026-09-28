@@ -6,6 +6,29 @@ import { createMutation, enqueueMutation } from "./sync-client";
 import type { SyncJsonObject, SyncJsonValue } from "./sync-types";
 
 const PROFILE_INTENT_KEY = "kosez-blossom-profile-intent-v1";
+
+let blossomHydrated = false;
+const hydrationListeners = new Set<() => void>();
+
+export function isBlossomHydrated() {
+  return blossomHydrated;
+}
+
+export function subscribeBlossomHydration(listener: () => void) {
+  if (blossomHydrated) {
+    listener();
+    return () => undefined;
+  }
+  hydrationListeners.add(listener);
+  return () => hydrationListeners.delete(listener);
+}
+
+function markBlossomHydrated() {
+  if (blossomHydrated) return;
+  blossomHydrated = true;
+  for (const listener of hydrationListeners) listener();
+  hydrationListeners.clear();
+}
 import {
   activityBelongsToLanguage,
   hasSource,
@@ -919,7 +942,12 @@ export const useBlossom = create<AppState>()(
         });
       },
     }),
-    { name: "kosez-blossom-v2" },
+    {
+      name: "kosez-blossom-v2",
+      onRehydrateStorage: () => () => {
+        markBlossomHydrated();
+      },
+    },
   ),
 );
 
