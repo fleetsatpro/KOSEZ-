@@ -821,6 +821,10 @@ export const useBlossom = create<AppState>()(
           setsForLanguage(id).flatMap((setDef) => setDef.items),
         );
         set({ languageId: id, learner, phonemeLeaves });
+        // Language changes must immediately rebuild the organism from only the
+        // newly active language; otherwise Plant/OSEZ can briefly display stale
+        // minerals/growth from the previous learning language.
+        get().refreshOrganism();
         voidProfileSync(
           learner,
           id,
