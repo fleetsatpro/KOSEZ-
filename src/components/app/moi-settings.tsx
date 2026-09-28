@@ -36,11 +36,9 @@ export function MoiSettings() {
       city: draft.city.trim() || learner.city,
       avatar: draft.avatar.trim(),
     });
-    window.setTimeout(() => {
-      setSaving(false);
-      setSaved(true);
-      window.setTimeout(() => setSaved(false), 1800);
-    }, 350);
+    setSaving(false);
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 2200);
   }
 
   return (
@@ -101,7 +99,7 @@ export function MoiSettings() {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-2">
-          <Button disabled={saving} onClick={save}>{saving ? "Enregistrement…" : saved ? "Profil enregistré" : "Enregistrer mes préférences"} <Check className="size-4" /></Button>
+          <Button disabled={saving} onClick={save}>{saving ? "Enregistrement…" : saved ? "Modifications enregistrées · synchronisation en cours" : "Enregistrer mes préférences"} <Check className="size-4" /></Button>
           <Button asChild variant="secondary"><Link to="/learn/progress">Voir mes compétences</Link></Button>
         </div>
       </Surface>
