@@ -151,6 +151,7 @@ try {
         JSON.stringify({
           state: {
             hasEntered: true,
+            syncOwnerUserId: "dev-user",
             learner: {
               firstName: "Smoke",
               lastName: "Check",
