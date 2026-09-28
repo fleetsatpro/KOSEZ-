@@ -159,19 +159,31 @@ export function organismStatusLine(minerals: MineralSnapshot): string {
 }
 
 /** Causal next-gesture hint for plant / home — lowest mineral maps to a door. */
-export function causalNextGesture(minerals: MineralSnapshot): {
+export function causalNextGesture(
+  minerals: MineralSnapshot,
+  allowedDoors?: ReadonlySet<string>,
+): {
   mineral: MineralKey;
   door: string;
   line: string;
 } {
-  const entries: [MineralKey, number][] = [
+  const entries: [MineralKey, number, string][] = [
+    ["pron", minerals.pron, "/pronlab"],
+    ["parole", minerals.parole, "/osez"],
+    ["mission", minerals.mission, "/mission"],
+    ["social", minerals.social, "/tandem"],
+    ["atelier", minerals.atelier, "/learn/labs"],
+  ];
+  const available = allowedDoors
+    ? entries.filter(([, , door]) => allowedDoors.has(door))
+    : entries;
+  const pool = available.length > 0 ? available : entries;
     ["pron", minerals.pron],
     ["parole", minerals.parole],
     ["mission", minerals.mission],
     ["social", minerals.social],
     ["atelier", minerals.atelier],
-  ];
-  const lowest = [...entries].sort((a, b) => a[1] - b[1])[0]!;
+  const lowest = [...pool].sort((a, b) => a[1] - b[1])[0]!;
   switch (lowest[0]) {
     case "pron":
       return {
