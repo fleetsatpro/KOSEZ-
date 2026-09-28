@@ -1026,7 +1026,13 @@ export function BlossomSyncBoundary({ children }: { children: ReactNode }) {
 
   return (
     <>
-      {ready ? children : <SyncMark ready={false} />}
+      {ready ? (
+        <div data-smoke="blossom-ready" className="contents">
+          {children}
+        </div>
+      ) : (
+        <SyncMark ready={false} />
+      )}
       <BlossomSyncBridge
         onReady={() => {
           setReadyKey(identityKey);
