@@ -471,3 +471,16 @@ export function isUiLocaleId(id: string): id is UiLocaleId {
 export function isLearnLanguageId(id: string): id is LearnLanguageId {
   return LEARN_LANGUAGES.some((l) => l.id === id);
 }
+
+
+export function canUseLearningSurface(
+  languageId: LearnLanguageId,
+  surface: LearnLanguageDef["surfaces"][number],
+): boolean {
+  const language = LEARN_LANGUAGES.find((item) => item.id === languageId);
+  return Boolean(language?.surfaces.includes(surface));
+}
+
+export function learningSurfaceLabels(languageId: LearnLanguageId): string[] {
+  return LEARN_LANGUAGES.find((item) => item.id === languageId)?.surfaces ?? [];
+}
