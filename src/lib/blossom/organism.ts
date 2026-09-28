@@ -167,54 +167,47 @@ export function causalNextGesture(
   door: string;
   line: string;
 } {
-  const entries: [MineralKey, number, string][] = [
+  const entries: Array<[MineralKey, number, string]> = [
     ["pron", minerals.pron, "/pronlab"],
-    ["parole", minerals.parole, "/osez"],
+    ["parole", minerals.parole, allowedDoors?.has("/osez/pulse") && !allowedDoors.has("/osez") ? "/osez/pulse" : "/osez"],
     ["mission", minerals.mission, "/mission"],
     ["social", minerals.social, "/tandem"],
     ["atelier", minerals.atelier, "/learn/labs"],
   ];
-  const available = allowedDoors
+  const pool = allowedDoors
     ? entries.filter(([, , door]) => allowedDoors.has(door))
     : entries;
-  const pool = available.length > 0 ? available : entries;
-  const lowest = [...pool].sort((a, b) => a[1] - b[1])[0]!;
-  const resolvedDoor =
-    lowest[2] === "/osez" &&
-    allowedDoors &&
-    !allowedDoors.has("/osez") &&
-    allowedDoors.has("/osez/pulse")
-      ? "/osez/pulse"
-      : lowest[2];
+  const usable = pool.length > 0 ? pool : entries;
+  const lowest = [...usable].sort((a, b) => a[1] - b[1])[0]!;
   switch (lowest[0]) {
     case "pron":
       return {
         mineral: "pron",
-        door: resolvedDoor,
+        door: lowest[2],
         line: "Un son répété jusqu'à tenue nourrit la canopée.",
       };
     case "parole":
       return {
         mineral: "parole",
-        door: resolvedDoor,
+        door: lowest[2],
         line: "Une prise de parole ancrée épaissit la tige.",
       };
     case "mission":
       return {
         mineral: "mission",
-        door: resolvedDoor,
+        door: lowest[2],
         line: "Un geste terrain enfonce une racine.",
       };
     case "social":
       return {
         mineral: "social",
-        door: resolvedDoor,
+        door: lowest[2],
         line: "Une présence partagée fait fleurir le sol.",
       };
     case "atelier":
       return {
         mineral: "atelier",
-        door: resolvedDoor,
+        door: lowest[2],
         line: "Une preuve d'apprentissage nourrit la canopée.",
       };
   }
