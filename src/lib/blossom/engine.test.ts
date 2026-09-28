@@ -243,7 +243,7 @@ test("setsForLanguage keeps English as default and isolates LSF", () => {
   assert.ok(lsf.every((s) => s.language === "lsf"));
 });
 
-test("stage progress remains below 100 until gesture requirements are met", () => {
+test("stage progress uses the governing within-stage point formula", () => {
   const log = [
     ...Array.from({ length: 8 }, (_, index) => ({
       id: `m-${index}`,
@@ -260,5 +260,5 @@ test("stage progress remains below 100 until gesture requirements are met", () =
   ];
   const snap = journeySnapshot(log);
   assert.equal(snap.stage.id, "growing");
-  assert.equal(Math.round(snap.progress * 100), 0);
+  assert.equal(Math.round(snap.progress * 100), 59);
 });
