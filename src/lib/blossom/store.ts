@@ -4,6 +4,8 @@ import { persist } from "zustand/middleware";
 import { track } from "@/lib/analytics";
 import { createMutation, enqueueMutation } from "./sync-client";
 import type { SyncJsonObject, SyncJsonValue } from "./sync-types";
+
+const PROFILE_INTENT_KEY = "kosez-blossom-profile-intent-v1";
 import {
   activityBelongsToLanguage,
   hasSource,
@@ -246,7 +248,7 @@ function voidProfileSync(
   rollback?: SyncJsonObject,
 ): void {
   const state = useBlossom.getState();
-  voidSyncMutation({
+  const mutation = createMutation({
     operation: "profile.upsert",
     entityId: "profile",
     payload: {
@@ -276,6 +278,24 @@ function voidProfileSync(
       ...(rollback ? { rollback } : {}),
     },
   });
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(
+        PROFILE_INTENT_KEY,
+        JSON.stringify({
+          mutationId: mutation.mutationId,
+          createdAt: mutation.createdAt,
+          displayName: mutation.payload.displayName,
+          targetLanguage: mutation.payload.targetLanguage,
+          level: mutation.payload.level,
+          preferences: mutation.payload.preferences,
+        }),
+      );
+    } catch {
+      // The durable outbox remains the source of intent when localStorage is unavailable.
+    }
+  }
+  void enqueueMutation(mutation);
 }
 
 export const useBlossom = create<AppState>()(
