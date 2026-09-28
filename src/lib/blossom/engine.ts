@@ -175,12 +175,20 @@ export function journeySnapshot(log: ActivityEvent[]) {
   const span =
     stage.nextAt === null ? 1 : Math.max(1, stage.nextAt - stage.minPoints);
   const intoStage = Math.min(span, Math.max(0, points - stage.minPoints));
+  const pointProgress = stage.nextAt === null ? 1 : intoStage / span;
+  const categoryProgress = [
+    required.missions > 0 ? missions / required.missions : 1,
+    required.speak > 0 ? speak / required.speak : 1,
+    required.pronlab > 0 ? pronlab / required.pronlab : 1,
+  ];
+  const nextProgress =
+    stage.nextAt === null ? 1 : Math.min(pointProgress, ...categoryProgress);
 
   return {
     points,
     stage,
     remaining,
-    progress: intoStage / span,
+    progress: Math.max(0, Math.min(1, nextProgress)),
     missions: { current: missions, required: required.missions },
     speak: { current: speak, required: required.speak },
     pronlab: { current: pronlab, required: required.pronlab },
