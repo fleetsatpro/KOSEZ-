@@ -12,7 +12,7 @@ import {
 } from "@/lib/blossom/data";
 import { influenceFromState } from "@/lib/blossom/influence";
 import { getTandemCandidatesOnServer } from "@/lib/blossom/domain.api";
-import { tandemMatchScore } from "@/lib/blossom/engine";
+import { activityBelongsToLanguage, tandemMatchScore } from "@/lib/blossom/engine";
 import {
   causalNextGesture,
   computeMinerals,
@@ -73,7 +73,7 @@ function TandemHub() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const minerals = useMemo(() => computeMinerals(log), [log]);
+  const minerals = useMemo(() => computeMinerals(log.filter((event) => activityBelongsToLanguage(event, languageId))), [log, languageId]);
   const nextGesture = causalNextGesture(minerals);
   const socialGrowth = growthEvents
     .filter((g) => g.mineral === "social" || g.kind === "flower")
