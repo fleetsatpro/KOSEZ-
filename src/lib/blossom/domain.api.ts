@@ -35,6 +35,8 @@ import {
   endTandemSession,
   startPulseSession,
   endPulseSession,
+  startSpeakSession,
+  endSpeakSession,
   startMissionRunSession,
   endMissionRunSession,
 } from "./domain.server";
@@ -138,6 +140,23 @@ export const endMissionRunSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .inputValidator(z.object({ sessionId: z.string().uuid() }))
   .handler(async ({ context, data }) => endMissionRunSession(context.userId, data.sessionId));
+
+export const startSpeakSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({ roomId: z.string().trim().min(1).max(240) }))
+  .handler(async ({ context, data }) =>
+    startSpeakSession(context.userId, data.roomId),
+  );
+
+export const endSpeakSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({
+    sessionId: z.string().uuid(),
+    status: z.enum(["completed", "cancelled"]),
+  }))
+  .handler(async ({ context, data }) =>
+    endSpeakSession(context.userId, data.sessionId, data.status),
+  );
 
 export const startPulseSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
