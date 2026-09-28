@@ -70,11 +70,10 @@ const VIEWPORTS = [
 ];
 
 async function waitForBlossomShell(page, timeout = 10000) {
-  await page.waitForFunction(
-    () => !document.body.textContent?.includes("BLOSSOM · SYNCHRONISATION"),
-    undefined,
-    { timeout },
-  );
+  await page.locator('[data-smoke="blossom-ready"]').waitFor({
+    state: "attached",
+    timeout,
+  });
 }
 
 async function gotoWithRetry(page, targetUrl, options, attempts = 3) {
