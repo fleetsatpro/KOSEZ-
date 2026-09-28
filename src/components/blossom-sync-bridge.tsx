@@ -982,39 +982,17 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
 
 export function BlossomSyncBoundary({ children }: { children: ReactNode }) {
   const { user, isPending } = useCurrentUserState();
-  const syncOwnerUserId = useBlossom((state) => state.syncOwnerUserId);
-  const [readyKey, setReadyKey] = useState<string | null>(null);
-  const [persistHydrated, setPersistHydrated] = useState(() => isBlossomHydrated());
   const identityKey = isPending ? null : user?.id ?? "__signed-out__";
+  const [readyKey, setReadyKey] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (persistHydrated) return;
-    if (isBlossomHydrated()) {
-      setPersistHydrated(true);
-      return;
-    }
-    const unsubscribe = subscribeBlossomHydration(() => setPersistHydrated(true));
-    return () => {
-      unsubscribe();
-    };
-  }, [persistHydrated]);
-
-  // Same-user reloads can render their tenant-bound local session immediately
-  // after persistence hydration. A different owner still waits for the bridge
-  // to reconcile/reset, preventing cross-account state from being painted.
-  const hasSafeLocalState =
-    persistHydrated &&
-    identityKey !== null &&
-    syncOwnerUserId === identityKey;
-  const ready =
-    identityKey !== null &&
-    persistHydrated &&
-    (readyKey === identityKey || hasSafeLocalState);
+  // Never block the application shell on network or persistence hydration.
+  // Zustand starts from the safe default state and replaces it with the
+  // tenant-bound persisted snapshot as soon as hydration completes. The sync
+  // bridge itself waits for that hydration before reconciling server state.
+  const ready = identityKey !== null;
 
   useEffect(() => {
     if (identityKey === null || ready) return;
-    // Never block the learner shell indefinitely on a remote/bootstrap problem.
-    // BLOSSOM is offline-first: local state is usable while sync keeps retrying.
     const timer = window.setTimeout(() => setReadyKey(identityKey), 2500);
     return () => window.clearTimeout(timer);
   }, [identityKey, ready]);
