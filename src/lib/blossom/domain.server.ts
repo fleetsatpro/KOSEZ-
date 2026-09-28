@@ -1837,6 +1837,57 @@ export async function endTandemSession(
   };
 }
 
+export async function startSpeakSession(userId: string, roomId: string) {
+  await enforceRateLimit(userId, "speak.start-session", 20, 60);
+  const normalizedRoomId = roomId.trim();
+  if (!normalizedRoomId || normalizedRoomId.length > 240) {
+    throw new BlossomForbiddenError("Cette room Speak est invalide.");
+  }
+  const sql = await getSql();
+  const active = await sql.query(
+    "select id, room_id from blossom_speak_session where user_id = $1 and status = 'active' order by created_at desc limit 1",
+    [userId],
+  );
+  if (active[0]) return { id: String(active[0].id), roomId: String(active[0].room_id) };
+  const sessionId = randomUUID();
+  try {
+    await sql.query(
+      "insert into blossom_speak_session (id, user_id, room_id, status, started_at) values ($1::uuid, $2, $3, 'active', current_timestamp)",
+      [sessionId, userId, normalizedRoomId],
+    );
+  } catch (error) {
+    if ((error as { code?: string })?.code !== "23505") throw error;
+    const raced = await sql.query(
+      "select id, room_id from blossom_speak_session where user_id = $1 and status = 'active' order by created_at desc limit 1",
+      [userId],
+    );
+    if (!raced[0]) throw new Error("speak-session-create-race");
+    return { id: String(raced[0].id), roomId: String(raced[0].room_id) };
+  }
+  return { id: sessionId, roomId: normalizedRoomId };
+}
+
+export async function endSpeakSession(
+  userId: string,
+  sessionId: string,
+  status: "completed" | "cancelled",
+) {
+  await enforceRateLimit(userId, "speak.end-session", 20, 60);
+  const sql = await getSql();
+  const rows = await sql.query(
+    "update blossom_speak_session set status = $2, ended_at = coalesce(ended_at, current_timestamp), duration_seconds = greatest(0, extract(epoch from (coalesce(ended_at, current_timestamp) - started_at))::integer), updated_at = current_timestamp where id = $1::uuid and user_id = $3 and status = 'active' returning id, room_id, status, ended_at, duration_seconds",
+    [sessionId, status, userId],
+  );
+  if (!rows[0]) throw new BlossomForbiddenError("Cette session Speak n'est plus active.");
+  return {
+    id: String(rows[0].id),
+    roomId: String(rows[0].room_id),
+    status: String(rows[0].status) as "completed" | "cancelled",
+    endedAt: new Date(String(rows[0].ended_at)).toISOString(),
+    durationSeconds: Math.max(0, Number(rows[0].duration_seconds ?? 0)),
+  };
+}
+
 function validPulseDareId(dareId: string): boolean {
   const id = dareId.trim();
   return id === "pulse-local" || id === "pulse-terrain" || id === "pulse-social" || id.startsWith("pulse-struggle-");
