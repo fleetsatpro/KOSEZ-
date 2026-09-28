@@ -293,10 +293,23 @@ try {
           new URL("/moi", url).href,
           { waitUntil: "domcontentloaded", timeout: timeoutMs },
         );
-        const frenchLearningButton = page.getByRole("button", { name: /^Français —/ }).last();
-        await frenchLearningButton.waitFor({ state: "visible", timeout: 10000 });
-        await frenchLearningButton.click();
-        await page.waitForTimeout(500);
+        const languageSelect = page
+          .locator("label")
+          .filter({ hasText: "Langue cible" })
+          .locator("select")
+          .first();
+        await languageSelect.waitFor({ state: "visible", timeout: 10000 });
+        await languageSelect.selectOption("fr");
+        await page.waitForFunction(
+          () => {
+            const select = [...document.querySelectorAll("select")].find(
+              (node) => node.closest("label")?.textContent?.includes("Langue cible"),
+            );
+            return select instanceof HTMLSelectElement && select.value === "fr";
+          },
+          undefined,
+          { timeout: 10000 },
+        );
 
         await gotoWithRetry(
           page,
@@ -326,15 +339,31 @@ try {
             errors.pageErrors.push("supported French Pulse child route was blocked by its OSEZ parent");
           }
         }
-        await page.evaluate((storageKey) => {
-          const raw = localStorage.getItem(storageKey);
-          if (!raw) return;
-          const parsed = JSON.parse(raw);
-          parsed.state ??= {};
-          parsed.state.languageId = "en";
-          parsed.state.learner = { ...(parsed.state.learner ?? {}), targetLanguage: "English" };
-          localStorage.setItem(storageKey, JSON.stringify(parsed));
-        }, SMOKE_STATE_KEY);
+        await gotoWithRetry(
+          page,
+          new URL("/moi", url).href,
+          { waitUntil: "domcontentloaded", timeout: timeoutMs },
+        );
+        const englishLanguageSelect = page
+          .locator("label")
+          .filter({ hasText: "Langue cible" })
+          .locator("select")
+          .first();
+        await englishLanguageSelect.waitFor({ state: "visible", timeout: 10000 });
+        await englishLanguageSelect.selectOption("en");
+        await page.waitForFunction(
+          () => {
+            const select = [...document.querySelectorAll("select")].find(
+              (node) => node.closest("label")?.textContent?.includes("Langue cible"),
+            );
+            return select instanceof HTMLSelectElement && select.value === "en";
+          },
+          undefined,
+          { timeout: 10000 },
+        );
+        // Let the profile.upsert for the real UI change reach the server before
+        // the next contract test opens an English-only Library document.
+        await page.waitForTimeout(1200);
       } catch (error) {
         errors.pageErrors.push(
           "language capability regression failed: " + String(error?.message || error),
@@ -377,7 +406,7 @@ try {
         await readingEnd.scrollIntoViewIfNeeded();
         await page.getByText("lecture enregistrée", { exact: false }).waitFor({
           state: "visible",
-          timeout: 10000,
+          timeout: 20000,
         });
         const readingCopy = await page.locator("body").innerText().catch(() => "");
         if (!readingCopy.includes("lecture enregistrée")) {
@@ -392,6 +421,10 @@ try {
         await unitEntryAfterEvidence.waitFor({ state: "visible", timeout: 10000 });
         await unitEntryAfterEvidence.click();
         await page.waitForTimeout(500);
+        await page.getByText("preuve enregistrée", { exact: false }).waitFor({
+          state: "visible",
+          timeout: 20000,
+        });
         const curriculumCopy = await page.locator("body").innerText().catch(() => "");
         if (!curriculumCopy.includes("preuve enregistrée")) {
           errors.pageErrors.push("curriculum did not reflect the linked reading evidence");
