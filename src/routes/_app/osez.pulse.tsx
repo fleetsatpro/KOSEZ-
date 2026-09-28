@@ -151,7 +151,7 @@ function PulsePage() {
       completePulse(`pulse-session-${serverSessionId}`, authoritativeSeconds, false);
     }
     setClosing(false);
-    setCeremonyOpen(true);
+    setCeremonyOpen(authoritativeSeconds !== null);
   }
 
   return (
