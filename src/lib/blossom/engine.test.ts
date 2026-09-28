@@ -242,3 +242,23 @@ test("setsForLanguage keeps English as default and isolates LSF", () => {
   assert.ok(en.every((s) => (s.language ?? "en") === "en"));
   assert.ok(lsf.every((s) => s.language === "lsf"));
 });
+
+test("stage progress remains below 100 until gesture requirements are met", () => {
+  const log = [
+    ...Array.from({ length: 8 }, (_, index) => ({
+      id: `m-${index}`,
+      type: "MISSION_COMPLETED" as const,
+      createdAt: new Date(2026, 0, index + 1).toISOString(),
+      sourceId: `m-${index}`,
+    })),
+    {
+      id: "s-1",
+      type: "SPEAK_COMPLETED" as const,
+      createdAt: new Date(2026, 0, 20).toISOString(),
+      sourceId: "speak-1",
+    },
+  ];
+  const snap = journeySnapshot(log);
+  assert.equal(snap.stage.id, "growing");
+  assert.equal(Math.round(snap.progress * 100), 41);
+});
