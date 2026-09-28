@@ -227,36 +227,6 @@ function activeLanguageActivityLog(
   return log.filter((event) => activityBelongsToLanguage(event, languageId));
 }
 
-function rebuildOrganismState(
-  log: ActivityEvent[],
-  languageId: LearnLanguageId,
-  firstName: string,
-  existingLetters: LeoLetter[],
-) {
-  const scoped = activeLanguageActivityLog(log, languageId);
-  let growthEvents: GrowthEvent[] = [];
-  for (const event of scoped) {
-    const growth = growthEventForActivity(event.type, event.sourceId, event.createdAt);
-    if (!growth) continue;
-    growthEvents = pushGrowthEvent(
-      growthEvents,
-      { ...growth, languageId },
-    );
-  }
-  const mineralSnapshot = computeMinerals(scoped);
-  const phonemeLeaves = buildPhonemeLeaves(
-    // Caller owns attempt-derived leaves; this helper only rebuilds activity-derived state.
-    [],
-    [],
-  );
-  const currentLetter = composeLeoLetter(mineralSnapshot, growthEvents, firstName);
-  const prior = existingLetters.find((letter) => letter.id === currentLetter.id);
-  const leoLetters = growthEvents.length
-    ? [{ ...currentLetter, read: prior?.read ?? currentLetter.read }, ...existingLetters.filter((letter) => letter.id !== currentLetter.id)].slice(0, 12)
-    : existingLetters;
-  return { growthEvents, mineralSnapshot, leoLetters, phonemeLeaves };
-}
-
 function localTimezone(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
