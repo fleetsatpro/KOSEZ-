@@ -38,8 +38,12 @@ function LibraryDocPage() {
   const startLibraryReading = useBlossom((s) => s.startLibraryReading);
   const completeLibraryReading = useBlossom((s) => s.completeLibraryReading);
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
+  // Clear session context only after evidence is attributed (or on unmount) so
+  // Strict Mode remounts and fast SPA navigations cannot lose the lesson link.
   useEffect(() => {
-    if (curriculumLessonId) clearCurriculumLessonContext();
+    return () => {
+      if (curriculumLessonId) clearCurriculumLessonContext();
+    };
   }, [curriculumLessonId]);
   const readingEndRef = useRef<HTMLDivElement | null>(null);
   const completionRequestedRef = useRef(false);
@@ -77,7 +81,35 @@ function LibraryDocPage() {
     }
     completionRequestedRef.current = true;
     completeLibraryReading(docId);
-  }, [completeLibraryReading, docId, readingCompleted]);
+    // Attribute curriculum evidence in the same turn as library completion so
+    // SPA navigations (and browser smoke) cannot race the useEffect fallback.
+    if (curriculumLessonId) {
+      const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find(
+        (item) => item.id === curriculumLessonId,
+      );
+      if (lesson?.kind === "library" && lesson.taskId === docId) {
+        const already = useBlossom.getState().activityLog.some(
+          (event) =>
+            event.type === "CURRICULUM_EVIDENCE_RECORDED" &&
+            event.sourceId === curriculumLessonId,
+        );
+        if (!already) {
+          completeActivity(
+            "CURRICULUM_EVIDENCE_RECORDED",
+            curriculumLessonId,
+            `Preuve curriculum · lecture · ${docId}`,
+            { supportId: docId },
+          );
+        }
+      }
+    }
+  }, [
+    completeActivity,
+    completeLibraryReading,
+    curriculumLessonId,
+    docId,
+    readingCompleted,
+  ]);
 
   useEffect(() => {
     completionRequestedRef.current = false;
@@ -90,6 +122,7 @@ function LibraryDocPage() {
     if (docId) startLibraryReading(docId);
   }, [docId, startLibraryReading]);
 
+  // Fallback if completion was recorded before curriculum context was available.
   useEffect(() => {
     if (!readingCompleted || !curriculumLessonId || curriculumEvidenceRecorded || !docId) return;
     const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find(
@@ -159,7 +192,7 @@ function LibraryDocPage() {
   const docBlurb = doc.blurb;
 
   function onWord(raw: string) {
-    const word = raw.replace(/[.,!?]/g, "").toLowerCase();
+    const word = raw.replace(/[.,!?；]/g, "").toLowerCase();
     if (word.length < 3) return;
     const gloss = LIBRARY_GLOSS[word] ?? "sens à préciser avec Léo";
     saveWord(word, gloss);
@@ -247,7 +280,7 @@ function LibraryDocPage() {
         <p className="text-lg leading-8 sm:text-xl sm:leading-9">
           {tokens.map((token, i) => {
             if (/^\s+$/.test(token)) return <span key={i}>{token}</span>;
-            const clean = token.replace(/[.,!?]/g, "").toLowerCase();
+            const clean = token.replace(/[.,!?；]/g, "").toLowerCase();
             const saved = vocab.some((v) => v.word === clean);
             const isPicked = picked === clean;
             return (
