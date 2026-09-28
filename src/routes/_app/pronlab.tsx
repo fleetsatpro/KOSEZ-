@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
-import { summarisePronlabItem } from "@/lib/blossom/engine";
+import { activityBelongsToLanguage, summarisePronlabItem } from "@/lib/blossom/engine";
 import {
   causalNextGesture,
   computeMinerals,
@@ -43,9 +43,10 @@ function PronlabIndex() {
     (h) => h.status === "sent" && h.studentId === syncOwnerUserId,
   );
   const sets = setsForLanguage(languageId);
-  const allItems = PRONLAB_SETS.flatMap((s) => s.items);
+  const allItems = sets.flatMap((s) => s.items);
   const struggle = strugglingFocus(attempts, allItems);
-  const minerals = computeMinerals(log);
+  const activeLog = log.filter((event) => activityBelongsToLanguage(event, languageId));
+  const minerals = computeMinerals(activeLog);
   const nextGesture = causalNextGesture(minerals);
   const recentLeaves = growthEvents
     .filter((g) => g.kind === "leaf" || g.kind === "mineral")
