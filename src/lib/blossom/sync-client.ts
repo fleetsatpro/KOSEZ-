@@ -251,7 +251,7 @@ export async function listPendingMutations(): Promise<StoredMutation[]> {
         row.ownerUserId = ownerId;
         await txRequest("readwrite", (store) => store.put(row));
       }
-      return rows
+      const persisted = rows
         .map((row) => (canClaimOwnerless(row) ? { ...row, ownerUserId: ownerId } : row))
         .filter(
           (row) =>
@@ -259,6 +259,10 @@ export async function listPendingMutations(): Promise<StoredMutation[]> {
             row.ownerUserId === activeOwnerId,
         )
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      const seen = new Set(persisted.map((row) => row.mutationId));
+      return [...persisted, ...volatileProfiles.filter((row) => !seen.has(row.mutationId))].sort(
+        (a, b) => a.createdAt.localeCompare(b.createdAt),
+      );
     } catch {
       // fallback below
     }
@@ -274,13 +278,17 @@ export async function listPendingMutations(): Promise<StoredMutation[]> {
     return row;
   });
   if (changed) writeFallback(claimed);
-  return claimed
+  const persisted = claimed
     .filter(
       (row) =>
         row.state === "pending" &&
         row.ownerUserId === activeOwnerId,
     )
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const seen = new Set(persisted.map((row) => row.mutationId));
+  return [...persisted, ...volatileProfiles.filter((row) => !seen.has(row.mutationId))].sort(
+    (a, b) => a.createdAt.localeCompare(b.createdAt),
+  );
 }
 
 export async function markConflict(
