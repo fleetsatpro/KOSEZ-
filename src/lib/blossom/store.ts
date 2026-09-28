@@ -652,7 +652,7 @@ export const useBlossom = create<AppState>()(
       saveWarmup: (text) => {
         set({ warmup: text });
         const current = get();
-        voidProfileSync(current.learner, current.languageId, current.plan, text, current.exportConsent, current.tandemOpen);
+        voidProfileSync(current.learner, current.languageId, current.plan, text, current.exportConsent, current.tandemOpen, { warmup: get().warmup });
       },
       saveHomeworkDraft: (studentId, title, body) => {
         const now = new Date().toISOString();
@@ -668,7 +668,7 @@ export const useBlossom = create<AppState>()(
       setExportConsent: (value) => {
         set({ exportConsent: value });
         const current = get();
-        voidProfileSync(current.learner, current.languageId, current.plan, current.warmup, value, current.tandemOpen);
+        voidProfileSync(current.learner, current.languageId, current.plan, current.warmup, value, current.tandemOpen, { exportConsent: current.exportConsent });
       },
       saveWord: (word, gloss) => {
         const now = new Date().toISOString();
