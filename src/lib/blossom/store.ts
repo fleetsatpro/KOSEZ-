@@ -682,6 +682,7 @@ export const useBlossom = create<AppState>()(
             word,
             gloss,
             metadata,
+            rollback: existing ? { existing } : { existing: null },
           },
         });
         const existing = current.vocabulary.find(
