@@ -129,7 +129,7 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void }) {
             await removeMutation(result.mutationId);
           } else if (result.status === "rejected") {
             await removeMutation(result.mutationId);
-            rollbackRejectedMutation(mutation, result.reason ?? "rejected");
+            rollbackRejectedMutation(mutation, result.errorCode ?? "rejected");
           } else if (result.status === "conflict") {
             await markConflict(result.mutationId, result);
           }
