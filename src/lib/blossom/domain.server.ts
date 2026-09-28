@@ -1867,6 +1867,126 @@ export async function startSpeakSession(userId: string, roomId: string) {
   return { id: sessionId, roomId: normalizedRoomId };
 }
 
+export async function finalizeSpeakSession(
+  userId: string,
+  sessionId: string,
+  evidence?: {
+    spokenSeconds?: number;
+    transcriptCount?: number;
+    captureOnlyCount?: number;
+  },
+) {
+  await enforceRateLimit(userId, "speak.finalize-session", 20, 60);
+  const sql = await getSql();
+  const spokenSeconds = Math.max(0, Math.min(14400, Math.round(evidence?.spokenSeconds ?? 0)));
+  const transcriptCount = Math.max(0, Math.min(500, Math.round(evidence?.transcriptCount ?? 0)));
+  const captureOnlyCount = Math.max(0, Math.min(500, Math.round(evidence?.captureOnlyCount ?? 0)));
+  const rows = await sql.query(
+    `with existing as (
+       select s.id, s.room_id, s.duration_seconds, s.ended_at
+       from blossom_speak_session s
+       where s.id = $1::uuid and s.user_id = $2 and s.status = 'completed'
+    ),
+    closed as (
+       update blossom_speak_session
+       set status = 'completed',
+           ended_at = coalesce(ended_at, current_timestamp),
+           duration_seconds = greatest(
+             0,
+             extract(epoch from (coalesce(ended_at, current_timestamp) - started_at))::integer
+           ),
+           updated_at = current_timestamp
+       where id = $1::uuid and user_id = $2 and status = 'active'
+       returning id, room_id, duration_seconds, ended_at
+    ),
+    session_row as (
+       select * from closed
+       union all
+       select * from existing where not exists (select 1 from closed)
+       limit 1
+    ),
+    profile_row as (
+       select target_language
+       from blossom_profile
+       where user_id = $2
+       limit 1
+    ),
+    ins as (
+       insert into blossom_activity_event
+         (id, user_id, idempotency_key, event_type, source_id, payload, occurred_at)
+       select
+         $1::uuid,
+         $2,
+         $1::uuid,
+         'SPEAK_COMPLETED',
+         'speak-session-' || s.id,
+         jsonb_build_object(
+           'metadata',
+           jsonb_build_object(
+             'languageId', p.target_language,
+             'roomId', s.room_id,
+             'durationSeconds', s.duration_seconds,
+             'minutes', greatest(1, floor(s.duration_seconds / 60.0)),
+             'spokenSeconds', $3,
+             'transcriptCount', $4,
+             'captureOnlyCount', $5
+           )
+         ),
+         s.ended_at
+       from session_row s
+       cross join profile_row p
+       on conflict do nothing
+       returning id, event_type, source_id, payload, occurred_at
+    )
+    select
+      s.id,
+      s.room_id,
+      s.duration_seconds,
+      s.ended_at,
+      coalesce(i.id, a.id) as activity_id,
+      coalesce(i.event_type, a.event_type) as activity_type,
+      coalesce(i.source_id, a.source_id) as activity_source_id,
+      coalesce(i.payload, a.payload) as activity_payload,
+      coalesce(i.occurred_at, a.occurred_at) as activity_occurred_at
+    from session_row s
+    left join ins i on true
+    left join blossom_activity_event a
+      on a.user_id = $2
+     and a.event_type = 'SPEAK_COMPLETED'
+     and a.source_id = 'speak-session-' || s.id
+    limit 1`,
+    [sessionId, userId, spokenSeconds, transcriptCount, captureOnlyCount],
+  );
+  if (!rows[0]) throw new BlossomForbiddenError("Cette session Speak n'est plus active.");
+  const activityMetadata =
+    rows[0].activity_payload &&
+    typeof rows[0].activity_payload === "object" &&
+    !Array.isArray(rows[0].activity_payload)
+      ? (rows[0].activity_payload as Record<string, unknown>).metadata
+      : {};
+  return {
+    id: String(rows[0].id),
+    roomId: String(rows[0].room_id),
+    status: "completed" as const,
+    endedAt: new Date(String(rows[0].ended_at)).toISOString(),
+    durationSeconds: Math.max(0, Number(rows[0].duration_seconds ?? 0)),
+    activity: {
+      id: String(rows[0].activity_id),
+      type: "SPEAK_COMPLETED" as const,
+      sourceId: String(rows[0].activity_source_id),
+      createdAt: new Date(String(rows[0].activity_occurred_at)).toISOString(),
+      metadata:
+        activityMetadata && typeof activityMetadata === "object" && !Array.isArray(activityMetadata)
+          ? Object.fromEntries(
+              Object.entries(activityMetadata as Record<string, unknown>).filter(
+                ([, value]) => typeof value === "string" || typeof value === "number" || typeof value === "boolean",
+              ),
+            )
+          : {},
+    },
+  };
+}
+
 export async function endSpeakSession(
   userId: string,
   sessionId: string,
