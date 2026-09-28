@@ -62,11 +62,21 @@ function PulsePage() {
   const [serverTimerAvailable, setServerTimerAvailable] = useState(true);
   const timer = useRef<number | null>(null);
   const startedAt = useRef<number>(0);
+  const mountedRef = useRef(true);
+  const serverSessionRef = useRef<string | null>(null);
+  const completedServerSessionRef = useRef(false);
   const mineralsBefore = useRef(minerals);
 
   useEffect(() => {
     return () => {
+      mountedRef.current = false;
       if (timer.current) window.clearInterval(timer.current);
+      const sessionId = serverSessionRef.current;
+      if (sessionId && !completedServerSessionRef.current) {
+        void endPulseSessionOnServer({
+          data: { sessionId, status: "cancelled" },
+        }).catch(() => undefined);
+      }
     };
   }, []);
 
@@ -80,6 +90,14 @@ function PulsePage() {
         data: { dareId: dare?.id ?? "pulse-local" },
       });
       sessionId = session.id;
+      serverSessionRef.current = session.id;
+      completedServerSessionRef.current = false;
+      if (!mountedRef.current) {
+        void endPulseSessionOnServer({
+          data: { sessionId: session.id, status: "cancelled" },
+        }).catch(() => undefined);
+        return;
+      }
       setServerSessionId(session.id);
       setServerTimerAvailable(true);
     } catch {
@@ -112,6 +130,8 @@ function PulsePage() {
           data: { sessionId: serverSessionId, status: "completed" },
         });
         authoritativeSeconds = closure.durationSeconds;
+        completedServerSessionRef.current = true;
+        serverSessionRef.current = null;
       } catch {
         setCloseError("La validation serveur a échoué. Votre session reste ouverte : réessayez la clôture.");
         setClosing(false);
