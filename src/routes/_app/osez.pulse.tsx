@@ -20,6 +20,14 @@ export const Route = createFileRoute("/_app/osez/pulse")({
 });
 
 function PulsePage() {
+  const languageId = useBlossom((s) => s.languageId);
+  if (!canUseLearningSurface(languageId, "pulse")) {
+    return <LearningSurfaceAvailability languageId={languageId} surface="pulse" />;
+  }
+  return <PulseExperience languageId={languageId} />;
+}
+
+function PulseExperience({ languageId }: { languageId: string }) {
   const m = useMessages();
   const completePulse = useBlossom((s) => s.completePulse);
   const log = useBlossom((s) => s.activityLog);
@@ -27,11 +35,7 @@ function PulsePage() {
   const growthEvents = useBlossom((s) => s.growthEvents);
   const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
   const missionSessions = useBlossom((s) => s.missionSessions);
-  const languageId = useBlossom((s) => s.languageId);
   const plan = useBlossom((s) => s.plan);
-  if (!canUseLearningSurface(languageId, "pulse")) {
-    return <LearningSurfaceAvailability languageId={languageId} surface="pulse" />;
-  }
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const memoryOn = planAllows(plan, "memory");
 
