@@ -159,9 +159,10 @@ export const finalizeSpeakSessionOnServer = createServerFn({ method: "POST" })
       captureOnlyCount: z.number().int().nonnegative().max(500).optional(),
     }),
   )
-  .handler(async ({ context, data }) =>
-    finalizeSpeakSession(context.userId, data.sessionId, data),
-  );
+  .handler(async ({ context, data }) => {
+    const result = await finalizeSpeakSession(context.userId, data.sessionId, data);
+    return result;
+  });
 
 export const endSpeakSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
