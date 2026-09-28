@@ -42,7 +42,7 @@ function localActivityKey(event: Pick<ActivityEvent, "id" | "sourceId" | "type">
     : `${event.type}:id:${event.id}`;
 }
 
-function mergeBackendState(remote: BackendState): void {
+function mergeBackendState(remote: BackendState, pendingMutations: SyncMutation[] = []): void {
   const current = useBlossom.getState();
 
   let profilePatch: Partial<typeof current.learner> = {};
@@ -55,6 +55,17 @@ function mergeBackendState(remote: BackendState): void {
   let profileImmersionPhase = current.immersionPhase;
   let profileChildMissionDone = current.childMissionDone;
   const profileChildWords = new Set(current.childWords);
+
+  const pendingProfile = [...pendingMutations]
+    .filter((mutation) => mutation.operation === "profile.upsert")
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    .at(-1);
+  const pendingProfilePayload =
+    pendingProfile?.payload &&
+    typeof pendingProfile.payload === "object" &&
+    !Array.isArray(pendingProfile.payload)
+      ? pendingProfile.payload
+      : null;
 
   if (remote.profile) {
     const displayName = remote.profile.displayName?.trim();
@@ -104,6 +115,32 @@ function mergeBackendState(remote: BackendState): void {
     if (typeof prefs.coach === "string") profilePatch.coach = prefs.coach;
     if (typeof prefs.coachVoice === "string") profilePatch.coachVoice = prefs.coachVoice;
 
+  }
+
+  // Do not let an older server snapshot overwrite a newer profile change that
+  // is already durably queued on this device. The outbox is the user's intent;
+  // the server snapshot becomes authoritative again once the mutation applies.
+  if (pendingProfilePayload) {
+    const targetLanguage = pendingProfilePayload.targetLanguage;
+    if (typeof targetLanguage === "string" && isLearnLanguageId(targetLanguage)) {
+      profileLanguageId = targetLanguage;
+      profilePatch.targetLanguage = targetLanguage;
+    }
+    const displayName =
+      typeof pendingProfilePayload.displayName === "string"
+        ? pendingProfilePayload.displayName.trim()
+        : "";
+    if (displayName) {
+      const parts = displayName.split(/\s+/);
+      profilePatch = {
+        ...profilePatch,
+        firstName: parts.shift() ?? current.learner.firstName,
+        lastName: parts.join(" ") || current.learner.lastName,
+      };
+    }
+    if (typeof pendingProfilePayload.level === "string" || pendingProfilePayload.level === null) {
+      profilePatch.level = pendingProfilePayload.level;
+    }
   }
 
   const activity = new Map<string, ActivityEvent>();
@@ -748,11 +785,13 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
       try {
         const remote = await getBlossomBackendState();
         if (disposed) return;
-        mergeBackendState(remote as BackendState);
+        const pendingAtHydration = await listPendingMutations();
+        mergeBackendState(remote as BackendState, pendingAtHydration);
         await flushOutbox();
         if (disposed) return;
         const finalRemote = await getBlossomBackendState();
-        if (!disposed) mergeBackendState(finalRemote as BackendState);
+        const pendingAfterFlush = await listPendingMutations();
+        if (!disposed) mergeBackendState(finalRemote as BackendState, pendingAfterFlush);
         onReadyRef.current?.();
       } catch (error) {
         if (!disposed) {
