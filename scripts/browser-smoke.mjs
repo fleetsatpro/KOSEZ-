@@ -145,6 +145,7 @@ try {
       viewport: { width: vp.width, height: vp.height },
     });
     await page.addInitScript((storageKey) => {
+      if (window.localStorage.getItem(storageKey)) return;
       window.localStorage.setItem(
         storageKey,
         JSON.stringify({
