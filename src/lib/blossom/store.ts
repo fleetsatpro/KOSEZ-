@@ -171,6 +171,7 @@ type AppState = {
   reopenMissionSession: (missionId: string) => boolean;
   completeMissionSession: (missionId: string, rewardSourceId?: string | null) => { ok: boolean; reason?: string; evaluation?: ReturnType<typeof evaluateMission> };
   completeActivity: (type: ActivityType, sourceId: string, note?: string, metadata?: Record<string, string | number | boolean>) => { ok: boolean; reason?: string; event?: GrowthEvent; previousMinerals?: MineralSnapshot; minerals?: MineralSnapshot };
+  acceptConfirmedActivity: (event: ActivityEvent) => void;
   joinEvent: (id: string) => void;
   leaveEvent: (id: string) => void;
   enroll: (id: string) => void;
@@ -422,6 +423,14 @@ export const useBlossom = create<AppState>()(
           rewarded: Boolean(rewardSourceId),
         });
         return { ...result, evaluation };
+      },
+      acceptConfirmedActivity: (event) => {
+        const current = get();
+        if (hasSource(activeLanguageActivityLog(current.activityLog, current.languageId), event.sourceId ?? "", event.type)) {
+          return;
+        }
+        set({ activityLog: [...current.activityLog, event] });
+        get().refreshOrganism();
       },
       completeActivity: (type, sourceId, note, metadata) => {
         const current = get();
