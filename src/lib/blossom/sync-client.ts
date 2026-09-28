@@ -363,3 +363,39 @@ export async function replaceConflictWithMutation(
   await enqueueMutation(merged);
   await removeMutation(conflictMutationId);
 }
+
+
+export async function retryConflicts(): Promise<number> {
+  const ownerId = activeOwnerId;
+  if (!ownerId) return 0;
+  let retried = 0;
+  if (hasIndexedDb()) {
+    try {
+      const rows = await txRequest<StoredMutation[]>("readonly", (store) => store.getAll());
+      for (const row of rows) {
+        if (row.state !== "conflict" || row.ownerUserId !== ownerId) continue;
+        row.state = "pending";
+        delete row.conflict;
+        await txRequest("readwrite", (store) => store.put(row));
+        retried += 1;
+      }
+      emitSyncNeeded();
+      return retried;
+    } catch {
+      // fallback below
+    }
+  }
+  const rows = readFallback();
+  let changed = false;
+  const next = rows.map((row) => {
+    if (row.state === "conflict" && row.ownerUserId === ownerId) {
+      changed = true;
+      retried += 1;
+      return { ...row, state: "pending" as const, conflict: undefined };
+    }
+    return row;
+  });
+  if (changed) writeFallback(next);
+  if (changed) emitSyncNeeded();
+  return retried;
+}
