@@ -19,7 +19,7 @@ import type { MissionSession } from "@/lib/blossom/mission";
 import type { LearningSubmission, Homework, TeacherNote } from "@/lib/blossom/store";
 import type { BackendState, SyncJsonValue, SyncMutation, SyncResult } from "@/lib/blossom/sync-types";
 import { POINTS, type ActivityEvent, type PronlabAttempt } from "@/lib/blossom/engine";
-import { buildPhonemeLeaves, computeMinerals } from "@/lib/blossom/organism";
+import { buildPhonemeLeaves } from "@/lib/blossom/organism";
 import { setsForLanguage } from "@/lib/blossom/data";
 import { useBlossom } from "@/lib/blossom/store";
 import { isUiLocaleId, isLearnLanguageId, type LearnLanguageId } from "@/lib/i18n/locales";
@@ -306,4 +306,370 @@ function mergeBackendState(remote: BackendState): void {
   useBlossom.getState().refreshOrganism();
 }
 
-/* truncated mid-file intentionally for size — full file continues with resolveMissionConflict, flushOutbox with activity.append + pronlab.attempt rollbacks, and BlossomSyncBridge component */
+async function resolveMissionConflict(
+  mutation: SyncMutation,
+  result: Extract<SyncResult, { status: "conflict" }>,
+): Promise<void> {
+  const session = mutation.payload.session as SyncJsonValue | undefined;
+  if (!session) return;
+
+  const remoteSession = JSON.parse(result.currentSessionJson) as MissionSession;
+  const merged = mergeMissionSessions(
+    session as unknown as MissionSession,
+    {
+      session: remoteSession,
+      revision: result.currentRevision,
+      updatedAt: new Date().toISOString(),
+    },
+  );
+
+  const retry = createMutation({
+    operation: "mission.save",
+    entityId: mutation.entityId,
+    expectedRevision: result.currentRevision,
+    payload: {
+      session: merged as unknown as SyncJsonValue,
+    },
+  });
+
+  await markConflict(mutation.mutationId, result);
+  await replaceConflictWithMutation(mutation.mutationId, retry);
+
+  useBlossom.setState({
+    backendMissionRevisions: {
+      ...useBlossom.getState().backendMissionRevisions,
+      [mutation.entityId]: result.currentRevision + 1,
+    },
+    missionSessions: {
+      ...useBlossom.getState().missionSessions,
+      [mutation.entityId]: merged,
+    },
+  });
+}
+
+async function flushOutbox(): Promise<void> {
+  for (let batchNumber = 0; batchNumber < MAX_BATCHES_PER_PASS; batchNumber += 1) {
+    const pending = await listPendingMutations();
+    if (pending.length === 0) return;
+
+    const batch = pending.slice(0, 50);
+    const deviceId = batch[0]?.deviceId;
+    if (!deviceId) return;
+
+    const response = await syncBlossom({
+      data: {
+        deviceId,
+        mutationsJson: JSON.stringify(batch),
+      },
+    });
+
+    const byId = new Map(pending.map((mutation) => [mutation.mutationId, mutation]));
+    let progressed = false;
+
+    for (const result of response.results) {
+      const mutation = byId.get(result.mutationId);
+      if (!mutation) continue;
+
+      if (result.status === "applied" || result.status === "duplicate") {
+        await removeMutation(result.mutationId);
+        progressed = true;
+        if (
+          mutation.operation === "mission.save" &&
+          typeof result.revision === "number"
+        ) {
+          useBlossom.setState({
+            backendMissionRevisions: {
+              ...useBlossom.getState().backendMissionRevisions,
+              [mutation.entityId]: result.revision,
+            },
+          });
+        }
+        continue;
+      }
+
+      if (result.status === "conflict") {
+        if (mutation.operation === "mission.save") {
+          await resolveMissionConflict(mutation, result);
+          progressed = true;
+        } else {
+          await markConflict(mutation.mutationId, result);
+        }
+        continue;
+      }
+
+      if (result.status === "rejected") {
+        await removeMutation(result.mutationId);
+
+        const state = useBlossom.getState();
+        if (mutation.operation === "event.register") {
+          const status =
+            typeof mutation.payload.status === "string"
+              ? mutation.payload.status
+              : undefined;
+          if (status === "joined" && state.joinedEventIds.includes(mutation.entityId)) {
+            useBlossom.setState({
+              joinedEventIds: state.joinedEventIds.filter((id) => id !== mutation.entityId),
+              eventRegistrationCounts: {
+                ...state.eventRegistrationCounts,
+                [mutation.entityId]: Math.max(
+                  0,
+                  (state.eventRegistrationCounts[mutation.entityId] ?? 1) - 1,
+                ),
+              },
+            });
+          }
+        } else if (mutation.operation === "booking.request") {
+          const nextStatuses = { ...state.bookingStatuses };
+          delete nextStatuses[mutation.entityId];
+          useBlossom.setState({
+            enrolledIds: state.enrolledIds.filter((id) => id !== mutation.entityId),
+            bookingStatuses: nextStatuses,
+          });
+        } else if (mutation.operation === "waitlist.request") {
+          useBlossom.setState({
+            waitlistIds: state.waitlistIds.filter((id) => id !== mutation.entityId),
+          });
+        } else if (mutation.operation === "tandem.status") {
+          const next = { ...state.tandemStatus };
+          delete next[mutation.entityId];
+          useBlossom.setState({ tandemStatus: next });
+        } else if (mutation.operation === "tandem.report") {
+          const payload = mutation.payload as {
+            previousStatus?: string;
+          };
+          const nextReports = { ...state.tandemReports };
+          const nextCount = Math.max(
+            0,
+            (nextReports[mutation.entityId] ?? 1) - 1,
+          );
+          if (nextCount === 0) delete nextReports[mutation.entityId];
+          const restoredStatus =
+            payload.previousStatus === "pending" ||
+            payload.previousStatus === "accepted" ||
+            payload.previousStatus === "paused" ||
+            payload.previousStatus === "blocked" ||
+            payload.previousStatus === "suggested"
+              ? payload.previousStatus
+              : "suggested";
+          useBlossom.setState({
+            tandemReports: nextReports,
+            tandemStatus: {
+              ...state.tandemStatus,
+              [mutation.entityId]: restoredStatus,
+            },
+          });
+        } else if (mutation.operation === "teacher.note") {
+          useBlossom.setState({
+            teacherNotes: state.teacherNotes.filter((note) => note.id !== mutation.mutationId),
+          });
+        } else if (mutation.operation === "teacher.homework") {
+          const status =
+            typeof mutation.payload.status === "string"
+              ? mutation.payload.status
+              : undefined;
+          const rollback =
+            mutation.payload.rollback &&
+            typeof mutation.payload.rollback === "object" &&
+            !Array.isArray(mutation.payload.rollback)
+              ? (mutation.payload.rollback as Record<string, unknown>)
+              : null;
+          const rollbackTitle =
+            typeof rollback?.title === "string" ? rollback.title : null;
+          const rollbackBody =
+            typeof rollback?.body === "string" ? rollback.body : null;
+          const rollbackUpdatedAt =
+            typeof rollback?.updatedAt === "string"
+              ? rollback.updatedAt
+              : null;
+          if (
+            status === "draft" &&
+            rollbackTitle !== null &&
+            rollbackBody !== null &&
+            rollbackUpdatedAt !== null
+          ) {
+            useBlossom.setState({
+              homework: state.homework.map((homework) =>
+                homework.id === mutation.entityId
+                  ? {
+                      ...homework,
+                      title: rollbackTitle,
+                      body: rollbackBody,
+                      status: "draft" as const,
+                      updatedAt: rollbackUpdatedAt,
+                    }
+                  : homework,
+              ),
+            });
+          } else {
+            useBlossom.setState({
+              homework:
+                status === "sent"
+                  ? state.homework.map((homework) =>
+                      homework.id === mutation.entityId
+                        ? { ...homework, status: "draft" as const }
+                        : homework,
+                    )
+                  : state.homework.filter((homework) => homework.id !== mutation.mutationId),
+            });
+          }
+        } else if (mutation.operation === "activity.append") {
+          const nextLog = state.activityLog.filter((event) => event.id !== mutation.mutationId);
+          useBlossom.setState({
+            activityLog: nextLog,
+            growthEvents: state.growthEvents.filter(
+              (g) => g.sourceId !== mutation.entityId && g.id !== mutation.mutationId,
+            ),
+          });
+          useBlossom.getState().refreshOrganism();
+        } else if (mutation.operation === "pronlab.attempt") {
+          const nextAttempts = state.pronlabAttempts.filter(
+            (a) => a.id !== mutation.mutationId && a.id !== mutation.entityId,
+          );
+          const items = setsForLanguage(state.languageId).flatMap((s) => s.items);
+          useBlossom.setState({
+            pronlabAttempts: nextAttempts,
+            phonemeLeaves: buildPhonemeLeaves(nextAttempts, items),
+          });
+        }
+
+        console.error("[blossom-sync] mutation rejected", {
+          mutationId: result.mutationId,
+          errorCode: result.errorCode,
+        });
+        toast("Une action n'a pas pu être synchronisée. Votre écran a été rétabli.");
+        continue;
+      }
+    }
+
+    if (!progressed) return;
+  }
+}
+
+function SyncMark({ ready }: { ready: boolean }) {
+  return (
+    <span
+      className="sr-only"
+      data-blossom-sync={ready ? "ready" : "pending"}
+      aria-live="polite"
+    >
+      {ready ? "Synchronisé" : "Synchronisation…"}
+    </span>
+  );
+}
+
+export function BlossomSyncBridge({
+  children,
+  onReady,
+}: {
+  children?: ReactNode;
+  onReady?: () => void;
+}) {
+  const userState = useCurrentUserState();
+  const userId = userState.status === "authenticated" ? userState.user.id : null;
+  const identityKey = userId ?? "anonymous";
+  const [ready, setReady] = useState(false);
+  const [readyKey, setReadyKey] = useState<string | null>(null);
+  const lastPull = useRef(0);
+  const flushing = useRef(false);
+
+  useEffect(() => {
+    setSyncOwner(userId);
+  }, [userId]);
+
+  useEffect(() => {
+    let disposed = false;
+
+    async function pull() {
+      if (!userId) {
+        if (!disposed) {
+          setReady(true);
+          setReadyKey(identityKey);
+          onReady?.();
+        }
+        return;
+      }
+      try {
+        const remote = await getBlossomBackendState();
+        if (disposed) return;
+        mergeBackendState(remote);
+        lastPull.current = Date.now();
+      } catch (error) {
+        console.error("[blossom-sync] pull failed", error);
+      } finally {
+        if (!disposed) {
+          setReady(true);
+          setReadyKey(identityKey);
+          onReady?.();
+        }
+      }
+    }
+
+    async function tick() {
+      if (flushing.current) return;
+      flushing.current = true;
+      try {
+        await flushOutbox();
+        if (Date.now() - lastPull.current > SYNC_INTERVAL_MS) {
+          await pull();
+        }
+      } finally {
+        flushing.current = false;
+      }
+    }
+
+    void pull();
+    const interval = window.setInterval(() => {
+      void tick();
+    }, 8_000);
+    const changeEvent = syncChangeEventName();
+    const onChange = () => {
+      void tick();
+    };
+    window.addEventListener(changeEvent, onChange);
+    window.addEventListener("online", onChange);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(interval);
+      window.removeEventListener(changeEvent, onChange);
+      window.removeEventListener("online", onChange);
+    };
+  }, [userId, identityKey, onReady]);
+
+  return (
+    <>
+      {ready ? children : <SyncMark ready={false} />}
+      <BlossomSyncBridgeInner
+        onReady={() => {
+          setReadyKey(identityKey);
+        }}
+      />
+    </>
+  );
+}
+
+function BlossomSyncBridgeInner({ onReady }: { onReady?: () => void }) {
+  useEffect(() => {
+    onReady?.();
+  }, [onReady]);
+  return null;
+}
+
+export function BlossomSyncGate({ children }: { children: ReactNode }) {
+  const userState = useCurrentUserState();
+  const userId = userState.status === "authenticated" ? userState.user.id : null;
+  const identityKey = userId ?? "anonymous";
+  const [readyKey, setReadyKey] = useState<string | null>(null);
+  const ready = readyKey === identityKey;
+
+  return (
+    <>
+      {ready ? children : <SyncMark ready={false} />}
+      <BlossomSyncBridge
+        onReady={() => {
+          setReadyKey(identityKey);
+        }}
+      />
+    </>
+  );
+}
