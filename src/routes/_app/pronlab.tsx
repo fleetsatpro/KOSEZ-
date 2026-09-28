@@ -13,6 +13,8 @@ import {
 } from "@/lib/blossom/organism";
 import { isSetUnlocked, useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
+import { LearningSurfaceAvailability } from "@/components/app/learning-surface-availability";
+import { canUseLearningSurface } from "@/lib/i18n/locales";
 
 export const Route = createFileRoute("/_app/pronlab")({
   component: PronlabHub,
@@ -23,6 +25,10 @@ function PronlabHub() {
     select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
   });
 
+  const languageId = useBlossom((s) => s.languageId);
+  if (!canUseLearningSurface(languageId, "pronlab")) {
+    return <LearningSurfaceAvailability languageId={languageId} surface="pronlab" />;
+  }
   return pathname === "/pronlab" ? <PronlabIndex /> : <Outlet />;
 }
 
