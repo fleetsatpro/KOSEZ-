@@ -44,6 +44,9 @@ function SpeakRoom() {
   const growthEvents = useBlossom((s) => s.growthEvents);
   const learner = useBlossom((s) => s.learner);
   const languageId = useBlossom((s) => s.languageId);
+  if (!canUseLearningSurface(languageId, "osez")) {
+    return <LearningSurfaceAvailability languageId={languageId} surface="osez" />;
+  }
   const log = useBlossom((s) => s.activityLog);
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
