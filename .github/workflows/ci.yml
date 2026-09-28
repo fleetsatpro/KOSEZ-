@@ -73,6 +73,7 @@ jobs:
       - name: Build learner smoke preview
         env:
           VITE_AUTH_ENABLED: "false"
+          VITE_BROWSER_SMOKE: "true"
         run: |
           npm run build:dev > /tmp/kosez-smoke-build.log 2>&1
           tail -n 80 /tmp/kosez-smoke-build.log
