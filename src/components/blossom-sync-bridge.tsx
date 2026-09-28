@@ -16,7 +16,7 @@ import {
 } from "@/lib/blossom/sync-client";
 import { mergeMissionSessions } from "@/lib/blossom/sync-merge";
 import type { MissionSession } from "@/lib/blossom/mission";
-import type { LearningSubmission, Homework, TeacherNote } from "@/lib/blossom/store";
+import type { LearningSubmission, Homework, TeacherNote, LearnerProfile } from "@/lib/blossom/store";
 import type { BackendState, SyncJsonValue, SyncMutation, SyncResult } from "@/lib/blossom/sync-types";
 import { POINTS, type ActivityEvent, type PronlabAttempt } from "@/lib/blossom/engine";
 import { buildPhonemeLeaves } from "@/lib/blossom/organism";
@@ -28,20 +28,42 @@ const SYNC_INTERVAL_MS = 45_000;
 const MAX_BATCHES_PER_PASS = 8;
 const PROFILE_INTENT_KEY = "kosez-blossom-profile-intent-v1";
 
-function readLocalProfileIntent() {
+type LocalProfileIntent = {
+  mutationId: string;
+  createdAt: string;
+  displayName?: string;
+  targetLanguage?: string;
+  level?: string;
+  preferences?: Record<string, unknown>;
+};
+
+function readLocalProfileIntent(): LocalProfileIntent | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(PROFILE_INTENT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
-    return parsed;
+    const record = parsed as Record<string, unknown>;
+    if (typeof record.mutationId !== "string" || typeof record.createdAt !== "string") return null;
+    const preferences =
+      record.preferences && typeof record.preferences === "object" && !Array.isArray(record.preferences)
+        ? (record.preferences as Record<string, unknown>)
+        : undefined;
+    return {
+      mutationId: record.mutationId,
+      createdAt: record.createdAt,
+      displayName: typeof record.displayName === "string" ? record.displayName : undefined,
+      targetLanguage: typeof record.targetLanguage === "string" ? record.targetLanguage : undefined,
+      level: typeof record.level === "string" ? record.level : undefined,
+      preferences,
+    };
   } catch {
     return null;
   }
 }
 
-function clearLocalProfileIntent(mutationId) {
+function clearLocalProfileIntent(mutationId?: string) {
   if (typeof window === "undefined") return;
   try {
     const current = readLocalProfileIntent();
@@ -187,7 +209,7 @@ function mergeBackendState(remote: BackendState, pendingMutations: SyncMutation[
       profilePatch.targetLanguage = intent.targetLanguage;
     }
     if (typeof intent.displayName === "string" && intent.displayName.trim()) {
-      const parts = intent.displayName.trim().split(/\\s+/);
+      const parts = intent.displayName.trim().split(/\s+/);
       profilePatch.firstName = parts.shift() ?? current.learner.firstName;
       profilePatch.lastName = parts.join(" ") || current.learner.lastName;
     }
@@ -199,15 +221,24 @@ function mergeBackendState(remote: BackendState, pendingMutations: SyncMutation[
         ? intent.preferences
         : null;
     if (preferences) {
-      const textFields = [
-        "city", "nativeLanguage", "creole", "goal", "practiceWindow", "coach", "coachVoice", "avatar",
-      ];
-      for (const field of textFields) {
-        const value = preferences[field];
-        if (typeof value === "string") profilePatch[field] = value;
-      }
+      const applyTextPreference = (key: string, value: unknown) => {
+        if (typeof value !== "string") return;
+        const normalized = value.trim();
+        switch (key as keyof LearnerProfile) {
+          case "city": profilePatch.city = normalized; break;
+          case "nativeLanguage": profilePatch.nativeLanguage = normalized; break;
+          case "creole": profilePatch.creole = normalized; break;
+          case "goal": profilePatch.goal = normalized; break;
+          case "practiceWindow": profilePatch.practiceWindow = normalized; break;
+          case "coach": profilePatch.coach = normalized; break;
+          case "coachVoice": profilePatch.coachVoice = normalized; break;
+          case "avatar": profilePatch.avatar = normalized; break;
+          default: break;
+        }
+      };
+      for (const [key, value] of Object.entries(preferences)) applyTextPreference(key, value);
       if (Array.isArray(preferences.interests)) {
-        profilePatch.interests = preferences.interests.filter((item) => typeof item === "string").slice(0, 8);
+        profilePatch.interests = preferences.interests.filter((item): item is string => typeof item === "string").slice(0, 8);
       }
       if (typeof preferences.uiLocale === "string" && isUiLocaleId(preferences.uiLocale)) {
         profileUiLocale = preferences.uiLocale;
