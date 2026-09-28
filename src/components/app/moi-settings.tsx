@@ -18,10 +18,13 @@ export function MoiSettings() {
   const setExportConsent = useBlossom((s) => s.setExportConsent);
   const [draft, setDraft] = useState(learner);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => setDraft(learner), [learner]);
 
   function save() {
+    setSaving(true);
+    setSaved(false);
     updateLearner({
       firstName: draft.firstName.trim(),
       lastName: draft.lastName.trim(),
@@ -33,8 +36,11 @@ export function MoiSettings() {
       city: draft.city.trim() || learner.city,
       avatar: draft.avatar.trim(),
     });
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 1800);
+    window.setTimeout(() => {
+      setSaving(false);
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 1800);
+    }, 350);
   }
 
   return (
@@ -95,7 +101,7 @@ export function MoiSettings() {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-2">
-          <Button onClick={save}>{saved ? "Profil enregistré" : "Enregistrer mes préférences"} <Check className="size-4" /></Button>
+          <Button disabled={saving} onClick={save}>{saving ? "Enregistrement…" : saved ? "Profil enregistré" : "Enregistrer mes préférences"} <Check className="size-4" /></Button>
           <Button asChild variant="secondary"><Link to="/learn/progress">Voir mes compétences</Link></Button>
         </div>
       </Surface>
