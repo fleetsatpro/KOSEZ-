@@ -152,6 +152,7 @@ try {
           state: {
             hasEntered: true,
             syncOwnerUserId: "dev-user",
+            plan: "premium",
             learner: {
               firstName: "Smoke",
               lastName: "Check",
@@ -310,6 +311,9 @@ try {
           undefined,
           { timeout: 10000 },
         );
+        // Allow the serialized profile mutation to persist and emit its sync
+        // event before navigating into language-gated routes.
+        await page.waitForTimeout(1500);
 
         await gotoWithRetry(
           page,
