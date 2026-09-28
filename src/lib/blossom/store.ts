@@ -227,6 +227,36 @@ function activeLanguageActivityLog(
   return log.filter((event) => activityBelongsToLanguage(event, languageId));
 }
 
+function rebuildOrganismState(
+  log: ActivityEvent[],
+  languageId: LearnLanguageId,
+  firstName: string,
+  existingLetters: LeoLetter[],
+) {
+  const scoped = activeLanguageActivityLog(log, languageId);
+  let growthEvents: GrowthEvent[] = [];
+  for (const event of scoped) {
+    const growth = growthEventForActivity(event.type, event.sourceId, event.createdAt);
+    if (!growth) continue;
+    growthEvents = pushGrowthEvent(
+      growthEvents,
+      { ...growth, languageId },
+    );
+  }
+  const mineralSnapshot = computeMinerals(scoped);
+  const phonemeLeaves = buildPhonemeLeaves(
+    // Caller owns attempt-derived leaves; this helper only rebuilds activity-derived state.
+    [],
+    [],
+  );
+  const currentLetter = composeLeoLetter(mineralSnapshot, growthEvents, firstName);
+  const prior = existingLetters.find((letter) => letter.id === currentLetter.id);
+  const leoLetters = growthEvents.length
+    ? [{ ...currentLetter, read: prior?.read ?? currentLetter.read }, ...existingLetters.filter((letter) => letter.id !== currentLetter.id)].slice(0, 12)
+    : existingLetters;
+  return { growthEvents, mineralSnapshot, leoLetters, phonemeLeaves };
+}
+
 function localTimezone(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -242,6 +272,7 @@ function voidProfileSync(
   warmup: string | null,
   exportConsent: boolean,
   tandemOpen: boolean,
+  rollback?: Record<string, unknown>,
 ): void {
   const state = useBlossom.getState();
   voidSyncMutation({
@@ -271,6 +302,7 @@ function voidProfileSync(
         childWords: state.childWords,
         uiLocale: state.uiLocale,
       },
+      ...(rollback ? { rollback } : {}),
     },
   });
 }
@@ -329,7 +361,22 @@ export const useBlossom = create<AppState>()(
         const current = get();
         const learner = { ...current.learner, ...patch };
         set({ learner });
-        voidProfileSync(learner, current.languageId, current.plan, current.warmup, current.exportConsent, current.tandemOpen);
+        voidProfileSync(
+          learner,
+          current.languageId,
+          current.plan,
+          current.warmup,
+          current.exportConsent,
+          current.tandemOpen,
+          {
+            learner: current.learner,
+            languageId: current.languageId,
+            plan: current.plan,
+            warmup: current.warmup,
+            exportConsent: current.exportConsent,
+            tandemOpen: current.tandemOpen,
+          },
+        );
       },
       startMissionRun: (missionId, mode, challenge = "core") => {
         const current = get().missionSessions[missionId] ?? createMissionSession(missionId);
@@ -554,8 +601,13 @@ export const useBlossom = create<AppState>()(
         return attempt;
       },
       setTandemStatus: (partnerId, status) => {
+        const previousStatus = get().tandemStatus[partnerId] ?? null;
         set({ tandemStatus: { ...get().tandemStatus, [partnerId]: status } });
-        voidSyncMutation({ operation: "tandem.status", entityId: partnerId, payload: { status, metadata: {} } });
+        voidSyncMutation({
+          operation: "tandem.status",
+          entityId: partnerId,
+          payload: { status, metadata: {}, previousStatus },
+        });
       },
       setTandemOpen: (value) => {
         set({ tandemOpen: value });
@@ -708,7 +760,15 @@ export const useBlossom = create<AppState>()(
           setsForLanguage(id).flatMap((setDef) => setDef.items),
         );
         set({ languageId: id, learner, phonemeLeaves });
-        voidProfileSync(learner, id, current.plan, current.warmup, current.exportConsent, current.tandemOpen);
+        voidProfileSync(
+          learner,
+          id,
+          current.plan,
+          current.warmup,
+          current.exportConsent,
+          current.tandemOpen,
+          { learner: current.learner, languageId: current.languageId },
+        );
         track("language_changed", { languageId: id });
       },
       setUiLocale: (id) => {
@@ -751,17 +811,28 @@ export const useBlossom = create<AppState>()(
       },
       refreshOrganism: () => {
         const current = get();
-        const mineralSnapshot = computeMinerals(
-          activeLanguageActivityLog(current.activityLog, current.languageId),
-        );
+        const scoped = activeLanguageActivityLog(current.activityLog, current.languageId);
+        let growthEvents: GrowthEvent[] = [];
+        for (const event of scoped) {
+          const growth = growthEventForActivity(event.type, event.sourceId, event.createdAt);
+          if (!growth) continue;
+          growthEvents = pushGrowthEvent(growthEvents, { ...growth, languageId: current.languageId });
+        }
+        const mineralSnapshot = computeMinerals(scoped);
         const phonemeLeaves = buildPhonemeLeaves(
           current.pronlabAttempts,
           setsForLanguage(current.languageId).flatMap((setDef) => setDef.items),
         );
-        set({ mineralSnapshot, phonemeLeaves });
+        const letter = composeLeoLetter(mineralSnapshot, growthEvents, current.learner.firstName);
+        const existing = current.leoLetters.find((item) => item.id === letter.id);
+        const leoLetters = growthEvents.length
+          ? [{ ...letter, read: existing?.read ?? letter.read }, ...current.leoLetters.filter((item) => item.id !== letter.id)].slice(0, 12)
+          : current.leoLetters;
+        set({ growthEvents, mineralSnapshot, phonemeLeaves, leoLetters });
       },
       resetJourney: () => {
         set({
+          hasEntered: false,
           parentMode: false,
           teacherMode: false,
           orgMode: false,
