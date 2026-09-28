@@ -2,5 +2,6 @@
   "title": "K'Osez BLOSSOM",
   "description": "Votre langue. Votre voyage. Votre BLOSSOM.",
   "card": "custom",
+  "type": "x:game",
   "color": "2F5D50"
 }
