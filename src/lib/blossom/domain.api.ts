@@ -139,8 +139,15 @@ export const startMissionRunSessionOnServer = createServerFn({ method: "POST" })
 
 export const endMissionRunSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ sessionId: z.string().uuid() }))
-  .handler(async ({ context, data }) => endMissionRunSession(context.userId, data.sessionId));
+  .inputValidator(
+    z.object({
+      sessionId: z.string().uuid(),
+      status: z.enum(["completed", "cancelled"]).default("completed"),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    endMissionRunSession(context.userId, data.sessionId, data.status),
+  );
 
 export const startSpeakSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
