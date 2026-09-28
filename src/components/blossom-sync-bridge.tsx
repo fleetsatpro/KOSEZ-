@@ -557,6 +557,59 @@ async function flushOutbox(): Promise<void> {
             pronlabAttempts: state.pronlabAttempts.filter((attempt) => attempt.id !== mutation.mutationId),
           });
           useBlossom.getState().refreshOrganism();
+        } else if (mutation.operation === "vocabulary.upsert") {
+          const rollback = mutation.payload.rollback;
+          const previous =
+            rollback && typeof rollback === "object" && !Array.isArray(rollback)
+              ? (rollback as Record<string, unknown>).existing
+              : null;
+          if (previous && typeof previous === "object" && !Array.isArray(previous)) {
+            const prior = previous as typeof state.vocabulary[number];
+            useBlossom.setState({
+              vocabulary: [
+                ...state.vocabulary.filter(
+                  (entry) =>
+                    !(
+                      entry.word.toLowerCase() === prior.word.toLowerCase() &&
+                      (entry.metadata?.languageId ?? "en") === (prior.metadata?.languageId ?? "en")
+                    ),
+                ),
+                prior,
+              ],
+            });
+          } else {
+            const word = typeof mutation.payload.word === "string" ? mutation.payload.word.toLowerCase() : "";
+            const languageId = typeof mutation.payload.metadata === "object" && mutation.payload.metadata && !Array.isArray(mutation.payload.metadata)
+              ? String((mutation.payload.metadata as Record<string, unknown>).languageId ?? state.languageId)
+              : state.languageId;
+            useBlossom.setState({
+              vocabulary: state.vocabulary.filter(
+                (entry) =>
+                  !(entry.word.toLowerCase() === word && (entry.metadata?.languageId ?? "en") === languageId),
+              ),
+            });
+          }
+        } else if (mutation.operation === "learning.submission") {
+          const rollback = mutation.payload.rollback;
+          const previous =
+            rollback && typeof rollback === "object" && !Array.isArray(rollback)
+              ? (rollback as Record<string, unknown>).existing
+              : null;
+          if (previous && typeof previous === "object" && !Array.isArray(previous)) {
+            const prior = previous as typeof state.learningSubmissions[number];
+            useBlossom.setState({
+              learningSubmissions: [
+                ...state.learningSubmissions.filter((item) => item.id !== prior.id && item.taskId !== prior.taskId),
+                prior,
+              ],
+            });
+          } else {
+            useBlossom.setState({
+              learningSubmissions: state.learningSubmissions.filter(
+                (item) => item.id !== mutation.mutationId && item.taskId !== mutation.entityId,
+              ),
+            });
+          }
         } else if (mutation.operation === "profile.upsert") {
           const rollback =
             mutation.payload.rollback &&
