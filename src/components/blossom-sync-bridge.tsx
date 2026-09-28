@@ -976,20 +976,29 @@ export function BlossomSyncBoundary({ children }: { children: ReactNode }) {
   const { user, isPending } = useCurrentUserState();
   const syncOwnerUserId = useBlossom((state) => state.syncOwnerUserId);
   const [readyKey, setReadyKey] = useState<string | null>(null);
-  const identityKey = isPending ? null : user?.id ?? "__signed-out__";
+  const [persistHydrated, setPersistHydrated] = useState(() => useBlossom.persist.hasHydrated());
+  const identityKey = isPending ? null : user?.id ?? "__signed_out__";
 
-  // Same-user reloads already have a locally persisted, tenant-bound state.
-  // Render it immediately and let the sync bridge reconcile in the background.
-  // A different owner still waits for the bridge to reset/hydrate so stale data
-  // from another account is never painted into the new session.
+  useEffect(() => {
+    if (persistHydrated) return;
+    if (useBlossom.persist.hasHydrated()) {
+      setPersistHydrated(true);
+      return;
+    }
+    return useBlossom.persist.onFinishHydration(() => setPersistHydrated(true));
+  }, [persistHydrated]);
+
+  // Same-user reloads can render their tenant-bound local session immediately
+  // after persistence hydration. A different owner still waits for the bridge
+  // to reconcile/reset, preventing cross-account state from being painted.
   const hasSafeLocalState =
+    persistHydrated &&
     identityKey !== null &&
     syncOwnerUserId === identityKey;
   const ready =
     identityKey !== null &&
-    (readyKey === identityKey ||
-      hasSafeLocalState ||
-      user?.isDevFallback === true);
+    persistHydrated &&
+    (readyKey === identityKey || hasSafeLocalState);
 
   useEffect(() => {
     if (identityKey === null || ready) return;
