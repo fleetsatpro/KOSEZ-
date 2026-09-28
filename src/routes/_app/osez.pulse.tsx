@@ -9,7 +9,7 @@ import { useBlossom } from "@/lib/blossom/store";
 import { influenceFromState, type InfluenceReason } from "@/lib/blossom/influence";
 import { LEARNER_MEMORY, planAllows, setsForLanguage } from "@/lib/blossom/data";
 import { LearningSurfaceAvailability } from "@/components/app/learning-surface-availability";
-import { canUseLearningSurface } from "@/lib/i18n/locales";
+import { canUseLearningSurface, type LearnLanguageId } from "@/lib/i18n/locales";
 import {
   endPulseSessionOnServer,
   startPulseSessionOnServer,
@@ -27,7 +27,7 @@ function PulsePage() {
   return <PulseExperience languageId={languageId} />;
 }
 
-function PulseExperience({ languageId }: { languageId: string }) {
+function PulseExperience({ languageId }: { languageId: LearnLanguageId }) {
   const m = useMessages();
   const completePulse = useBlossom((s) => s.completePulse);
   const log = useBlossom((s) => s.activityLog);
