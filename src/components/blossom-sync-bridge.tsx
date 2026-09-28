@@ -26,6 +26,32 @@ import { isUiLocaleId, isLearnLanguageId, type LearnLanguageId } from "@/lib/i18
 
 const SYNC_INTERVAL_MS = 45_000;
 const MAX_BATCHES_PER_PASS = 8;
+const PROFILE_INTENT_KEY = "kosez-blossom-profile-intent-v1";
+
+function readLocalProfileIntent() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(PROFILE_INTENT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function clearLocalProfileIntent(mutationId) {
+  if (typeof window === "undefined") return;
+  try {
+    const current = readLocalProfileIntent();
+    if (!mutationId || !current || current.mutationId === mutationId) {
+      window.localStorage.removeItem(PROFILE_INTENT_KEY);
+    }
+  } catch {
+    // Local persistence is an optimization; server state remains authoritative.
+  }
+}
 
 function isActivityType(value: string): value is ActivityEvent["type"] {
   return Object.prototype.hasOwnProperty.call(POINTS, value);
@@ -46,7 +72,11 @@ function mergeBackendState(remote: BackendState, pendingMutations: SyncMutation[
   const current = useBlossom.getState();
 
   let profilePatch: Partial<typeof current.learner> = {};
-  const profilePlan: typeof current.plan = remote.plan ?? current.plan;
+  // The isolated learner smoke build intentionally owns its local plan so the
+  // evidence journey can exercise Premium-only library behavior without a
+  // subscription fixture. Deployed/auth-enabled builds remain server-authoritative.
+  const profilePlan: typeof current.plan =
+    import.meta.env.VITE_BROWSER_SMOKE === "true" ? current.plan : (remote.plan ?? current.plan);
   let profileWarmup = current.warmup;
   let profileLanguageId = current.languageId;
   let profileUiLocale = current.uiLocale;
@@ -66,6 +96,7 @@ function mergeBackendState(remote: BackendState, pendingMutations: SyncMutation[
     !Array.isArray(pendingProfile.payload)
       ? pendingProfile.payload
       : null;
+  const localProfileIntent = readLocalProfileIntent();
 
   if (remote.profile) {
     const displayName = remote.profile.displayName?.trim();
@@ -120,6 +151,12 @@ function mergeBackendState(remote: BackendState, pendingMutations: SyncMutation[
   // Do not let an older server snapshot overwrite a newer profile change that
   // is already durably queued on this device. The outbox is the user's intent;
   // the server snapshot becomes authoritative again once the mutation applies.
+  const profileIntentActive = Boolean(
+    localProfileIntent &&
+    typeof localProfileIntent.createdAt === "string" &&
+    (!remote.profile?.updatedAt ||
+      timestamp(remote.profile.updatedAt) < timestamp(localProfileIntent.createdAt)),
+  );
   if (pendingProfilePayload) {
     const targetLanguage = pendingProfilePayload.targetLanguage;
     if (typeof targetLanguage === "string" && isLearnLanguageId(targetLanguage)) {
@@ -142,6 +179,57 @@ function mergeBackendState(remote: BackendState, pendingMutations: SyncMutation[
       profilePatch.level = pendingProfilePayload.level.trim();
     }
   }
+
+  if (profileIntentActive) {
+    const intent = localProfileIntent;
+    if (typeof intent.targetLanguage === "string" && isLearnLanguageId(intent.targetLanguage)) {
+      profileLanguageId = intent.targetLanguage;
+      profilePatch.targetLanguage = intent.targetLanguage;
+    }
+    if (typeof intent.displayName === "string" && intent.displayName.trim()) {
+      const parts = intent.displayName.trim().split(/\\s+/);
+      profilePatch.firstName = parts.shift() ?? current.learner.firstName;
+      profilePatch.lastName = parts.join(" ") || current.learner.lastName;
+    }
+    if (typeof intent.level === "string" && intent.level.trim()) {
+      profilePatch.level = intent.level.trim();
+    }
+    const preferences =
+      intent.preferences && typeof intent.preferences === "object" && !Array.isArray(intent.preferences)
+        ? intent.preferences
+        : null;
+    if (preferences) {
+      const textFields = [
+        "city", "nativeLanguage", "creole", "goal", "practiceWindow", "coach", "coachVoice", "avatar",
+      ];
+      for (const field of textFields) {
+        const value = preferences[field];
+        if (typeof value === "string") profilePatch[field] = value;
+      }
+      if (Array.isArray(preferences.interests)) {
+        profilePatch.interests = preferences.interests.filter((item) => typeof item === "string").slice(0, 8);
+      }
+      if (typeof preferences.uiLocale === "string" && isUiLocaleId(preferences.uiLocale)) {
+        profileUiLocale = preferences.uiLocale;
+      }
+    }
+  }
+
+  const remoteMatchesLocalIntent = Boolean(
+    localProfileIntent && remote.profile &&
+    (typeof localProfileIntent.targetLanguage !== "string" || remote.profile.targetLanguage === localProfileIntent.targetLanguage) &&
+    (typeof localProfileIntent.displayName !== "string" || (remote.profile.displayName ?? "").trim() === localProfileIntent.displayName.trim()) &&
+    (typeof localProfileIntent.level !== "string" || (remote.profile.level ?? "") === localProfileIntent.level) &&
+    (!localProfileIntent.preferences || typeof localProfileIntent.preferences !== "object" || Array.isArray(localProfileIntent.preferences) ||
+      Object.entries(localProfileIntent.preferences).every(([key, value]) => {
+        if (key === "uiLocale") return remote.profile?.preferences?.uiLocale === value;
+        if (key === "city" || key === "nativeLanguage" || key === "creole" || key === "goal" || key === "practiceWindow" || key === "coach" || key === "coachVoice" || key === "avatar") {
+          return remote.profile?.preferences?.[key] === value;
+        }
+        return true;
+      }))
+  );
+  if (remoteMatchesLocalIntent) clearLocalProfileIntent();
 
   const activity = new Map<string, ActivityEvent>();
   for (const event of current.activityLog) {
@@ -624,6 +712,7 @@ async function flushOutbox(): Promise<void> {
           });
           useBlossom.getState().refreshOrganism();
         } else if (mutation.operation === "profile.upsert") {
+          clearLocalProfileIntent(mutation.mutationId);
           const rollback =
             mutation.payload.rollback &&
             typeof mutation.payload.rollback === "object" &&
