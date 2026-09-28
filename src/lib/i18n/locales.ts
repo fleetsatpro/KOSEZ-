@@ -208,12 +208,12 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
       it: "Francese come target — pack del centro e fonemi FR.",
     },
     switchImpact: {
-      fr: "Active Pron'Lab FR, missions FR et rooms FR. Tandem reste multi-langue.",
-      en: "Activates Pron'Lab FR, missions FR and rooms FR. Tandem stays multi-language.",
-      es: "Activa Pron'Lab FR, misiones FR y salas FR. El tándem sigue multilingüe.",
-      pt: "Ativa Pron'Lab FR, missões FR e salas FR. O tandem permanece multilingue.",
-      de: "Aktiviert Pron'Lab FR, Missionen FR und Räume FR. Tandem bleibt mehrsprachig.",
-      it: "Attiva Pron'Lab FR, missioni FR e stanze FR. Il tandem resta multilingue.",
+      fr: "Active uniquement la porte Pulse FR ; les autres surfaces restent masquées tant que leur contenu n’est pas disponible.",
+      en: "Activates only the French Pulse door; other surfaces stay hidden until their content is available.",
+      es: "Activa únicamente la puerta Pulse FR; las demás superficies quedan ocultas hasta que su contenido esté disponible.",
+      pt: "Ativa apenas a porta Pulse FR; as restantes superfícies ficam ocultas enquanto o respetivo conteúdo não estiver disponível.",
+      de: "Aktiviert nur die französische Pulse-Tür; andere Oberflächen bleiben verborgen, bis ihre Inhalte verfügbar sind.",
+      it: "Attiva solo la porta Pulse FR; le altre superfici restano nascoste finché i relativi contenuti non sono disponibili.",
     },
     blurb: {
       fr: "Même moteur de pratique, packs français du centre.",
