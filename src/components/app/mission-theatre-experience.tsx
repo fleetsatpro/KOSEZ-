@@ -158,7 +158,9 @@ export function MissionTheatreExperience() {
     mountedRef.current = false;
     const sessionId = serverRunSessionRef.current;
     if (sessionId && !completedServerRunRef.current) {
-      void endMissionRunSessionOnServer({ data: { sessionId } }).catch(() => undefined);
+      void endMissionRunSessionOnServer({
+        data: { sessionId, status: "cancelled" },
+      }).catch(() => undefined);
     }
   }, []);
 
@@ -232,7 +234,7 @@ export function MissionTheatreExperience() {
     if (serverRunSessionId) {
       try {
         const ended = await endMissionRunSessionOnServer({
-          data: { sessionId: serverRunSessionId },
+          data: { sessionId: serverRunSessionId, status: "completed" },
         });
         if (ended.missionId !== todayMission.id) {
           throw new Error("mission-session-mismatch");
