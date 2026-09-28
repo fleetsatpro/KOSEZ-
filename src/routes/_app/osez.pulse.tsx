@@ -57,6 +57,7 @@ function PulsePage() {
   const [offline, setOffline] = useState(false);
   const [ceremonyOpen, setCeremonyOpen] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
   const [serverSessionId, setServerSessionId] = useState<string | null>(null);
   const [serverTimerAvailable, setServerTimerAvailable] = useState(true);
   const timer = useRef<number | null>(null);
@@ -71,6 +72,7 @@ function PulsePage() {
 
   async function start() {
     if (closing) return;
+    setCloseError(null);
     setClosing(true);
     let sessionId: string | null = null;
     try {
@@ -101,7 +103,6 @@ function PulsePage() {
   }
 
   async function finish() {
-    if (timer.current) window.clearInterval(timer.current);
     if (closing) return;
     setClosing(true);
     let authoritativeSeconds: number | null = null;
@@ -112,9 +113,14 @@ function PulsePage() {
         });
         authoritativeSeconds = closure.durationSeconds;
       } catch {
+        setCloseError("La validation serveur a échoué. Votre session reste ouverte : réessayez la clôture.");
         setClosing(false);
         return;
       }
+    }
+    if (timer.current) {
+      window.clearInterval(timer.current);
+      timer.current = null;
     }
     const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
     setOffline(isOffline);
@@ -168,8 +174,9 @@ function PulsePage() {
                 ? "Temps certifié par le serveur."
                 : "Temps affiché localement ; aucune durée ne sera créditée sans validation serveur."}
             </p>
+            {closeError ? <p className="text-xs leading-5 text-destructive">{closeError}</p> : null}
             <Button className="w-full" variant="secondary" disabled={closing} onClick={() => void finish()}>
-              {closing ? "Clôture…" : "Terminer"}
+              {closing ? "Clôture…" : closeError ? "Réessayer la clôture" : "Terminer"}
             </Button>
           </div>
         ) : null}
