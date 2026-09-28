@@ -304,9 +304,6 @@ function SpeakRoom() {
     }
 
     toast("Session close. La tige s'épaissit.");
-    completedServerSessionRef.current = true;
-    serverSessionRef.current = null;
-    setServerSessionId(null);
     setRewardUnavailable(false);
     setClosing(false);
     setCeremonyOpen(true);
