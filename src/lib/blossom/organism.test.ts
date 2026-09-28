@@ -156,7 +156,7 @@ describe("weekKey", () => {
 
 it("causal gesture resolves supported child door before filtering", () => {
   const gesture = causalNextGesture(
-    { pron: 20, parole: 0, mission: 30, social: 40, atelier: 50 },
+    { at: new Date().toISOString(), pron: 20, parole: 0, mission: 30, social: 40, atelier: 50 },
     new Set(["/osez/pulse"]),
   );
   assert.equal(gesture.mineral, "parole");
