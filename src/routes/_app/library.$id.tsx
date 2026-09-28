@@ -65,11 +65,12 @@ function LibraryDocPage() {
   const readingEligibleAtRef = useRef<number>(Number.POSITIVE_INFINITY);
   const activityLog = useBlossom((s) => s.activityLog);
   const languageId = useBlossom((s) => s.languageId);
+  const plan = useBlossom((s) => s.plan);
   const vocab = useBlossom((s) => s.vocabulary);
   const [picked, setPicked] = useState<string | null>(null);
   const docId = doc?.id ?? null;
   const librarySurfaceAvailable = canUseLearningSurface(languageId, "library");
-  const libraryPlanAllowed = planAllows(useBlossom.getState().plan, "library");
+  const libraryPlanAllowed = planAllows(plan, "library");
   const documentLanguageId = doc ? libraryLanguageId(doc.language) : "";
   const documentMatchesLanguage = Boolean(
     doc && documentLanguageId === languageId,
