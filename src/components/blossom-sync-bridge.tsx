@@ -977,7 +977,7 @@ export function BlossomSyncBoundary({ children }: { children: ReactNode }) {
   const syncOwnerUserId = useBlossom((state) => state.syncOwnerUserId);
   const [readyKey, setReadyKey] = useState<string | null>(null);
   const [persistHydrated, setPersistHydrated] = useState(() => useBlossom.persist.hasHydrated());
-  const identityKey = isPending ? null : user?.id ?? "__signed_out__";
+  const identityKey = isPending ? null : user?.id ?? "__signed-out__";
 
   useEffect(() => {
     if (persistHydrated) return;
