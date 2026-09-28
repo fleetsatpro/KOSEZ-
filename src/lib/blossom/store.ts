@@ -490,10 +490,17 @@ export const useBlossom = create<AppState>()(
       },
       joinEvent: (id) => {
         if (get().joinedEventIds.includes(id)) return;
+        const current = get();
         const mutation = createMutation({
           operation: "event.register",
           entityId: id,
-          payload: { status: "joined" },
+          payload: {
+            status: "joined",
+            rollback: {
+              joined: current.joinedEventIds.includes(id),
+              count: current.eventRegistrationCounts[id] ?? 0,
+            },
+          },
         });
         set({
           joinedEventIds: [...get().joinedEventIds, id],
@@ -504,10 +511,17 @@ export const useBlossom = create<AppState>()(
       },
       leaveEvent: (id) => {
         if (!get().joinedEventIds.includes(id)) return;
+        const current = get();
         const mutation = createMutation({
           operation: "event.register",
           entityId: id,
-          payload: { status: "cancelled" },
+          payload: {
+            status: "cancelled",
+            rollback: {
+              joined: true,
+              count: current.eventRegistrationCounts[id] ?? 1,
+            },
+          },
         });
         set({
           joinedEventIds: get().joinedEventIds.filter((x) => x !== id),
@@ -517,10 +531,17 @@ export const useBlossom = create<AppState>()(
       },
       enroll: (id) => {
         if (get().enrolledIds.includes(id)) return;
+        const current = get();
         const mutation = createMutation({
           operation: "booking.request",
           entityId: id,
-          payload: { catalogueItemId: id },
+          payload: {
+            catalogueItemId: id,
+            rollback: {
+              enrolled: current.enrolledIds.includes(id),
+              status: current.bookingStatuses[id] ?? null,
+            },
+          },
         });
         set({
           enrolledIds: [...get().enrolledIds, id],
@@ -732,10 +753,14 @@ export const useBlossom = create<AppState>()(
       },
       joinWaitlist: (id) => {
         if (get().waitlistIds.includes(id)) return;
+        const current = get();
         const mutation = createMutation({
           operation: "waitlist.request",
           entityId: id,
-          payload: { itemId: id },
+          payload: {
+            itemId: id,
+            rollback: { waitlisted: current.waitlistIds.includes(id) },
+          },
         });
         set({ waitlistIds: [...get().waitlistIds, id] });
         void enqueueMutation(mutation);
