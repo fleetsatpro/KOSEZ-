@@ -4,12 +4,16 @@ import {
   type LearnLanguageDef,
 } from "./locales";
 
+/** Surfaces that can be gated by target-language capability. */
 export type LearningSurface =
   | "mission"
   | "osez"
   | "pulse"
   | "pronlab"
-  | "tandem";
+  | "tandem"
+  | "library"
+  | "explore"
+  | "learn";
 
 /**
  * Whether the learner's active target language can use a given learning surface.
@@ -21,16 +25,27 @@ export function canUseLearningSurface(
 ): boolean {
   if (!languageId || !isLearnLanguageId(languageId)) return false;
   const def: LearnLanguageDef = learnLanguageDef(languageId);
+  const surfaces = def.surfaces ?? [];
+
   switch (surface) {
     case "mission":
-      return def.hasMission !== false;
+      return surfaces.includes("mission");
     case "osez":
+      return surfaces.includes("osez");
     case "pulse":
-      return def.hasSpeak !== false;
+      return surfaces.includes("pulse") || surfaces.includes("osez");
     case "pronlab":
-      return def.hasPronlab !== false;
+      return surfaces.includes("pronlab");
     case "tandem":
-      return def.hasTandem !== false;
+      return surfaces.includes("tandem");
+    case "library":
+      return surfaces.includes("library");
+    case "explore":
+      // Explore is available when any content surface is present
+      return surfaces.length > 0;
+    case "learn":
+      // Learn hub aggregates pronlab + library
+      return surfaces.includes("pronlab") || surfaces.includes("library");
     default:
       return false;
   }

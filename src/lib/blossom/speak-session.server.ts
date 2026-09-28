@@ -1,3 +1,9 @@
+/**
+ * Server-authoritative Speak (OSEZ) session lifecycle.
+ * Mirrors Pulse: client may practice offline, but only a completed
+ * blossom_speak_session row may mint SPEAK_COMPLETED evidence.
+ */
+
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { LEARN_LANGUAGES } from "@/lib/i18n/locales";
@@ -41,7 +47,9 @@ export async function startSpeakSession(
     "select target_language from blossom_profile where user_id = $1 limit 1",
     [userId],
   );
-  const profileLanguage = String(profile[0]?.target_language ?? "").trim().toLowerCase();
+  const profileLanguage = String(profile[0]?.target_language ?? "")
+    .trim()
+    .toLowerCase();
   if (profileLanguage && profileLanguage !== normalizedLanguageId) {
     throw new SpeakForbiddenError(
       "La langue de la session doit correspondre à votre langue d'apprentissage.",
@@ -61,6 +69,7 @@ export async function startSpeakSession(
       id: String(active[0].id),
       roomId: String(active[0].room_id),
       languageId: String(active[0].language_id),
+      status: "active" as const,
     };
   }
 
@@ -87,6 +96,7 @@ export async function startSpeakSession(
       id: String(raced[0].id),
       roomId: String(raced[0].room_id),
       languageId: String(raced[0].language_id),
+      status: "active" as const,
     };
   }
 
@@ -94,6 +104,7 @@ export async function startSpeakSession(
     id: sessionId,
     roomId: normalizedRoomId,
     languageId: normalizedLanguageId,
+    status: "active" as const,
   };
 }
 
@@ -102,36 +113,53 @@ export async function endSpeakSession(
   sessionId: string,
   status: "completed" | "cancelled",
 ) {
-  await enforceRateLimit(userId, "speak.end-session", 20, 60);
+  await enforceRateLimit(userId, "speak.end-session", 30, 60);
   const sql = await getSql();
   const rows = await sql.query(
     `update blossom_speak_session
-     set status = $2,
-         ended_at = coalesce(ended_at, current_timestamp),
+     set status = $3,
+         ended_at = current_timestamp,
          duration_seconds = greatest(
-           0,
-           extract(
-             epoch from (
-               coalesce(ended_at, current_timestamp)
-               - started_at
-             )
-           )::integer
+           1,
+           least(
+             7200,
+             extract(epoch from (current_timestamp - started_at))::integer
+           )
          ),
          updated_at = current_timestamp
-     where id = $1::uuid and user_id = $3 and status = 'active'
+     where id = $1::uuid
+       and user_id = $2
+       and status = 'active'
      returning id, room_id, language_id, status, ended_at, duration_seconds`,
-    [sessionId, status, userId],
+    [sessionId, userId, status],
   );
   if (!rows[0]) {
-    throw new SpeakForbiddenError("Cette session OSEZ n'est plus active.");
+    const existing = await sql.query(
+      `select id, room_id, language_id, status, ended_at, duration_seconds
+       from blossom_speak_session
+       where id = $1::uuid and user_id = $2
+       limit 1`,
+      [sessionId, userId],
+    );
+    if (!existing[0]) {
+      throw new SpeakForbiddenError("Session OSEZ introuvable.");
+    }
+    return {
+      id: String(existing[0].id),
+      roomId: String(existing[0].room_id),
+      languageId: String(existing[0].language_id),
+      status: String(existing[0].status) as "completed" | "cancelled" | "active",
+      endedAt: existing[0].ended_at ? String(existing[0].ended_at) : null,
+      durationSeconds: Number(existing[0].duration_seconds ?? 0),
+    };
   }
   return {
     id: String(rows[0].id),
     roomId: String(rows[0].room_id),
     languageId: String(rows[0].language_id),
     status: String(rows[0].status) as "completed" | "cancelled",
-    endedAt: new Date(String(rows[0].ended_at)).toISOString(),
-    durationSeconds: Math.max(0, Number(rows[0].duration_seconds ?? 0)),
+    endedAt: String(rows[0].ended_at),
+    durationSeconds: Number(rows[0].duration_seconds ?? 0),
   };
 }
 
@@ -150,6 +178,6 @@ export async function getActiveSpeakSession(userId: string) {
     id: String(rows[0].id),
     roomId: String(rows[0].room_id),
     languageId: String(rows[0].language_id),
-    startedAt: new Date(String(rows[0].started_at)).toISOString(),
+    startedAt: String(rows[0].started_at),
   };
 }
