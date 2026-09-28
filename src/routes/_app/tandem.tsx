@@ -33,6 +33,10 @@ function TandemPage() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
   });
+  const languageId = useBlossom((s) => s.languageId);
+  if (!canUseLearningSurface(languageId, "tandem")) {
+    return <LearningSurfaceAvailability languageId={languageId} surface="tandem" />;
+  }
   return pathname === "/tandem" ? <TandemHub /> : <Outlet />;
 }
 
@@ -40,9 +44,6 @@ function TandemHub() {
   const learner = useBlossom((s) => s.learner);
   const uiLocale = useUiLocale();
   const languageId = useBlossom((s) => s.languageId);
-  if (!canUseLearningSurface(languageId, "tandem")) {
-    return <LearningSurfaceAvailability languageId={languageId} surface="tandem" />;
-  }
   const languageLabel = (id: string) => describeLearnLanguage(id, uiLocale).label;
   const statusMap = useBlossom((s) => s.tandemStatus);
   const setStatus = useBlossom((s) => s.setTandemStatus);
