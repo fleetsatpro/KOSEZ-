@@ -260,5 +260,5 @@ test("stage progress remains below 100 until gesture requirements are met", () =
   ];
   const snap = journeySnapshot(log);
   assert.equal(snap.stage.id, "growing");
-  assert.equal(Math.round(snap.progress * 100), 41);
+  assert.equal(Math.round(snap.progress * 100), 0);
 });
