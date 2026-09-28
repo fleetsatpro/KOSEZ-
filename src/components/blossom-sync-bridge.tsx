@@ -964,7 +964,9 @@ export function BlossomSyncBoundary({ children }: { children: ReactNode }) {
     syncOwnerUserId === identityKey;
   const ready =
     identityKey !== null &&
-    (readyKey === identityKey || hasSafeLocalState);
+    (readyKey === identityKey ||
+      hasSafeLocalState ||
+      user?.isDevFallback === true);
 
   useEffect(() => {
     if (identityKey === null || ready) return;
