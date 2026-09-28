@@ -1974,11 +1974,20 @@ export async function finalizeSpeakSession(
     [sessionId, userId, spokenSeconds, transcriptCount, captureOnlyCount, randomUUID()],
   );
   if (!rows[0]) throw new BlossomForbiddenError("Cette session Speak n'est plus active.");
-  const activityMetadata =
+  const rawActivityMetadata =
     rows[0].activity_payload &&
     typeof rows[0].activity_payload === "object" &&
     !Array.isArray(rows[0].activity_payload)
       ? (rows[0].activity_payload as Record<string, unknown>).metadata
+      : {};
+  const activityMetadata: Record<string, string | number | boolean> =
+    rawActivityMetadata && typeof rawActivityMetadata === "object" && !Array.isArray(rawActivityMetadata)
+      ? Object.fromEntries(
+          Object.entries(rawActivityMetadata as Record<string, unknown>).filter(
+            ([, value]) =>
+              typeof value === "string" || typeof value === "number" || typeof value === "boolean",
+          ),
+        )
       : {};
   return {
     id: String(rows[0].id),
