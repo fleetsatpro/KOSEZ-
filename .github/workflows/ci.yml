@@ -3,8 +3,11 @@ name: CI
 # Strict verification: lockfile, tests, types, lint, production build
 
 concurrency:
-  group: kosez-ci-${{ github.ref }}
-  cancel-in-progress: true
+  # PR verification is evidence-bearing: do not cancel the only run for the
+  # exact commit under review when another branch update or workflow dispatch
+  # arrives. Pushes to main/dev may still replace stale runs.
+  group: kosez-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'pull_request' }}
 
 on:
   push:
