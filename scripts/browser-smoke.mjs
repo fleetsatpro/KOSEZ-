@@ -299,6 +299,11 @@ try {
         }, SMOKE_STATE_KEY);
         if (!stored) throw new Error("could not prepare language-gate state");
         await page.reload({ waitUntil: "domcontentloaded", timeout: timeoutMs });
+        await gotoWithRetry(
+          page,
+          new URL("/mission", url).href,
+          { waitUntil: "domcontentloaded", timeout: timeoutMs },
+        );
         const gatedCopy = normalizeBodyText(await page.locator("body").innerText().catch(() => ""));
         if (!gatedCopy.includes("Surface non activée")) {
           errors.pageErrors.push("unsupported French mission surface was not gated");
