@@ -37,14 +37,16 @@ function LibraryDocPage() {
   const completeActivity = useBlossom((s) => s.completeActivity);
   const startLibraryReading = useBlossom((s) => s.startLibraryReading);
   const completeLibraryReading = useBlossom((s) => s.completeLibraryReading);
-  const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
+  const [curriculumLessonIdFromCtx] = useState<string | null>(() =>
+    readCurriculumLessonContext(),
+  );
   // Clear session context only after evidence is attributed (or on unmount) so
   // Strict Mode remounts and fast SPA navigations cannot lose the lesson link.
   useEffect(() => {
     return () => {
-      if (curriculumLessonId) clearCurriculumLessonContext();
+      if (curriculumLessonIdFromCtx) clearCurriculumLessonContext();
     };
-  }, [curriculumLessonId]);
+  }, [curriculumLessonIdFromCtx]);
   const readingEndRef = useRef<HTMLDivElement | null>(null);
   const completionRequestedRef = useRef(false);
   const readingEligibleAtRef = useRef<number>(Number.POSITIVE_INFINITY);
@@ -53,6 +55,14 @@ function LibraryDocPage() {
   const vocab = useBlossom((s) => s.vocabulary);
   const [picked, setPicked] = useState<string | null>(null);
   const docId = doc?.id ?? null;
+  // Prefer explicit curriculum navigation context; fall back to the unique
+  // curriculum library lesson bound to this document (smoke + deep links).
+  const curriculumLessonId =
+    curriculumLessonIdFromCtx ??
+    CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find(
+      (lesson) => lesson.kind === "library" && lesson.taskId === docId,
+    )?.id ??
+    null;
   const readingCompleted = Boolean(
     docId &&
       activityLog.some(
@@ -192,7 +202,7 @@ function LibraryDocPage() {
   const docBlurb = doc.blurb;
 
   function onWord(raw: string) {
-    const word = raw.replace(/[.,!?；]/g, "").toLowerCase();
+    const word = raw.replace(/[.,!?]/g, "").toLowerCase();
     if (word.length < 3) return;
     const gloss = LIBRARY_GLOSS[word] ?? "sens à préciser avec Léo";
     saveWord(word, gloss);
@@ -280,7 +290,7 @@ function LibraryDocPage() {
         <p className="text-lg leading-8 sm:text-xl sm:leading-9">
           {tokens.map((token, i) => {
             if (/^\s+$/.test(token)) return <span key={i}>{token}</span>;
-            const clean = token.replace(/[.,!?；]/g, "").toLowerCase();
+            const clean = token.replace(/[.,!?]/g, "").toLowerCase();
             const saved = vocab.some((v) => v.word === clean);
             const isPicked = picked === clean;
             return (
