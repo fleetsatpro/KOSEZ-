@@ -3,43 +3,35 @@ import { toast } from "sonner";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useBlossom } from "@/lib/blossom/store";
 import {
-  applyAcceptedMutations,
-  applyServerSnapshot,
-  flushPendingMutations,
-  getPendingMutations,
-  markMutationFailed,
-  markMutationSynced,
-  type PendingMutation,
+  listPendingMutations,
+  markConflict,
+  removeMutation,
+  setSyncOwner,
+  syncChangeEventName,
 } from "@/lib/blossom/sync-client";
-import type { SyncOperation } from "@/lib/blossom/sync-types";
-import { submitSyncBatch } from "@/lib/blossom/sync.api";
+import type { SyncMutation, SyncResult } from "@/lib/blossom/sync-types";
+import { syncBlossom } from "@/lib/blossom/sync.api";
 import { getBlossomBackendState } from "@/lib/blossom/api";
 
-const FLUSH_INTERVAL_MS = 2500;
-const MAX_BATCH = 12;
+const SYNC_INTERVAL_MS = 45_000;
 
 function identityKeyFromUser(userId: string | null | undefined): string {
-  return userId ? `user:${userId}` : "anon";
+  return userId ? `user:${userId}` : "__signed-out__";
 }
 
-function describeRejection(operation: SyncOperation, reason: string): string {
-  switch (operation) {
-    case "activity.append":
-      return reason.includes("speak") || reason.includes("session")
-        ? "Session non validée — preuve retirée."
-        : "Activité refusée par le serveur.";
-    case "pronlab.attempt":
-      return "Tentative Pron'Lab refusée.";
-    case "mission.save":
-      return "Mission non enregistrée.";
-    case "profile.upsert":
-      return "Profil non synchronisé.";
-    default:
-      return "Synchronisation refusée.";
+function describeRejection(operation: string, reason: string): string {
+  if (operation === "activity.append") {
+    return reason.includes("speak") || reason.includes("session")
+      ? "Session non validée — preuve retirée."
+      : "Activité refusée par le serveur.";
   }
+  if (operation === "pronlab.attempt") return "Tentative Pron'Lab refusée.";
+  if (operation === "mission.save") return "Mission non enregistrée.";
+  if (operation === "profile.upsert") return "Profil non synchronisé.";
+  return "Synchronisation refusée.";
 }
 
-function rollbackRejectedMutation(mutation: PendingMutation, reason: string): void {
+function rollbackRejectedMutation(mutation: SyncMutation, reason: string): void {
   const state = useBlossom.getState();
   if (mutation.operation === "activity.append") {
     const sourceId = String(
@@ -50,8 +42,7 @@ function rollbackRejectedMutation(mutation: PendingMutation, reason: string): vo
     );
     if (sourceId) {
       const nextLog = state.activityLog.filter(
-        (event) =>
-          !(event.sourceId === sourceId && String(event.type) === eventType),
+        (event) => !(event.sourceId === sourceId && String(event.type) === eventType),
       );
       if (nextLog.length !== state.activityLog.length) {
         useBlossom.setState({ activityLog: nextLog });
@@ -75,70 +66,76 @@ function rollbackRejectedMutation(mutation: PendingMutation, reason: string): vo
   toast.error(describeRejection(mutation.operation, reason));
 }
 
-export function BlossomSyncBridge() {
-  const userState = useCurrentUserState();
-  const userId =
-    userState.status === "authenticated" ? userState.user.id : null;
-  const identityKey = identityKeyFromUser(userId);
-  const [readyKey, setReadyKey] = useState<string | null>(null);
+export function BlossomSyncBridge({ onReady }: { onReady?: () => void }) {
+  const { user, isPending } = useCurrentUserState();
+  const userId = user?.id ?? null;
+  const identityKey = isPending ? null : identityKeyFromUser(userId);
   const flushing = useRef(false);
   const lastIdentity = useRef<string | null>(null);
 
   useEffect(() => {
+    if (isPending || identityKey === null) return;
     if (lastIdentity.current && lastIdentity.current !== identityKey) {
       useBlossom.getState().resetJourney();
     }
     lastIdentity.current = identityKey;
-  }, [identityKey]);
+    setSyncOwner(userId);
+  }, [identityKey, isPending, userId]);
 
   useEffect(() => {
+    if (isPending || identityKey === null) return;
     if (!userId) {
-      setReadyKey(identityKey);
+      onReady?.();
       return;
     }
     let cancelled = false;
     (async () => {
       try {
-        const snapshot = await getBlossomBackendState();
-        if (cancelled) return;
-        applyServerSnapshot(snapshot);
+        await getBlossomBackendState();
       } catch {
-        // Offline / first load — keep local state
+        // Offline / first load
       } finally {
-        if (!cancelled) setReadyKey(identityKey);
+        if (!cancelled) onReady?.();
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [userId, identityKey]);
+  }, [userId, identityKey, isPending, onReady]);
 
   useEffect(() => {
-    if (readyKey !== identityKey || !userId) return;
+    if (isPending || !userId || identityKey === null) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     async function flush() {
       if (flushing.current) return;
-      const pending = getPendingMutations().slice(0, MAX_BATCH);
+      const pending = await listPendingMutations();
       if (pending.length === 0) return;
       flushing.current = true;
       try {
-        const result = await submitSyncBatch({ mutations: pending });
-        const accepted = result?.accepted ?? [];
-        const rejected = result?.rejected ?? [];
-        for (const item of accepted) {
-          markMutationSynced(item.mutationId);
-        }
-        applyAcceptedMutations(accepted);
-        for (const item of rejected) {
-          const mutation = pending.find((m) => m.mutationId === item.mutationId);
-          markMutationFailed(item.mutationId, item.reason ?? "rejected");
-          if (mutation) {
-            rollbackRejectedMutation(mutation, item.reason ?? "rejected");
+        const batch = pending.slice(0, 50);
+        const deviceId = batch[0]?.deviceId;
+        if (!deviceId) return;
+        const response = await syncBlossom({
+          data: {
+            deviceId,
+            mutationsJson: JSON.stringify(batch),
+          },
+        });
+        for (const result of response.results as SyncResult[]) {
+          const mutation = batch.find((m) => m.mutationId === result.mutationId);
+          if (!mutation) continue;
+          if (result.status === "applied" || result.status === "duplicate") {
+            await removeMutation(result.mutationId);
+          } else if (result.status === "rejected") {
+            await removeMutation(result.mutationId);
+            rollbackRejectedMutation(mutation, result.reason ?? "rejected");
+          } else if (result.status === "conflict") {
+            await markConflict(result.mutationId, result);
           }
         }
       } catch {
-        // Network error — keep pending for next flush
+        // Network — keep pending
       } finally {
         flushing.current = false;
       }
@@ -147,38 +144,39 @@ export function BlossomSyncBridge() {
     function schedule() {
       timer = setTimeout(() => {
         void flush().finally(schedule);
-      }, FLUSH_INTERVAL_MS);
+      }, SYNC_INTERVAL_MS);
     }
+    void flush();
     schedule();
+
+    const onChange = () => {
+      void flush();
+    };
+    window.addEventListener(syncChangeEventName(), onChange);
     return () => {
       if (timer) clearTimeout(timer);
+      window.removeEventListener(syncChangeEventName(), onChange);
     };
-  }, [readyKey, identityKey, userId]);
+  }, [userId, identityKey, isPending]);
 
   return null;
 }
 
 export function BlossomSyncBoundary({ children }: { children: ReactNode }) {
-  const userState = useCurrentUserState();
-  const userId =
-    userState.status === "authenticated" ? userState.user.id : null;
-  const identityKey = identityKeyFromUser(userId);
+  const { user, isPending } = useCurrentUserState();
+  const identityKey = isPending ? null : identityKeyFromUser(user?.id);
   const [readyKey, setReadyKey] = useState<string | null>(null);
 
-  useEffect(() => {
-    setReadyKey(null);
-    const t = setTimeout(() => setReadyKey(identityKey), 0);
-    return () => clearTimeout(t);
-  }, [identityKey]);
-
-  if (readyKey !== identityKey) {
-    return null;
-  }
+  if (isPending || identityKey === null) return null;
 
   return (
     <>
-      <BlossomSyncBridge />
-      {children}
+      {readyKey === identityKey ? children : null}
+      <BlossomSyncBridge
+        onReady={() => {
+          setReadyKey(identityKey);
+        }}
+      />
     </>
   );
 }
