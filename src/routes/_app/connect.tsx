@@ -33,12 +33,16 @@ function ConnectPage() {
   useEffect(() => {
     let disposed = false;
     setLoading(true);
+    setError(false);
     void getConnectPeersOnServer()
       .then((rows) => {
         if (!disposed) setPeers(rows);
       })
       .catch(() => {
-        if (!disposed) setPeers([]);
+        if (!disposed) {
+          setPeers([]);
+          setError(true);
+        }
       })
       .finally(() => {
         if (!disposed) setLoading(false);
