@@ -66,7 +66,10 @@ function mergeBackendState(remote: BackendState): void {
       };
     }
     if (remote.profile.level) profilePatch.level = remote.profile.level;
-    if (remote.profile.targetLanguage && isLearnLanguageId(remote.profile.targetLanguage)) profileLanguageId = remote.profile.targetLanguage;
+    if (remote.profile.targetLanguage && isLearnLanguageId(remote.profile.targetLanguage)) {
+      profileLanguageId = remote.profile.targetLanguage;
+      profilePatch.targetLanguage = remote.profile.targetLanguage;
+    }
     const prefs = remote.profile.preferences;
     if (typeof prefs.warmup === "string" || prefs.warmup === null) {
       profileWarmup = prefs.warmup as string | null;
@@ -89,6 +92,17 @@ function mergeBackendState(remote: BackendState): void {
         if (typeof wordId === "string" && wordId.trim()) profileChildWords.add(wordId);
       }
     }
+    if (typeof prefs.city === "string") profilePatch.city = prefs.city;
+    if (typeof prefs.avatar === "string") profilePatch.avatar = prefs.avatar;
+    if (typeof prefs.nativeLanguage === "string") profilePatch.nativeLanguage = prefs.nativeLanguage;
+    if (typeof prefs.creole === "string") profilePatch.creole = prefs.creole;
+    if (typeof prefs.goal === "string") profilePatch.goal = prefs.goal;
+    if (Array.isArray(prefs.interests)) {
+      profilePatch.interests = prefs.interests.filter((item): item is string => typeof item === "string").slice(0, 8);
+    }
+    if (typeof prefs.practiceWindow === "string") profilePatch.practiceWindow = prefs.practiceWindow;
+    if (typeof prefs.coach === "string") profilePatch.coach = prefs.coach;
+    if (typeof prefs.coachVoice === "string") profilePatch.coachVoice = prefs.coachVoice;
   }
 
   const activity = new Map<string, ActivityEvent>();
@@ -434,8 +448,17 @@ async function flushOutbox(): Promise<void> {
             waitlistIds: state.waitlistIds.filter((id) => id !== mutation.entityId),
           });
         } else if (mutation.operation === "tandem.status") {
+          const previous =
+            mutation.payload.previousStatus === "suggested" ||
+            mutation.payload.previousStatus === "pending" ||
+            mutation.payload.previousStatus === "accepted" ||
+            mutation.payload.previousStatus === "blocked" ||
+            mutation.payload.previousStatus === "paused"
+              ? mutation.payload.previousStatus
+              : null;
           const next = { ...state.tandemStatus };
-          delete next[mutation.entityId];
+          if (previous) next[mutation.entityId] = previous;
+          else delete next[mutation.entityId];
           useBlossom.setState({ tandemStatus: next });
         } else if (mutation.operation === "tandem.report") {
           const payload = mutation.payload as {
@@ -528,6 +551,34 @@ async function flushOutbox(): Promise<void> {
           useBlossom.setState({
             activityLog: state.activityLog.filter((event) => event.id !== mutation.mutationId),
           });
+          useBlossom.getState().refreshOrganism();
+        } else if (mutation.operation === "pronlab.attempt") {
+          useBlossom.setState({
+            pronlabAttempts: state.pronlabAttempts.filter((attempt) => attempt.id !== mutation.mutationId),
+          });
+          useBlossom.getState().refreshOrganism();
+        } else if (mutation.operation === "profile.upsert") {
+          const rollback =
+            mutation.payload.rollback &&
+            typeof mutation.payload.rollback === "object" &&
+            !Array.isArray(mutation.payload.rollback)
+              ? (mutation.payload.rollback as Record<string, unknown>)
+              : null;
+          const learnerRollback =
+            rollback?.learner &&
+            typeof rollback.learner === "object" &&
+            !Array.isArray(rollback.learner)
+              ? (rollback.learner as typeof state.learner)
+              : null;
+          useBlossom.setState({
+            ...(learnerRollback ? { learner: learnerRollback } : {}),
+            ...(isLearnLanguageId(String(rollback?.languageId ?? "")) ? { languageId: String(rollback?.languageId) } : {}),
+            ...(typeof rollback?.plan === "string" ? { plan: rollback.plan as typeof state.plan } : {}),
+            ...(typeof rollback?.warmup === "string" || rollback?.warmup === null ? { warmup: rollback.warmup as string | null } : {}),
+            ...(typeof rollback?.exportConsent === "boolean" ? { exportConsent: rollback.exportConsent } : {}),
+            ...(typeof rollback?.tandemOpen === "boolean" ? { tandemOpen: rollback.tandemOpen } : {}),
+          });
+          useBlossom.getState().refreshOrganism();
         }
 
         console.error("[blossom-sync] mutation rejected", {
