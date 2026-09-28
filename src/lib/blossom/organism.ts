@@ -178,11 +178,6 @@ export function causalNextGesture(
     ? entries.filter(([, , door]) => allowedDoors.has(door))
     : entries;
   const pool = available.length > 0 ? available : entries;
-    ["pron", minerals.pron],
-    ["parole", minerals.parole],
-    ["mission", minerals.mission],
-    ["social", minerals.social],
-    ["atelier", minerals.atelier],
   const lowest = [...pool].sort((a, b) => a[1] - b[1])[0]!;
   const resolvedDoor =
     lowest[2] === "/osez" &&
