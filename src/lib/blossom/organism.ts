@@ -184,35 +184,42 @@ export function causalNextGesture(
     ["social", minerals.social],
     ["atelier", minerals.atelier],
   const lowest = [...pool].sort((a, b) => a[1] - b[1])[0]!;
+  const resolvedDoor =
+    lowest[2] === "/osez" &&
+    allowedDoors &&
+    !allowedDoors.has("/osez") &&
+    allowedDoors.has("/osez/pulse")
+      ? "/osez/pulse"
+      : lowest[2];
   switch (lowest[0]) {
     case "pron":
       return {
         mineral: "pron",
-        door: "/pronlab",
+        door: resolvedDoor,
         line: "Un son répété jusqu'à tenue nourrit la canopée.",
       };
     case "parole":
       return {
         mineral: "parole",
-        door: "/osez",
+        door: resolvedDoor,
         line: "Une prise de parole ancrée épaissit la tige.",
       };
     case "mission":
       return {
         mineral: "mission",
-        door: "/mission",
+        door: resolvedDoor,
         line: "Un geste terrain enfonce une racine.",
       };
     case "social":
       return {
         mineral: "social",
-        door: "/tandem",
+        door: resolvedDoor,
         line: "Une présence partagée fait fleurir le sol.",
       };
     case "atelier":
       return {
         mineral: "atelier",
-        door: "/learn/labs",
+        door: resolvedDoor,
         line: "Une preuve d'apprentissage nourrit la canopée.",
       };
   }
