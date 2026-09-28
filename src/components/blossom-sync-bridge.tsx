@@ -1007,16 +1007,14 @@ export function BlossomSyncBoundary({ children }: { children: ReactNode }) {
   const [readyKey, setReadyKey] = useState<string | null>(null);
   const identityKey = isPending ? null : user?.id ?? "__signed-out__";
 
-  // The auth-disabled smoke/dev user is a single, explicit non-production
-  // fallback and can safely render its local snapshot immediately. Auth-enabled
-  // sessions wait for the bridge to reconcile the persisted owner so a sign-out
-  // or account switch can never paint another tenant's state.
-  const localFallbackReady = user?.isDevFallback === true;
+  // Do not render the application shell until the sync bootstrap has had an
+  // opportunity to restore the tenant-bound local snapshot. This prevents an
+  // SSR/default Zustand snapshot from flashing as a real first-run screen.
   const ownerReady =
     identityKey !== null && syncOwnerUserId === identityKey;
   const ready =
     identityKey !== null &&
-    (localFallbackReady || readyKey === identityKey || ownerReady);
+    (readyKey === identityKey || ownerReady);
 
   useEffect(() => {
     if (identityKey === null || ready) return;
