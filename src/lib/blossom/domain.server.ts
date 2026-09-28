@@ -1268,7 +1268,23 @@ export async function endMissionRunSession(userId: string, sessionId: string) {
      returning id, mission_id, status, ended_at, duration_seconds`,
     [sessionId, userId],
   );
-  if (!rows[0]) throw new BlossomForbiddenError("Cette session de mission n\u0027est plus active.");
+  if (!rows[0]) {
+    const completed = await sql.query(
+      `select id, mission_id, status, ended_at, duration_seconds
+       from blossom_mission_run_session
+       where id = $1::uuid and user_id = $2 and status = 'completed'
+       limit 1`,
+      [sessionId, userId],
+    );
+    if (!completed[0]) throw new BlossomForbiddenError("Cette session de mission n\u0027est plus active.");
+    return {
+      id: String(completed[0].id),
+      missionId: String(completed[0].mission_id),
+      status: "completed" as const,
+      endedAt: new Date(String(completed[0].ended_at)).toISOString(),
+      durationSeconds: Math.max(0, Number(completed[0].duration_seconds ?? 0)),
+    };
+  }
   return {
     id: String(rows[0].id),
     missionId: String(rows[0].mission_id),
