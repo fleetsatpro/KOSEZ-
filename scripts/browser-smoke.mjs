@@ -316,6 +316,16 @@ try {
         const plantPulseLink = page.locator('a[href="/osez/pulse"]');
         if ((await plantPulseLink.count()) === 0) {
           errors.pageErrors.push("French Plant causal CTA did not resolve to supported Pulse door");
+        } else {
+          await gotoWithRetry(
+            page,
+            new URL("/osez/pulse", url).href,
+            { waitUntil: "domcontentloaded", timeout: timeoutMs },
+          );
+          const pulseCopy = normalizeBodyText(await page.locator("body").innerText().catch(() => ""));
+          if (pulseCopy.includes("Surface non activée")) {
+            errors.pageErrors.push("supported French Pulse child route was blocked by its OSEZ parent");
+          }
         }
         await page.evaluate((storageKey) => {
           const raw = localStorage.getItem(storageKey);
