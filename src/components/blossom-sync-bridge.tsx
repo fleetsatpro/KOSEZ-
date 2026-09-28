@@ -599,14 +599,22 @@ async function flushOutbox(): Promise<void> {
             !Array.isArray(rollback.learner)
               ? (rollback.learner as typeof state.learner)
               : null;
-          useBlossom.setState({
-            ...(learnerRollback ? { learner: learnerRollback } : {}),
-            ...(isLearnLanguageId(String(rollback?.languageId ?? "")) ? { languageId: String(rollback?.languageId) } : {}),
-            ...(typeof rollback?.plan === "string" ? { plan: rollback.plan as typeof state.plan } : {}),
-            ...(typeof rollback?.warmup === "string" || rollback?.warmup === null ? { warmup: rollback.warmup as string | null } : {}),
-            ...(typeof rollback?.exportConsent === "boolean" ? { exportConsent: rollback.exportConsent } : {}),
-            ...(typeof rollback?.tandemOpen === "boolean" ? { tandemOpen: rollback.tandemOpen } : {}),
-          });
+          if (learnerRollback) useBlossom.setState({ learner: learnerRollback });
+          if (typeof rollback?.languageId === "string" && isLearnLanguageId(rollback.languageId)) {
+            useBlossom.setState({ languageId: rollback.languageId });
+          }
+          if (typeof rollback?.plan === "string") {
+            useBlossom.setState({ plan: rollback.plan as typeof state.plan });
+          }
+          if (typeof rollback?.warmup === "string" || rollback?.warmup === null) {
+            useBlossom.setState({ warmup: rollback.warmup as string | null });
+          }
+          if (typeof rollback?.exportConsent === "boolean") {
+            useBlossom.setState({ exportConsent: rollback.exportConsent });
+          }
+          if (typeof rollback?.tandemOpen === "boolean") {
+            useBlossom.setState({ tandemOpen: rollback.tandemOpen });
+          }
           useBlossom.getState().refreshOrganism();
         } else if (mutation.operation === "vocabulary.upsert") {
           const rollback = mutation.payload.rollback;
