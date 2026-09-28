@@ -951,10 +951,20 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
 
 export function BlossomSyncBoundary({ children }: { children: ReactNode }) {
   const { user, isPending } = useCurrentUserState();
+  const syncOwnerUserId = useBlossom((state) => state.syncOwnerUserId);
   const [readyKey, setReadyKey] = useState<string | null>(null);
   const identityKey = isPending ? null : user?.id ?? "__signed-out__";
 
-  const ready = identityKey !== null && readyKey === identityKey;
+  // Same-user reloads already have a locally persisted, tenant-bound state.
+  // Render it immediately and let the sync bridge reconcile in the background.
+  // A different owner still waits for the bridge to reset/hydrate so stale data
+  // from another account is never painted into the new session.
+  const hasSafeLocalState =
+    identityKey !== null &&
+    syncOwnerUserId === identityKey;
+  const ready =
+    identityKey !== null &&
+    (readyKey === identityKey || hasSafeLocalState);
 
   useEffect(() => {
     if (identityKey === null || ready) return;
