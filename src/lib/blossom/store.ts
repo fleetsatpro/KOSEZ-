@@ -580,9 +580,17 @@ export const useBlossom = create<AppState>()(
         });
       },
       setTandemOpen: (value) => {
-        set({ tandemOpen: value });
         const current = get();
-        voidProfileSync(current.learner, current.languageId, current.plan, current.warmup, current.exportConsent, value);
+        set({ tandemOpen: value });
+        voidProfileSync(
+          current.learner,
+          current.languageId,
+          current.plan,
+          current.warmup,
+          current.exportConsent,
+          value,
+          { tandemOpen: current.tandemOpen, learner: current.learner },
+        );
       },
       reportTandem: (partnerId) => {
         const previousStatus = get().tandemStatus[partnerId];
@@ -746,7 +754,15 @@ export const useBlossom = create<AppState>()(
         const current = get();
         set({ uiLocale: id });
         track("ui_locale_changed", { uiLocale: id });
-        voidProfileSync(current.learner, current.languageId, current.plan, current.warmup, current.exportConsent, current.tandemOpen);
+        voidProfileSync(
+          current.learner,
+          current.languageId,
+          current.plan,
+          current.warmup,
+          current.exportConsent,
+          current.tandemOpen,
+          { uiLocale: current.uiLocale },
+        );
         if (typeof document !== "undefined") {
           const locale = uiLocaleDef(id);
           document.documentElement.lang = locale.bcp47;
