@@ -7,7 +7,7 @@ import {
   MapPin,
   Sprout,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AmbientParticles } from "@/components/app/ambient-particles";
 import { BlossomPlant } from "@/components/app/plant";
@@ -151,6 +151,16 @@ export function MissionTheatreExperience() {
   const [closing, setClosing] = useState(false);
   const [serverRunSessionId, setServerRunSessionId] = useState<string | null>(null);
   const [serverEvidenceAvailable, setServerEvidenceAvailable] = useState(false);
+  const mountedRef = useRef(true);
+  const serverRunSessionRef = useRef<string | null>(null);
+  const completedServerRunRef = useRef(false);
+  useEffect(() => () => {
+    mountedRef.current = false;
+    const sessionId = serverRunSessionRef.current;
+    if (sessionId && !completedServerRunRef.current) {
+      void endMissionRunSessionOnServer({ data: { sessionId } }).catch(() => undefined);
+    }
+  }, []);
 
   async function start() {
     if (starting || closing) return;
@@ -163,10 +173,17 @@ export function MissionTheatreExperience() {
     }
     setServerRunSessionId(null);
     setServerEvidenceAvailable(false);
+    serverRunSessionRef.current = null;
     try {
       const serverSession = await startMissionRunSessionOnServer({
         data: { missionId: todayMission.id, runId: started },
       });
+      serverRunSessionRef.current = serverSession.id;
+      completedServerRunRef.current = false;
+      if (!mountedRef.current) {
+        void endMissionRunSessionOnServer({ data: { sessionId: serverSession.id } }).catch(() => undefined);
+        return;
+      }
       setServerRunSessionId(serverSession.id);
       setServerEvidenceAvailable(true);
     } catch {
@@ -221,6 +238,8 @@ export function MissionTheatreExperience() {
           throw new Error("mission-session-mismatch");
         }
         rewardSourceId = `mission-session-${ended.id}`;
+        completedServerRunRef.current = true;
+        serverRunSessionRef.current = null;
       } catch {
         setClosing(false);
         toast("Validation serveur indisponible. La mission reste ouverte.");
