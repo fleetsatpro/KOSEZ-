@@ -41,10 +41,8 @@ export function canUseLearningSurface(
     case "library":
       return surfaces.includes("library");
     case "explore":
-      // Explore is available when any content surface is present
       return surfaces.length > 0;
     case "learn":
-      // Learn hub aggregates pronlab + library
       return surfaces.includes("pronlab") || surfaces.includes("library");
     default:
       return false;
