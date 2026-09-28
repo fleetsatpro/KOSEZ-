@@ -8,6 +8,8 @@ import { Page, Surface } from "@/components/app/primitives";
 import { useBlossom } from "@/lib/blossom/store";
 import { influenceFromState, type InfluenceReason } from "@/lib/blossom/influence";
 import { LEARNER_MEMORY, planAllows, setsForLanguage } from "@/lib/blossom/data";
+import { LearningSurfaceAvailability } from "@/components/app/learning-surface-availability";
+import { canUseLearningSurface } from "@/lib/i18n/locales";
 import {
   endPulseSessionOnServer,
   startPulseSessionOnServer,
@@ -27,6 +29,9 @@ function PulsePage() {
   const missionSessions = useBlossom((s) => s.missionSessions);
   const languageId = useBlossom((s) => s.languageId);
   const plan = useBlossom((s) => s.plan);
+  if (!canUseLearningSurface(languageId, "pulse")) {
+    return <LearningSurfaceAvailability languageId={languageId} surface="pulse" />;
+  }
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const memoryOn = planAllows(plan, "memory");
 
