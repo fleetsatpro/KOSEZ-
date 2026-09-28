@@ -7,7 +7,7 @@ import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { STAGES, nextStage } from "@/lib/blossom/engine";
-import { organismStatusLine } from "@/lib/blossom/organism";
+import { causalNextGesture, organismStatusLine } from "@/lib/blossom/organism";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,7 @@ function PlantPage() {
   const growthEvents = useBlossom((s) => s.growthEvents);
   const upcoming = nextStage(journey.stage.id);
   const leoLine = organismStatusLine(minerals);
+  const nextGesture = causalNextGesture(minerals);
   const reqs = [
     {
       label: "Missions",
@@ -146,8 +147,8 @@ function PlantPage() {
 
           <div className="mt-auto pt-6">
             <Button asChild className="w-full sm:w-auto">
-              <Link to="/mission">
-                Nourrir la plante
+              <Link to={nextGesture.door}>
+                {nextGesture.line}
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
             </Button>
