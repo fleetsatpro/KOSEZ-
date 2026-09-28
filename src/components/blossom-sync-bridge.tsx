@@ -21,7 +21,7 @@ import type { BackendState, SyncJsonValue, SyncMutation, SyncResult } from "@/li
 import { POINTS, type ActivityEvent, type PronlabAttempt } from "@/lib/blossom/engine";
 import { buildPhonemeLeaves } from "@/lib/blossom/organism";
 import { setsForLanguage } from "@/lib/blossom/data";
-import { isBlossomHydrated, subscribeBlossomHydration, useBlossom } from "@/lib/blossom/store";
+import { hydrateBlossomFromStorage, isBlossomHydrated, subscribeBlossomHydration, useBlossom } from "@/lib/blossom/store";
 import { isUiLocaleId, isLearnLanguageId, type LearnLanguageId } from "@/lib/i18n/locales";
 
 const SYNC_INTERVAL_MS = 45_000;
@@ -881,6 +881,10 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
     }
 
     let disposed = false;
+    // TanStack Start can initialize the client store from the SSR-side default
+    // before persist middleware rehydration runs. Explicitly hydrate the
+    // owner-bound local snapshot first, then start server reconciliation.
+    hydrateBlossomFromStorage(user.id);
     let cleanupSync: (() => void) | undefined;
     let hydrationCleanup: (() => void) | undefined;
 
