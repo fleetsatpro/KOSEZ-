@@ -14,6 +14,52 @@ export function isBlossomHydrated() {
   return blossomHydrated;
 }
 
+export function hydrateBlossomFromStorage(expectedOwnerId?: string): boolean {
+  if (typeof window === "undefined") return false;
+
+  try {
+    const raw = window.localStorage.getItem("kosez-blossom-v2");
+    if (!raw) {
+      markBlossomHydrated();
+      return false;
+    }
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      markBlossomHydrated();
+      return false;
+    }
+
+    const persistedState = (parsed as { state?: unknown }).state;
+    if (
+      !persistedState ||
+      typeof persistedState !== "object" ||
+      Array.isArray(persistedState)
+    ) {
+      markBlossomHydrated();
+      return false;
+    }
+
+    const owner = (persistedState as { syncOwnerUserId?: unknown }).syncOwnerUserId;
+    // Local persistence is a convenience cache, never an identity source. Do
+    // not hydrate a snapshot into a different authenticated account.
+    if (
+      expectedOwnerId &&
+      (typeof owner !== "string" || owner !== expectedOwnerId)
+    ) {
+      markBlossomHydrated();
+      return false;
+    }
+
+    useBlossom.setState(persistedState as Partial<AppState>);
+    markBlossomHydrated();
+    return true;
+  } catch {
+    markBlossomHydrated();
+    return false;
+  }
+}
+
 export function subscribeBlossomHydration(listener: () => void) {
   if (blossomHydrated) {
     listener();
