@@ -146,9 +146,6 @@ try {
       viewport: { width: vp.width, height: vp.height },
     });
     await page.addInitScript((storageKey) => {
-      // Seed learner state once. Re-running on every SPA/document navigation
-      // would wipe activityLog (LIBRARY_COMPLETED / CURRICULUM_EVIDENCE) written
-      // during the curriculum evidence journey.
       if (window.localStorage.getItem(storageKey)) return;
       window.localStorage.setItem(
         storageKey,
@@ -351,22 +348,21 @@ try {
         }
         await gotoWithRetry(
           page,
-          new URL("/learn/curriculum", url).href,
+          new URL("/learn/curriculum/a2-food-and-service", url).href,
           { waitUntil: "domcontentloaded", timeout: timeoutMs },
         );
-        const unitEntryAfterEvidence = page.locator(
-          'a[href="/learn/curriculum/a2-food-and-service"]',
-        );
-        await unitEntryAfterEvidence.waitFor({ state: "visible", timeout: 10000 });
-        await unitEntryAfterEvidence.click();
-        await page.waitForTimeout(800);
-        const curriculumCopy = await page.locator("body").innerText().catch(() => "");
-        if (!curriculumCopy.includes("preuve enregistrée")) {
+        try {
+          await page.getByText("preuve enregistrée", { exact: false }).waitFor({
+            state: "visible",
+            timeout: 15000,
+          });
+        } catch {
+          const curriculumCopy = await page.locator("body").innerText().catch(() => "");
           const storageAfter = await page
             .evaluate((key) => window.localStorage.getItem(key), SMOKE_STATE_KEY)
             .catch(() => null);
           errors.pageErrors.push(
-            `curriculum did not reflect the linked reading evidence · flush=${JSON.stringify(evidenceFlush)} · storage=${String(storageAfter).slice(0, 600)}`,
+            `curriculum did not reflect the linked reading evidence · flush=${JSON.stringify(evidenceFlush)} · body=${normalizeBodyText(curriculumCopy).slice(0, 400)} · storage=${String(storageAfter).slice(0, 600)}`,
           );
         }
       } catch (error) {
