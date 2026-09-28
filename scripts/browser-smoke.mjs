@@ -69,6 +69,14 @@ const VIEWPORTS = [
   { name: "mobile", width: 390, height: 844, screenshot: mobilePng },
 ];
 
+async function waitForBlossomShell(page, timeout = 10000) {
+  await page.waitForFunction(
+    () => !document.body.textContent?.includes("BLOSSOM · SYNCHRONISATION"),
+    undefined,
+    { timeout },
+  );
+}
+
 async function gotoWithRetry(page, targetUrl, options, attempts = 3) {
   let lastError = null;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -186,6 +194,7 @@ try {
     );
     const status = resp?.status() ?? 0;
     await page.waitForTimeout(1000);
+    await waitForBlossomShell(page);
 
     const routeChecks = [];
     for (const route of SMOKE_ROUTES) {
@@ -202,6 +211,7 @@ try {
         status: routeStatus,
         url: new URL(route, url).href,
       });
+      await waitForBlossomShell(page);
       if (routeStatus === 0 || routeStatus >= 400) {
         errors.pageErrors.push(`route ${route} returned HTTP ${routeStatus}`);
       }
@@ -294,6 +304,7 @@ try {
           new URL("/moi", url).href,
           { waitUntil: "domcontentloaded", timeout: timeoutMs },
         );
+        await waitForBlossomShell(page);
         const languageSelect = page
           .locator("label")
           .filter({ hasText: "Langue cible" })
@@ -327,6 +338,7 @@ try {
           new URL("/mission", url).href,
           { waitUntil: "domcontentloaded", timeout: timeoutMs },
         );
+        await waitForBlossomShell(page);
         const gatedCopy = normalizeBodyText(await page.locator("body").innerText().catch(() => ""));
         if (!gatedCopy.includes("Surface non activée")) {
           const frenchStateAfterMission = await page.evaluate(() => ({
@@ -345,6 +357,7 @@ try {
           new URL("/plant", url).href,
           { waitUntil: "domcontentloaded", timeout: timeoutMs },
         );
+        await waitForBlossomShell(page);
         const plantPulseLink = page.locator('a[href="/osez/pulse"]');
         if ((await plantPulseLink.count()) === 0) {
           errors.pageErrors.push("French Plant causal CTA did not resolve to supported Pulse door");
@@ -354,6 +367,7 @@ try {
             new URL("/osez/pulse", url).href,
             { waitUntil: "domcontentloaded", timeout: timeoutMs },
           );
+          await waitForBlossomShell(page);
           const pulseCopy = normalizeBodyText(await page.locator("body").innerText().catch(() => ""));
           if (pulseCopy.includes("Surface non activée")) {
             errors.pageErrors.push("supported French Pulse child route was blocked by its OSEZ parent");
@@ -364,6 +378,7 @@ try {
           new URL("/moi", url).href,
           { waitUntil: "domcontentloaded", timeout: timeoutMs },
         );
+        await waitForBlossomShell(page);
         const englishLanguageSelect = page
           .locator("label")
           .filter({ hasText: "Langue cible" })
@@ -390,6 +405,7 @@ try {
         );
       }
       await gotoWithRetry(page, url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+      await waitForBlossomShell(page);
       await page.waitForTimeout(250);
     }
 
@@ -400,6 +416,7 @@ try {
           new URL("/learn/curriculum", url).href,
           { waitUntil: "domcontentloaded", timeout: timeoutMs },
         );
+        await waitForBlossomShell(page);
         const unitEntry = page.locator('a[href="/learn/curriculum/a2-food-and-service"]');
         await unitEntry.waitFor({ state: "visible", timeout: 10000 });
         await unitEntry.click();
