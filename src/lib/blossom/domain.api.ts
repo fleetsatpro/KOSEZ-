@@ -37,6 +37,7 @@ import {
   endPulseSession,
   startSpeakSession,
   endSpeakSession,
+  finalizeSpeakSession,
   startMissionRunSession,
   endMissionRunSession,
 } from "./domain.server";
@@ -146,6 +147,20 @@ export const startSpeakSessionOnServer = createServerFn({ method: "POST" })
   .inputValidator(z.object({ roomId: z.string().trim().min(1).max(240) }))
   .handler(async ({ context, data }) =>
     startSpeakSession(context.userId, data.roomId),
+  );
+
+export const finalizeSpeakSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      sessionId: z.string().uuid(),
+      spokenSeconds: z.number().int().nonnegative().max(14400).optional(),
+      transcriptCount: z.number().int().nonnegative().max(500).optional(),
+      captureOnlyCount: z.number().int().nonnegative().max(500).optional(),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    finalizeSpeakSession(context.userId, data.sessionId, data),
   );
 
 export const endSpeakSessionOnServer = createServerFn({ method: "POST" })
