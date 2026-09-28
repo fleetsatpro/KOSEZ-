@@ -307,11 +307,23 @@ function voidProfileSync(
         PROFILE_INTENT_KEY,
         JSON.stringify({
           mutationId: mutation.mutationId,
+          ownerUserId: mutation.ownerUserId ?? null,
           createdAt: mutation.createdAt,
           displayName: mutation.payload.displayName,
           targetLanguage: mutation.payload.targetLanguage,
           level: mutation.payload.level,
-          preferences: mutation.payload.preferences,
+          preferences: {
+            city: learner.city,
+            nativeLanguage: learner.nativeLanguage,
+            creole: learner.creole,
+            goal: learner.goal,
+            interests: learner.interests,
+            practiceWindow: learner.practiceWindow,
+            coach: learner.coach,
+            coachVoice: learner.coachVoice,
+            avatar: learner.avatar,
+            uiLocale: state.uiLocale,
+          },
         }),
       );
     } catch {
