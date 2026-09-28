@@ -705,6 +705,11 @@ export const useBlossom = create<AppState>()(
         const now = new Date().toISOString();
         const current = get();
         const metadata = { languageId: current.languageId };
+        const existing = current.vocabulary.find(
+          (v) =>
+            v.word.toLowerCase() === word.toLowerCase() &&
+            v.metadata?.languageId === current.languageId,
+        );
         const mutation = createMutation({
           operation: "vocabulary.upsert",
           entityId: word.toLowerCase(),
@@ -712,12 +717,11 @@ export const useBlossom = create<AppState>()(
             word,
             gloss,
             metadata,
-            rollback: existing ? { existing: existing as unknown as SyncJsonValue } : { existing: null },
+            rollback: existing
+              ? { existing: existing as unknown as SyncJsonValue }
+              : { existing: null },
           },
         });
-        const existing = current.vocabulary.find(
-          (v) => v.word.toLowerCase() === word.toLowerCase() && v.metadata?.languageId === current.languageId,
-        );
         if (existing) {
           set({
             vocabulary: current.vocabulary.map((v) =>
