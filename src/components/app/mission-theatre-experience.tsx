@@ -96,7 +96,6 @@ export function MissionTheatreExperience() {
   const recordMissionSupport = useBlossom((s) => s.recordMissionSupport);
   const saveMissionReflection = useBlossom((s) => s.saveMissionReflection);
   const completeMissionSession = useBlossom((s) => s.completeMissionSession);
-  const reopenMissionSession = useBlossom((s) => s.reopenMissionSession);
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
   useEffect(() => {
     if (curriculumLessonId) clearCurriculumLessonContext();
@@ -559,9 +558,32 @@ export function MissionTheatreExperience() {
               onSave={saveReflection}
               onFinish={() => void finishSession()}
               onRedo={() => {
-                reopenMissionSession(todayMission.id);
-                setStep("execute");
-                setSaved(false);
+                void (async () => {
+                  if (starting || closing) return;
+                  setStarting(true);
+                  const nextRunId = startMissionRun(todayMission.id, mode, nextMissionChallenge(previousEvaluation?.outcome));
+                  if (!nextRunId) {
+                    setStarting(false);
+                    toast("Impossible de relancer cette mission.");
+                    return;
+                  }
+                  setServerRunSessionId(null);
+                  setServerEvidenceAvailable(false);
+                  try {
+                    const serverSession = await startMissionRunSessionOnServer({
+                      data: { missionId: todayMission.id, runId: nextRunId },
+                    });
+                    setServerRunSessionId(serverSession.id);
+                    setServerEvidenceAvailable(true);
+                  } catch {
+                    toast("La mission reste praticable, mais aucun crédit ne sera attribué sans validation serveur.");
+                  }
+                  setStarting(false);
+                  setSaved(false);
+                  setReflection(DEFAULT_REFLECTION);
+                  setSupportUsed(false);
+                  setStep("execute");
+                })();
               }}
               history={history}
             />
