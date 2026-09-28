@@ -20,6 +20,8 @@ import {
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 import { describeLearnLanguage, useUiLocale } from "@/lib/i18n";
+import { LearningSurfaceAvailability } from "@/components/app/learning-surface-availability";
+import { canUseLearningSurface } from "@/lib/i18n/locales";
 
 export const Route = createFileRoute("/_app/tandem")({
   component: TandemPage,
@@ -38,6 +40,9 @@ function TandemHub() {
   const learner = useBlossom((s) => s.learner);
   const uiLocale = useUiLocale();
   const languageId = useBlossom((s) => s.languageId);
+  if (!canUseLearningSurface(languageId, "tandem")) {
+    return <LearningSurfaceAvailability languageId={languageId} surface="tandem" />;
+  }
   const languageLabel = (id: string) => describeLearnLanguage(id, uiLocale).label;
   const statusMap = useBlossom((s) => s.tandemStatus);
   const setStatus = useBlossom((s) => s.setTandemStatus);
