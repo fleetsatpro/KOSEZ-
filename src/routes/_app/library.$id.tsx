@@ -340,7 +340,11 @@ function LibraryDocPage() {
           {tokens.map((token, i) => {
             if (/^\s+$/.test(token)) return <span key={i}>{token}</span>;
             const clean = token.replace(/[.,!?]/g, "").toLowerCase();
-            const saved = vocab.some((v) => v.word === clean);
+            const saved = vocab.some(
+              (v) =>
+                v.word === clean &&
+                (v.metadata?.languageId ?? "en") === languageId,
+            );
             const isPicked = picked === clean;
             return (
               <button
