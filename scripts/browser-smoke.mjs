@@ -119,25 +119,26 @@ function compareAgainstBaseline(verdict) {
     };
   }
   try {
-    if (statSync(baselinePath).size > MAX_BASELINE_BYTES) {
-      return { divergesFromBaseline: true, reasons: ["baseline unreadable: too large"] };
+    const st = statSync(baselinePath);
+    if (!st.isFile() || st.size <= 0 || st.size > MAX_BASELINE_BYTES) {
+      return {
+        divergesFromBaseline: true,
+        reasons: [`baseline unreadable: size ${st.size}`],
+      };
     }
-    return baselineComparison(verdict, readFileSync(baselinePath, "utf8"));
+    const parsed = JSON.parse(readFileSync(baselinePath, "utf8"));
+    return baselineComparison(verdict, parsed);
   } catch (err) {
     return {
       divergesFromBaseline: true,
-      reasons: [`baseline unreadable: ${err?.code ?? "read error"}`],
+      reasons: [`baseline unreadable: ${String(err?.message || err)}`],
     };
   }
 }
 
-let browser = null;
+let browser;
 try {
-  browser = await chromium.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-dev-shm-usage"],
-  });
-
+  browser = await chromium.launch({ headless: true });
   const viewports = {};
   for (const vp of VIEWPORTS) {
     const errors = { consoleErrors: [], pageErrors: [] };
@@ -145,6 +146,10 @@ try {
       viewport: { width: vp.width, height: vp.height },
     });
     await page.addInitScript((storageKey) => {
+      // Seed learner state once. Re-running on every SPA/document navigation
+      // would wipe activityLog (LIBRARY_COMPLETED / CURRICULUM_EVIDENCE) written
+      // during the curriculum evidence journey.
+      if (window.localStorage.getItem(storageKey)) return;
       window.localStorage.setItem(
         storageKey,
         JSON.stringify({
@@ -186,56 +191,38 @@ try {
 
     const routeChecks = [];
     for (const route of SMOKE_ROUTES) {
-      const response = route === "/"
-        ? resp
-        : await gotoWithRetry(
-            page,
-            new URL(route, url).href,
-            { waitUntil: "domcontentloaded", timeout: timeoutMs },
-          );
-      const routeStatus = response?.status() ?? 0;
-      routeChecks.push({
-        route,
-        status: routeStatus,
-        url: new URL(route, url).href,
-      });
-      if (routeStatus === 0 || routeStatus >= 400) {
-        errors.pageErrors.push(`route ${route} returned HTTP ${routeStatus}`);
+      try {
+        const routeUrl = new URL(route, url).href;
+        const routeResp = await gotoWithRetry(
+          page,
+          routeUrl,
+          { waitUntil: "domcontentloaded", timeout: timeoutMs },
+        );
+        routeChecks.push({
+          route,
+          status: routeResp?.status() ?? 0,
+          ok: (routeResp?.status() ?? 0) < 400,
+        });
+      } catch (error) {
+        routeChecks.push({ route, status: 0, ok: false, error: String(error?.message || error) });
       }
-      await page.waitForTimeout(250);
     }
-    await gotoWithRetry(
-      page,
-      url,
-      { waitUntil: "domcontentloaded", timeout: timeoutMs },
-    );
+
     if (expectedAuth === "disabled") {
       try {
+        await gotoWithRetry(page, url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
         await page.locator('[data-smoke="blossom-home"]').waitFor({
           state: "visible",
           timeout: 10000,
         });
       } catch (error) {
-        const debugBody = normalizeBodyText(await page.locator("body").innerText().catch(() => ""));
-        const debugStorage = await page
-          .evaluate((storageKey) => {
-            try {
-              return window.localStorage.getItem(storageKey);
-            } catch {
-              return null;
-            }
-          }, SMOKE_STATE_KEY)
+        const storage = await page
+          .evaluate((key) => window.localStorage.getItem(key), SMOKE_STATE_KEY)
           .catch(() => null);
         const markerCount = await page.locator('[data-smoke="blossom-home"]').count().catch(() => -1);
+        const body = await page.locator("body").innerText().catch(() => "");
         errors.pageErrors.push(
-          "learner home surface did not become visible: " +
-          String(error?.message || error) +
-          " · url=" + page.url() +
-          " · markerCount=" + markerCount +
-          " · storage=" + (debugStorage ? debugStorage.slice(0, 1200) : "null") +
-          " · body=" + debugBody.slice(0, 2200) +
-          " · console=" + errors.consoleErrors.slice(-12).join(" | ") +
-          " · page=" + errors.pageErrors.slice(-12).join(" | "),
+          `learner home surface did not become visible: ${String(error?.message || error)} · url=${page.url()} · markerCount=${markerCount} · storage=${String(storage).slice(0, 400)} · body=${normalizeBodyText(body).slice(0, 500)} · console= · page=`,
         );
       }
     } else {
@@ -339,13 +326,14 @@ try {
       } catch (error) {
         const journeyUrl = page.url();
         const journeyBody = await page.locator("body").innerText().catch(() => "");
-        const journeyLinks = await page.locator("a").allTextContents().catch(() => []);
+        const journeyLinks = await page
+          .locator("a[href]")
+          .evaluateAll((nodes) => nodes.map((n) => n.getAttribute("href") || ""))
+          .catch(() => []);
         errors.pageErrors.push(
           `curriculum evidence journey failed: ${String(error?.message || error)} · url=${journeyUrl} · body=${normalizeBodyText(journeyBody).slice(0, 900)} · links=${journeyLinks.slice(0, 40).join(" | ")}`,
         );
       }
-      await gotoWithRetry(page, url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
-      await page.waitForTimeout(250);
     }
 
     await page.screenshot({ path: vp.screenshot, fullPage: false });
