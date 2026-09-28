@@ -286,6 +286,55 @@ try {
     }
     if (vp.name === "desktop" && expectedAuth === "disabled") {
       try {
+        const stored = await page.evaluate((storageKey) => {
+          const raw = localStorage.getItem(storageKey);
+          if (!raw) return null;
+          const parsed = JSON.parse(raw);
+          parsed.state ??= {};
+          parsed.state.languageId = "fr";
+          parsed.state.learner = { ...(parsed.state.learner ?? {}), targetLanguage: "fr" };
+          localStorage.setItem(storageKey, JSON.stringify(parsed));
+          return parsed;
+        }, SMOKE_STATE_KEY);
+        if (!stored) throw new Error("could not prepare language-gate state");
+        await gotoWithRetry(
+          page,
+          new URL("/mission", url).href,
+          { waitUntil: "domcontentloaded", timeout: timeoutMs },
+        );
+        const gatedCopy = normalizeBodyText(await page.locator("body").innerText().catch(() => ""));
+        if (!gatedCopy.includes("Surface non activée")) {
+          errors.pageErrors.push("unsupported French mission surface was not gated");
+        }
+        await gotoWithRetry(
+          page,
+          new URL("/plant", url).href,
+          { waitUntil: "domcontentloaded", timeout: timeoutMs },
+        );
+        const plantPulseLink = page.locator('a[href="/osez/pulse"]');
+        if ((await plantPulseLink.count()) === 0) {
+          errors.pageErrors.push("French Plant causal CTA did not resolve to supported Pulse door");
+        }
+        await page.evaluate((storageKey) => {
+          const raw = localStorage.getItem(storageKey);
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          parsed.state ??= {};
+          parsed.state.languageId = "en";
+          parsed.state.learner = { ...(parsed.state.learner ?? {}), targetLanguage: "English" };
+          localStorage.setItem(storageKey, JSON.stringify(parsed));
+        }, SMOKE_STATE_KEY);
+      } catch (error) {
+        errors.pageErrors.push(
+          "language capability regression failed: " + String(error?.message || error),
+        );
+      }
+      await gotoWithRetry(page, url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+      await page.waitForTimeout(250);
+    }
+
+    if (vp.name === "desktop" && expectedAuth === "disabled") {
+      try {
         await gotoWithRetry(
           page,
           new URL("/learn/curriculum", url).href,
