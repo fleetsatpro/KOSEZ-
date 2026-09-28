@@ -10,6 +10,18 @@ import { LearningSurfaceAvailability } from "@/components/app/learning-surface-a
 import { canUseLearningSurface } from "@/lib/i18n/locales";
 
 const LIBRARY = [...LIBRARY_CORE, ...EXTRA_LIBRARY];
+function libraryLanguageId(language: string): string {
+  const normalized = language.trim().toLowerCase();
+  return normalized === "english" ? "en"
+    : normalized === "french" ? "fr"
+      : normalized === "spanish" ? "es"
+        : normalized === "portuguese" ? "pt"
+          : normalized === "italian" ? "it"
+            : normalized === "german" ? "de"
+              : normalized === "lsf" ? "lsf"
+                : normalized === "creole" ? "cr"
+                  : "";
+}
 
 export const Route = createFileRoute("/_app/library")({
   component: LibraryPage,
@@ -31,6 +43,7 @@ function LibraryIndex() {
   const vocab = useBlossom((s) => s.vocabulary);
   const plan = useBlossom((s) => s.plan);
   const libraryOk = planAllows(plan, "library");
+  const languageLibrary = LIBRARY.filter((item) => libraryLanguageId(item.language) === languageId);
 
   if (!canUseLearningSurface(languageId, "library")) {
     return <LearningSurfaceAvailability languageId={languageId} surface="library" />;
