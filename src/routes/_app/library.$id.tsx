@@ -288,6 +288,7 @@ function LibraryDocPage() {
   }
 
   const tokens = text.split(/(\s+)/);
+  const visibleVocab = vocab.filter((v) => (v.metadata?.languageId ?? "en") === languageId);
   const pickedGloss = picked
     ? (LIBRARY_GLOSS[picked] ?? "sens à préciser avec Léo")
     : null;
@@ -405,13 +406,13 @@ function LibraryDocPage() {
           <BookMarked className="size-4 text-primary" strokeWidth={1.7} />
           <Eyebrow>Vocabulaire</Eyebrow>
         </div>
-        {vocab.length === 0 ? (
+        {visibleVocab.length === 0 ? (
           <p className="mt-3 text-sm leading-6 text-muted">
             Touchez un mot pour le garder. Il pourra entrer dans une mission.
           </p>
         ) : (
           <ul className="mt-4 divide-y divide-border/50">
-            {vocab.map((v) => (
+            {visibleVocab.map((v) => (
               <li
                 key={v.word}
                 className="flex justify-between gap-4 py-2.5 text-sm"
