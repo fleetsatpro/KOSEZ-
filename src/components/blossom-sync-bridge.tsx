@@ -170,14 +170,26 @@ function mergeBackendState(remote: BackendState, pendingMutations: SyncMutation[
 
   }
 
-  // Do not let an older server snapshot overwrite a newer profile change that
-  // is already durably queued on this device. The outbox is the user's intent;
-  // the server snapshot becomes authoritative again once the mutation applies.
-  const profileIntentActive = Boolean(
+  // A persisted local intent is authoritative until the remote profile reflects
+  // every field from that intent. Do not use wall-clock ordering here: DB clocks,
+  // delayed requests, and another device can make a newer timestamp stale while
+  // the local mutation is still the user's unsatisfied intent.
+  const profileIntentMatchesRemote = Boolean(
     localProfileIntent &&
-    typeof localProfileIntent.createdAt === "string" &&
-    (!remote.profile?.updatedAt ||
-      timestamp(remote.profile.updatedAt) < timestamp(localProfileIntent.createdAt)),
+    remote.profile &&
+    (typeof localProfileIntent.targetLanguage !== "string" ||
+      remote.profile.targetLanguage === localProfileIntent.targetLanguage) &&
+    (typeof localProfileIntent.displayName !== "string" ||
+      (remote.profile.displayName ?? "").trim() === localProfileIntent.displayName.trim()) &&
+    (typeof localProfileIntent.level !== "string" ||
+      (remote.profile.level ?? "") === localProfileIntent.level) &&
+    (!localProfileIntent.preferences ||
+      Object.entries(localProfileIntent.preferences).every(([key, value]) =>
+        JSON.stringify(remote.profile?.preferences?.[key]) === JSON.stringify(value),
+      ))
+  );
+  const profileIntentActive = Boolean(
+    localProfileIntent && !profileIntentMatchesRemote,
   );
   if (pendingProfilePayload) {
     const targetLanguage = pendingProfilePayload.targetLanguage;
@@ -246,21 +258,7 @@ function mergeBackendState(remote: BackendState, pendingMutations: SyncMutation[
     }
   }
 
-  const remoteMatchesLocalIntent = Boolean(
-    localProfileIntent && remote.profile &&
-    (typeof localProfileIntent.targetLanguage !== "string" || remote.profile.targetLanguage === localProfileIntent.targetLanguage) &&
-    (typeof localProfileIntent.displayName !== "string" || (remote.profile.displayName ?? "").trim() === localProfileIntent.displayName.trim()) &&
-    (typeof localProfileIntent.level !== "string" || (remote.profile.level ?? "") === localProfileIntent.level) &&
-    (!localProfileIntent.preferences || typeof localProfileIntent.preferences !== "object" || Array.isArray(localProfileIntent.preferences) ||
-      Object.entries(localProfileIntent.preferences).every(([key, value]) => {
-        if (key === "uiLocale") return remote.profile?.preferences?.uiLocale === value;
-        if (key === "city" || key === "nativeLanguage" || key === "creole" || key === "goal" || key === "practiceWindow" || key === "coach" || key === "coachVoice" || key === "avatar") {
-          return remote.profile?.preferences?.[key] === value;
-        }
-        return true;
-      }))
-  );
-  if (remoteMatchesLocalIntent) clearLocalProfileIntent();
+  if (profileIntentMatchesRemote) clearLocalProfileIntent();
 
   const activity = new Map<string, ActivityEvent>();
   for (const event of current.activityLog) {
