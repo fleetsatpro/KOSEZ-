@@ -62,7 +62,7 @@ function OsezPage() {
     select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
   });
   const languageId = useBlossom((s) => s.languageId);
-  if (!canUseLearningSurface(languageId, "osez")) {
+  if (pathname === "/osez" && !canUseLearningSurface(languageId, "osez")) {
     return <LearningSurfaceAvailability languageId={languageId} surface="osez" />;
   }
 
