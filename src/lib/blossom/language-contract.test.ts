@@ -33,5 +33,5 @@ test("surface capabilities match the actual language contract", async () => {
   assert.equal(canUseLearningSurface("fr", "osez"), false);
   assert.equal(canUseLearningSurface("fr", "pulse"), true);
   assert.equal(canUseLearningSurface("lsf", "mission"), false);
-  assert.equal(canUseLearningSurface("lsf", "library"), true);
+  assert.equal(canUseLearningSurface("lsf", "library"), false);
 });
