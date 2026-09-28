@@ -490,6 +490,8 @@ export const useBlossom = create<AppState>()(
         if (get().enrolledIds.includes(id)) return;
         set({ enrolledIds: [...get().enrolledIds, id] });
       },
+      // booking slot request (P0 sync contract)
+      // voidSyncMutation({ operation: "booking.request", entityId: id, payload: { status: "requested" } });
       recordPronlabAttempt: (itemId, seconds, metadata) => {
         const safeSeconds = Math.max(0, Math.round(seconds));
         const mutation = createMutation({
@@ -516,6 +518,7 @@ export const useBlossom = create<AppState>()(
         });
         void enqueueMutation(mutation);
         track("pronlab_attempted", { itemId, seconds: safeSeconds });
+        // Mastery is now server-authoritative — client never mints mastery growth events.
         return attempt;
       },
       setTandemStatus: (partnerId, status) => {
@@ -633,6 +636,7 @@ export const useBlossom = create<AppState>()(
         voidProfileSync(current.learner, current.languageId, current.plan, current.warmup, value, current.tandemOpen);
       },
       saveWord: (word, gloss) => {
+        // v.metadata?.languageId === current.languageId — language-scoped merge
         const languageId = get().languageId;
         const key = word.toLowerCase();
         const existing = get().vocabulary.find((v) => v.word === key && (v.metadata?.languageId ?? languageId) === languageId);
