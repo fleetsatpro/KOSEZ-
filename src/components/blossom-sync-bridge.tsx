@@ -138,8 +138,8 @@ function mergeBackendState(remote: BackendState, pendingMutations: SyncMutation[
         lastName: parts.join(" ") || current.learner.lastName,
       };
     }
-    if (typeof pendingProfilePayload.level === "string" || pendingProfilePayload.level === null) {
-      profilePatch.level = pendingProfilePayload.level;
+    if (typeof pendingProfilePayload.level === "string" && pendingProfilePayload.level.trim()) {
+      profilePatch.level = pendingProfilePayload.level.trim();
     }
   }
 
