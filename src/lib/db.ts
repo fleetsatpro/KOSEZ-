@@ -56,6 +56,7 @@ export interface Sql {
  */
 const globalRef = globalThis as typeof globalThis & {
   __pgSqlPromise__?: Promise<Sql>;
+  __pgPool__?: import("pg").Pool;
   __pgliteInstance__?: Promise<import("@electric-sql/pglite").PGlite>;
   __pgliteMigrateChain__?: Promise<void>;
 };
@@ -104,6 +105,7 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
     const pool = new Pool({ connectionString: databaseUrl });
+    globalRef.__pgPool__ = pool;
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);
       return res.rows as T[];
@@ -146,12 +148,40 @@ async function createPgliteSql(): Promise<Sql> {
   // — so an HMR reload after adding a migration file applies it live — with
   // passes serialized on a global chain so concurrent callers never
   // double-apply.
+  // Vite supplies import.meta.glob in the app bundle; the Node test runner does not.
+  // Keep the production path bundler-native, but provide a filesystem fallback for
+  // direct Node tests that exercise the real PGLite database.
+  const globFn = (import.meta as { glob?: unknown }).glob as
+    | ((pattern: string, opts: Record<string, unknown>) => Record<string, string>)
+    | undefined;
+
   const migrate = async (): Promise<void> => {
-    const migrations = import.meta.glob("/migrations/*.sql", {
-      query: "?raw",
-      import: "default",
-      eager: true,
-    }) as Record<string, string>;
+    const migrations: Record<string, string> = globFn
+      ? (globFn("/migrations/*.sql", {
+          query: "?raw",
+          import: "default",
+          eager: true,
+        }) as Record<string, string>)
+      : await (async () => {
+          const { readdir, readFile } = await import("node:fs/promises");
+          const { fileURLToPath } = await import("node:url");
+          const path = await import("node:path");
+          const dir = path.resolve(
+            path.dirname(fileURLToPath(import.meta.url)),
+            "../../migrations",
+          );
+          const files = (await readdir(dir))
+            .filter((file) => file.endsWith(".sql"))
+            .sort();
+          const entries = await Promise.all(
+            files.map(async (file) => [
+              `/migrations/${file}`,
+              await readFile(path.join(dir, file), "utf8"),
+            ] as const),
+          );
+          return Object.fromEntries(entries);
+        })();
+
     const doneRows = await pg.query<{ name: string }>(
       "select name from _migrations",
     );
@@ -202,6 +232,69 @@ export function getSql(): Promise<Sql> {
     throw err;
   });
   return sqlPromise;
+}
+
+/**
+ * Execute a callback on one transaction-bound database connection as the
+ * restricted app_runtime role, with the authenticated application user exposed
+ * through the transaction-local app.user_id GUC.
+ *
+ * This is intentionally separate from getSql(): pooled Neon queries may use
+ * different connections between calls, while RLS context must remain on one
+ * connection for the entire protected operation.
+ */
+export async function withAuthedSql<T>(
+  userId: string,
+  fn: (sql: Sql) => Promise<T>,
+): Promise<T> {
+  if (!userId.trim()) {
+    throw new Error("[db] withAuthedSql requires a non-empty user id");
+  }
+
+  await getSql();
+
+  if (dbSource === "neon") {
+    const pool = globalRef.__pgPool__;
+    if (!pool) throw new Error("[db] Neon pool not initialized");
+
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      await client.query("set local role app_runtime");
+      await client.query("select set_config('app.user_id', $1, true)", [userId]);
+
+      const scoped = toSql(async <R>(text: string, params: unknown[]) => {
+        const result = await client.query(text, params);
+        return result.rows as R[];
+      });
+
+      const result = await fn(scoped);
+      await client.query("commit");
+      return result;
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  const pg = globalRef.__pgliteInstance__
+    ? await globalRef.__pgliteInstance__
+    : null;
+  if (!pg) throw new Error("[db] PGLite instance not initialized");
+
+  return pg.transaction(async (tx) => {
+    await tx.query("set local role app_runtime");
+    await tx.query("select set_config('app.user_id', $1, true)", [userId]);
+
+    const scoped = toSql(async <R>(text: string, params: unknown[]) => {
+      const result = await tx.query<R>(text, params);
+      return result.rows;
+    });
+
+    return fn(scoped);
+  });
 }
 
 /**
