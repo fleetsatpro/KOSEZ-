@@ -73,10 +73,15 @@ function SpeakRoom() {
   const friction = influence.speak.friction ?? (memoryOn ? LEARNER_MEMORY.hesitation : null);
   const kitBoost = influence.speak.kitBoost;
   const pressureHint = influence.speak.pressureHint;
-  const influenceReasons = influence.speak.reasons
-    .filter((r) => r.code !== "balanced")
-    .map((r) => r.line);
-  const influenceReasonKey = influenceReasons.join("|");
+  const influenceReasonKey = JSON.stringify(
+    influence.speak.reasons
+      .filter((r) => r.code !== "balanced")
+      .map((r) => r.line),
+  );
+  const influenceReasons = useMemo(
+    () => JSON.parse(influenceReasonKey) as string[],
+    [influenceReasonKey],
+  );
 
   const [room, setRoom] = useState<LivingRoom | null>(null);
   const [source, setSource] = useState<"llm" | "swarm">("swarm");
@@ -155,7 +160,7 @@ function SpeakRoom() {
     return () => {
       cancelled = true;
     };
-  }, [id, learner.level, learner.firstName, learner.interests, friction, pressureHint, kitBoost, influenceReasonKey]);
+  }, [id, learner.level, learner.firstName, learner.interests, friction, pressureHint, kitBoost, influenceReasons]);
 
   useEffect(() => {
     if (!started || done) return;
