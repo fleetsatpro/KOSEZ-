@@ -92,7 +92,7 @@ function TandemHub() {
       interests: learner.interests,
       window: learner.practiceWindow,
     }),
-    [languageId, uiLocale, learner.interests, learner.level, learner.nativeLanguage, learner.practiceWindow],
+    [languageId, languageLabel, learner.interests, learner.level, learner.nativeLanguage, learner.practiceWindow],
   );
 
   const load = () => {
