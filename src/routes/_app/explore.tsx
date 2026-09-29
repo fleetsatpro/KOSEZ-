@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_app/explore")({
 });
 
 function eventDate(event: EventItem): Date {
-  return new Date(`${event.date}T${event.time}:00+04:00`);
+  return parseKosezEventDate(event.date, event.time);
 }
 
 function escapeIcs(value: string): string {
