@@ -8,12 +8,12 @@ import {
   type MineralSnapshot,
 } from "@/lib/blossom/organism";
 
-const routeUnion =
-  "/osez" |
-  "/pronlab" |
-  "/mission" |
-  "/tandem" |
-  "/learn/labs";
+type RouteUnion =
+  | "/osez"
+  | "/pronlab"
+  | "/mission"
+  | "/tandem"
+  | "/learn/labs";
 
 export function OrganismMineralsPanel({
   minerals,
@@ -49,7 +49,7 @@ export function OrganismMineralsPanel({
             Prochaine porte
           </p>
           <Link
-            to={nextGesture.door as typeof routeUnion}
+            to={nextGesture.door as RouteUnion}
             className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-primary"
           >
             {MINERAL_DEFINITIONS[nextGesture.mineral].doorLabel} · {nextGesture.value}/100
