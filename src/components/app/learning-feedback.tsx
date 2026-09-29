@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Check, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -16,7 +16,7 @@ export function LearningFeedbackPanel({ learnerUserId }: { learnerUserId: string
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const rows = await getLearningFeedbackBundleOnServer({ data: { learnerUserId, limit: 18 } });
@@ -28,11 +28,11 @@ export function LearningFeedbackPanel({ learnerUserId }: { learnerUserId: string
     } finally {
       setLoading(false);
     }
-  }
+  }, [learnerUserId]);
 
   useEffect(() => {
     void load();
-  }, [learnerUserId]);
+  }, [load]);
 
   async function save(item: LearningFeedbackBundle) {
     const body = drafts[item.submissionId]?.trim() ?? "";
