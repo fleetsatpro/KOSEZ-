@@ -161,7 +161,7 @@ function ExplorePage() {
     .filter((event) => eventDate(event).getTime() > now)
     .sort((a, b) => eventDate(a).getTime() - eventDate(b).getTime());
   const filteredEvents = upcomingEvents
-    .filter((event) => scope === "all" || scope === "events")
+    .filter(() => scope === "all" || scope === "events")
     .filter(eventMatches);
   const filteredProgrammes = programmes
     .filter(() => scope === "all" || scope === "programmes")
