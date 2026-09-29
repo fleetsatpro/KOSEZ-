@@ -99,6 +99,12 @@ test("activity mutations are enum-gated and pass through server integrity checks
   assert.match(integrity, /activity-pulse-invalid-session-source/);
   assert.match(integrity, /pulse-session-/);
   assert.match(integrity, /from blossom_pulse_session/);
+  assert.match(domain, /validSpeakRoomId/);
+  assert.match(domain, /validSpeakLanguageId/);
+  assert.match(domain, /language_id/);
+  assert.match(domainApi, /languageId: z\.string/);
+  assert.match(domainApi, /startSpeakSession\\(context\\.userId, data\\.roomId, data\\.languageId\\)/);
+  assert.match(read("migrations/0032_speak_session_integrity.sql"), /language_id text not null/);
   assert.match(domain, /pulse\.start-session/);
   assert.match(domain, /pulse\.end-session/);
   assert.match(domain, /mission\.start-session/);
