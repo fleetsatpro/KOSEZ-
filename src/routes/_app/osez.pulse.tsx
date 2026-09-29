@@ -8,6 +8,8 @@ import { Page, Surface } from "@/components/app/primitives";
 import { useBlossom } from "@/lib/blossom/store";
 import { influenceFromState, type InfluenceReason } from "@/lib/blossom/influence";
 import { LEARNER_MEMORY, planAllows, setsForLanguage } from "@/lib/blossom/data";
+import { LearningSurfaceAvailability } from "@/components/app/learning-surface-availability";
+import { canUseLearningSurface, type LearnLanguageId } from "@/lib/i18n/locales";
 import {
   endPulseSessionOnServer,
   startPulseSessionOnServer,
@@ -18,6 +20,14 @@ export const Route = createFileRoute("/_app/osez/pulse")({
 });
 
 function PulsePage() {
+  const languageId = useBlossom((s) => s.languageId);
+  if (!canUseLearningSurface(languageId, "pulse")) {
+    return <LearningSurfaceAvailability languageId={languageId} surface="pulse" />;
+  }
+  return <PulseExperience languageId={languageId} />;
+}
+
+function PulseExperience({ languageId }: { languageId: LearnLanguageId }) {
   const m = useMessages();
   const completePulse = useBlossom((s) => s.completePulse);
   const log = useBlossom((s) => s.activityLog);
@@ -25,7 +35,6 @@ function PulsePage() {
   const growthEvents = useBlossom((s) => s.growthEvents);
   const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
   const missionSessions = useBlossom((s) => s.missionSessions);
-  const languageId = useBlossom((s) => s.languageId);
   const plan = useBlossom((s) => s.plan);
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const memoryOn = planAllows(plan, "memory");
@@ -52,20 +61,32 @@ function PulsePage() {
   const [offline, setOffline] = useState(false);
   const [ceremonyOpen, setCeremonyOpen] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [closeError, setCloseError] = useState<string | null>(null);
   const [serverSessionId, setServerSessionId] = useState<string | null>(null);
   const [serverTimerAvailable, setServerTimerAvailable] = useState(true);
   const timer = useRef<number | null>(null);
   const startedAt = useRef<number>(0);
+  const mountedRef = useRef(true);
+  const serverSessionRef = useRef<string | null>(null);
+  const completedServerSessionRef = useRef(false);
   const mineralsBefore = useRef(minerals);
 
   useEffect(() => {
     return () => {
+      mountedRef.current = false;
       if (timer.current) window.clearInterval(timer.current);
+      const sessionId = serverSessionRef.current;
+      if (sessionId && !completedServerSessionRef.current) {
+        void endPulseSessionOnServer({
+          data: { sessionId, status: "cancelled" },
+        }).catch(() => undefined);
+      }
     };
   }, []);
 
   async function start() {
     if (closing) return;
+    setCloseError(null);
     setClosing(true);
     let sessionId: string | null = null;
     try {
@@ -73,6 +94,14 @@ function PulsePage() {
         data: { dareId: dare?.id ?? "pulse-local" },
       });
       sessionId = session.id;
+      serverSessionRef.current = session.id;
+      completedServerSessionRef.current = false;
+      if (!mountedRef.current) {
+        void endPulseSessionOnServer({
+          data: { sessionId: session.id, status: "cancelled" },
+        }).catch(() => undefined);
+        return;
+      }
       setServerSessionId(session.id);
       setServerTimerAvailable(true);
     } catch {
@@ -96,7 +125,6 @@ function PulsePage() {
   }
 
   async function finish() {
-    if (timer.current) window.clearInterval(timer.current);
     if (closing) return;
     setClosing(true);
     let authoritativeSeconds: number | null = null;
@@ -105,11 +133,21 @@ function PulsePage() {
         const closure = await endPulseSessionOnServer({
           data: { sessionId: serverSessionId, status: "completed" },
         });
+        if (closure.status !== "completed") {
+          throw new Error("pulse-session-not-completed");
+        }
         authoritativeSeconds = closure.durationSeconds;
+        completedServerSessionRef.current = true;
+        serverSessionRef.current = null;
       } catch {
+        setCloseError("La validation serveur a échoué. Votre session reste ouverte : réessayez la clôture.");
         setClosing(false);
         return;
       }
+    }
+    if (timer.current) {
+      window.clearInterval(timer.current);
+      timer.current = null;
     }
     const isOffline = typeof navigator !== "undefined" && !navigator.onLine;
     setOffline(isOffline);
@@ -120,7 +158,7 @@ function PulsePage() {
       completePulse(`pulse-session-${serverSessionId}`, authoritativeSeconds, false);
     }
     setClosing(false);
-    setCeremonyOpen(true);
+    setCeremonyOpen(authoritativeSeconds !== null);
   }
 
   return (
@@ -163,8 +201,9 @@ function PulsePage() {
                 ? "Temps certifié par le serveur."
                 : "Temps affiché localement ; aucune durée ne sera créditée sans validation serveur."}
             </p>
+            {closeError ? <p className="text-xs leading-5 text-destructive">{closeError}</p> : null}
             <Button className="w-full" variant="secondary" disabled={closing} onClick={() => void finish()}>
-              {closing ? "Clôture…" : "Terminer"}
+              {closing ? "Clôture…" : closeError ? "Réessayer la clôture" : "Terminer"}
             </Button>
           </div>
         ) : null}

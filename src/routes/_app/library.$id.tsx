@@ -4,7 +4,11 @@ import { ArrowLeft, Volume2, BookMarked, Mic } from "lucide-react";
 import { toast } from "sonner";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
-import { LIBRARY as LIBRARY_CORE, LIBRARY_GLOSS as GLOSS_CORE } from "@/lib/blossom/data";
+import {
+  LIBRARY as LIBRARY_CORE,
+  LIBRARY_GLOSS as GLOSS_CORE,
+  planAllows,
+} from "@/lib/blossom/data";
 import { EXTRA_LIBRARY, EXTRA_LIBRARY_GLOSS } from "@/lib/blossom/library-extra";
 import { useBlossom } from "@/lib/blossom/store";
 import { activityBelongsToLanguage } from "@/lib/blossom/engine";
@@ -14,12 +18,27 @@ import {
 } from "@/lib/blossom/curriculum-context";
 import { CURRICULUM_UNITS } from "@/lib/blossom/learning-os";
 import { cn } from "@/lib/utils";
+import { LearningSurfaceAvailability } from "@/components/app/learning-surface-availability";
+import { canUseLearningSurface, learnLanguageDef } from "@/lib/i18n/locales";
 
 const LIBRARY = [...LIBRARY_CORE, ...EXTRA_LIBRARY];
 const LIBRARY_GLOSS: Record<string, string> = {
   ...GLOSS_CORE,
   ...EXTRA_LIBRARY_GLOSS,
 };
+
+function libraryLanguageId(language: string): string {
+  const normalized = language.trim().toLowerCase();
+  return normalized === "english" ? "en"
+    : normalized === "french" ? "fr"
+      : normalized === "spanish" ? "es"
+        : normalized === "portuguese" ? "pt"
+          : normalized === "italian" ? "it"
+            : normalized === "german" ? "de"
+              : normalized === "lsf" ? "lsf"
+                : normalized === "creole" ? "cr"
+                  : "";
+}
 
 export const Route = createFileRoute("/_app/library/$id")({
   component: LibraryDocPage,
@@ -46,9 +65,21 @@ function LibraryDocPage() {
   const readingEligibleAtRef = useRef<number>(Number.POSITIVE_INFINITY);
   const activityLog = useBlossom((s) => s.activityLog);
   const languageId = useBlossom((s) => s.languageId);
+  const plan = useBlossom((s) => s.plan);
   const vocab = useBlossom((s) => s.vocabulary);
   const [picked, setPicked] = useState<string | null>(null);
   const docId = doc?.id ?? null;
+  const librarySurfaceAvailable = canUseLearningSurface(languageId, "library");
+  const libraryPlanAllowed = planAllows(plan, "library");
+  const documentLanguageId = doc ? libraryLanguageId(doc.language) : "";
+  const documentMatchesLanguage = Boolean(
+    doc && documentLanguageId === languageId,
+  );
+  const documentAccessible =
+    Boolean(doc) &&
+    librarySurfaceAvailable &&
+    libraryPlanAllowed &&
+    documentMatchesLanguage;
   const readingCompleted = Boolean(
     docId &&
       activityLog.some(
@@ -87,11 +118,17 @@ function LibraryDocPage() {
   }, [docId, doc]);
 
   useEffect(() => {
-    if (docId) startLibraryReading(docId);
-  }, [docId, startLibraryReading]);
+    if (docId && documentAccessible) startLibraryReading(docId);
+  }, [docId, documentAccessible, startLibraryReading]);
 
   useEffect(() => {
-    if (!readingCompleted || !curriculumLessonId || curriculumEvidenceRecorded || !docId) return;
+    if (
+      !documentAccessible ||
+      !readingCompleted ||
+      !curriculumLessonId ||
+      curriculumEvidenceRecorded ||
+      !docId
+    ) return;
     const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find(
       (item) => item.id === curriculumLessonId,
     );
@@ -107,12 +144,13 @@ function LibraryDocPage() {
     curriculumEvidenceRecorded,
     curriculumLessonId,
     docId,
+    documentAccessible,
     readingCompleted,
   ]);
 
   useEffect(() => {
     const end = readingEndRef.current;
-    if (!docId || !end || readingCompleted) return;
+    if (!documentAccessible || !docId || !end || readingCompleted) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -141,7 +179,7 @@ function LibraryDocPage() {
       window.removeEventListener("scroll", checkBottom);
       window.removeEventListener("resize", checkBottom);
     };
-  }, [docId, readingCompleted, recordReadingCompletion]);
+  }, [docId, documentAccessible, readingCompleted, recordReadingCompletion]);
 
   if (!doc) {
     return (
@@ -150,6 +188,60 @@ function LibraryDocPage() {
         <Button asChild className="mt-4">
           <Link to="/library">Retour</Link>
         </Button>
+      </Page>
+    );
+  }
+
+  if (!librarySurfaceAvailable) {
+    return (
+      <LearningSurfaceAvailability languageId={languageId} surface="library" />
+    );
+  }
+
+  if (!libraryPlanAllowed) {
+    return (
+      <Page className="kosez-feature-page max-w-2xl">
+        <Button variant="ghost" size="sm" asChild className="-ml-2">
+          <Link to="/learn">
+            <ArrowLeft className="size-4" />
+            LEARN
+          </Link>
+        </Button>
+        <Surface className="mt-8 !p-6">
+          <Eyebrow>Bibliothèque</Eyebrow>
+          <h1 className="mt-2 font-display text-3xl tracking-tight">
+            Cette ludothèque demande Premium.
+          </h1>
+          <p className="mt-3 text-sm leading-7 text-muted">
+            Les textes restent liés à votre parcours et à votre langue cible.
+          </p>
+        </Surface>
+      </Page>
+    );
+  }
+
+  if (!documentMatchesLanguage) {
+    return (
+      <Page className="kosez-feature-page max-w-2xl">
+        <Button variant="ghost" size="sm" asChild className="-ml-2">
+          <Link to="/library">
+            <ArrowLeft className="size-4" />
+            Bibliothèque
+          </Link>
+        </Button>
+        <Surface className="mt-8 !p-6">
+          <Eyebrow>Document indisponible</Eyebrow>
+          <h1 className="mt-2 font-display text-3xl tracking-tight">
+            Ce texte n’appartient pas à votre langue cible.
+          </h1>
+          <p className="mt-3 text-sm leading-7 text-muted">
+            K’Osez ne substitue jamais silencieusement un contenu d’une autre
+            langue. Revenez à la ludothèque de votre langue active.
+          </p>
+          <Button asChild className="mt-6">
+            <Link to="/library">Retour à la ludothèque</Link>
+          </Button>
+        </Surface>
       </Page>
     );
   }
@@ -170,7 +262,7 @@ function LibraryDocPage() {
   function speak() {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = "en-GB";
+    utter.lang = learnLanguageDef(languageId).speechLocale;
     utter.rate = 0.92;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utter);
@@ -196,6 +288,7 @@ function LibraryDocPage() {
   }
 
   const tokens = text.split(/(\s+)/);
+  const visibleVocab = vocab.filter((v) => (v.metadata?.languageId ?? "en") === languageId);
   const pickedGloss = picked
     ? (LIBRARY_GLOSS[picked] ?? "sens à préciser avec Léo")
     : null;
@@ -248,7 +341,11 @@ function LibraryDocPage() {
           {tokens.map((token, i) => {
             if (/^\s+$/.test(token)) return <span key={i}>{token}</span>;
             const clean = token.replace(/[.,!?]/g, "").toLowerCase();
-            const saved = vocab.some((v) => v.word === clean);
+            const saved = vocab.some(
+              (v) =>
+                v.word === clean &&
+                (v.metadata?.languageId ?? "en") === languageId,
+            );
             const isPicked = picked === clean;
             return (
               <button
@@ -309,13 +406,13 @@ function LibraryDocPage() {
           <BookMarked className="size-4 text-primary" strokeWidth={1.7} />
           <Eyebrow>Vocabulaire</Eyebrow>
         </div>
-        {vocab.length === 0 ? (
+        {visibleVocab.length === 0 ? (
           <p className="mt-3 text-sm leading-6 text-muted">
             Touchez un mot pour le garder. Il pourra entrer dans une mission.
           </p>
         ) : (
           <ul className="mt-4 divide-y divide-border/50">
-            {vocab.map((v) => (
+            {visibleVocab.map((v) => (
               <li
                 key={v.word}
                 className="flex justify-between gap-4 py-2.5 text-sm"

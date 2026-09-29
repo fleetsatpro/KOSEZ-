@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LEARNER_MEMORY, planAllows, PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
 import { influenceFromState } from "@/lib/blossom/influence";
-import { hasSource } from "@/lib/blossom/engine";
+import { activityBelongsToLanguage, hasSource } from "@/lib/blossom/engine";
 import {
   courageDaysFromLog,
   courageRibbon,
@@ -29,6 +29,8 @@ import { generateRoomCatalog } from "@/lib/blossom/speak-engine";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { LearningSurfaceAvailability } from "@/components/app/learning-surface-availability";
+import { canUseLearningSurface } from "@/lib/i18n/locales";
 
 export const Route = createFileRoute("/_app/osez")({
   component: OsezPage,
@@ -59,6 +61,10 @@ function OsezPage() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
   });
+  const languageId = useBlossom((s) => s.languageId);
+  if (pathname === "/osez" && !canUseLearningSurface(languageId, "osez")) {
+    return <LearningSurfaceAvailability languageId={languageId} surface="osez" />;
+  }
 
   return pathname === "/osez" ? <OsezHub /> : <Outlet />;
 }
@@ -76,6 +82,7 @@ function OsezHub() {
   const journey = useJourney();
   const memoryOn = planAllows(plan, "memory");
   const baseDare = todaysPulseDare();
+  const activeLog = log.filter((event) => activityBelongsToLanguage(event, languageId));
   const influence = influenceFromState({
     activityLog: log,
     pronlabAttempts: attempts,
@@ -89,10 +96,10 @@ function OsezHub() {
   });
   const dare = influence.pulse.dareOverride ?? baseDare;
   const pulseOverridden = Boolean(influence.pulse.dareOverride);
-  const courageDays = courageDaysFromLog(log);
+  const courageDays = courageDaysFromLog(activeLog);
   const cells = courageRibbon(courageDays);
   const spoken = cells.filter(Boolean).length;
-  const minerals = useMemo(() => computeMinerals(log), [log]);
+  const minerals = useMemo(() => computeMinerals(activeLog), [activeLog]);
   const nextGesture = causalNextGesture(minerals);
   const recentGrowth = [...growthEvents]
     .sort((a, b) => b.at.localeCompare(a.at))
@@ -119,7 +126,7 @@ function OsezHub() {
     [learner.level, learner.firstName, learner.interests, memoryOn, influence.speak],
   );
 
-  const roomsDone = rooms.filter((r) => hasSource(log, `speak-${r.id}`)).length;
+  const roomsDone = rooms.filter((r) => hasSource(activeLog, `speak-${r.id}`)).length;
 
   function launchTopic(raw?: string) {
     const t = (raw ?? topic).trim();

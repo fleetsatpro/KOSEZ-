@@ -35,7 +35,6 @@ import { isLearnLanguageId } from "@/lib/i18n/locales";
 import { enforceRateLimit } from "./rate-limit.server";
 import { MAX_FUTURE_MUTATION_SKEW_MS } from "./sync-causality";
 
-const SYNC_TIMEOUT_MS = 120_000;
 
 function objectValue(value: unknown): JsonObject {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
@@ -700,12 +699,7 @@ export async function syncBlossomBatch(
       continue;
     }
     try {
-      const result = await Promise.race([
-        applyMutation(userId, normalizedMutation),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("sync-timeout")), SYNC_TIMEOUT_MS),
-        ),
-      ]);
+      const result = await applyMutation(userId, normalizedMutation);
       await storeResult(userId, normalizedMutation.mutationId, result.status, result as unknown as Record<string, unknown>, "errorCode" in result ? result.errorCode : undefined);
       results.push(result);
     } catch (error) {

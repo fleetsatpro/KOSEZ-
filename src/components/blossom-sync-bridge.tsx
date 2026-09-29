@@ -16,16 +16,66 @@ import {
 } from "@/lib/blossom/sync-client";
 import { mergeMissionSessions } from "@/lib/blossom/sync-merge";
 import type { MissionSession } from "@/lib/blossom/mission";
-import type { LearningSubmission, Homework, TeacherNote } from "@/lib/blossom/store";
+import type { LearningSubmission, Homework, TeacherNote, LearnerProfile } from "@/lib/blossom/store";
 import type { BackendState, SyncJsonValue, SyncMutation, SyncResult } from "@/lib/blossom/sync-types";
 import { POINTS, type ActivityEvent, type PronlabAttempt } from "@/lib/blossom/engine";
 import { buildPhonemeLeaves } from "@/lib/blossom/organism";
 import { setsForLanguage } from "@/lib/blossom/data";
-import { useBlossom } from "@/lib/blossom/store";
+import { isBlossomHydrated, subscribeBlossomHydration, useBlossom } from "@/lib/blossom/store";
 import { isUiLocaleId, isLearnLanguageId, type LearnLanguageId } from "@/lib/i18n/locales";
 
 const SYNC_INTERVAL_MS = 45_000;
 const MAX_BATCHES_PER_PASS = 8;
+const PROFILE_INTENT_KEY = "kosez-blossom-profile-intent-v1";
+
+type LocalProfileIntent = {
+  mutationId: string;
+  ownerUserId: string | null;
+  createdAt: string;
+  displayName?: string;
+  targetLanguage?: string;
+  level?: string;
+  preferences?: Record<string, unknown>;
+};
+
+function readLocalProfileIntent(): LocalProfileIntent | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(PROFILE_INTENT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const record = parsed as Record<string, unknown>;
+    if (typeof record.mutationId !== "string" || typeof record.createdAt !== "string") return null;
+    const preferences =
+      record.preferences && typeof record.preferences === "object" && !Array.isArray(record.preferences)
+        ? (record.preferences as Record<string, unknown>)
+        : undefined;
+    return {
+      mutationId: record.mutationId,
+      ownerUserId: typeof record.ownerUserId === "string" ? record.ownerUserId : null,
+      createdAt: record.createdAt,
+      displayName: typeof record.displayName === "string" ? record.displayName : undefined,
+      targetLanguage: typeof record.targetLanguage === "string" ? record.targetLanguage : undefined,
+      level: typeof record.level === "string" ? record.level : undefined,
+      preferences,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearLocalProfileIntent(mutationId?: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const current = readLocalProfileIntent();
+    if (!mutationId || !current || current.mutationId === mutationId) {
+      window.localStorage.removeItem(PROFILE_INTENT_KEY);
+    }
+  } catch {
+    // Local persistence is an optimization; server state remains authoritative.
+  }
+}
 
 function isActivityType(value: string): value is ActivityEvent["type"] {
   return Object.prototype.hasOwnProperty.call(POINTS, value);
@@ -42,11 +92,15 @@ function localActivityKey(event: Pick<ActivityEvent, "id" | "sourceId" | "type">
     : `${event.type}:id:${event.id}`;
 }
 
-function mergeBackendState(remote: BackendState): void {
+function mergeBackendState(remote: BackendState, pendingMutations: SyncMutation[] = []): void {
   const current = useBlossom.getState();
 
   let profilePatch: Partial<typeof current.learner> = {};
-  const profilePlan: typeof current.plan = remote.plan ?? current.plan;
+  // The isolated learner smoke build intentionally owns its local plan so the
+  // evidence journey can exercise Premium-only library behavior without a
+  // subscription fixture. Deployed/auth-enabled builds remain server-authoritative.
+  const profilePlan: typeof current.plan =
+    import.meta.env.VITE_BROWSER_SMOKE === "true" ? current.plan : (remote.plan ?? current.plan);
   let profileWarmup = current.warmup;
   let profileLanguageId = current.languageId;
   let profileUiLocale = current.uiLocale;
@@ -55,6 +109,24 @@ function mergeBackendState(remote: BackendState): void {
   let profileImmersionPhase = current.immersionPhase;
   let profileChildMissionDone = current.childMissionDone;
   const profileChildWords = new Set(current.childWords);
+
+  const pendingProfile = [...pendingMutations]
+    .filter((mutation) => mutation.operation === "profile.upsert")
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    .at(-1);
+  const pendingProfilePayload =
+    pendingProfile?.payload &&
+    typeof pendingProfile.payload === "object" &&
+    !Array.isArray(pendingProfile.payload)
+      ? pendingProfile.payload
+      : null;
+  const rawLocalProfileIntent = readLocalProfileIntent();
+  const localProfileIntent =
+    rawLocalProfileIntent &&
+    rawLocalProfileIntent.ownerUserId &&
+    rawLocalProfileIntent.ownerUserId === current.syncOwnerUserId
+      ? rawLocalProfileIntent
+      : null;
 
   if (remote.profile) {
     const displayName = remote.profile.displayName?.trim();
@@ -66,7 +138,10 @@ function mergeBackendState(remote: BackendState): void {
       };
     }
     if (remote.profile.level) profilePatch.level = remote.profile.level;
-    if (remote.profile.targetLanguage && isLearnLanguageId(remote.profile.targetLanguage)) profileLanguageId = remote.profile.targetLanguage;
+    if (remote.profile.targetLanguage && isLearnLanguageId(remote.profile.targetLanguage)) {
+      profileLanguageId = remote.profile.targetLanguage;
+      profilePatch.targetLanguage = remote.profile.targetLanguage;
+    }
     const prefs = remote.profile.preferences;
     if (typeof prefs.warmup === "string" || prefs.warmup === null) {
       profileWarmup = prefs.warmup as string | null;
@@ -89,7 +164,109 @@ function mergeBackendState(remote: BackendState): void {
         if (typeof wordId === "string" && wordId.trim()) profileChildWords.add(wordId);
       }
     }
+    if (typeof prefs.city === "string") profilePatch.city = prefs.city;
+    if (typeof prefs.avatar === "string") profilePatch.avatar = prefs.avatar;
+    if (typeof prefs.nativeLanguage === "string") profilePatch.nativeLanguage = prefs.nativeLanguage;
+    if (typeof prefs.creole === "string") profilePatch.creole = prefs.creole;
+    if (typeof prefs.goal === "string") profilePatch.goal = prefs.goal;
+    if (Array.isArray(prefs.interests)) {
+      profilePatch.interests = prefs.interests.filter((item): item is string => typeof item === "string").slice(0, 8);
+    }
+    if (typeof prefs.practiceWindow === "string") profilePatch.practiceWindow = prefs.practiceWindow;
+    if (typeof prefs.coach === "string") profilePatch.coach = prefs.coach;
+    if (typeof prefs.coachVoice === "string") profilePatch.coachVoice = prefs.coachVoice;
+
   }
+
+  // A persisted local intent is authoritative until the remote profile reflects
+  // every field from that intent. Do not use wall-clock ordering here: DB clocks,
+  // delayed requests, and another device can make a newer timestamp stale while
+  // the local mutation is still the user's unsatisfied intent.
+  const profileIntentMatchesRemote = Boolean(
+    localProfileIntent &&
+    remote.profile &&
+    (typeof localProfileIntent.targetLanguage !== "string" ||
+      remote.profile.targetLanguage === localProfileIntent.targetLanguage) &&
+    (typeof localProfileIntent.displayName !== "string" ||
+      (remote.profile.displayName ?? "").trim() === localProfileIntent.displayName.trim()) &&
+    (typeof localProfileIntent.level !== "string" ||
+      (remote.profile.level ?? "") === localProfileIntent.level) &&
+    (!localProfileIntent.preferences ||
+      Object.entries(localProfileIntent.preferences).every(([key, value]) =>
+        JSON.stringify(remote.profile?.preferences?.[key]) === JSON.stringify(value),
+      ))
+  );
+  const profileIntentActive = Boolean(
+    localProfileIntent && !profileIntentMatchesRemote,
+  );
+  if (pendingProfilePayload) {
+    const targetLanguage = pendingProfilePayload.targetLanguage;
+    if (typeof targetLanguage === "string" && isLearnLanguageId(targetLanguage)) {
+      profileLanguageId = targetLanguage;
+      profilePatch.targetLanguage = targetLanguage;
+    }
+    const displayName =
+      typeof pendingProfilePayload.displayName === "string"
+        ? pendingProfilePayload.displayName.trim()
+        : "";
+    if (displayName) {
+      const parts = displayName.split(/\s+/);
+      profilePatch = {
+        ...profilePatch,
+        firstName: parts.shift() ?? current.learner.firstName,
+        lastName: parts.join(" ") || current.learner.lastName,
+      };
+    }
+    if (typeof pendingProfilePayload.level === "string" && pendingProfilePayload.level.trim()) {
+      profilePatch.level = pendingProfilePayload.level.trim();
+    }
+  }
+
+  if (profileIntentActive && localProfileIntent) {
+    const intent = localProfileIntent;
+    if (typeof intent.targetLanguage === "string" && isLearnLanguageId(intent.targetLanguage)) {
+      profileLanguageId = intent.targetLanguage;
+      profilePatch.targetLanguage = intent.targetLanguage;
+    }
+    if (typeof intent.displayName === "string" && intent.displayName.trim()) {
+      const parts = intent.displayName.trim().split(/\s+/);
+      profilePatch.firstName = parts.shift() ?? current.learner.firstName;
+      profilePatch.lastName = parts.join(" ") || current.learner.lastName;
+    }
+    if (typeof intent.level === "string" && intent.level.trim()) {
+      profilePatch.level = intent.level.trim();
+    }
+    const preferences =
+      intent.preferences && typeof intent.preferences === "object" && !Array.isArray(intent.preferences)
+        ? intent.preferences
+        : null;
+    if (preferences) {
+      const applyTextPreference = (key: string, value: unknown) => {
+        if (typeof value !== "string") return;
+        const normalized = value.trim();
+        switch (key as keyof LearnerProfile) {
+          case "city": profilePatch.city = normalized; break;
+          case "nativeLanguage": profilePatch.nativeLanguage = normalized; break;
+          case "creole": profilePatch.creole = normalized; break;
+          case "goal": profilePatch.goal = normalized; break;
+          case "practiceWindow": profilePatch.practiceWindow = normalized; break;
+          case "coach": profilePatch.coach = normalized; break;
+          case "coachVoice": profilePatch.coachVoice = normalized; break;
+          case "avatar": profilePatch.avatar = normalized; break;
+          default: break;
+        }
+      };
+      for (const [key, value] of Object.entries(preferences)) applyTextPreference(key, value);
+      if (Array.isArray(preferences.interests)) {
+        profilePatch.interests = preferences.interests.filter((item): item is string => typeof item === "string").slice(0, 8);
+      }
+      if (typeof preferences.uiLocale === "string" && isUiLocaleId(preferences.uiLocale)) {
+        profileUiLocale = preferences.uiLocale;
+      }
+    }
+  }
+
+  if (profileIntentMatchesRemote) clearLocalProfileIntent();
 
   const activity = new Map<string, ActivityEvent>();
   for (const event of current.activityLog) {
@@ -406,36 +583,73 @@ async function flushOutbox(): Promise<void> {
 
         const state = useBlossom.getState();
         if (mutation.operation === "event.register") {
-          const status =
-            typeof mutation.payload.status === "string"
-              ? mutation.payload.status
-              : undefined;
-          if (status === "joined" && state.joinedEventIds.includes(mutation.entityId)) {
+          const rollback =
+            mutation.payload.rollback &&
+            typeof mutation.payload.rollback === "object" &&
+            !Array.isArray(mutation.payload.rollback)
+              ? (mutation.payload.rollback as Record<string, unknown>)
+              : null;
+          const wasJoined = rollback?.joined === true;
+          const priorCount = Number.isFinite(Number(rollback?.count))
+            ? Math.max(0, Number(rollback?.count))
+            : 0;
+          const joinedEventIds = wasJoined
+            ? Array.from(new Set([...state.joinedEventIds, mutation.entityId]))
+            : state.joinedEventIds.filter((id) => id !== mutation.entityId);
+          useBlossom.setState({
+            joinedEventIds,
+            eventRegistrationCounts: {
+              ...state.eventRegistrationCounts,
+              [mutation.entityId]: priorCount,
+            },
+          });
+        } else if (mutation.operation === "booking.request") {
+          const rollback =
+            mutation.payload.rollback &&
+            typeof mutation.payload.rollback === "object" &&
+            !Array.isArray(mutation.payload.rollback)
+              ? (mutation.payload.rollback as Record<string, unknown>)
+              : null;
+          const wasEnrolled = rollback?.enrolled === true;
+          const priorStatus =
+            rollback?.status === "requested" || rollback?.status === "confirmed"
+              ? rollback.status
+              : null;
+          const enrolledIds = wasEnrolled
+            ? Array.from(new Set([...state.enrolledIds, mutation.entityId]))
+            : state.enrolledIds.filter((id) => id !== mutation.entityId);
+          const bookingStatuses = { ...state.bookingStatuses };
+          if (priorStatus) bookingStatuses[mutation.entityId] = priorStatus;
+          else delete bookingStatuses[mutation.entityId];
+          useBlossom.setState({ enrolledIds, bookingStatuses });
+        } else if (mutation.operation === "waitlist.request") {
+          const rollback =
+            mutation.payload.rollback &&
+            typeof mutation.payload.rollback === "object" &&
+            !Array.isArray(mutation.payload.rollback)
+              ? (mutation.payload.rollback as Record<string, unknown>)
+              : null;
+          if (rollback?.waitlisted === true) {
             useBlossom.setState({
-              joinedEventIds: state.joinedEventIds.filter((id) => id !== mutation.entityId),
-              eventRegistrationCounts: {
-                ...state.eventRegistrationCounts,
-                [mutation.entityId]: Math.max(
-                  0,
-                  (state.eventRegistrationCounts[mutation.entityId] ?? 1) - 1,
-                ),
-              },
+              waitlistIds: Array.from(new Set([...state.waitlistIds, mutation.entityId])),
+            });
+          } else {
+            useBlossom.setState({
+              waitlistIds: state.waitlistIds.filter((id) => id !== mutation.entityId),
             });
           }
-        } else if (mutation.operation === "booking.request") {
-          const nextStatuses = { ...state.bookingStatuses };
-          delete nextStatuses[mutation.entityId];
-          useBlossom.setState({
-            enrolledIds: state.enrolledIds.filter((id) => id !== mutation.entityId),
-            bookingStatuses: nextStatuses,
-          });
-        } else if (mutation.operation === "waitlist.request") {
-          useBlossom.setState({
-            waitlistIds: state.waitlistIds.filter((id) => id !== mutation.entityId),
-          });
         } else if (mutation.operation === "tandem.status") {
+          const previous =
+            mutation.payload.previousStatus === "suggested" ||
+            mutation.payload.previousStatus === "pending" ||
+            mutation.payload.previousStatus === "accepted" ||
+            mutation.payload.previousStatus === "blocked" ||
+            mutation.payload.previousStatus === "paused"
+              ? mutation.payload.previousStatus
+              : null;
           const next = { ...state.tandemStatus };
-          delete next[mutation.entityId];
+          if (previous) next[mutation.entityId] = previous;
+          else delete next[mutation.entityId];
           useBlossom.setState({ tandemStatus: next });
         } else if (mutation.operation === "tandem.report") {
           const payload = mutation.payload as {
@@ -528,6 +742,99 @@ async function flushOutbox(): Promise<void> {
           useBlossom.setState({
             activityLog: state.activityLog.filter((event) => event.id !== mutation.mutationId),
           });
+          useBlossom.getState().refreshOrganism();
+        } else if (mutation.operation === "pronlab.attempt") {
+          useBlossom.setState({
+            pronlabAttempts: state.pronlabAttempts.filter((attempt) => attempt.id !== mutation.mutationId),
+          });
+          useBlossom.getState().refreshOrganism();
+        } else if (mutation.operation === "profile.upsert") {
+          clearLocalProfileIntent(mutation.mutationId);
+          const rollback =
+            mutation.payload.rollback &&
+            typeof mutation.payload.rollback === "object" &&
+            !Array.isArray(mutation.payload.rollback)
+              ? (mutation.payload.rollback as Record<string, unknown>)
+              : null;
+          const learnerRollback =
+            rollback?.learner &&
+            typeof rollback.learner === "object" &&
+            !Array.isArray(rollback.learner)
+              ? (rollback.learner as typeof state.learner)
+              : null;
+          if (learnerRollback) useBlossom.setState({ learner: learnerRollback });
+          if (typeof rollback?.languageId === "string" && isLearnLanguageId(rollback.languageId)) {
+            useBlossom.setState({ languageId: rollback.languageId });
+          }
+          if (typeof rollback?.plan === "string") {
+            useBlossom.setState({ plan: rollback.plan as typeof state.plan });
+          }
+          if (typeof rollback?.warmup === "string" || rollback?.warmup === null) {
+            useBlossom.setState({ warmup: rollback.warmup as string | null });
+          }
+          if (typeof rollback?.exportConsent === "boolean") {
+            useBlossom.setState({ exportConsent: rollback.exportConsent });
+          }
+          if (typeof rollback?.tandemOpen === "boolean") {
+            useBlossom.setState({ tandemOpen: rollback.tandemOpen });
+          }
+          useBlossom.getState().refreshOrganism();
+        } else if (mutation.operation === "vocabulary.upsert") {
+          const rollback = mutation.payload.rollback;
+          const previous =
+            rollback && typeof rollback === "object" && !Array.isArray(rollback)
+              ? (rollback as Record<string, unknown>).existing
+              : null;
+          if (previous && typeof previous === "object" && !Array.isArray(previous)) {
+            const prior = previous as typeof state.vocabulary[number];
+            useBlossom.setState({
+              vocabulary: [
+                ...state.vocabulary.filter(
+                  (entry) =>
+                    !(
+                      entry.word.toLowerCase() === prior.word.toLowerCase() &&
+                      (entry.metadata?.languageId ?? "en") === (prior.metadata?.languageId ?? "en")
+                    ),
+                ),
+                prior,
+              ],
+            });
+          } else {
+            const word = typeof mutation.payload.word === "string" ? mutation.payload.word.toLowerCase() : "";
+            const languageId =
+              typeof mutation.payload.metadata === "object" &&
+              mutation.payload.metadata &&
+              !Array.isArray(mutation.payload.metadata)
+                ? String((mutation.payload.metadata as Record<string, unknown>).languageId ?? state.languageId)
+                : state.languageId;
+            useBlossom.setState({
+              vocabulary: state.vocabulary.filter(
+                (entry) =>
+                  !(entry.word.toLowerCase() === word && (entry.metadata?.languageId ?? "en") === languageId),
+              ),
+            });
+          }
+        } else if (mutation.operation === "learning.submission") {
+          const rollback = mutation.payload.rollback;
+          const previous =
+            rollback && typeof rollback === "object" && !Array.isArray(rollback)
+              ? (rollback as Record<string, unknown>).existing
+              : null;
+          if (previous && typeof previous === "object" && !Array.isArray(previous)) {
+            const prior = previous as typeof state.learningSubmissions[number];
+            useBlossom.setState({
+              learningSubmissions: [
+                ...state.learningSubmissions.filter((item) => item.id !== prior.id && item.taskId !== prior.taskId),
+                prior,
+              ],
+            });
+          } else {
+            useBlossom.setState({
+              learningSubmissions: state.learningSubmissions.filter(
+                (item) => item.id !== mutation.mutationId && item.taskId !== mutation.entityId,
+              ),
+            });
+          }
         }
 
         console.error("[blossom-sync] mutation rejected", {
@@ -574,21 +881,52 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
     }
 
     let disposed = false;
-    const storedOwner = useBlossom.getState().syncOwnerUserId;
-    const userChanged = storedOwner !== user.id;
-    setSyncOwner(user.id);
-
-    if (userChanged) {
-      useBlossom.getState().resetJourney();
+    // TanStack Start can render the SSR-side default before browser storage
+    // is applied. Rehydrate the owner-bound snapshot in this client effect,
+    // then start server reconciliation.
+    try {
+      const raw = window.localStorage.getItem("kosez-blossom-v2");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const persistedState = parsed?.state;
+        const owner = persistedState?.syncOwnerUserId;
+        if (
+          persistedState &&
+          typeof persistedState === "object" &&
+          !Array.isArray(persistedState) &&
+          owner === user.id
+        ) {
+          useBlossom.setState(persistedState);
+        }
+      }
+    } catch {
+      // Local persistence is optional; sync remains the source of truth.
     }
-    useBlossom.setState({ syncOwnerUserId: user.id });
+    let cleanupSync: (() => void) | undefined;
+    let hydrationCleanup: (() => void) | undefined;
 
-    if (!navigator.onLine) {
-      onReadyRef.current?.();
-      return;
-    }
+    const startSync = () => {
+      if (disposed || cleanupSync) return;
 
-    // Keep a second pass when mutations arrive during an active pass.
+      const storedOwner = useBlossom.getState().syncOwnerUserId;
+      const userChanged = storedOwner !== user.id;
+      setSyncOwner(user.id);
+
+      if (userChanged) {
+        useBlossom.getState().resetJourney();
+      }
+      useBlossom.setState({ syncOwnerUserId: user.id });
+
+      if (!navigator.onLine) {
+        onReadyRef.current?.();
+        cleanupSync = () => undefined;
+        return;
+      }
+
+      // Keep a second pass when mutations arrive during an active pass.
+    // This callback only runs after Zustand persistence has hydrated, so an
+    // authenticated user can never be mistaken for a changed owner merely
+    // because the persisted owner has not been read yet.
     // This is important for causal chains such as LIBRARY_COMPLETED ->
     // CURRICULUM_EVIDENCE_RECORDED: the dependent evidence must never be
     // allowed to outrun the source mutation on the server.
@@ -604,11 +942,13 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
       try {
         const remote = await getBlossomBackendState();
         if (disposed) return;
-        mergeBackendState(remote as BackendState);
+        const pendingAtHydration = await listPendingMutations();
+        mergeBackendState(remote as BackendState, pendingAtHydration);
         await flushOutbox();
         if (disposed) return;
         const finalRemote = await getBlossomBackendState();
-        if (!disposed) mergeBackendState(finalRemote as BackendState);
+        const pendingAfterFlush = await listPendingMutations();
+        if (!disposed) mergeBackendState(finalRemote as BackendState, pendingAfterFlush);
         onReadyRef.current?.();
       } catch (error) {
         if (!disposed) {
@@ -635,13 +975,26 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
     window.addEventListener("online", onOnline);
     const timer = window.setInterval(onChange, SYNC_INTERVAL_MS);
 
-    void run();
+      void run();
+
+      cleanupSync = () => {
+        disposed = true;
+        window.removeEventListener(eventName, onChange);
+        window.removeEventListener("online", onOnline);
+        window.clearInterval(timer);
+      };
+    };
+
+    if (isBlossomHydrated()) {
+      startSync();
+    } else {
+      hydrationCleanup = subscribeBlossomHydration(() => startSync());
+    }
 
     return () => {
       disposed = true;
-      window.removeEventListener(eventName, onChange);
-      window.removeEventListener("online", onOnline);
-      window.clearInterval(timer);
+      hydrationCleanup?.();
+      cleanupSync?.();
     };
   }, [isPending, user?.id]);
 
@@ -650,22 +1003,36 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
 
 export function BlossomSyncBoundary({ children }: { children: ReactNode }) {
   const { user, isPending } = useCurrentUserState();
+  const syncOwnerUserId = useBlossom((state) => state.syncOwnerUserId);
   const [readyKey, setReadyKey] = useState<string | null>(null);
   const identityKey = isPending ? null : user?.id ?? "__signed-out__";
 
-  const ready = identityKey !== null && readyKey === identityKey;
+  // Do not render the application shell until the sync bootstrap has had an
+  // opportunity to restore the tenant-bound local snapshot. This prevents an
+  // SSR/default Zustand snapshot from flashing as a real first-run screen.
+  const ownerReady =
+    identityKey !== null && syncOwnerUserId === identityKey;
+  const ready =
+    identityKey !== null &&
+    (readyKey === identityKey || ownerReady);
 
   useEffect(() => {
     if (identityKey === null || ready) return;
-    // Never block the learner shell indefinitely on a remote/bootstrap problem.
-    // BLOSSOM is offline-first: local state is usable while sync keeps retrying.
+    // Never block indefinitely: the bridge calls onReady after its bootstrap
+    // pass, including offline/degraded states.
     const timer = window.setTimeout(() => setReadyKey(identityKey), 2500);
     return () => window.clearTimeout(timer);
   }, [identityKey, ready]);
 
   return (
     <>
-      {ready ? children : <SyncMark ready={false} />}
+      {ready ? (
+        <div data-smoke="blossom-ready" className="contents">
+          {children}
+        </div>
+      ) : (
+        <SyncMark ready={false} />
+      )}
       <BlossomSyncBridge
         onReady={() => {
           setReadyKey(identityKey);

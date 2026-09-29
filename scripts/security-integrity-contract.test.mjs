@@ -99,6 +99,12 @@ test("activity mutations are enum-gated and pass through server integrity checks
   assert.match(integrity, /activity-pulse-invalid-session-source/);
   assert.match(integrity, /pulse-session-/);
   assert.match(integrity, /from blossom_pulse_session/);
+  assert.match(domain, /validSpeakRoomId/);
+  assert.match(domain, /validSpeakLanguageId/);
+  assert.match(domain, /language_id/);
+  assert.match(domainApi, /languageId: z\.string/);
+  assert.match(domainApi, /startSpeakSession\(context\.userId, data\.roomId, data\.languageId\)/);
+  assert.match(read("migrations/0032_speak_session_integrity.sql"), /language_id text not null/);
   assert.match(domain, /pulse\.start-session/);
   assert.match(domain, /pulse\.end-session/);
   assert.match(domain, /mission\.start-session/);
@@ -141,4 +147,63 @@ test("production admin bootstrap fails closed and session material is never logg
 
 test("the custom rate-limit error is explicit 429", () => {
   assert.match(rateLimit, /readonly status = 429/);
+});
+
+test("concurrency and cancellation contracts cannot regress", () => {
+  assert.match(
+    domain,
+    /export async function startMissionRunSession[\s\S]*select id, mission_id, run_id from blossom_mission_run_session/,
+  );
+  assert.match(
+    domain,
+    /export async function endMissionRunSession[\s\S]*set status = \$3,[\s\S]*\[sessionId, userId, status\]/,
+  );
+  assert.match(
+    domain,
+    /export async function endMissionRunSession[\s\S]*status in \('completed', 'cancelled'\)/,
+  );
+  assert.match(
+    domain,
+    /export async function setTandemStatus[\s\S]*with mine as \([\s\S]*insert into blossom_tandem_connection[\s\S]*reciprocal as \(/,
+  );
+  assert.doesNotMatch(sync, /Promise\.race\(\[\s*applyMutation\(/);
+  assert.doesNotMatch(sync, /SYNC_TIMEOUT_MS/);
+});
+
+test("mission reward requires a completed server run session", () => {
+  const theatre = read("src/components/app/mission-theatre-experience.tsx");
+  assert.match(
+    theatre,
+    /endMissionRunSessionOnServer[\s\S]*ended\.missionId !== todayMission\.id \|\| ended\.status !== "completed"/,
+  );
+  assert.match(theatre, /rewardSourceId = `mission-session-\${ended\.id}`;/);
+});
+
+test("late-unmount mission cleanup never completes a reward session", () => {
+  const theatre = read("src/components/app/mission-theatre-experience.tsx");
+  assert.match(
+    theatre,
+    /if \(!mountedRef\.current\)[\s\S]*endMissionRunSessionOnServer\(\{[\s\S]*status: "cancelled"/,
+  );
+});
+
+test("Pulse and Tandem terminal session closures are idempotent and reward only completed sessions", () => {
+  assert.match(
+    domain,
+    /export async function endPulseSession[\s\S]*status in \('completed', 'cancelled'\)/,
+  );
+  assert.match(
+    domain,
+    /export async function endTandemSession[\s\S]*status in \('completed', 'cancelled'\)/,
+  );
+  const pulse = read("src/routes/_app/osez.pulse.tsx");
+  assert.match(
+    pulse,
+    /endPulseSessionOnServer[\s\S]*closure\.status !== "completed"/,
+  );
+  const tandem = read("src/routes/_app/tandem.$id.tsx");
+  assert.match(
+    tandem,
+    /endTandemSessionOnServer[\s\S]*closure\.status !== "completed"/,
+  );
 });

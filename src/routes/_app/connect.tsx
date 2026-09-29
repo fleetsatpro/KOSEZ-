@@ -26,18 +26,23 @@ function ConnectPage() {
   const socialNext = causalNextGesture(minerals);
   const navigate = useNavigate();
   const [peers, setPeers] = useState<ConnectPeer[]>([]);
+  const [error, setError] = useState(false);
   const [conversationPeerId, setConversationPeerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let disposed = false;
     setLoading(true);
+    setError(false);
     void getConnectPeersOnServer()
       .then((rows) => {
         if (!disposed) setPeers(rows);
       })
       .catch(() => {
-        if (!disposed) setPeers([]);
+        if (!disposed) {
+          setPeers([]);
+          setError(true);
+        }
       })
       .finally(() => {
         if (!disposed) setLoading(false);
@@ -212,7 +217,13 @@ function ConnectPage() {
           <Users className="size-5 text-primary" strokeWidth={1.7} />
         </div>
 
-        {loading ? (
+        {error ? (
+        <Surface className="mt-8 border-dashed">
+          <Eyebrow>Connexion indisponible</Eyebrow>
+          <p className="mt-2 text-sm leading-6 text-muted">Le cercle n’a pas pu être chargé. Aucune conclusion n’a été tirée de l’échec réseau.</p>
+          <Button className="mt-4" onClick={() => window.location.reload()}>Réessayer</Button>
+        </Surface>
+      ) : loading ? (
           <Surface className="mt-5">
             <p className="text-sm text-muted">Recherche des présences partagées…</p>
           </Surface>

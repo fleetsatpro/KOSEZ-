@@ -159,48 +159,55 @@ export function organismStatusLine(minerals: MineralSnapshot): string {
 }
 
 /** Causal next-gesture hint for plant / home — lowest mineral maps to a door. */
-export function causalNextGesture(minerals: MineralSnapshot): {
+export function causalNextGesture(
+  minerals: MineralSnapshot,
+  allowedDoors?: ReadonlySet<string>,
+): {
   mineral: MineralKey;
   door: string;
   line: string;
 } {
-  const entries: [MineralKey, number][] = [
-    ["pron", minerals.pron],
-    ["parole", minerals.parole],
-    ["mission", minerals.mission],
-    ["social", minerals.social],
-    ["atelier", minerals.atelier],
+  const entries: Array<[MineralKey, number, string]> = [
+    ["pron", minerals.pron, "/pronlab"],
+    ["parole", minerals.parole, allowedDoors?.has("/osez/pulse") && !allowedDoors.has("/osez") ? "/osez/pulse" : "/osez"],
+    ["mission", minerals.mission, "/mission"],
+    ["social", minerals.social, "/tandem"],
+    ["atelier", minerals.atelier, "/learn/labs"],
   ];
-  const lowest = [...entries].sort((a, b) => a[1] - b[1])[0]!;
+  const pool = allowedDoors
+    ? entries.filter(([, , door]) => allowedDoors.has(door))
+    : entries;
+  const usable = pool.length > 0 ? pool : entries;
+  const lowest = [...usable].sort((a, b) => a[1] - b[1])[0]!;
   switch (lowest[0]) {
     case "pron":
       return {
         mineral: "pron",
-        door: "/pronlab",
+        door: lowest[2],
         line: "Un son répété jusqu'à tenue nourrit la canopée.",
       };
     case "parole":
       return {
         mineral: "parole",
-        door: "/osez",
+        door: lowest[2],
         line: "Une prise de parole ancrée épaissit la tige.",
       };
     case "mission":
       return {
         mineral: "mission",
-        door: "/mission",
+        door: lowest[2],
         line: "Un geste terrain enfonce une racine.",
       };
     case "social":
       return {
         mineral: "social",
-        door: "/tandem",
+        door: lowest[2],
         line: "Une présence partagée fait fleurir le sol.",
       };
     case "atelier":
       return {
         mineral: "atelier",
-        door: "/learn/labs",
+        door: lowest[2],
         line: "Une preuve d'apprentissage nourrit la canopée.",
       };
   }

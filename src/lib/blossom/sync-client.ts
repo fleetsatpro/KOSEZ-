@@ -7,6 +7,7 @@ const DB_VERSION = 1;
 const OUTBOX_FALLBACK_KEY = "kosez-blossom-outbox-v1";
 const DEVICE_KEY = "kosez-blossom-device-id";
 const CHANGE_EVENT = "kosez:sync-needed";
+const volatileProfileMutations = new Map<string, SyncMutation>();
 let activeOwnerId: string | null = null;
 // Ownerless mutations can be created during the short auth-hydration window.
 // They may only be claimed by the first authenticated owner in that same page
@@ -231,6 +232,9 @@ export function enqueueMutation(mutation: SyncMutation): Promise<void> {
 
 export async function listPendingMutations(): Promise<StoredMutation[]> {
   const ownerId = activeOwnerId;
+  const volatileProfiles = [...volatileProfileMutations.values()]
+    .filter((mutation) => !ownerId || mutation.ownerUserId === ownerId)
+    .map((mutation) => ({ ...mutation, state: "pending" as const }));
   if (!ownerId) return [];
 
   const canClaimOwnerless = (row: StoredMutation): boolean =>
@@ -247,7 +251,7 @@ export async function listPendingMutations(): Promise<StoredMutation[]> {
         row.ownerUserId = ownerId;
         await txRequest("readwrite", (store) => store.put(row));
       }
-      return rows
+      const persisted = rows
         .map((row) => (canClaimOwnerless(row) ? { ...row, ownerUserId: ownerId } : row))
         .filter(
           (row) =>
@@ -255,6 +259,10 @@ export async function listPendingMutations(): Promise<StoredMutation[]> {
             row.ownerUserId === activeOwnerId,
         )
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      const seen = new Set(persisted.map((row) => row.mutationId));
+      return [...persisted, ...volatileProfiles.filter((row) => !seen.has(row.mutationId))].sort(
+        (a, b) => a.createdAt.localeCompare(b.createdAt),
+      );
     } catch {
       // fallback below
     }
@@ -270,13 +278,17 @@ export async function listPendingMutations(): Promise<StoredMutation[]> {
     return row;
   });
   if (changed) writeFallback(claimed);
-  return claimed
+  const persisted = claimed
     .filter(
       (row) =>
         row.state === "pending" &&
         row.ownerUserId === activeOwnerId,
     )
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const seen = new Set(persisted.map((row) => row.mutationId));
+  return [...persisted, ...volatileProfiles.filter((row) => !seen.has(row.mutationId))].sort(
+    (a, b) => a.createdAt.localeCompare(b.createdAt),
+  );
 }
 
 export async function markConflict(
@@ -305,6 +317,7 @@ export async function markConflict(
 }
 
 export async function removeMutation(mutationId: string): Promise<void> {
+  volatileProfileMutations.delete(mutationId);
   if (hasIndexedDb()) {
     try {
       await txRequest("readwrite", (store) => store.delete(mutationId));
@@ -362,4 +375,40 @@ export async function replaceConflictWithMutation(
   // local command is silently discarded.
   await enqueueMutation(merged);
   await removeMutation(conflictMutationId);
+}
+
+
+export async function retryConflicts(): Promise<number> {
+  const ownerId = activeOwnerId;
+  if (!ownerId) return 0;
+  let retried = 0;
+  if (hasIndexedDb()) {
+    try {
+      const rows = await txRequest<StoredMutation[]>("readonly", (store) => store.getAll());
+      for (const row of rows) {
+        if (row.state !== "conflict" || row.ownerUserId !== ownerId) continue;
+        row.state = "pending";
+        delete row.conflict;
+        await txRequest("readwrite", (store) => store.put(row));
+        retried += 1;
+      }
+      emitSyncNeeded();
+      return retried;
+    } catch {
+      // fallback below
+    }
+  }
+  const rows = readFallback();
+  let changed = false;
+  const next = rows.map((row) => {
+    if (row.state === "conflict" && row.ownerUserId === ownerId) {
+      changed = true;
+      retried += 1;
+      return { ...row, state: "pending" as const, conflict: undefined };
+    }
+    return row;
+  });
+  if (changed) writeFallback(next);
+  if (changed) emitSyncNeeded();
+  return retried;
 }

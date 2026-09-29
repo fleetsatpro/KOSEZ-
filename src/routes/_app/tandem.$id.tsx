@@ -179,10 +179,14 @@ function TandemSession() {
     const note = reflection.trim();
     if (!activePartner || !sessionId || note.length < 8 || finishing) return;
     setFinishing(true);
+    let closure;
     try {
-      await endTandemSessionOnServer({
+      closure = await endTandemSessionOnServer({
         data: { sessionId, status: "completed" },
       });
+      if (closure.status !== "completed") {
+        throw new Error("tandem-session-not-completed");
+      }
     } catch {
       setFinishing(false);
       toast("La session n’a pas pu être clôturée côté serveur.");

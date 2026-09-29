@@ -3,7 +3,32 @@ import { isLearnLanguageId, isUiLocaleId, uiLocaleDef, type LearnLanguageId, typ
 import { persist } from "zustand/middleware";
 import { track } from "@/lib/analytics";
 import { createMutation, enqueueMutation } from "./sync-client";
-import type { SyncJsonValue } from "./sync-types";
+import type { SyncJsonObject, SyncJsonValue } from "./sync-types";
+
+const PROFILE_INTENT_KEY = "kosez-blossom-profile-intent-v1";
+
+let blossomHydrated = false;
+const hydrationListeners = new Set<() => void>();
+
+export function isBlossomHydrated() {
+  return blossomHydrated;
+}
+
+export function subscribeBlossomHydration(listener: () => void) {
+  if (blossomHydrated) {
+    listener();
+    return () => undefined;
+  }
+  hydrationListeners.add(listener);
+  return () => hydrationListeners.delete(listener);
+}
+
+function markBlossomHydrated() {
+  if (blossomHydrated) return;
+  blossomHydrated = true;
+  for (const listener of hydrationListeners) listener();
+  hydrationListeners.clear();
+}
 import {
   activityBelongsToLanguage,
   hasSource,
@@ -171,6 +196,7 @@ type AppState = {
   reopenMissionSession: (missionId: string) => boolean;
   completeMissionSession: (missionId: string, rewardSourceId?: string | null) => { ok: boolean; reason?: string; evaluation?: ReturnType<typeof evaluateMission> };
   completeActivity: (type: ActivityType, sourceId: string, note?: string, metadata?: Record<string, string | number | boolean>) => { ok: boolean; reason?: string; event?: GrowthEvent; previousMinerals?: MineralSnapshot; minerals?: MineralSnapshot };
+  acceptConfirmedActivity: (event: ActivityEvent) => void;
   joinEvent: (id: string) => void;
   leaveEvent: (id: string) => void;
   enroll: (id: string) => void;
@@ -242,9 +268,10 @@ function voidProfileSync(
   warmup: string | null,
   exportConsent: boolean,
   tandemOpen: boolean,
+  rollback?: SyncJsonObject,
 ): void {
   const state = useBlossom.getState();
-  voidSyncMutation({
+  const mutation = createMutation({
     operation: "profile.upsert",
     entityId: "profile",
     payload: {
@@ -271,8 +298,39 @@ function voidProfileSync(
         childWords: state.childWords,
         uiLocale: state.uiLocale,
       },
+      ...(rollback ? { rollback } : {}),
     },
   });
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(
+        PROFILE_INTENT_KEY,
+        JSON.stringify({
+          mutationId: mutation.mutationId,
+          ownerUserId: mutation.ownerUserId ?? null,
+          createdAt: mutation.createdAt,
+          displayName: mutation.payload.displayName,
+          targetLanguage: mutation.payload.targetLanguage,
+          level: mutation.payload.level,
+          preferences: {
+            city: learner.city,
+            nativeLanguage: learner.nativeLanguage,
+            creole: learner.creole,
+            goal: learner.goal,
+            interests: learner.interests,
+            practiceWindow: learner.practiceWindow,
+            coach: learner.coach,
+            coachVoice: learner.coachVoice,
+            avatar: learner.avatar,
+            uiLocale: state.uiLocale,
+          },
+        }),
+      );
+    } catch {
+      // The durable outbox remains the source of intent when localStorage is unavailable.
+    }
+  }
+  void enqueueMutation(mutation);
 }
 
 export const useBlossom = create<AppState>()(
@@ -329,7 +387,22 @@ export const useBlossom = create<AppState>()(
         const current = get();
         const learner = { ...current.learner, ...patch };
         set({ learner });
-        voidProfileSync(learner, current.languageId, current.plan, current.warmup, current.exportConsent, current.tandemOpen);
+        voidProfileSync(
+          learner,
+          current.languageId,
+          current.plan,
+          current.warmup,
+          current.exportConsent,
+          current.tandemOpen,
+          {
+            learner: current.learner,
+            languageId: current.languageId,
+            plan: current.plan,
+            warmup: current.warmup,
+            exportConsent: current.exportConsent,
+            tandemOpen: current.tandemOpen,
+          },
+        );
       },
       startMissionRun: (missionId, mode, challenge = "core") => {
         const current = get().missionSessions[missionId] ?? createMissionSession(missionId);
@@ -406,6 +479,14 @@ export const useBlossom = create<AppState>()(
         });
         return { ...result, evaluation };
       },
+      acceptConfirmedActivity: (event) => {
+        const current = get();
+        if (hasSource(activeLanguageActivityLog(current.activityLog, current.languageId), event.sourceId ?? "", event.type)) {
+          return;
+        }
+        set({ activityLog: [...current.activityLog, event] });
+        get().refreshOrganism();
+      },
       completeActivity: (type, sourceId, note, metadata) => {
         const current = get();
         const log = current.activityLog;
@@ -464,10 +545,17 @@ export const useBlossom = create<AppState>()(
       },
       joinEvent: (id) => {
         if (get().joinedEventIds.includes(id)) return;
+        const current = get();
         const mutation = createMutation({
           operation: "event.register",
           entityId: id,
-          payload: { status: "joined" },
+          payload: {
+            status: "joined",
+            rollback: {
+              joined: current.joinedEventIds.includes(id),
+              count: current.eventRegistrationCounts[id] ?? 0,
+            },
+          },
         });
         set({
           joinedEventIds: [...get().joinedEventIds, id],
@@ -478,10 +566,17 @@ export const useBlossom = create<AppState>()(
       },
       leaveEvent: (id) => {
         if (!get().joinedEventIds.includes(id)) return;
+        const current = get();
         const mutation = createMutation({
           operation: "event.register",
           entityId: id,
-          payload: { status: "cancelled" },
+          payload: {
+            status: "cancelled",
+            rollback: {
+              joined: true,
+              count: current.eventRegistrationCounts[id] ?? 1,
+            },
+          },
         });
         set({
           joinedEventIds: get().joinedEventIds.filter((x) => x !== id),
@@ -491,10 +586,17 @@ export const useBlossom = create<AppState>()(
       },
       enroll: (id) => {
         if (get().enrolledIds.includes(id)) return;
+        const current = get();
         const mutation = createMutation({
           operation: "booking.request",
           entityId: id,
-          payload: { catalogueItemId: id },
+          payload: {
+            catalogueItemId: id,
+            rollback: {
+              enrolled: current.enrolledIds.includes(id),
+              status: current.bookingStatuses[id] ?? null,
+            },
+          },
         });
         set({
           enrolledIds: [...get().enrolledIds, id],
@@ -554,13 +656,26 @@ export const useBlossom = create<AppState>()(
         return attempt;
       },
       setTandemStatus: (partnerId, status) => {
+        const previousStatus = get().tandemStatus[partnerId] ?? null;
         set({ tandemStatus: { ...get().tandemStatus, [partnerId]: status } });
-        voidSyncMutation({ operation: "tandem.status", entityId: partnerId, payload: { status, metadata: {} } });
+        voidSyncMutation({
+          operation: "tandem.status",
+          entityId: partnerId,
+          payload: { status, metadata: {}, previousStatus },
+        });
       },
       setTandemOpen: (value) => {
-        set({ tandemOpen: value });
         const current = get();
-        voidProfileSync(current.learner, current.languageId, current.plan, current.warmup, current.exportConsent, value);
+        set({ tandemOpen: value });
+        voidProfileSync(
+          current.learner,
+          current.languageId,
+          current.plan,
+          current.warmup,
+          current.exportConsent,
+          value,
+          { tandemOpen: current.tandemOpen, learner: current.learner },
+        );
       },
       reportTandem: (partnerId) => {
         const previousStatus = get().tandemStatus[partnerId];
@@ -601,6 +716,7 @@ export const useBlossom = create<AppState>()(
             content: input.content,
             checks: input.checks,
             result: submissionResult as SyncJsonValue,
+            rollback: existing ? { existing: existing as unknown as SyncJsonValue } : { existing: null },
           },
         });
         if (existing) {
@@ -622,7 +738,7 @@ export const useBlossom = create<AppState>()(
       saveWarmup: (text) => {
         set({ warmup: text });
         const current = get();
-        voidProfileSync(current.learner, current.languageId, current.plan, text, current.exportConsent, current.tandemOpen);
+        voidProfileSync(current.learner, current.languageId, current.plan, text, current.exportConsent, current.tandemOpen, { warmup: get().warmup });
       },
       saveHomeworkDraft: (studentId, title, body) => {
         const now = new Date().toISOString();
@@ -638,12 +754,17 @@ export const useBlossom = create<AppState>()(
       setExportConsent: (value) => {
         set({ exportConsent: value });
         const current = get();
-        voidProfileSync(current.learner, current.languageId, current.plan, current.warmup, value, current.tandemOpen);
+        voidProfileSync(current.learner, current.languageId, current.plan, current.warmup, value, current.tandemOpen, { exportConsent: current.exportConsent });
       },
       saveWord: (word, gloss) => {
         const now = new Date().toISOString();
         const current = get();
         const metadata = { languageId: current.languageId };
+        const existing = current.vocabulary.find(
+          (v) =>
+            v.word.toLowerCase() === word.toLowerCase() &&
+            v.metadata?.languageId === current.languageId,
+        );
         const mutation = createMutation({
           operation: "vocabulary.upsert",
           entityId: word.toLowerCase(),
@@ -651,11 +772,11 @@ export const useBlossom = create<AppState>()(
             word,
             gloss,
             metadata,
+            rollback: existing
+              ? { existing: existing as unknown as SyncJsonValue }
+              : { existing: null },
           },
         });
-        const existing = current.vocabulary.find(
-          (v) => v.word.toLowerCase() === word.toLowerCase() && v.metadata?.languageId === current.languageId,
-        );
         if (existing) {
           set({
             vocabulary: current.vocabulary.map((v) =>
@@ -691,10 +812,14 @@ export const useBlossom = create<AppState>()(
       },
       joinWaitlist: (id) => {
         if (get().waitlistIds.includes(id)) return;
+        const current = get();
         const mutation = createMutation({
           operation: "waitlist.request",
           entityId: id,
-          payload: { itemId: id },
+          payload: {
+            itemId: id,
+            rollback: { waitlisted: current.waitlistIds.includes(id) },
+          },
         });
         set({ waitlistIds: [...get().waitlistIds, id] });
         void enqueueMutation(mutation);
@@ -708,7 +833,19 @@ export const useBlossom = create<AppState>()(
           setsForLanguage(id).flatMap((setDef) => setDef.items),
         );
         set({ languageId: id, learner, phonemeLeaves });
-        voidProfileSync(learner, id, current.plan, current.warmup, current.exportConsent, current.tandemOpen);
+        // Language changes must immediately rebuild the organism from only the
+        // newly active language; otherwise Plant/OSEZ can briefly display stale
+        // minerals/growth from the previous learning language.
+        get().refreshOrganism();
+        voidProfileSync(
+          learner,
+          id,
+          current.plan,
+          current.warmup,
+          current.exportConsent,
+          current.tandemOpen,
+          { learner: current.learner, languageId: current.languageId },
+        );
         track("language_changed", { languageId: id });
       },
       setUiLocale: (id) => {
@@ -716,7 +853,15 @@ export const useBlossom = create<AppState>()(
         const current = get();
         set({ uiLocale: id });
         track("ui_locale_changed", { uiLocale: id });
-        voidProfileSync(current.learner, current.languageId, current.plan, current.warmup, current.exportConsent, current.tandemOpen);
+        voidProfileSync(
+          current.learner,
+          current.languageId,
+          current.plan,
+          current.warmup,
+          current.exportConsent,
+          current.tandemOpen,
+          { uiLocale: current.uiLocale },
+        );
         if (typeof document !== "undefined") {
           const locale = uiLocaleDef(id);
           document.documentElement.lang = locale.bcp47;
@@ -751,17 +896,28 @@ export const useBlossom = create<AppState>()(
       },
       refreshOrganism: () => {
         const current = get();
-        const mineralSnapshot = computeMinerals(
-          activeLanguageActivityLog(current.activityLog, current.languageId),
-        );
+        const scoped = activeLanguageActivityLog(current.activityLog, current.languageId);
+        let growthEvents: GrowthEvent[] = [];
+        for (const event of scoped) {
+          const growth = growthEventForActivity(event.type, event.sourceId, event.createdAt);
+          if (!growth) continue;
+          growthEvents = pushGrowthEvent(growthEvents, { ...growth, languageId: current.languageId });
+        }
+        const mineralSnapshot = computeMinerals(scoped);
         const phonemeLeaves = buildPhonemeLeaves(
           current.pronlabAttempts,
           setsForLanguage(current.languageId).flatMap((setDef) => setDef.items),
         );
-        set({ mineralSnapshot, phonemeLeaves });
+        const letter = composeLeoLetter(mineralSnapshot, growthEvents, current.learner.firstName);
+        const existing = current.leoLetters.find((item) => item.id === letter.id);
+        const leoLetters = growthEvents.length
+          ? [{ ...letter, read: existing?.read ?? letter.read }, ...current.leoLetters.filter((item) => item.id !== letter.id)].slice(0, 12)
+          : current.leoLetters;
+        set({ growthEvents, mineralSnapshot, phonemeLeaves, leoLetters });
       },
       resetJourney: () => {
         set({
+          hasEntered: false,
           parentMode: false,
           teacherMode: false,
           orgMode: false,
@@ -802,7 +958,12 @@ export const useBlossom = create<AppState>()(
         });
       },
     }),
-    { name: "kosez-blossom-v2" },
+    {
+      name: "kosez-blossom-v2",
+      onRehydrateStorage: () => () => {
+        markBlossomHydrated();
+      },
+    },
   ),
 );
 

@@ -12,7 +12,7 @@ import {
 } from "@/lib/blossom/data";
 import { influenceFromState } from "@/lib/blossom/influence";
 import { getTandemCandidatesOnServer } from "@/lib/blossom/domain.api";
-import { tandemMatchScore } from "@/lib/blossom/engine";
+import { activityBelongsToLanguage, tandemMatchScore } from "@/lib/blossom/engine";
 import {
   causalNextGesture,
   computeMinerals,
@@ -20,6 +20,8 @@ import {
 import { useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
 import { describeLearnLanguage, useUiLocale } from "@/lib/i18n";
+import { LearningSurfaceAvailability } from "@/components/app/learning-surface-availability";
+import { canUseLearningSurface } from "@/lib/i18n/locales";
 
 export const Route = createFileRoute("/_app/tandem")({
   component: TandemPage,
@@ -31,6 +33,10 @@ function TandemPage() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
   });
+  const languageId = useBlossom((s) => s.languageId);
+  if (!canUseLearningSurface(languageId, "tandem")) {
+    return <LearningSurfaceAvailability languageId={languageId} surface="tandem" />;
+  }
   return pathname === "/tandem" ? <TandemHub /> : <Outlet />;
 }
 
@@ -68,7 +74,7 @@ function TandemHub() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const minerals = useMemo(() => computeMinerals(log), [log]);
+  const minerals = useMemo(() => computeMinerals(log.filter((event) => activityBelongsToLanguage(event, languageId))), [log, languageId]);
   const nextGesture = causalNextGesture(minerals);
   const socialGrowth = growthEvents
     .filter((g) => g.mineral === "social" || g.kind === "flower")

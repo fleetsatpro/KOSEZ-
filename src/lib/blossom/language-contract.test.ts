@@ -23,3 +23,15 @@ test("English and Spanish local catalogs remain independently addressable", () =
   assert.equal(es.every((set) => set.language === "es"), true);
   assert.equal(lsf.every((set) => set.language === "lsf"), true);
 });
+
+test("surface capabilities match the actual language contract", async () => {
+  const { canUseLearningSurface } = await import("../i18n/locales.ts");
+  assert.equal(canUseLearningSurface("en", "mission"), true);
+  assert.equal(canUseLearningSurface("en", "osez"), true);
+  assert.equal(canUseLearningSurface("en", "library"), true);
+  assert.equal(canUseLearningSurface("fr", "mission"), false);
+  assert.equal(canUseLearningSurface("fr", "osez"), false);
+  assert.equal(canUseLearningSurface("fr", "pulse"), true);
+  assert.equal(canUseLearningSurface("lsf", "mission"), false);
+  assert.equal(canUseLearningSurface("lsf", "library"), false);
+});

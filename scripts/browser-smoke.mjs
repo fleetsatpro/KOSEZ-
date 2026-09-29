@@ -69,6 +69,14 @@ const VIEWPORTS = [
   { name: "mobile", width: 390, height: 844, screenshot: mobilePng },
 ];
 
+async function waitForBlossomShell(page, timeout = 10000) {
+  const readyMarker = page.locator('[data-smoke="blossom-ready"]').first();
+  await readyMarker.waitFor({
+    state: "attached",
+    timeout,
+  });
+}
+
 async function gotoWithRetry(page, targetUrl, options, attempts = 3) {
   let lastError = null;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -145,11 +153,14 @@ try {
       viewport: { width: vp.width, height: vp.height },
     });
     await page.addInitScript((storageKey) => {
+      if (window.localStorage.getItem(storageKey)) return;
       window.localStorage.setItem(
         storageKey,
         JSON.stringify({
           state: {
             hasEntered: true,
+            syncOwnerUserId: "dev-user",
+            plan: "premium",
             learner: {
               firstName: "Smoke",
               lastName: "Check",
@@ -183,6 +194,7 @@ try {
     );
     const status = resp?.status() ?? 0;
     await page.waitForTimeout(1000);
+    await waitForBlossomShell(page);
 
     const routeChecks = [];
     for (const route of SMOKE_ROUTES) {
@@ -199,6 +211,7 @@ try {
         status: routeStatus,
         url: new URL(route, url).href,
       });
+      await waitForBlossomShell(page);
       if (routeStatus === 0 || routeStatus >= 400) {
         errors.pageErrors.push(`route ${route} returned HTTP ${routeStatus}`);
       }
@@ -288,9 +301,122 @@ try {
       try {
         await gotoWithRetry(
           page,
+          new URL("/moi", url).href,
+          { waitUntil: "domcontentloaded", timeout: timeoutMs },
+        );
+        await waitForBlossomShell(page);
+        const languageSelect = page
+          .locator("label")
+          .filter({ hasText: "Langue cible" })
+          .locator("select")
+          .first();
+        await languageSelect.waitFor({ state: "visible", timeout: 10000 });
+        await languageSelect.selectOption("fr");
+        await page.waitForFunction(
+          () => {
+            const select = [...document.querySelectorAll("select")].find(
+              (node) => node.closest("label")?.textContent?.includes("Langue cible"),
+            );
+            return select instanceof HTMLSelectElement && select.value === "fr";
+          },
+          undefined,
+          { timeout: 10000 },
+        );
+        // Allow the serialized profile mutation to persist and emit its sync
+        // event before navigating into language-gated routes.
+        await page.waitForTimeout(1500);
+
+        const frenchStateBeforeMission = await page.evaluate(() => ({
+          selectValue: [...document.querySelectorAll("select")].find(
+            (node) => node.closest("label")?.textContent?.includes("Langue cible"),
+          )?.value ?? null,
+          store: window.localStorage.getItem("kosez-blossom-v2"),
+          profileIntent: window.localStorage.getItem("kosez-blossom-profile-intent-v1"),
+        }));
+        await gotoWithRetry(
+          page,
+          new URL("/mission", url).href,
+          { waitUntil: "domcontentloaded", timeout: timeoutMs },
+        );
+        await waitForBlossomShell(page);
+        const gatedCopy = normalizeBodyText(await page.locator("body").innerText().catch(() => ""));
+        if (!gatedCopy.toLocaleLowerCase().includes("surface non activée")) {
+          const frenchStateAfterMission = await page.evaluate(() => ({
+            store: window.localStorage.getItem("kosez-blossom-v2"),
+            profileIntent: window.localStorage.getItem("kosez-blossom-profile-intent-v1"),
+          }));
+          errors.pageErrors.push(
+            "unsupported French mission surface was not gated" +
+            " · before=" + JSON.stringify(frenchStateBeforeMission).slice(0, 2600) +
+            " · after=" + JSON.stringify(frenchStateAfterMission).slice(0, 2600) +
+            " · body=" + gatedCopy.slice(0, 1800),
+          );
+        }
+        await gotoWithRetry(
+          page,
+          new URL("/plant", url).href,
+          { waitUntil: "domcontentloaded", timeout: timeoutMs },
+        );
+        await waitForBlossomShell(page);
+        const plantPulseLink = page.locator('a[href="/osez/pulse"]');
+        if ((await plantPulseLink.count()) === 0) {
+          errors.pageErrors.push("French Plant causal CTA did not resolve to supported Pulse door");
+        } else {
+          await gotoWithRetry(
+            page,
+            new URL("/osez/pulse", url).href,
+            { waitUntil: "domcontentloaded", timeout: timeoutMs },
+          );
+          await waitForBlossomShell(page);
+          const pulseCopy = normalizeBodyText(await page.locator("body").innerText().catch(() => ""));
+          if (pulseCopy.includes("Surface non activée")) {
+            errors.pageErrors.push("supported French Pulse child route was blocked by its OSEZ parent");
+          }
+        }
+        await gotoWithRetry(
+          page,
+          new URL("/moi", url).href,
+          { waitUntil: "domcontentloaded", timeout: timeoutMs },
+        );
+        await waitForBlossomShell(page);
+        const englishLanguageSelect = page
+          .locator("label")
+          .filter({ hasText: "Langue cible" })
+          .locator("select")
+          .first();
+        await englishLanguageSelect.waitFor({ state: "visible", timeout: 10000 });
+        await englishLanguageSelect.selectOption("en");
+        await page.waitForFunction(
+          () => {
+            const select = [...document.querySelectorAll("select")].find(
+              (node) => node.closest("label")?.textContent?.includes("Langue cible"),
+            );
+            return select instanceof HTMLSelectElement && select.value === "en";
+          },
+          undefined,
+          { timeout: 10000 },
+        );
+        // Let the profile.upsert for the real UI change reach the server before
+        // the next contract test opens an English-only Library document.
+        await page.waitForTimeout(1200);
+      } catch (error) {
+        errors.pageErrors.push(
+          "language capability regression failed: " + String(error?.message || error),
+        );
+      }
+      await gotoWithRetry(page, url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+      await waitForBlossomShell(page);
+      await page.waitForTimeout(250);
+    }
+
+    if (vp.name === "desktop" && expectedAuth === "disabled") {
+      try {
+        await gotoWithRetry(
+          page,
           new URL("/learn/curriculum", url).href,
           { waitUntil: "domcontentloaded", timeout: timeoutMs },
         );
+        await waitForBlossomShell(page);
         const unitEntry = page.locator('a[href="/learn/curriculum/a2-food-and-service"]');
         await unitEntry.waitFor({ state: "visible", timeout: 10000 });
         await unitEntry.click();
@@ -317,7 +443,7 @@ try {
         await readingEnd.scrollIntoViewIfNeeded();
         await page.getByText("lecture enregistrée", { exact: false }).waitFor({
           state: "visible",
-          timeout: 10000,
+          timeout: 20000,
         });
         const readingCopy = await page.locator("body").innerText().catch(() => "");
         if (!readingCopy.includes("lecture enregistrée")) {
@@ -332,6 +458,10 @@ try {
         await unitEntryAfterEvidence.waitFor({ state: "visible", timeout: 10000 });
         await unitEntryAfterEvidence.click();
         await page.waitForTimeout(500);
+        await page.getByText("preuve enregistrée", { exact: false }).waitFor({
+          state: "visible",
+          timeout: 20000,
+        });
         const curriculumCopy = await page.locator("body").innerText().catch(() => "");
         if (!curriculumCopy.includes("preuve enregistrée")) {
           errors.pageErrors.push("curriculum did not reflect the linked reading evidence");
@@ -368,7 +498,10 @@ try {
     };
   }
 
-  const brandWarnings = computeBrandWarnings({ hasCanvas: viewports.desktop.hasCanvas });
+  const brandWarnings = computeBrandWarnings({
+    hasCanvas: viewports.desktop.hasCanvas,
+    workspaceRoot: process.env.GITHUB_WORKSPACE || process.cwd(),
+  });
   // The CI learner smoke intentionally runs on an auth-disabled isolated server
   // so it can inspect the actual learner UI. Auth correctness is checked
   // separately against the production-mode auth-on server.

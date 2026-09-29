@@ -208,12 +208,12 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
       it: "Francese come target — pack del centro e fonemi FR.",
     },
     switchImpact: {
-      fr: "Active Pron'Lab FR, missions FR et rooms FR. Tandem reste multi-langue.",
-      en: "Activates Pron'Lab FR, missions FR and rooms FR. Tandem stays multi-language.",
-      es: "Activa Pron'Lab FR, misiones FR y salas FR. El tándem sigue multilingüe.",
-      pt: "Ativa Pron'Lab FR, missões FR e salas FR. O tandem permanece multilingue.",
-      de: "Aktiviert Pron'Lab FR, Missionen FR und Räume FR. Tandem bleibt mehrsprachig.",
-      it: "Attiva Pron'Lab FR, missioni FR e stanze FR. Il tandem resta multilingue.",
+      fr: "Active uniquement la porte Pulse FR ; les autres surfaces restent masquées tant que leur contenu n’est pas disponible.",
+      en: "Activates only the French Pulse door; other surfaces stay hidden until their content is available.",
+      es: "Activa únicamente la puerta Pulse FR; las demás superficies quedan ocultas hasta que su contenido esté disponible.",
+      pt: "Ativa apenas a porta Pulse FR; as restantes superfícies ficam ocultas enquanto o respetivo conteúdo não estiver disponível.",
+      de: "Aktiviert nur die französische Pulse-Tür; andere Oberflächen bleiben verborgen, bis ihre Inhalte verfügbar sind.",
+      it: "Attiva solo la porta Pulse FR; le altre superfici restano nascoste finché i relativi contenuti non sono disponibili.",
     },
     blurb: {
       fr: "Même moteur de pratique, packs français du centre.",
@@ -384,7 +384,7 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
     engine: "module",
     contentPacks: ["centre-creole"],
     speechLocale: "fr-FR",
-    surfaces: ["mission", "library"],
+    surfaces: [],
     levels: ["A1", "A2"],
     culturalAnchor: {
       fr: "Module ancré dans le territoire — selon disponibilité du centre Saint-Pierre.",
@@ -395,12 +395,12 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
       it: "Modulo ancorato al territorio — secondo disponibilità del centro.",
     },
     switchImpact: {
-      fr: "Active le module centre créole. Speech via FR. Missions territoriales.",
-      en: "Activates centre Creole module. Speech via FR. Territorial missions.",
-      es: "Activa el módulo criollo del centro. Speech vía FR. Misiones territoriales.",
-      pt: "Ativa o módulo crioulo do centro. Speech via FR. Missões territoriais.",
-      de: "Aktiviert das Kreol-Modul des Zentrums. Sprache über FR. Territoriale Missionen.",
-      it: "Attiva il modulo creolo del centro. Speech via FR. Missioni territoriali.",
+      fr: "Le module créole reste en préparation dans BLOSSOM.",
+      en: "The Creole module is not yet exposed as an active learner surface.",
+      es: "El módulo criollo aún no está expuesto como superficie activa.",
+      pt: "O módulo crioulo ainda não está exposto como superfície ativa.",
+      de: "Das Kreol-Modul ist noch nicht als aktive Lernfläche verfügbar.",
+      it: "Il modulo creolo non è ancora esposto come superficie attiva.",
     },
     blurb: {
       fr: "Module ancré dans le territoire — selon disponibilité du centre.",
@@ -427,7 +427,7 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
     engine: "sign",
     contentPacks: ["pronlab-lsf"],
     speechLocale: "fr-FR",
-    surfaces: ["pronlab", "library"],
+    surfaces: ["pronlab"],
     levels: ["A1"],
     culturalAnchor: {
       fr: "Module LSF — selon disponibilité du centre et des formateurs.",
@@ -470,4 +470,17 @@ export function isUiLocaleId(id: string): id is UiLocaleId {
 
 export function isLearnLanguageId(id: string): id is LearnLanguageId {
   return LEARN_LANGUAGES.some((l) => l.id === id);
+}
+
+
+export function canUseLearningSurface(
+  languageId: LearnLanguageId,
+  surface: LearnLanguageDef["surfaces"][number],
+): boolean {
+  const language = LEARN_LANGUAGES.find((item) => item.id === languageId);
+  return Boolean(language?.surfaces.includes(surface));
+}
+
+export function learningSurfaceLabels(languageId: LearnLanguageId): string[] {
+  return LEARN_LANGUAGES.find((item) => item.id === languageId)?.surfaces ?? [];
 }

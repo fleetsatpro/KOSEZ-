@@ -35,6 +35,9 @@ import {
   endTandemSession,
   startPulseSession,
   endPulseSession,
+  startSpeakSession,
+  endSpeakSession,
+  finalizeSpeakSession,
   startMissionRunSession,
   endMissionRunSession,
 } from "./domain.server";
@@ -136,8 +139,50 @@ export const startMissionRunSessionOnServer = createServerFn({ method: "POST" })
 
 export const endMissionRunSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ sessionId: z.string().uuid() }))
-  .handler(async ({ context, data }) => endMissionRunSession(context.userId, data.sessionId));
+  .inputValidator(
+    z.object({
+      sessionId: z.string().uuid(),
+      status: z.enum(["completed", "cancelled"]).default("completed"),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    endMissionRunSession(context.userId, data.sessionId, data.status),
+  );
+
+export const startSpeakSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({
+    roomId: z.string().trim().min(2).max(120),
+    languageId: z.string().trim().min(2).max(16),
+  }))
+  .handler(async ({ context, data }) =>
+    startSpeakSession(context.userId, data.roomId, data.languageId),
+  );
+
+export const finalizeSpeakSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      sessionId: z.string().uuid(),
+      spokenSeconds: z.number().int().nonnegative().max(14400).optional(),
+      transcriptCount: z.number().int().nonnegative().max(500).optional(),
+      captureOnlyCount: z.number().int().nonnegative().max(500).optional(),
+    }),
+  )
+  .handler(async ({ context, data }) => {
+    const result = await finalizeSpeakSession(context.userId, data.sessionId, data);
+    return result;
+  });
+
+export const endSpeakSessionOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(z.object({
+    sessionId: z.string().uuid(),
+    status: z.enum(["completed", "cancelled"]),
+  }))
+  .handler(async ({ context, data }) =>
+    endSpeakSession(context.userId, data.sessionId, data.status),
+  );
 
 export const startPulseSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])

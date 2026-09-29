@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, RefreshCw, X } from "lucide-react";
 import { AmbientParticles } from "@/components/app/ambient-particles";
 import { GrowthCeremony } from "@/components/app/growth-ceremony";
@@ -24,20 +24,31 @@ import {
 import { useBlossom } from "@/lib/blossom/store";
 import { track } from "@/lib/analytics";
 import { toast } from "sonner";
+import { startSpeakSessionOnServer, endSpeakSessionOnServer, finalizeSpeakSessionOnServer } from "@/lib/blossom/domain.api";
 import { cn } from "@/lib/utils";
 import {
   clearCurriculumLessonContext,
   readCurriculumLessonContext,
 } from "@/lib/blossom/curriculum-context";
+import { LearningSurfaceAvailability } from "@/components/app/learning-surface-availability";
+import { canUseLearningSurface } from "@/lib/i18n/locales";
 
 export const Route = createFileRoute("/_app/osez/$id")({
-  component: SpeakRoom,
+  component: SpeakRoomRoute,
 });
+
+function SpeakRoomRoute() {
+  const languageId = useBlossom((s) => s.languageId);
+  if (!canUseLearningSurface(languageId, "osez")) {
+    return <LearningSurfaceAvailability languageId={languageId} surface="osez" />;
+  }
+  return <SpeakRoom />;
+}
 
 function SpeakRoom() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const complete = useBlossom((s) => s.completeActivity);
+  const acceptConfirmedActivity = useBlossom((s) => s.acceptConfirmedActivity);
   const plan = useBlossom((s) => s.plan);
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
@@ -48,7 +59,7 @@ function SpeakRoom() {
   const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
   const missionSessions = useBlossom((s) => s.missionSessions);
   const memoryOn = planAllows(plan, "memory");
-  const influence = influenceFromState({
+  const influence = useMemo(() => influenceFromState({
     activityLog: log,
     pronlabAttempts: attempts,
     growthEvents,
@@ -58,7 +69,7 @@ function SpeakRoom() {
     memory: LEARNER_MEMORY,
     memoryOn,
     languageId,
-  });
+  }), [log, attempts, growthEvents, phonemeLeaves, missionSessions, languageId, memoryOn]);
   const friction = influence.speak.friction ?? (memoryOn ? LEARNER_MEMORY.hesitation : null);
   const kitBoost = influence.speak.kitBoost;
   const pressureHint = influence.speak.pressureHint;
@@ -79,6 +90,20 @@ function SpeakRoom() {
   const [showRescue, setShowRescue] = useState(false);
   const [speechSummary, setSpeechSummary] = useState<SessionSpeechSummary>(() => emptySpeechSummary());
   const mineralsBefore = useRef(minerals);
+  const composeGeneration = useRef(0);
+  const [serverSessionId, setServerSessionId] = useState<string | null>(null);
+  const [closing, setClosing] = useState(false);
+  const [rewardUnavailable, setRewardUnavailable] = useState(false);
+  const mountedRef = useRef(true);
+  const serverSessionRef = useRef<string | null>(null);
+  const completedServerSessionRef = useRef(false);
+  useEffect(() => () => {
+    mountedRef.current = false;
+    const sessionId = serverSessionRef.current;
+    if (sessionId && !completedServerSessionRef.current) {
+      void endSpeakSessionOnServer({ data: { sessionId, status: "cancelled" } }).catch(() => undefined);
+    }
+  }, []);
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
   useEffect(() => {
     if (curriculumLessonId) clearCurriculumLessonContext();
@@ -86,6 +111,7 @@ function SpeakRoom() {
 
   useEffect(() => {
     let cancelled = false;
+    const requestGeneration = ++composeGeneration.current;
     async function compose() {
       setLoading(true);
       setStarted(false);
@@ -119,7 +145,7 @@ function SpeakRoom() {
         influenceReasons,
       });
 
-      if (cancelled) return;
+      if (cancelled || requestGeneration !== composeGeneration.current) return;
       setRoom(result.room);
       setSource(result.source);
       setLoading(false);
@@ -128,7 +154,7 @@ function SpeakRoom() {
     return () => {
       cancelled = true;
     };
-  }, [id, learner.level, learner.firstName, learner.interests, friction, pressureHint, kitBoost, influenceReasons]);
+  }, [id, learner.level, learner.firstName, learner.interests, friction, pressureHint, kitBoost, influenceReasons.join("|")]);
 
   useEffect(() => {
     if (!started || done) return;
@@ -196,42 +222,81 @@ function SpeakRoom() {
     toast("Nouvelle composition.");
   }
 
-  function finish() {
-    if (!room) return;
-    mineralsBefore.current = useBlossom.getState().mineralSnapshot;
-    const speakingMinutes = Math.max(1, Math.round(elapsed / 60));
-    const result = complete(
-      "SPEAK_COMPLETED",
-      `speak-${room.id}`,
-      undefined,
-      {
-        minutes: speakingMinutes,
-        spokenSeconds: speechSummary.spokenSeconds,
-        transcriptCount: speechSummary.transcriptCount,
-        captureOnlyCount: speechSummary.captureOnlyCount,
-      },
-    );
-    if (result.ok) {
-      if (curriculumLessonId) {
-        const linked = useBlossom.getState().activityLog.some(
-          (event) =>
-            event.type === "CURRICULUM_EVIDENCE_RECORDED" &&
-            event.sourceId === curriculumLessonId,
-        );
-        if (!linked) {
-          useBlossom.getState().completeActivity(
-            "CURRICULUM_EVIDENCE_RECORDED",
-            curriculumLessonId,
-            `Preuve curriculum · Speak · ${room.id}`,
-            { supportId: `speak-${room.id}` },
-          );
-        }
+  async function enterRoom() {
+    if (!room || closing) return;
+    setClosing(true);
+    setRewardUnavailable(false);
+    try {
+      const session = await startSpeakSessionOnServer({ data: { roomId: room.id, languageId } });
+      serverSessionRef.current = session.id;
+      completedServerSessionRef.current = false;
+      if (!mountedRef.current) {
+        void endSpeakSessionOnServer({ data: { sessionId: session.id, status: "cancelled" } }).catch(() => undefined);
+        return;
       }
-      toast("Session close. La tige s'épaissit.");
-      setCeremonyOpen(true);
-    } else {
-      navigate({ to: "/osez" });
+      setServerSessionId(session.id);
+    } catch {
+      setServerSessionId(null);
+      setRewardUnavailable(true);
+      toast("La room reste disponible, mais aucune croissance ne sera créditée sans validation serveur.");
     }
+    setClosing(false);
+    track("speak_started", { roomId: room.id, seed: room.seed, source });
+    setStarted(true);
+  }
+
+  async function finish() {
+    if (!room || closing) return;
+    setClosing(true);
+    mineralsBefore.current = useBlossom.getState().mineralSnapshot;
+    if (!serverSessionId) {
+      setRewardUnavailable(true);
+      setClosing(false);
+      toast("Pratique terminée sans validation serveur. Aucun crédit de croissance n'a été attribué.");
+      navigate({ to: "/osez" });
+      return;
+    }
+    let ended;
+    try {
+      ended = await finalizeSpeakSessionOnServer({
+        data: {
+          sessionId: serverSessionId,
+          spokenSeconds: speechSummary.spokenSeconds,
+          transcriptCount: speechSummary.transcriptCount,
+          captureOnlyCount: speechSummary.captureOnlyCount,
+        },
+      });
+    } catch {
+      setClosing(false);
+      toast("Validation serveur indisponible. La session reste ouverte; réessayez.");
+      return;
+    }
+
+    acceptConfirmedActivity(ended.activity);
+    completedServerSessionRef.current = true;
+    serverSessionRef.current = null;
+    setServerSessionId(null);
+
+    if (curriculumLessonId) {
+      const linked = useBlossom.getState().activityLog.some(
+        (event) =>
+          event.type === "CURRICULUM_EVIDENCE_RECORDED" &&
+          event.sourceId === curriculumLessonId,
+      );
+      if (!linked) {
+        useBlossom.getState().completeActivity(
+          "CURRICULUM_EVIDENCE_RECORDED",
+          curriculumLessonId,
+          `Preuve curriculum · Speak · ${room.id}`,
+          { supportId: `speak-session-${ended.id}` },
+        );
+      }
+    }
+
+    toast("Session close. La tige s'épaissit.");
+    setRewardUnavailable(false);
+    setClosing(false);
+    setCeremonyOpen(true);
   }
 
   if (loading || !room) {
@@ -351,13 +416,11 @@ function SpeakRoom() {
             ) : null}
 
             <Button
+              disabled={closing}
               className="mt-8 h-12 w-full bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={() => {
-                track("speak_started", { roomId: room.id, seed: room.seed, source });
-                setStarted(true);
-              }}
+              onClick={() => void enterRoom()}
             >
-              Entrer dans la room
+              {closing ? "Validation…" : "Entrer dans la room"}
             </Button>
           </div>
         </div>
@@ -403,8 +466,15 @@ function SpeakRoom() {
           </div>
 
           <p className="mt-6 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm leading-6 text-fg">
-            Clôturer écrit une <span className="font-semibold text-primary">tige</span> sur BLOSSOM
-            et nourrit le minéral <span className="font-semibold text-primary">parole</span>.
+            {rewardUnavailable
+              ? "Cette pratique peut rester utile, mais aucune croissance ne sera créditée sans preuve serveur."
+              : "Clôturer écrit une "}
+            {!rewardUnavailable ? (
+              <>
+                <span className="font-semibold text-primary">tige</span> sur BLOSSOM
+                et nourrit le minéral <span className="font-semibold text-primary">parole</span>.
+              </>
+            ) : null}
           </p>
           <Button className="mt-4 h-12 w-full" onClick={finish}>
             Clore la session

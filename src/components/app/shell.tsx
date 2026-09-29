@@ -30,7 +30,7 @@ import { NotificationCenter } from "@/components/app/notification-center";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
 import { useBlossomWorkspaceAccess } from "@/lib/blossom/access";
 import { cn } from "@/lib/utils";
-import { mutationStatusCounts, syncChangeEventName } from "@/lib/blossom/sync-client";
+import { mutationStatusCounts, retryConflicts, syncChangeEventName } from "@/lib/blossom/sync-client";
 import { useMessages, useDocumentLocale } from "@/lib/i18n";
 
 function buildNav(m: ReturnType<typeof useMessages>) {
@@ -200,6 +200,15 @@ function SyncStatus() {
       <div className="min-w-0">
         <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-subtle">{label}</p>
         <p className="mt-0.5 truncate text-[11px] text-muted">{detail}</p>
+        {conflicts ? (
+          <button
+            type="button"
+            className="mt-1 text-[11px] font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            onClick={() => void retryConflicts()}
+          >
+            {m.common.retry}
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -304,7 +313,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <nav className="mt-12" aria-label="Navigation principale">
             <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-subtle">
-              {m.moi.title}
+              {m.nav.blossom}
             </p>
             <div className="mt-3 grid gap-1">
               {NAV.map((item) => {

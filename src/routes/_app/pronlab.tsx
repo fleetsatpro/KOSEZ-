@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
-import { summarisePronlabItem } from "@/lib/blossom/engine";
+import { activityBelongsToLanguage, summarisePronlabItem } from "@/lib/blossom/engine";
 import {
   causalNextGesture,
   computeMinerals,
@@ -13,6 +13,8 @@ import {
 } from "@/lib/blossom/organism";
 import { isSetUnlocked, useBlossom } from "@/lib/blossom/store";
 import { cn } from "@/lib/utils";
+import { LearningSurfaceAvailability } from "@/components/app/learning-surface-availability";
+import { canUseLearningSurface } from "@/lib/i18n/locales";
 
 export const Route = createFileRoute("/_app/pronlab")({
   component: PronlabHub,
@@ -23,6 +25,10 @@ function PronlabHub() {
     select: (state) => state.location.pathname.replace(/\/+$/, "") || "/",
   });
 
+  const languageId = useBlossom((s) => s.languageId);
+  if (!canUseLearningSurface(languageId, "pronlab")) {
+    return <LearningSurfaceAvailability languageId={languageId} surface="pronlab" />;
+  }
   return pathname === "/pronlab" ? <PronlabIndex /> : <Outlet />;
 }
 
@@ -37,9 +43,10 @@ function PronlabIndex() {
     (h) => h.status === "sent" && h.studentId === syncOwnerUserId,
   );
   const sets = setsForLanguage(languageId);
-  const allItems = PRONLAB_SETS.flatMap((s) => s.items);
+  const allItems = sets.flatMap((s) => s.items);
   const struggle = strugglingFocus(attempts, allItems);
-  const minerals = computeMinerals(log);
+  const activeLog = log.filter((event) => activityBelongsToLanguage(event, languageId));
+  const minerals = computeMinerals(activeLog);
   const nextGesture = causalNextGesture(minerals);
   const recentLeaves = growthEvents
     .filter((g) => g.kind === "leaf" || g.kind === "mineral")

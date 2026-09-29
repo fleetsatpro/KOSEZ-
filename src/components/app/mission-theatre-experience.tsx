@@ -7,7 +7,7 @@ import {
   MapPin,
   Sprout,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AmbientParticles } from "@/components/app/ambient-particles";
 import { BlossomPlant } from "@/components/app/plant";
@@ -96,7 +96,6 @@ export function MissionTheatreExperience() {
   const recordMissionSupport = useBlossom((s) => s.recordMissionSupport);
   const saveMissionReflection = useBlossom((s) => s.saveMissionReflection);
   const completeMissionSession = useBlossom((s) => s.completeMissionSession);
-  const reopenMissionSession = useBlossom((s) => s.reopenMissionSession);
   const [curriculumLessonId] = useState<string | null>(() => readCurriculumLessonContext());
   useEffect(() => {
     if (curriculumLessonId) clearCurriculumLessonContext();
@@ -152,6 +151,18 @@ export function MissionTheatreExperience() {
   const [closing, setClosing] = useState(false);
   const [serverRunSessionId, setServerRunSessionId] = useState<string | null>(null);
   const [serverEvidenceAvailable, setServerEvidenceAvailable] = useState(false);
+  const mountedRef = useRef(true);
+  const serverRunSessionRef = useRef<string | null>(null);
+  const completedServerRunRef = useRef(false);
+  useEffect(() => () => {
+    mountedRef.current = false;
+    const sessionId = serverRunSessionRef.current;
+    if (sessionId && !completedServerRunRef.current) {
+      void endMissionRunSessionOnServer({
+        data: { sessionId, status: "cancelled" },
+      }).catch(() => undefined);
+    }
+  }, []);
 
   async function start() {
     if (starting || closing) return;
@@ -164,10 +175,19 @@ export function MissionTheatreExperience() {
     }
     setServerRunSessionId(null);
     setServerEvidenceAvailable(false);
+    serverRunSessionRef.current = null;
     try {
       const serverSession = await startMissionRunSessionOnServer({
         data: { missionId: todayMission.id, runId: started },
       });
+      serverRunSessionRef.current = serverSession.id;
+      completedServerRunRef.current = false;
+      if (!mountedRef.current) {
+        void endMissionRunSessionOnServer({
+          data: { sessionId: serverSession.id, status: "cancelled" },
+        }).catch(() => undefined);
+        return;
+      }
       setServerRunSessionId(serverSession.id);
       setServerEvidenceAvailable(true);
     } catch {
@@ -216,12 +236,14 @@ export function MissionTheatreExperience() {
     if (serverRunSessionId) {
       try {
         const ended = await endMissionRunSessionOnServer({
-          data: { sessionId: serverRunSessionId },
+          data: { sessionId: serverRunSessionId, status: "completed" },
         });
-        if (ended.missionId !== todayMission.id) {
-          throw new Error("mission-session-mismatch");
+        if (ended.missionId !== todayMission.id || ended.status !== "completed") {
+          throw new Error("mission-session-not-completed");
         }
         rewardSourceId = `mission-session-${ended.id}`;
+        completedServerRunRef.current = true;
+        serverRunSessionRef.current = null;
       } catch {
         setClosing(false);
         toast("Validation serveur indisponible. La mission reste ouverte.");
@@ -559,9 +581,32 @@ export function MissionTheatreExperience() {
               onSave={saveReflection}
               onFinish={() => void finishSession()}
               onRedo={() => {
-                reopenMissionSession(todayMission.id);
-                setStep("execute");
-                setSaved(false);
+                void (async () => {
+                  if (starting || closing) return;
+                  setStarting(true);
+                  const nextRunId = startMissionRun(todayMission.id, mode, nextMissionChallenge(previousEvaluation?.outcome));
+                  if (!nextRunId) {
+                    setStarting(false);
+                    toast("Impossible de relancer cette mission.");
+                    return;
+                  }
+                  setServerRunSessionId(null);
+                  setServerEvidenceAvailable(false);
+                  try {
+                    const serverSession = await startMissionRunSessionOnServer({
+                      data: { missionId: todayMission.id, runId: nextRunId },
+                    });
+                    setServerRunSessionId(serverSession.id);
+                    setServerEvidenceAvailable(true);
+                  } catch {
+                    toast("La mission reste praticable, mais aucun crédit ne sera attribué sans validation serveur.");
+                  }
+                  setStarting(false);
+                  setSaved(false);
+                  setReflection(DEFAULT_REFLECTION);
+                  setSupportUsed(false);
+                  setStep("execute");
+                })();
               }}
               history={history}
             />

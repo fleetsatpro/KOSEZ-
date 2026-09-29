@@ -6,8 +6,22 @@ import { Button } from "@/components/ui/button";
 import { LIBRARY as LIBRARY_CORE, planAllows } from "@/lib/blossom/data";
 import { EXTRA_LIBRARY } from "@/lib/blossom/library-extra";
 import { useBlossom } from "@/lib/blossom/store";
+import { LearningSurfaceAvailability } from "@/components/app/learning-surface-availability";
+import { canUseLearningSurface } from "@/lib/i18n/locales";
 
 const LIBRARY = [...LIBRARY_CORE, ...EXTRA_LIBRARY];
+function libraryLanguageId(language: string): string {
+  const normalized = language.trim().toLowerCase();
+  return normalized === "english" ? "en"
+    : normalized === "french" ? "fr"
+      : normalized === "spanish" ? "es"
+        : normalized === "portuguese" ? "pt"
+          : normalized === "italian" ? "it"
+            : normalized === "german" ? "de"
+              : normalized === "lsf" ? "lsf"
+                : normalized === "creole" ? "cr"
+                  : "";
+}
 
 export const Route = createFileRoute("/_app/library")({
   component: LibraryPage,
@@ -25,9 +39,18 @@ function LibraryPage() {
 }
 
 function LibraryIndex() {
+  const languageId = useBlossom((s) => s.languageId);
   const vocab = useBlossom((s) => s.vocabulary);
   const plan = useBlossom((s) => s.plan);
   const libraryOk = planAllows(plan, "library");
+  const languageLibrary = LIBRARY.filter((item) => libraryLanguageId(item.language) === languageId);
+  const languageVocabulary = vocab.filter(
+    (entry) => (entry.metadata?.languageId ?? "en") === languageId,
+  );
+
+  if (!canUseLearningSurface(languageId, "library")) {
+    return <LearningSurfaceAvailability languageId={languageId} surface="library" />;
+  }
 
   if (!libraryOk) {
     return (
@@ -73,7 +96,7 @@ function LibraryIndex() {
         </p>
       </header>
 
-      {vocab.length > 0 && (
+      {languageVocabulary.length > 0 && (
         <Surface className="mt-8 !p-4 sm:!p-5">
           <div className="flex items-center gap-2">
             <BookMarked className="size-4 text-primary" strokeWidth={1.7} />
@@ -82,17 +105,29 @@ function LibraryIndex() {
             </p>
           </div>
           <p className="mt-3 text-sm leading-6 text-fg">
-            {vocab.map((v) => v.word).join(" · ")}
+            {languageVocabulary.map((v) => v.word).join(" · ")}
           </p>
           <p className="mt-2 text-xs text-subtle">
-            {vocab.length} mot{vocab.length > 1 ? "s" : ""} — prêts pour une
+            {languageVocabulary.length} mot{languageVocabulary.length > 1 ? "s" : ""} — prêts pour une
             mission ou un Speak.
           </p>
         </Surface>
       )}
 
+      {languageLibrary.length === 0 ? (
+        <Surface className="mt-8 !p-6">
+          <Eyebrow>Aucun texte pour cette langue</Eyebrow>
+          <h2 className="mt-2 font-display text-2xl tracking-tight">
+            La ludothèque de cette langue arrive au fur et à mesure.
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Aucun document disponible ici ne sera remplacé silencieusement par un
+            texte d’une autre langue.
+          </p>
+        </Surface>
+      ) : (
       <div className="mt-8 grid gap-5 sm:grid-cols-2">
-        {LIBRARY.map((doc) => (
+        {languageLibrary.map((doc) => (
           <Link
             key={doc.id}
             to="/library/$id"
@@ -133,6 +168,7 @@ function LibraryIndex() {
           </Link>
         ))}
       </div>
+      )}
 
       <p className="mt-10 text-center text-xs leading-5 text-subtle">
         Les mots gardés reviennent dans les missions et les Speak rooms.

@@ -7,8 +7,9 @@ import { Eyebrow, Page, Surface } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { STAGES, nextStage } from "@/lib/blossom/engine";
-import { organismStatusLine } from "@/lib/blossom/organism";
+import { causalNextGesture, organismStatusLine } from "@/lib/blossom/organism";
 import { useBlossom, useJourney } from "@/lib/blossom/store";
+import { canUseLearningSurface } from "@/lib/i18n/locales";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/plant")({
@@ -19,8 +20,19 @@ function PlantPage() {
   const journey = useJourney();
   const minerals = useBlossom((s) => s.mineralSnapshot);
   const growthEvents = useBlossom((s) => s.growthEvents);
+  const languageId = useBlossom((s) => s.languageId);
   const upcoming = nextStage(journey.stage.id);
   const leoLine = organismStatusLine(minerals);
+  const nextGesture = causalNextGesture(
+    minerals,
+    new Set([
+      ...(canUseLearningSurface(languageId, "pronlab") ? ["/pronlab"] : []),
+      ...(canUseLearningSurface(languageId, "mission") ? ["/mission"] : []),
+      ...(canUseLearningSurface(languageId, "osez") ? ["/osez"] : []),
+      ...(canUseLearningSurface(languageId, "pulse") ? ["/osez/pulse"] : []),
+      ...(canUseLearningSurface(languageId, "tandem") ? ["/tandem"] : []),
+    ]),
+  );
   const reqs = [
     {
       label: "Missions",
@@ -146,8 +158,8 @@ function PlantPage() {
 
           <div className="mt-auto pt-6">
             <Button asChild className="w-full sm:w-auto">
-              <Link to="/mission">
-                Nourrir la plante
+              <Link to={nextGesture.door}>
+                {nextGesture.line}
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
             </Button>
