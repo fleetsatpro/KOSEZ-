@@ -1,5 +1,5 @@
 import { getSql } from "@/lib/db";
-import { isLearnLanguageId } from "@/lib/i18n/locales";
+import { isLearnLanguageId, isLearnSurfaceAvailable } from "@/lib/i18n/locales";
 import { CURRICULUM_UNITS, type LessonKind } from "./learning-os";
 import { LIBRARY, PRONLAB_SETS, setsForLanguage } from "./data";
 import { EXTRA_LIBRARY } from "./library-extra";
@@ -20,7 +20,7 @@ function missionRunHasMissionAttempt(value: unknown): boolean {
       typeof attempt.startedAt === "string" &&
       typeof attempt.endedAt === "string" &&
       Number.isFinite(Number(attempt.seconds)) &&
-      Number(attempt.seconds) >= 0
+      Number(attempt.seconds) > 0
     );
   });
 }
@@ -273,18 +273,28 @@ export async function assertCurriculumEvidence(
 ) {
   const lesson = CURRICULUM_UNITS.flatMap((unit) => unit.lessons).find((item) => item.id === lessonId);
   if (!lesson) throw new Error("curriculum-lesson-unknown");
+  const profile = await (await getSql()).query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const rawLanguageId = String(profile[0]?.target_language ?? "en");
+  const languageId = isLearnLanguageId(rawLanguageId) ? rawLanguageId : "en";
+  if (!isLearnSurfaceAvailable(languageId, "curriculum")) {
+    throw new Error("curriculum-language-unavailable");
+  }
+
   const supportId = stringValue(metadata.supportId);
   if (!supportId) throw new Error("curriculum-evidence-missing-support");
 
   const sql = await getSql();
   const checks: Record<LessonKind, () => Promise<boolean>> = {
-    mission: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'MISSION_COMPLETED' and source_id = $2 limit 1", [userId, supportId]))[0]),
-    speak: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'SPEAK_COMPLETED' and source_id = $2 limit 1", [userId, supportId]))[0]),
-    pronlab: async () => Boolean((await sql.query("select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 limit 1", [userId, supportId]))[0]),
-    review: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'REVIEW_COMPLETED' and source_id = $2 limit 1", [userId, supportId]))[0]),
-    grammar: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'grammar' limit 1", [userId, supportId]))[0]),
-    listening: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'listening' limit 1", [userId, supportId]))[0]),
-    writing: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'writing' limit 1", [userId, supportId]))[0]),
+    mission: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'MISSION_COMPLETED' and source_id = $2 and coalesce(payload->'metadata'->>'languageId', 'en') = $3 limit 1", [userId, supportId, languageId]))[0]),
+    speak: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'SPEAK_COMPLETED' and source_id = $2 and coalesce(payload->'metadata'->>'languageId', 'en') = $3 limit 1", [userId, supportId, languageId]))[0]),
+    pronlab: async () => Boolean((await sql.query("select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 and coalesce(metadata->>'languageId', 'en') = $3 and seconds > 0 limit 1", [userId, supportId, languageId]))[0]),
+    review: async () => Boolean((await sql.query("select 1 from blossom_activity_event where user_id = $1 and event_type = 'REVIEW_COMPLETED' and source_id = $2 and coalesce(payload->'metadata'->>'languageId', 'en') = $3 limit 1", [userId, supportId, languageId]))[0]),
+    grammar: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'grammar' and coalesce(result->>'languageId', 'en') = $3 limit 1", [userId, supportId, languageId]))[0]),
+    listening: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'listening' and coalesce(result->>'languageId', 'en') = $3 limit 1", [userId, supportId, languageId]))[0]),
+    writing: async () => Boolean((await sql.query("select 1 from blossom_learning_submission where user_id = $1 and task_id = $2 and kind = 'writing' and coalesce(result->>'languageId', 'en') = $3 limit 1", [userId, supportId, languageId]))[0]),
     library: async () => Boolean((await sql.query(
       "select 1 from blossom_activity_event where user_id = $1 and event_type = 'LIBRARY_COMPLETED' and source_id = $2 limit 1",
       [userId, supportId],
