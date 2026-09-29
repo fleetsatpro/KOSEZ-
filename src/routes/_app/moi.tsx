@@ -1,18 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
-import {
-  Leaf,
-  Shield,
-  BookOpen,
-  Calendar,
-  CalendarClock,
-  Sparkles,
-  ChevronRight,
-} from "lucide-react";
+import { BookOpen, Calendar, CalendarClock, Sparkles } from "lucide-react";
 import { LanguageSettings } from "@/components/app/language-settings";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -20,7 +11,6 @@ import {
   EVENTS,
   LEARNER_MEMORY,
   planAllows,
-  PLANS,
   PLANT_IMAGE,
 } from "@/lib/blossom/data";
 import { countByType, resolveMemory } from "@/lib/blossom/engine";
@@ -40,7 +30,6 @@ import { ConversationPanel } from "@/components/app/conversation-panel";
 import { ConversationInbox } from "@/components/app/conversation-inbox";
 import { LearnerFeedback } from "@/components/app/learner-feedback";
 import { OrganismMineralsPanel } from "@/components/app/organism-minerals-panel";
-import { calendarFilename, teacherSessionToIcs } from "@/lib/blossom/calendar";
 import { getLearnerSessionsOnServer } from "@/lib/blossom/domain.api";
 
 export const Route = createFileRoute("/_app/moi")({
@@ -51,24 +40,6 @@ export const Route = createFileRoute("/_app/moi")({
  * MOI is not a settings dump.
  * Identity stage · Léo's private memory · preuves · courage atmosphere.
  */
-function downloadSessionCalendar(session: {
-  id: string;
-  title: string;
-  startsAt: string;
-  durationMinutes: number;
-  teacherName: string;
-  learnerName: string;
-}) {
-  const ics = teacherSessionToIcs(session);
-  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = calendarFilename(session.title);
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
 function MoiPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Awaited<ReturnType<typeof getLearnerSessionsOnServer>>>([]);
@@ -86,7 +57,7 @@ function MoiPage() {
   const setOrgMode = useBlossom((s) => s.setOrgMode);
   const setAdminMode = useBlossom((s) => s.setAdminMode);
   const setChildMode = useBlossom((s) => s.setChildMode);
-  const { access, pending: accessPending } = useBlossomWorkspaceAccess();
+  const { access } = useBlossomWorkspaceAccess();
   const resetJourney = useBlossom((s) => s.resetJourney);
   const leoLetters = useBlossom((s) => s.leoLetters);
   const markLeoLetterRead = useBlossom((s) => s.markLeoLetterRead);
