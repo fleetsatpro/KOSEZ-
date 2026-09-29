@@ -142,3 +142,24 @@ test("production admin bootstrap fails closed and session material is never logg
 test("the custom rate-limit error is explicit 429", () => {
   assert.match(rateLimit, /readonly status = 429/);
 });
+
+test("concurrency and cancellation contracts cannot regress", () => {
+  assert.match(
+    domain,
+    /export async function startMissionRunSession[\s\S]*select id, mission_id, run_id from blossom_mission_run_session/,
+  );
+  assert.match(
+    domain,
+    /export async function endMissionRunSession[\s\S]*set status = \$3,[\s\S]*\[sessionId, userId, status\]/,
+  );
+  assert.match(
+    domain,
+    /export async function endMissionRunSession[\s\S]*status in \('completed', 'cancelled'\)/,
+  );
+  assert.match(
+    domain,
+    /export async function setTandemStatus[\s\S]*with mine as \([\s\S]*insert into blossom_tandem_connection[\s\S]*reciprocal as \(/,
+  );
+  assert.doesNotMatch(sync, /Promise\.race\(\[\s*applyMutation\(/);
+  assert.doesNotMatch(sync, /SYNC_TIMEOUT_MS/);
+});

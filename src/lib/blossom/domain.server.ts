@@ -862,21 +862,35 @@ export async function setTandemStatus(
     }
 
     const accepted = await sql.query(
-      "insert into blossom_tandem_connection (id, user_id, partner_user_id, status, metadata) values ($1::uuid, $2, $3, 'accepted', $4::jsonb) on conflict (user_id, partner_user_id) do update set status = 'accepted', metadata = excluded.metadata, updated_at = current_timestamp returning id, user_id, partner_user_id, status, metadata, created_at, updated_at",
+      `with mine as (
+        insert into blossom_tandem_connection
+          (id, user_id, partner_user_id, status, metadata)
+        values ($1::uuid, $2, $3, 'accepted', $4::jsonb)
+        on conflict (user_id, partner_user_id)
+        do update set
+          status = 'accepted',
+          metadata = excluded.metadata,
+          updated_at = current_timestamp
+        returning id, user_id, partner_user_id, status, metadata, created_at, updated_at
+      ),
+      reciprocal as (
+        insert into blossom_tandem_connection
+          (id, user_id, partner_user_id, status, metadata)
+        values ($5::uuid, $3, $2, 'accepted', $6::jsonb)
+        on conflict (user_id, partner_user_id)
+        do update set
+          status = 'accepted',
+          metadata = excluded.metadata,
+          updated_at = current_timestamp
+      )
+      select id, user_id, partner_user_id, status, metadata, created_at, updated_at
+      from mine`,
       [
         randomUUID(),
         userId,
         input.partnerUserId,
         JSON.stringify(input.metadata ?? {}),
-      ],
-    );
-
-    await sql.query(
-      "insert into blossom_tandem_connection (id, user_id, partner_user_id, status, metadata) values ($1::uuid, $2, $3, 'accepted', $4::jsonb) on conflict (user_id, partner_user_id) do update set status = 'accepted', metadata = excluded.metadata, updated_at = current_timestamp",
-      [
         randomUUID(),
-        input.partnerUserId,
-        userId,
         JSON.stringify({ reciprocal: true }),
       ],
     );
@@ -1238,7 +1252,7 @@ export async function startMissionRunSession(userId: string, missionId: string, 
   } catch (error) {
     if ((error as { code?: string })?.code !== "23505") throw error;
     const raced = await sql.query(
-      `select id, mission_id from blossom_mission_run_session
+      `select id, mission_id, run_id from blossom_mission_run_session
        where user_id = $1 and mission_id = $2 and status = 'active'
        order by created_at desc limit 1`,
       [userId, normalizedMissionId],
@@ -1261,7 +1275,7 @@ export async function endMissionRunSession(
   const sql = await getSql();
   const rows = await sql.query(
     `update blossom_mission_run_session
-     set status = 'completed',
+     set status = $3,
          ended_at = coalesce(ended_at, current_timestamp),
          duration_seconds = greatest(
            0,
@@ -1270,23 +1284,25 @@ export async function endMissionRunSession(
          updated_at = current_timestamp
      where id = $1::uuid and user_id = $2 and status = 'active'
      returning id, mission_id, status, ended_at, duration_seconds`,
-    [sessionId, userId],
+    [sessionId, userId, status],
   );
   if (!rows[0]) {
-    const completed = await sql.query(
+    const terminal = await sql.query(
       `select id, mission_id, status, ended_at, duration_seconds
        from blossom_mission_run_session
-       where id = $1::uuid and user_id = $2 and status = 'completed'
+       where id = $1::uuid
+         and user_id = $2
+         and status in ('completed', 'cancelled')
        limit 1`,
       [sessionId, userId],
     );
-    if (!completed[0]) throw new BlossomForbiddenError("Cette session de mission n\u0027est plus active.");
+    if (!terminal[0]) throw new BlossomForbiddenError("Cette session de mission n\u0027est plus active.");
     return {
-      id: String(completed[0].id),
-      missionId: String(completed[0].mission_id),
-      status: "completed" as const,
-      endedAt: new Date(String(completed[0].ended_at)).toISOString(),
-      durationSeconds: Math.max(0, Number(completed[0].duration_seconds ?? 0)),
+      id: String(terminal[0].id),
+      missionId: String(terminal[0].mission_id),
+      status: String(terminal[0].status) as "completed" | "cancelled",
+      endedAt: new Date(String(terminal[0].ended_at)).toISOString(),
+      durationSeconds: Math.max(0, Number(terminal[0].duration_seconds ?? 0)),
     };
   }
   return {
