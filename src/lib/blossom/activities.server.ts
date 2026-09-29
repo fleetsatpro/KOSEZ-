@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
 import { IMMERSION, PRONLAB_SETS, setsForLanguage, TODAY_MISSION } from "./data";
-import { LEARN_LANGUAGES, isLearnLanguageId } from "@/lib/i18n/locales";
+import { isLearnLanguageId } from "@/lib/i18n/locales";
 import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure } from "./lab-content";
 import type { JsonObject } from "./backend.server";
 import { getPublishedContent } from "./content.server";

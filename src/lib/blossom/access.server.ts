@@ -1,5 +1,3 @@
-import { getSql } from "@/lib/db";
-
 export class BlossomForbiddenError extends Error {
   readonly status = 403;
   constructor(message = "Forbidden") {
