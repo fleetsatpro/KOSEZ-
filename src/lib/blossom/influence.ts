@@ -15,7 +15,6 @@ import type {
   LearnerMemory,
   PronlabAttempt,
 } from "./engine.ts";
-import { summarisePronlabItem } from "./engine.ts";
 import type { MissionOutcome, MissionSession } from "./mission.ts";
 import { evaluateMission, summariseMissionHistory } from "./mission.ts";
 import {
