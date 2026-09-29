@@ -2,6 +2,7 @@ import { assertFeaturePlan, getServerPlan } from "./workspaces.server";
 import { writeAuditEvent, createNotification } from "./notifications.server";
 import { BlossomForbiddenError } from "./access.server";
 import { getSql } from "@/lib/db";
+import { randomUUID } from "node:crypto";
 import type { JsonObject } from "./backend.server";
 import { enforceRateLimit } from "./rate-limit.server";
 

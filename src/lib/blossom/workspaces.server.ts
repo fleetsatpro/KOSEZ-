@@ -1,5 +1,6 @@
 import type { TeacherWorkspaceLearner } from "./access.server";
 import type { OrganizationWorkspace } from "./tandem.server";
+import type { LearnerDetail } from "./booking.server";
 import { mapLearnerDetail } from "./booking.server";
 import { assertLearnerAccess } from "./access.server";
 import { BlossomForbiddenError } from "./access.server";

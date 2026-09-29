@@ -283,6 +283,8 @@ export async function updateAdminBooking(
       : null,
   };
 
+}
+
 export type LearnerDetail = {
   id: string;
   name: string;
@@ -350,6 +352,4 @@ export function mapLearnerDetail(
       createdAt: new Date(String(row.created_at)).toISOString(),
     })),
   };
-}
-
 }
