@@ -227,7 +227,7 @@ function SpeakRoom() {
     setClosing(true);
     setRewardUnavailable(false);
     try {
-      const session = await startSpeakSessionOnServer({ data: { roomId: room.id } });
+      const session = await startSpeakSessionOnServer({ data: { roomId: room.id, languageId } });
       serverSessionRef.current = session.id;
       completedServerSessionRef.current = false;
       if (!mountedRef.current) {
