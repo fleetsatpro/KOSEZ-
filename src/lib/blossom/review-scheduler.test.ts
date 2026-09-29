@@ -86,7 +86,7 @@ test("review plan isolates Pron'Lab, vocabulary and review history by language",
       seconds: 4,
       tip: "",
       createdAt: "2026-09-20T10:00:00.000Z",
-      metadata: {},
+      metadata: { languageId: "es" },
     },
     {
       id: "en-attempt",
@@ -95,7 +95,7 @@ test("review plan isolates Pron'Lab, vocabulary and review history by language",
       seconds: 4,
       tip: "",
       createdAt: "2026-09-20T10:00:00.000Z",
-      metadata: {},
+      metadata: { languageId: "en" },
     },
   ];
   const submissions: LearningSubmission[] = [
@@ -122,4 +122,32 @@ test("review plan isolates Pron'Lab, vocabulary and review history by language",
   assert.ok(!en.due.some((item) => item.sourceKey === `pron:${esItem.id}`));
   assert.ok(es.due.some((item) => item.sourceKey === "vocab:hola"));
   assert.ok(!en.due.some((item) => item.sourceKey === "vocab:hola"));
+});
+
+
+test("review intervals ignore identical source keys from another language", () => {
+  const submissions = [
+    {
+      ...submission("fr-old", "vocab:common", iso(8), true),
+      result: { correct: true, languageId: "fr" },
+    },
+    {
+      ...submission("fr-latest", "vocab:common", iso(2), true),
+      result: { correct: true, languageId: "fr" },
+    },
+    {
+      ...submission("en-latest", "vocab:common", iso(1), false),
+      result: { correct: false, languageId: "en" },
+    },
+  ];
+  const plan = buildReviewPlan(
+    submissions,
+    [],
+    [{ word: "common", gloss: "commun", metadata: { languageId: "fr" } }],
+    "2026-09-22T12:00:00.000Z",
+    "fr",
+  );
+  const item = plan.upcoming.find((entry) => entry.sourceKey === "vocab:common");
+  assert.ok(item);
+  assert.equal(item.intervalDays, 3);
 });

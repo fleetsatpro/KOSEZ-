@@ -40,7 +40,7 @@ export type LearnLanguageDef = {
   contentPacks: string[];
   speechLocale: string;
   blurb: Record<UiLocaleId, string>;
-  surfaces: Array<"pronlab" | "mission" | "osez" | "tandem" | "library" | "pulse">;
+  surfaces: Array<"pronlab" | "mission" | "osez" | "tandem" | "library" | "pulse" | "curriculum" | "labs">;
   levels: string[];
   culturalAnchor: Record<UiLocaleId, string>;
   switchImpact: Record<UiLocaleId, string>;
@@ -161,7 +161,7 @@ export const LEARN_LANGUAGES: LearnLanguageDef[] = [
     engine: "active",
     contentPacks: ["missions-a2", "missions-b1", "pronlab-en", "speak-rooms", "tandem-en"],
     speechLocale: "en-GB",
-    surfaces: ["pronlab", "mission", "osez", "tandem", "library", "pulse"],
+    surfaces: ["pronlab", "mission", "osez", "tandem", "library", "pulse", "curriculum", "labs"],
     levels: ["A1", "A2", "B1", "B2"],
     culturalAnchor: {
       fr: "Parcours principal du centre — anglais international, ancré Réunion.",
@@ -467,6 +467,7 @@ export function learnLanguageDef(id: string): LearnLanguageDef {
 export function isUiLocaleId(id: string): id is UiLocaleId {
   return UI_LOCALES.some((l) => l.id === id);
 }
+
 
 export function isLearnLanguageId(id: string): id is LearnLanguageId {
   return LEARN_LANGUAGES.some((l) => l.id === id);

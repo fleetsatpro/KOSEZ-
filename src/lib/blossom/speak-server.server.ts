@@ -1,6 +1,7 @@
 import type { GenerateInput, LivingRoom } from "./speak-engine.ts";
 import { generateLivingRoom, roomBriefForLlm } from "./speak-engine.ts";
 import { enforceRateLimit } from "./rate-limit.server";
+import { z } from "zod";
 
 type ServerTopicRequest = {
   topic: string;
@@ -30,6 +31,35 @@ type LlmRoomPayload = {
   culturalNote?: string;
   kit?: Array<{ phrase: string; use: string }>;
 };
+
+const LlmRoomPayloadSchema = z.object({
+  title: z.string().trim().min(1).max(120).optional(),
+  setting: z.string().trim().min(1).max(500).optional(),
+  cast: z.object({
+    role: z.string().trim().min(1).max(80),
+    name: z.string().trim().min(1).max(80),
+    stance: z.string().trim().min(1).max(160),
+  }).optional(),
+  pressure: z.object({
+    label: z.string().trim().min(1).max(80),
+    description: z.string().trim().min(1).max(220),
+  }).optional(),
+  turns: z.array(z.object({
+    speaker: z.enum(["ai", "you"]),
+    line: z.string().trim().max(260).optional(),
+    hint: z.string().trim().min(1).max(260),
+  })).min(4).max(10).optional(),
+  debrief: z.object({
+    strength: z.string().trim().min(1).max(320),
+    improvement: z.string().trim().min(1).max(320),
+    model: z.string().trim().min(1).max(260),
+  }).optional(),
+  culturalNote: z.string().trim().max(320).optional(),
+  kit: z.array(z.object({
+    phrase: z.string().trim().min(1).max(180),
+    use: z.string().trim().min(1).max(240),
+  })).max(6).optional(),
+}).strict();
 
 function env(key: string): string | undefined {
   const value = process.env[key]?.trim();
@@ -142,7 +172,8 @@ function extractJson(text: string): LlmRoomPayload | null {
   const end = text.lastIndexOf("}");
   if (start < 0 || end <= start) return null;
   try {
-    return JSON.parse(text.slice(start, end + 1)) as LlmRoomPayload;
+    const parsed = LlmRoomPayloadSchema.safeParse(JSON.parse(text.slice(start, end + 1)));
+    return parsed.success ? parsed.data : null;
   } catch {
     return null;
   }
@@ -217,7 +248,7 @@ export async function composeSpeakRoom(
 
   const brief = roomBriefForLlm(base);
   const system = [
-    "Generate safe, concise language-practice scenes for adult A2-B1 learners.",
+    "Generate a safe, concise language-practice scene for an adult learner. Match the requested CEFR level: " + (input.level ?? "A2") + ".",
     "The learner's selected topic is the semantic anchor; do not introduce sensitive personal-data requests.",
     "Reply ONLY with valid JSON. No markdown.",
     JSON.stringify({

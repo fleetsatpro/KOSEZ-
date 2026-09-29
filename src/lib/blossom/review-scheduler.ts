@@ -89,14 +89,18 @@ export function buildReviewPlan(
   // Target-language isolation: only Pron'Lab items for the active learning language.
   const pronItems = setsForLanguage(languageId).flatMap((set) => set.items);
   for (const item of pronItems) {
-    const summary = summarisePronlabItem(item.id, attempts);
+    const languageAttempts = attempts.filter((attempt) => {
+      const tagged = attempt.metadata?.languageId;
+      return typeof tagged === "string" ? tagged === languageId : languageId === "en";
+    });
+    const summary = summarisePronlabItem(item.id, languageAttempts);
     if (!summary.attemptCount) continue;
     const sourceKey = `pron:${item.id}`;
     const latest = latestReview(scopedSubmissions, sourceKey);
     const baseDue = latest
       ? addDays(latest.createdAt, intervalForSubmission(latest, scopedSubmissions))
       : addDays(
-          attempts.filter((attempt) => attempt.itemId === item.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]?.createdAt ?? now,
+          languageAttempts.filter((attempt) => attempt.itemId === item.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]?.createdAt ?? now,
           summary.struggling ? 1 : summary.mastered ? 7 : 3,
         );
     items.push({
@@ -123,7 +127,7 @@ export function buildReviewPlan(
     const latest = latestReview(scopedSubmissions, sourceKey);
     const anchor = latest?.createdAt ?? word.updatedAt ?? word.firstSavedAt ?? now;
     const dueAt = latest
-      ? addDays(latest.createdAt, intervalForSubmission(latest, submissions))
+      ? addDays(latest.createdAt, intervalForSubmission(latest, scopedSubmissions))
       : anchor;
     items.push({
       id: `review-word-${word.word}`,
@@ -146,7 +150,7 @@ export function buildReviewPlan(
   if (languageId === "en") for (const kit of TODAY_MISSION.scene?.languageKit ?? []) {
     const sourceKey = `mission:${kit.phrase}`;
     const latest = latestReview(scopedSubmissions, sourceKey);
-    const interval = latest ? intervalForSubmission(latest, submissions) : 0;
+    const interval = latest ? intervalForSubmission(latest, scopedSubmissions) : 0;
     const dueAt = latest ? addDays(latest.createdAt, interval) : now;
     items.push({
       id: `review-kit-${kit.phrase}`,

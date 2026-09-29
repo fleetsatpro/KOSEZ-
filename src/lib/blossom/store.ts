@@ -505,9 +505,14 @@ export const useBlossom = create<AppState>()(
             occurredAt: new Date().toISOString(),
           },
         });
+        // Optimistic activity is visible locally but must not feed progress
+        // or organism derivations until the server confirms it. The sync bridge
+        // will replace this pending copy with the server activity on success and
+        // remove it on rejection.
         const activityMetadata = {
           ...(metadata ?? {}),
           languageId: current.languageId,
+          syncState: "pending" as const,
         };
         const event = {
           id: mutation.mutationId,
@@ -619,7 +624,10 @@ export const useBlossom = create<AppState>()(
           assessment,
           provider: (evidenceMetadata?.provider as string | undefined) ?? (evidenceMetadata?.providerId as string | undefined) ?? "speech-evidence",
         };
-        const safeSeconds = Math.max(0, Math.round(seconds));
+        const safeSeconds = Math.round(seconds);
+        if (!Number.isFinite(safeSeconds) || safeSeconds <= 0 || safeSeconds > 3600) {
+          return null;
+        }
         const mutation = createMutation({
           operation: "pronlab.attempt",
           entityId: itemId,
@@ -636,7 +644,6 @@ export const useBlossom = create<AppState>()(
         };
         const nextAttempts = [...get().pronlabAttempts, attempt];
         void enqueueMutation(mutation);
-        const allItems = PRONLAB_SETS.flatMap((s) => s.items);
         const phonemeLeaves = buildPhonemeLeaves(nextAttempts, setsForLanguage(get().languageId).flatMap((s) => s.items));
         set({ pronlabAttempts: nextAttempts, phonemeLeaves });
         track("pronlab_attempted", { itemId, assessment, score: scoreFromEvidence, seconds: safeSeconds });

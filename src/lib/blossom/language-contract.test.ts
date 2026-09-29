@@ -35,3 +35,12 @@ test("surface capabilities match the actual language contract", async () => {
   assert.equal(canUseLearningSurface("lsf", "mission"), false);
   assert.equal(canUseLearningSurface("lsf", "library"), false);
 });
+
+
+test("curriculum and labs capability is explicit", async () => {
+  const { canUseLearningSurface } = await import("../i18n/locales.ts");
+  assert.equal(canUseLearningSurface("en", "curriculum"), true);
+  assert.equal(canUseLearningSurface("en", "labs"), true);
+  assert.equal(canUseLearningSurface("fr", "curriculum"), false);
+  assert.equal(canUseLearningSurface("fr", "labs"), false);
+});

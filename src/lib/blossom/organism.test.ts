@@ -162,3 +162,21 @@ it("causal gesture resolves supported child door before filtering", () => {
   assert.equal(gesture.mineral, "parole");
   assert.equal(gesture.door, "/osez/pulse");
 });
+
+
+it("pending activity does not nourish organism minerals", () => {
+  const pending: ActivityEvent = {
+    id: "pending-mineral",
+    type: "MISSION_COMPLETED",
+    createdAt: new Date().toISOString(),
+    sourceId: "pending",
+    metadata: { syncState: "pending" },
+  };
+  const confirmed: ActivityEvent = {
+    ...pending,
+    id: "confirmed-mineral",
+    metadata: undefined,
+  };
+  assert.equal(computeMinerals([pending]).mission, 0);
+  assert.ok(computeMinerals([confirmed]).mission > 0);
+});

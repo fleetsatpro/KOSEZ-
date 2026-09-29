@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EVENTS, planAllows } from "@/lib/blossom/data";
 import { getConnectPeersOnServer } from "@/lib/blossom/domain.api";
 import { useBlossom } from "@/lib/blossom/store";
-import { formatShortDate } from "@/lib/utils";
+import { formatShortDate, parseKosezEventDate } from "@/lib/utils";
 import { causalNextGesture } from "@/lib/blossom/organism";
 import { ConversationPanel } from "@/components/app/conversation-panel";
 
@@ -56,7 +56,7 @@ function ConnectPage() {
     () =>
       EVENTS.filter(
         (event) =>
-          new Date(`${event.date}T${event.time}:00Z`).getTime() > Date.now(),
+          parseKosezEventDate(event.date, event.time).getTime() > Date.now(),
       ).slice(0, 4),
     [],
   );
