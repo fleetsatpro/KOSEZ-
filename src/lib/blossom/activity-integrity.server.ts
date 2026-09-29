@@ -35,21 +35,6 @@ function missionRunHasReflection(value: unknown): boolean {
   );
 }
 
-function hasCompletedMissionSession(value: unknown): boolean {
-  const session = jsonObject(value);
-  if (!Array.isArray(session.runs)) return false;
-  return session.runs.some((runValue) => {
-    const run = jsonObject(runValue);
-    return (
-      typeof run.id === "string" &&
-      typeof run.completedAt === "string" &&
-      Boolean(run.completedAt) &&
-      missionRunHasReflection(run) &&
-      missionRunHasMissionAttempt(run)
-    );
-  });
-}
-
 function missionRunById(value: unknown, runId: string): Record<string, unknown> | null {
   const session = jsonObject(value);
   if (!Array.isArray(session.runs)) return null;
