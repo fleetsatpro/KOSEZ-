@@ -236,6 +236,190 @@ const FLOWER_LABELS = [
   "Le sol accueille une rencontre.",
   "Une lecture s'épanouit en geste.",
 ] as const;
+
+function pickLabel(pool: readonly string[], seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return pool[h % pool.length]!;
+}
+
+export function growthEventForActivity(
+  type: ActivityType,
+  sourceId: string | undefined,
+  at: string,
+): GrowthEvent | null {
+  const id = `ge-${type}-${sourceId ?? "x"}-${at}`;
+  const seed = `${type}|${sourceId ?? ""}|${at.slice(0, 13)}`;
+  switch (type) {
+    case "MISSION_COMPLETED":
+    case "REAL_WORLD_BONUS":
+      return {
+        id,
+        at,
+        kind: "root",
+        sourceId,
+        intensity: type === "REAL_WORLD_BONUS" ? 0.92 : 0.72,
+        label: pickLabel(ROOT_LABELS, seed),
+        mineral: "mission",
+      };
+    case "SPEAK_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "stem",
+        sourceId,
+        intensity: 0.66,
+        label: pickLabel(STEM_LABELS, seed),
+        mineral: "parole",
+      };
+    case "TANDEM_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "flower",
+        sourceId,
+        intensity: 0.84,
+        label: "Une présence partagée fleurit.",
+        mineral: "social",
+      };
+    case "PRONLAB_MASTERY":
+      return {
+        id,
+        at,
+        kind: "leaf",
+        sourceId,
+        intensity: 0.88,
+        label: pickLabel(LEAF_LABELS, seed),
+        mineral: "pron",
+      };
+    case "PRONLAB_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "mineral",
+        sourceId,
+        intensity: 0.42,
+        label: "Le sol retient un son.",
+        mineral: "pron",
+      };
+    case "GRAMMAR_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "leaf",
+        sourceId,
+        intensity: 0.58,
+        label: "Une structure tient mieux.",
+        mineral: "atelier",
+      };
+    case "LISTENING_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "leaf",
+        sourceId,
+        intensity: 0.58,
+        label: "Une oreille capte mieux l'essentiel.",
+        mineral: "atelier",
+      };
+    case "WRITING_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "leaf",
+        sourceId,
+        intensity: 0.62,
+        label: "Une pensée devient une trace.",
+        mineral: "atelier",
+      };
+    case "REVIEW_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "leaf",
+        sourceId,
+        intensity: 0.5,
+        label: "Une trace revient en circulation.",
+        mineral: "atelier",
+      };
+    case "CURRICULUM_EVIDENCE_RECORDED":
+      return null;
+    case "LIBRARY_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "flower",
+        sourceId,
+        intensity: 0.62,
+        label: pickLabel(FLOWER_LABELS, seed),
+        mineral: "atelier",
+      };
+    case "HOMEWORK_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "leaf",
+        sourceId,
+        intensity: 0.5,
+        label: "Une trace écrite rejoint l'atelier.",
+        mineral: "atelier",
+      };
+    case "LESSON_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "mineral",
+        sourceId,
+        intensity: 0.28,
+        label: "Une pratique prend racine.",
+        mineral: "atelier",
+      };
+    case "DIAGNOSTIC_COMPLETED":
+      return {
+        id,
+        at,
+        kind: "mineral",
+        sourceId,
+        intensity: 0.24,
+        label: "Le repère affine le prochain terrain.",
+        mineral: "atelier",
+      };
+    case "CLASS_ATTENDED":
+    case "EVENT_ATTENDED":
+    case "IMMERSION_ATTENDED":
+      return {
+        id,
+        at,
+        kind: "flower",
+        sourceId,
+        intensity: 0.74,
+        label: pickLabel(FLOWER_LABELS, seed),
+        mineral: "social",
+      };
+    default:
+      return {
+        id,
+        at,
+        kind: "mineral",
+        sourceId,
+        intensity: 0.35,
+        label: "La terre s'en souvient.",
+      };
+  }
+}
+
+export function pushGrowthEvent(
+  events: GrowthEvent[],
+  next: GrowthEvent,
+  cap = 30,
+): GrowthEvent[] {
+  const withoutDup = events.filter((e) => e.id !== next.id);
+  return [next, ...withoutDup].slice(0, cap);
+}
+
+export function courageDaysFromLog(log: ActivityEvent[]): string[] {
+  // Evidence-first: only verified speaking days, not tandem/social or manual missions.
+  const speakTypes: ActivityType[] = ["SPEAK_COMPLETED"];
   const set = new Set<string>();
   for (const e of log) {
     if (!speakTypes.includes(e.type)) continue;
