@@ -30,6 +30,7 @@ import { ConversationPanel } from "@/components/app/conversation-panel";
 import { ConversationInbox } from "@/components/app/conversation-inbox";
 import { LearnerFeedback } from "@/components/app/learner-feedback";
 import { OrganismMineralsPanel } from "@/components/app/organism-minerals-panel";
+import { calendarFilename, teacherSessionToIcs } from "@/lib/blossom/calendar";
 import { getLearnerSessionsOnServer } from "@/lib/blossom/domain.api";
 
 export const Route = createFileRoute("/_app/moi")({
@@ -40,6 +41,24 @@ export const Route = createFileRoute("/_app/moi")({
  * MOI is not a settings dump.
  * Identity stage · Léo's private memory · preuves · courage atmosphere.
  */
+function downloadSessionCalendar(session: {
+  id: string;
+  title: string;
+  startsAt: string;
+  durationMinutes: number;
+  teacherName: string;
+  learnerName: string;
+}) {
+  const ics = teacherSessionToIcs(session);
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = calendarFilename(session.title);
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 function MoiPage() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Awaited<ReturnType<typeof getLearnerSessionsOnServer>>>([]);
