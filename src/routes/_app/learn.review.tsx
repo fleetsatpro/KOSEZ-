@@ -74,7 +74,7 @@ function Review() {
     setRevealed(false);
     setDone(false);
     setCeremony(null);
-  }, [languageId]);
+  }, [initial]);
 
   const current = queue[0];
   const total = sessionTotal;
