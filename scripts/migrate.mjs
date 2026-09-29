@@ -54,7 +54,14 @@ async function main() {
 
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
   const client = await pool.connect();
+  const lockKey = "kosez:migrations:v1";
+  let lockAcquired = false;
   try {
+    await client.query(
+      "SELECT pg_advisory_lock(hashtextextended($1, 0))",
+      [lockKey],
+    );
+    lockAcquired = true;
     await client.query(
       "CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())",
     );
@@ -85,6 +92,16 @@ async function main() {
     }
     console.log(count ? `[migrate] done — ${count} migration(s) applied.` : "[migrate] up to date.");
   } finally {
+    if (lockAcquired) {
+      try {
+        await client.query(
+          "SELECT pg_advisory_unlock(hashtextextended($1, 0))",
+          [lockKey],
+        );
+      } catch {
+        // Connection death releases the session-level advisory lock.
+      }
+    }
     client.release();
     await pool.end();
   }
