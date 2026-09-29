@@ -1,5 +1,5 @@
 import { getSql } from "@/lib/db";
-import { isLearnLanguageId, isLearnSurfaceAvailable } from "@/lib/i18n/locales";
+import { canUseLearningSurface, isLearnLanguageId } from "@/lib/i18n/locales";
 import { CURRICULUM_UNITS, type LessonKind } from "./learning-os";
 import { LIBRARY, PRONLAB_SETS, setsForLanguage } from "./data";
 import { EXTRA_LIBRARY } from "./library-extra";
@@ -279,7 +279,7 @@ export async function assertCurriculumEvidence(
   );
   const rawLanguageId = String(profile[0]?.target_language ?? "en");
   const languageId = isLearnLanguageId(rawLanguageId) ? rawLanguageId : "en";
-  if (!isLearnSurfaceAvailable(languageId, "curriculum")) {
+  if (!canUseLearningSurface(languageId, "curriculum")) {
     throw new Error("curriculum-language-unavailable");
   }
 
