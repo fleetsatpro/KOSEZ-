@@ -95,6 +95,18 @@ export type TeacherWorkspaceLearner = {
   pronlabBest: number;
 };
 
+
+export type BlossomNotification = {
+  id: string;
+  kind: "homework" | "booking" | "event" | "tandem" | "learning" | "system" | "communication";
+  title: string;
+  body: string;
+  href: string | null;
+  metadata: JsonObject;
+  readAt: string | null;
+  createdAt: string;
+};
+
 export async function getTeacherWorkspace(userId: string): Promise<TeacherWorkspaceLearner[]> {
   const sql = await getSql();
   const rows = await sql.query(
