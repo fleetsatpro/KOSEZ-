@@ -62,6 +62,7 @@ function countTypes(
   terrainBonus = false,
 ): number {
   return log.reduce((sum, e) => {
+    if (e.metadata?.syncState === "pending") return sum;
     if (!inRollingWindow(e.createdAt)) return sum;
     if (!types.includes(e.type)) return sum;
     let w = 1;
