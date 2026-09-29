@@ -92,17 +92,17 @@ async function resolveUserIdentity(userId: string): Promise<{ email: string | nu
 
 export const getTeacherSessionsOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ limit: z.number().int().min(1).max(50).optional() }).optional())
+  .validator(z.object({ limit: z.number().int().min(1).max(50).optional() }).optional())
   .handler(async ({ context, data }) => getTeacherSessions(context.userId, data?.limit ?? 20));
 
 export const getLearnerSessionsOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ limit: z.number().int().min(1).max(50).optional() }).optional())
+  .validator(z.object({ limit: z.number().int().min(1).max(50).optional() }).optional())
   .handler(async ({ context, data }) => getLearnerSessions(context.userId, data?.limit ?? 20));
 
 export const getGuardianSessionsOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       learnerUserId: z.string().trim().min(1).max(200),
       limit: z.number().int().min(1).max(50).optional(),
@@ -114,7 +114,7 @@ export const getGuardianSessionsOnServer = createServerFn({ method: "GET" })
 
 export const createTeacherSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       learnerUserId: z.string().trim().min(1).max(200),
       title: z.string().trim().min(1).max(180),
@@ -127,14 +127,14 @@ export const createTeacherSessionOnServer = createServerFn({ method: "POST" })
 
 export const cancelTeacherSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ sessionId: z.string().uuid() }))
+  .validator(z.object({ sessionId: z.string().uuid() }))
   .handler(async ({ context, data }) =>
     cancelTeacherSession(context.userId, data.sessionId),
   );
 
 export const startMissionRunSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({
+  .validator(z.object({
     missionId: z.string().trim().min(1).max(200),
     runId: z.string().trim().min(1).max(200),
   }))
@@ -144,7 +144,7 @@ export const startMissionRunSessionOnServer = createServerFn({ method: "POST" })
 
 export const endMissionRunSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       sessionId: z.string().uuid(),
       status: z.enum(["completed", "cancelled"]).default("completed"),
@@ -156,7 +156,7 @@ export const endMissionRunSessionOnServer = createServerFn({ method: "POST" })
 
 export const startSpeakSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({
+  .validator(z.object({
     roomId: z.string().trim().min(2).max(120),
     languageId: z.string().trim().min(2).max(16),
   }))
@@ -166,7 +166,7 @@ export const startSpeakSessionOnServer = createServerFn({ method: "POST" })
 
 export const finalizeSpeakSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       sessionId: z.string().uuid(),
       spokenSeconds: z.number().int().nonnegative().max(14400).optional(),
@@ -181,7 +181,7 @@ export const finalizeSpeakSessionOnServer = createServerFn({ method: "POST" })
 
 export const endSpeakSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({
+  .validator(z.object({
     sessionId: z.string().uuid(),
     status: z.enum(["completed", "cancelled"]),
   }))
@@ -191,14 +191,14 @@ export const endSpeakSessionOnServer = createServerFn({ method: "POST" })
 
 export const startPulseSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ dareId: z.string().trim().min(1).max(200) }))
+  .validator(z.object({ dareId: z.string().trim().min(1).max(200) }))
   .handler(async ({ context, data }) =>
     startPulseSession(context.userId, data.dareId),
   );
 
 export const endPulseSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       sessionId: z.string().uuid(),
       status: z.enum(["completed", "cancelled"]),
@@ -215,7 +215,7 @@ export const getAdminWorkspaceOnServer = createServerFn({ method: "GET" })
 
 export const updateAdminSafetyReportOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       reportId: z.string().uuid(),
       status: z.enum(["reviewing", "resolved", "dismissed"]),
@@ -231,7 +231,7 @@ export const getAdminSafetyCasesOnServer = createServerFn({ method: "GET" })
 
 export const updateAdminSafetyCaseOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       caseId: z.string().uuid(),
       type: z.enum(["tandem", "message"]),
@@ -248,7 +248,7 @@ export const getAdminMessageReportsOnServer = createServerFn({ method: "GET" })
 
 export const updateAdminMessageReportOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       reportId: z.string().uuid(),
       status: z.enum(["reviewing", "resolved", "dismissed"]),
@@ -291,12 +291,12 @@ export const getBlossomWorkspaceAccess = createServerFn({ method: "GET" })
 
 export const listPlatformUsersOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ limit: z.number().int().min(1).max(200).optional() }).optional())
+  .validator(z.object({ limit: z.number().int().min(1).max(200).optional() }).optional())
   .handler(async ({ context, data }) => listPlatformUsers(context.userId, data?.limit ?? 80));
 
 export const setUserPlatformRoleOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       targetUserId: z.string().trim().min(1).max(200),
       role: z.enum(["admin", "teacher", "org_staff"]),
@@ -317,7 +317,7 @@ export const getTandemCandidatesOnServer = createServerFn({ method: "GET" })
 
 export const getTandemSessionOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ partnerUserId: z.string().trim().min(1).max(200) }))
+  .validator(z.object({ partnerUserId: z.string().trim().min(1).max(200) }))
   .handler(async ({ context, data }) =>
     getTandemSession(context.userId, data.partnerUserId),
   );
@@ -328,7 +328,7 @@ export const getAdminEventAttendanceOnServer = createServerFn({ method: "GET" })
 
 export const recordEventAttendanceOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       eventId: z.string().trim().min(1).max(200),
       learnerUserId: z.string().trim().min(1).max(200),
@@ -353,7 +353,7 @@ export const getSavedExploreItemsOnServer = createServerFn({ method: "GET" })
 
 export const toggleSavedExploreItemOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       itemType: z.enum(["event", "catalogue"]),
       itemId: z.string().trim().min(1).max(200),
@@ -363,14 +363,14 @@ export const toggleSavedExploreItemOnServer = createServerFn({ method: "POST" })
 
 export const getOrganizationGroupsOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ organizationId: z.string().uuid() }))
+  .validator(z.object({ organizationId: z.string().uuid() }))
   .handler(async ({ context, data }) =>
     getOrganizationGroups(context.userId, data.organizationId),
   );
 
 export const createOrganizationGroupOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       organizationId: z.string().uuid(),
       name: z.string().trim().min(2).max(100),
@@ -384,7 +384,7 @@ export const createOrganizationGroupOnServer = createServerFn({ method: "POST" }
 
 export const setOrganizationGroupTeacherOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       groupId: z.string().uuid(),
       teacherUserId: z.string().trim().min(1).max(200).nullable(),
@@ -396,7 +396,7 @@ export const setOrganizationGroupTeacherOnServer = createServerFn({ method: "POS
 
 export const addOrganizationGroupMemberOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       groupId: z.string().uuid(),
       learnerUserId: z.string().trim().min(1).max(200),
@@ -408,7 +408,7 @@ export const addOrganizationGroupMemberOnServer = createServerFn({ method: "POST
 
 export const removeOrganizationGroupMemberOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       groupId: z.string().uuid(),
       learnerUserId: z.string().trim().min(1).max(200),
@@ -420,7 +420,7 @@ export const removeOrganizationGroupMemberOnServer = createServerFn({ method: "P
 
 export const archiveOrganizationGroupOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ groupId: z.string().uuid() }))
+  .validator(z.object({ groupId: z.string().uuid() }))
   .handler(async ({ context, data }) =>
     archiveOrganizationGroup(context.userId, data.groupId),
   );
@@ -435,7 +435,7 @@ export const getNotificationPreferencesOnServer = createServerFn({ method: "GET"
 
 export const setNotificationPreferenceOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       kind: z.enum([
         "homework",
@@ -458,12 +458,12 @@ export const setNotificationPreferenceOnServer = createServerFn({ method: "POST"
 
 export const getNotificationsOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ limit: z.number().int().min(1).max(100).optional() }).optional())
+  .validator(z.object({ limit: z.number().int().min(1).max(100).optional() }).optional())
   .handler(async ({ context, data }) => getNotifications(context.userId, data?.limit ?? 30));
 
 export const markNotificationReadOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ notificationId: z.string().uuid() }))
+  .validator(z.object({ notificationId: z.string().uuid() }))
   .handler(async ({ context, data }) => markNotificationRead(context.userId, data.notificationId));
 
 export const getAdminBookingQueueOnServer = createServerFn({ method: "GET" })
@@ -472,7 +472,7 @@ export const getAdminBookingQueueOnServer = createServerFn({ method: "GET" })
 
 export const updateAdminBookingOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       bookingId: z.string().uuid(),
       status: z.enum(["requested", "confirmed", "cancelled"]).optional(),
@@ -484,28 +484,28 @@ export const updateAdminBookingOnServer = createServerFn({ method: "POST" })
 
 export const getTeacherLearnerDetailOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ learnerUserId: z.string().trim().min(1).max(200) }))
+  .validator(z.object({ learnerUserId: z.string().trim().min(1).max(200) }))
   .handler(async ({ context, data }) =>
     getTeacherLearnerDetail(context.userId, data.learnerUserId),
   );
 
 export const getGuardianLearnerDetailOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ learnerUserId: z.string().trim().min(1).max(200) }))
+  .validator(z.object({ learnerUserId: z.string().trim().min(1).max(200) }))
   .handler(async ({ context, data }) =>
     getGuardianLearnerDetail(context.userId, data.learnerUserId),
   );
 
 export const startTandemSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ partnerUserId: z.string().trim().min(1).max(200) }))
+  .validator(z.object({ partnerUserId: z.string().trim().min(1).max(200) }))
   .handler(async ({ context, data }) =>
     startTandemSession(context.userId, data.partnerUserId),
   );
 
 export const logTandemPromptOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       sessionId: z.string().uuid(),
       language: z.string().trim().min(1).max(80),
@@ -516,7 +516,7 @@ export const logTandemPromptOnServer = createServerFn({ method: "POST" })
 
 export const endTandemSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       sessionId: z.string().uuid(),
       status: z.enum(["completed", "cancelled"]),
@@ -536,7 +536,7 @@ export const listConversationsOnServer = createServerFn({ method: "GET" })
 
 export const getOrCreateConversationOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       kind: z.enum(["tandem", "teacher", "support"]),
       partnerUserId: z.string().trim().min(1).max(200).optional(),
@@ -548,7 +548,7 @@ export const getOrCreateConversationOnServer = createServerFn({ method: "POST" }
 
 export const getConversationMessagesOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       conversationId: z.string().uuid(),
       limit: z.number().int().min(1).max(100).optional(),
@@ -560,7 +560,7 @@ export const getConversationMessagesOnServer = createServerFn({ method: "GET" })
 
 export const sendConversationMessageOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       conversationId: z.string().uuid(),
       body: z.string().trim().min(1).max(4000),
@@ -573,14 +573,14 @@ export const sendConversationMessageOnServer = createServerFn({ method: "POST" }
 
 export const markConversationReadOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ conversationId: z.string().uuid() }))
+  .validator(z.object({ conversationId: z.string().uuid() }))
   .handler(async ({ context, data }) =>
     markConversationRead(context.userId, data.conversationId),
   );
 
 export const reportConversationMessageOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       conversationId: z.string().uuid(),
       messageId: z.string().uuid(),
@@ -595,14 +595,14 @@ export const getSupportInboxOnServer = createServerFn({ method: "GET" })
 
 export const getLearningFeedbackBundleOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ learnerUserId: z.string().trim().min(1).max(200), limit: z.number().int().min(1).max(50).optional() }))
+  .validator(z.object({ learnerUserId: z.string().trim().min(1).max(200), limit: z.number().int().min(1).max(50).optional() }))
   .handler(async ({ context, data }) =>
     getLearningFeedbackBundle(context.userId, data.learnerUserId, data.limit ?? 24),
   );
 
 export const saveLearningFeedbackOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       submissionId: z.string().uuid(),
       learnerUserId: z.string().trim().min(1).max(200),
@@ -613,14 +613,14 @@ export const saveLearningFeedbackOnServer = createServerFn({ method: "POST" })
 
 export const getLearnerFeedbackOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ learnerUserId: z.string().trim().min(1).max(200).optional(), limit: z.number().int().min(1).max(50).optional() }).optional())
+  .validator(z.object({ learnerUserId: z.string().trim().min(1).max(200).optional(), limit: z.number().int().min(1).max(50).optional() }).optional())
   .handler(async ({ context, data }) =>
     getLearnerFeedback(context.userId, data?.learnerUserId ?? context.userId, data?.limit ?? 24),
   );
 
 export const getEvidenceTimelineOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       learnerUserId: z.string().trim().min(1).max(200).optional(),
       limit: z.number().int().min(1).max(120).optional(),
@@ -643,7 +643,7 @@ function parseJsonObject(value: string | undefined): JsonObject {
 
 export const recordPronlabAttemptOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       itemId: z.string().trim().min(1).max(120),
       score: z.number().int().min(0).max(100),
@@ -663,7 +663,7 @@ export const recordPronlabAttemptOnServer = createServerFn({ method: "POST" })
 
 export const saveVocabularyOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       word: z.string().trim().min(1).max(120),
       gloss: z.string().trim().min(1).max(240),
@@ -680,7 +680,7 @@ export const saveVocabularyOnServer = createServerFn({ method: "POST" })
 
 export const setTandemStatusOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       partnerUserId: z.string().trim().min(1).max(200),
       status: z.enum(["suggested", "pending", "accepted", "blocked", "paused"]),
@@ -697,7 +697,7 @@ export const setTandemStatusOnServer = createServerFn({ method: "POST" })
 
 export const registerBlossomEvent = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       eventId: z.string().trim().min(1).max(120),
       status: z.enum(["joined", "waitlist", "cancelled"]),
@@ -710,7 +710,7 @@ export const registerBlossomEvent = createServerFn({ method: "POST" })
 
 export const completeBlossomChallenge = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ challengeId: z.string().trim().min(1).max(120) }))
+  .validator(z.object({ challengeId: z.string().trim().min(1).max(120) }))
   .handler(async ({ context, data }) => {
     await completeChallenge(context.userId, data.challengeId);
     return { ok: true as const };
@@ -718,7 +718,7 @@ export const completeBlossomChallenge = createServerFn({ method: "POST" })
 
 export const saveBlossomHomework = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       id: z.string().uuid().optional(),
       learnerUserId: z.string().trim().min(1).max(200),
@@ -734,7 +734,7 @@ export const saveBlossomHomework = createServerFn({ method: "POST" })
 
 export const saveBlossomTeacherNote = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(
+  .validator(
     z.object({
       learnerUserId: z.string().trim().min(1).max(200),
       tags: z.array(z.string().trim().min(1).max(60)).max(20),
