@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { calendarFilename, teacherSessionToIcs } from "./calendar.ts";
-import { parseKosezEventDate } from "@/lib/utils";
+import { parseKosezEventDate } from "../utils.ts";
 
 const session = {
   id: "session-123",
