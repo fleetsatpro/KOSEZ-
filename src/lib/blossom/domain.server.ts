@@ -1859,7 +1859,26 @@ export async function endTandemSession(
      returning id, status, ended_at, duration_seconds`,
     [sessionId, status, userId],
   );
-  if (!rows[0]) throw new BlossomForbiddenError("Cette session tandem n'est plus active.");
+  if (!rows[0]) {
+    const terminal = await sql.query(
+      `select id, user_id, partner_user_id , status, ended_at, duration_seconds
+       from blossom_tandem_session
+       where id = $1::uuid
+         and (user_id = $2 or partner_user_id = $2)
+         
+         and status in ('completed', 'cancelled')
+       limit 1`,
+      [sessionId, userId],
+    );
+    if (!terminal[0]) throw new BlossomForbiddenError("Cette session tandem n'est plus active.");
+    return {
+      id: String(terminal[0].id),
+      
+      status: String(terminal[0].status) as "completed" | "cancelled",
+      endedAt: new Date(String(terminal[0].ended_at)).toISOString(),
+      durationSeconds: Math.max(0, Number(terminal[0].duration_seconds ?? 0)),
+    };
+  }
   await writeAuditEvent(userId, {
     action: `tandem.session.${status}`,
     resourceType: "tandem_session",
@@ -2145,7 +2164,26 @@ export async function endPulseSession(
      returning id, dare_id, status, ended_at, duration_seconds`,
     [sessionId, status, userId],
   );
-  if (!rows[0]) throw new BlossomForbiddenError("Cette impulsion n\u0027est plus active.");
+  if (!rows[0]) {
+    const terminal = await sql.query(
+      `select id, dare_id, status, ended_at, duration_seconds
+       from blossom_pulse_session
+       where id = $1::uuid
+         and user_id
+         and user_id = $2
+         and status in ('completed', 'cancelled')
+       limit 1`,
+      [sessionId, userId],
+    );
+    if (!terminal[0]) throw new BlossomForbiddenError("Cette impulsion n'est plus active.");
+    return {
+      id: String(terminal[0].id),
+      dareId: String(terminal[0].dare_id),
+      status: String(terminal[0].status) as "completed" | "cancelled",
+      endedAt: new Date(String(terminal[0].ended_at)).toISOString(),
+      durationSeconds: Math.max(0, Number(terminal[0].duration_seconds ?? 0)),
+    };
+  }
   return {
     id: String(rows[0].id),
     dareId: String(rows[0].dare_id),

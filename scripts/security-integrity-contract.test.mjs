@@ -180,3 +180,24 @@ test("late-unmount mission cleanup never completes a reward session", () => {
     /if \(!mountedRef\.current\)[\s\S]*endMissionRunSessionOnServer\(\{[\s\S]*status: "cancelled"/,
   );
 });
+
+test("Pulse and Tandem terminal session closures are idempotent and reward only completed sessions", () => {
+  assert.match(
+    domain,
+    /export async function endPulseSession[\s\S]*status in \('completed', 'cancelled'\)/,
+  );
+  assert.match(
+    domain,
+    /export async function endTandemSession[\s\S]*status in \('completed', 'cancelled'\)/,
+  );
+  const pulse = read("src/routes/_app/osez.pulse.tsx");
+  assert.match(
+    pulse,
+    /endPulseSessionOnServer[\s\S]*closure\.status !== "completed"/,
+  );
+  const tandem = read("src/routes/_app/tandem.$id.tsx");
+  assert.match(
+    tandem,
+    /endTandemSessionOnServer[\s\S]*closure\.status !== "completed"/,
+  );
+});

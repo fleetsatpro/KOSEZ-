@@ -133,6 +133,9 @@ function PulseExperience({ languageId }: { languageId: LearnLanguageId }) {
         const closure = await endPulseSessionOnServer({
           data: { sessionId: serverSessionId, status: "completed" },
         });
+        if (closure.status !== "completed") {
+          throw new Error("pulse-session-not-completed");
+        }
         authoritativeSeconds = closure.durationSeconds;
         completedServerSessionRef.current = true;
         serverSessionRef.current = null;
