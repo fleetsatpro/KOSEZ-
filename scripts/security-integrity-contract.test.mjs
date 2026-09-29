@@ -205,9 +205,9 @@ test("Pulse and Tandem terminal session closures are idempotent and reward only 
     pulse,
     /endPulseSessionOnServer[\s\S]*closure\.status !== "completed"/,
   );
-  const tandem = read("src/routes/_app/tandem.$id.tsx");
+  const tandemPage = read("src/routes/_app/tandem.$id.tsx");
   assert.match(
-    tandem,
+    tandemPage,
     /endTandemSessionOnServer[\s\S]*closure\.status !== "completed"/,
   );
 });
