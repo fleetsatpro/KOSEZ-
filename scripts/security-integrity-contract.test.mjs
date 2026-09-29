@@ -163,3 +163,12 @@ test("concurrency and cancellation contracts cannot regress", () => {
   assert.doesNotMatch(sync, /Promise\.race\(\[\s*applyMutation\(/);
   assert.doesNotMatch(sync, /SYNC_TIMEOUT_MS/);
 });
+
+test("mission reward requires a completed server run session", () => {
+  const theatre = read("src/components/app/mission-theatre-experience.tsx");
+  assert.match(
+    theatre,
+    /endMissionRunSessionOnServer[\s\S]*ended\.missionId !== todayMission\.id \|\| ended\.status !== "completed"/,
+  );
+  assert.match(theatre, /rewardSourceId = `mission-session-\${ended\.id}`;/);
+});

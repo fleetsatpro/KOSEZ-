@@ -236,8 +236,8 @@ export function MissionTheatreExperience() {
         const ended = await endMissionRunSessionOnServer({
           data: { sessionId: serverRunSessionId, status: "completed" },
         });
-        if (ended.missionId !== todayMission.id) {
-          throw new Error("mission-session-mismatch");
+        if (ended.missionId !== todayMission.id || ended.status !== "completed") {
+          throw new Error("mission-session-not-completed");
         }
         rewardSourceId = `mission-session-${ended.id}`;
         completedServerRunRef.current = true;
