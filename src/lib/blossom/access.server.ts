@@ -1,4 +1,4 @@
-import { getSql } from "@/lib/db";
+import { getSql, withAuthedSql } from "@/lib/db";
 
 export class BlossomForbiddenError extends Error {
   readonly status = 403;
@@ -90,16 +90,25 @@ async function canActForLearner(
   relation: "teacher" | "guardian",
 ): Promise<boolean> {
   if (actorUserId === learnerUserId) return relation === "guardian";
-  const sql = await getSql();
 
-  const table =
-    relation === "teacher" ? "blossom_teacher_link" : "blossom_guardian_link";
-  const rows = await sql.query(
-    "select 1 from " + table + " where " +
-      (relation === "teacher" ? "teacher_user_id" : "guardian_user_id") +
-      " = $1 and learner_user_id = $2 and status = 'active' limit 1",
-    [actorUserId, learnerUserId],
-  );
+  const query = async (sql: Awaited<ReturnType<typeof getSql>>) => {
+    const table =
+      relation === "teacher" ? "blossom_teacher_link" : "blossom_guardian_link";
+    return sql.query(
+      "select 1 from " + table + " where " +
+        (relation === "teacher" ? "teacher_user_id" : "guardian_user_id") +
+        " = $1 and learner_user_id = $2 and status = 'active' limit 1",
+      [actorUserId, learnerUserId],
+    );
+  };
+
+  // Guardian relationship reads opt into the RLS-backed transaction context.
+  // Teacher links remain on the normal connection because they do not yet have
+  // a corresponding RLS policy.
+  const rows =
+    relation === "guardian"
+      ? await withAuthedSql(actorUserId, query)
+      : await query(await getSql());
   return Boolean(rows[0]);
 }
 
