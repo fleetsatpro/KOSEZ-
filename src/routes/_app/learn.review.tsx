@@ -68,7 +68,6 @@ function Review() {
 
   // A review run is a session snapshot. Derived queue arrays are intentionally
   // not dependencies because submissions/attempts change during the run.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setQueue(initial);
     setSessionTotal(Math.max(initial.length, 1));
@@ -77,6 +76,8 @@ function Review() {
     setRevealed(false);
     setDone(false);
     setCeremony(null);
+  // A review run is a session snapshot; do not reset it when derived queue data changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [languageId]);
 
   const current = queue[0];
