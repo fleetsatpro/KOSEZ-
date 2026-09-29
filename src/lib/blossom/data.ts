@@ -422,7 +422,7 @@ export type EventItem = {
   host: string;
 };
 
-export const EVENTS: EventItem[,
+export const EVENTS: EventItem[ ,
   {
     id: "evt-office-clinic",
     title: "English au travail",
@@ -483,7 +483,7 @@ export const EVENTS: EventItem[,
     image: "/images/reunion-coast.jpg",
     host: "Équipe K'Osez",
   }
- = [
+] = [
   {
     id: "evt-cafe",
     title: "Café anglais",
@@ -552,7 +552,7 @@ export type CatalogueItem = {
   companion?: boolean;
 };
 
-export const CATALOGUE: CatalogueItem[,
+export const CATALOGUE: CatalogueItem[ ,
   {
     id: "cat-b1-intensive",
     kind: "group",
@@ -613,7 +613,7 @@ export const CATALOGUE: CatalogueItem[,
     price: "Selon formule",
     image: "/images/cafe.jpg",
   }
- = [
+] = [
   {
     id: "cat-a2",
     kind: "course",
@@ -1144,12 +1144,26 @@ export const TANDEM_PROMPTS = {
     "Describe the sea near you in three sentences.",
     "Tell me about a song you keep returning to.",
     "What does a good lunch look like at your work?",
+  
+    "What is one small habit that makes your week easier?",
+    "Tell me about a place you would show to a visitor.",
+    "What is something you changed your mind about recently?",
+    "Compare two ways of spending a free afternoon.",
+    "Describe a problem you solved recently.",
+    "What makes a conversation feel comfortable for you?"
   ],
   french: [
     "Racontez votre quartier à quelqu'un qui arrive demain.",
     "Quel plat de l'île expliqueriez-vous à un visiteur ?",
     "Parlez d'une personne qui vous a fait progresser.",
     "Qu'est-ce que vous faites le dimanche, simplement ?",
+  
+    "Quelle habitude rend votre semaine plus facile ?",
+    "Quel endroit montreriez-vous à quelqu’un qui découvre l’île ?",
+    "Parlez d’une idée que vous avez récemment changée.",
+    "Comparez deux façons de passer un après-midi libre.",
+    "Racontez un problème que vous avez réussi à résoudre.",
+    "Qu’est-ce qui rend une conversation agréable pour vous ?"
   ],
 };
 
