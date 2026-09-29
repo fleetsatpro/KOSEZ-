@@ -1,14 +1,19 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
-import { causalNextGesture, type GrowthEvent, type MineralKey, type MineralSnapshot } from "@/lib/blossom/organism";
+import {
+  causalNextGesture,
+  MINERAL_DEFINITIONS,
+  MINERAL_ORDER,
+  type GrowthEvent,
+  type MineralSnapshot,
+} from "@/lib/blossom/organism";
 
-const ROWS: { key: MineralKey; label: string; door: string }[] = [
-  { key: "mission", label: "Mission", door: "/mission" },
-  { key: "parole", label: "Parole", door: "/osez" },
-  { key: "pron", label: "Pron", door: "/pronlab" },
-  { key: "social", label: "Social", door: "/tandem" },
-  { key: "atelier", label: "Atelier", door: "/learn/labs" },
-];
+const routeUnion =
+  "/osez" |
+  "/pronlab" |
+  "/mission" |
+  "/tandem" |
+  "/learn/labs";
 
 export function OrganismMineralsPanel({
   minerals,
@@ -18,69 +23,104 @@ export function OrganismMineralsPanel({
   growthEvents?: GrowthEvent[];
 }) {
   const nextGesture = causalNextGesture(minerals);
-  const recent = [...growthEvents].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 6);
+  const recent = [...growthEvents]
+    .filter((event) => event.mineral)
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, 6);
 
   return (
     <section
       className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 p-5 sm:p-6 magnetic-surface"
       aria-label="Cinq minéraux de l'organisme BLOSSOM"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-col gap-4 border-b border-primary/15 pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/80">
-            Organisme · minéraux
+            Organisme · cinq minéraux
           </p>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-fg/90">
-            Chaque geste nourrit un minéral précis. Le plus bas ouvre la prochaine porte — sans score à protéger.
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-fg/90">
+            Chaque minéral est une échelle d’activité récente sur 14 jours. Ce
+            n’est ni une note, ni un niveau CEFR. La plus basse ouvre la porte
+            causale suivante.
           </p>
         </div>
-        <Link
-          to={nextGesture.door as "/osez" | "/pronlab" | "/mission" | "/tandem" | "/learn/labs"}
-          className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-[11px] font-semibold text-primary"
-        >
-          {nextGesture.mineral} · ouvrir
-          <ArrowRight className="size-3.5" />
-        </Link>
+        <div className="rounded-xl border border-primary/20 bg-surface/60 px-3 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-subtle">
+            Prochaine porte
+          </p>
+          <Link
+            to={nextGesture.door as typeof routeUnion}
+            className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-primary"
+          >
+            {MINERAL_DEFINITIONS[nextGesture.mineral].doorLabel} · {nextGesture.value}/100
+            <ArrowRight className="size-3.5" />
+          </Link>
+          <p className="mt-1 max-w-xs text-[11px] leading-5 text-muted">
+            {nextGesture.basis}
+          </p>
+        </div>
       </div>
-      <ul className="mt-5 space-y-3">
-        {ROWS.map((row) => {
-          const value = minerals[row.key];
+
+      {nextGesture.tiedWith.length > 1 ? (
+        <p className="mt-4 rounded-xl border border-primary/15 bg-surface/50 px-4 py-3 text-xs leading-5 text-muted">
+          Égalité à {nextGesture.value}/100 :{" "}
+          {nextGesture.tiedWith.map((key) => MINERAL_DEFINITIONS[key].label).join(" · ")}.
+          Le choix reste déterministe ; l’autre porte reste disponible.
+        </p>
+      ) : null}
+
+      <ul className="mt-5 grid gap-3 lg:grid-cols-5">
+        {MINERAL_ORDER.map((key) => {
+          const definition = MINERAL_DEFINITIONS[key];
+          const value = minerals[key];
           return (
-            <li key={row.key}>
-              <div className="flex items-center justify-between gap-3 text-xs">
-                <Link
-                  to={row.door as "/mission" | "/osez" | "/pronlab" | "/tandem" | "/learn/labs"}
-                  className="font-medium text-fg hover:text-primary"
-                >
-                  {row.label}
-                </Link>
-                <span className="tabular-nums text-muted">{value}/100</span>
-              </div>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-2">
+            <li
+              key={key}
+              className="rounded-xl border border-border/70 bg-surface/70 p-4"
+            >
+              <Link
+                to={definition.door as typeof routeUnion}
+                className="font-medium text-fg hover:text-primary"
+              >
+                {definition.label}
+              </Link>
+              <p className="mt-1 font-display text-2xl tabular-nums">{value}/100</p>
+              <div
+                className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2"
+                aria-hidden
+              >
                 <div
                   className="h-full rounded-full bg-primary/80 transition-[width] duration-500 plant-breathe"
                   style={{ width: `${Math.max(2, value)}%` }}
                 />
               </div>
+              <p className="mt-3 text-xs leading-5 text-muted">{definition.purpose}</p>
+              <p className="mt-2 text-[11px] leading-5 text-subtle">
+                Écrit par : {definition.writtenByLabel}
+              </p>
+              <p className="mt-2 text-[11px] leading-5 text-subtle">
+                {definition.scoreMeaning}
+              </p>
             </li>
           );
         })}
       </ul>
+
       {recent.length > 0 ? (
         <ul className="mt-5 flex flex-wrap gap-2 border-t border-primary/15 pt-4" aria-label="Gestes récents">
-          {recent.map((g) => (
+          {recent.map((event) => (
             <li
-              key={g.id}
+              key={event.id}
               className="rounded-full border border-border/70 bg-surface px-3 py-1 text-[11px] text-muted"
             >
-              {g.label}
-              {g.mineral ? <span className="ml-1 text-primary/80">· {g.mineral}</span> : null}
+              {event.label} · {MINERAL_DEFINITIONS[event.mineral!].label}
             </li>
           ))}
         </ul>
       ) : (
         <p className="mt-4 text-[11px] text-subtle">
-          Aucun geste encore — le premier écrira le premier minéral.
+          Aucun geste causal confirmé dans la fenêtre. Le premier geste écrira
+          le premier minéral.
         </p>
       )}
     </section>
