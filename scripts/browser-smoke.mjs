@@ -340,7 +340,7 @@ try {
         );
         await waitForBlossomShell(page);
         const gatedCopy = normalizeBodyText(await page.locator("body").innerText().catch(() => ""));
-        if (!gatedCopy.includes("Surface non activée")) {
+        if (!gatedCopy.toLocaleLowerCase().includes("surface non activée")) {
           const frenchStateAfterMission = await page.evaluate(() => ({
             store: window.localStorage.getItem("kosez-blossom-v2"),
             profileIntent: window.localStorage.getItem("kosez-blossom-profile-intent-v1"),
