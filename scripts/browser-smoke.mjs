@@ -70,7 +70,8 @@ const VIEWPORTS = [
 ];
 
 async function waitForBlossomShell(page, timeout = 10000) {
-  await page.locator('[data-smoke="blossom-ready"]').waitFor({
+  const readyMarker = page.locator('[data-smoke="blossom-ready"]').first();
+  await readyMarker.waitFor({
     state: "attached",
     timeout,
   });
