@@ -86,7 +86,7 @@ test("review plan isolates Pron'Lab, vocabulary and review history by language",
       seconds: 4,
       tip: "",
       createdAt: "2026-09-20T10:00:00.000Z",
-      metadata: {},
+      metadata: { languageId: "es" },
     },
     {
       id: "en-attempt",
@@ -95,7 +95,7 @@ test("review plan isolates Pron'Lab, vocabulary and review history by language",
       seconds: 4,
       tip: "",
       createdAt: "2026-09-20T10:00:00.000Z",
-      metadata: {},
+      metadata: { languageId: "en" },
     },
   ];
   const submissions: LearningSubmission[] = [
