@@ -40,7 +40,7 @@ export type LearnLanguageDef = {
   contentPacks: string[];
   speechLocale: string;
   blurb: Record<UiLocaleId, string>;
-  surfaces: Array<"pronlab" | "mission" | "osez" | "tandem" | "library" | "pulse">;
+  surfaces: Array<"pronlab" | "mission" | "osez" | "tandem" | "library" | "pulse" | "curriculum" | "labs">;
   levels: string[];
   culturalAnchor: Record<UiLocaleId, string>;
   switchImpact: Record<UiLocaleId, string>;
@@ -466,23 +466,6 @@ export function learnLanguageDef(id: string): LearnLanguageDef {
 
 export function isUiLocaleId(id: string): id is UiLocaleId {
   return UI_LOCALES.some((l) => l.id === id);
-}
-
-export type LearnSurface =
-  | "pronlab"
-  | "mission"
-  | "osez"
-  | "tandem"
-  | "library"
-  | "pulse"
-  | "curriculum"
-  | "labs";
-
-export function isLearnSurfaceAvailable(
-  languageId: LearnLanguageId,
-  surface: LearnSurface,
-): boolean {
-  return learnLanguageDef(languageId).surfaces.includes(surface);
 }
 
 
