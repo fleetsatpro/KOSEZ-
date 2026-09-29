@@ -76,6 +76,24 @@ test("guardian-link RLS isolates parties and fails closed without auth context",
     );
     assert.equal(asBystander.length, 0);
 
+    await assert.rejects(() =>
+      withAuthedSql(GUARDIAN_A, (s) =>
+        s.query(
+          "update blossom_guardian_link set status = 'inactive' where guardian_user_id = $1 and learner_user_id = $2",
+          [GUARDIAN_A, LEARNER_A],
+        ),
+      ),
+    );
+
+    await assert.rejects(() =>
+      withAuthedSql(GUARDIAN_A, (s) =>
+        s.query(
+          "delete from blossom_guardian_link where guardian_user_id = $1 and learner_user_id = $2",
+          [GUARDIAN_A, LEARNER_A],
+        ),
+      ),
+    );
+
     // Direct getSql() remains deliberately unscoped. The RLS backstop is only
     // active when a caller opts into the transaction-scoped runtime role.
     const basePathway = await sql.query(
