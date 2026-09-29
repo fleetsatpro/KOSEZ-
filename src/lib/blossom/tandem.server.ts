@@ -1,10 +1,10 @@
+import { randomUUID } from "node:crypto";
+import { getSql } from "@/lib/db";
+import type { JsonObject } from "./backend.server";
+import { enforceRateLimit } from "./rate-limit.server";
 import { assertFeaturePlan, getServerPlan } from "./workspaces.server";
 import { writeAuditEvent, createNotification } from "./notifications.server";
 import { BlossomForbiddenError } from "./access.server";
-import { getSql } from "@/lib/db";
-import { randomUUID } from "node:crypto";
-import type { JsonObject } from "./backend.server";
-import { enforceRateLimit } from "./rate-limit.server";
 
 export type ConnectPeer = {
   id: string;
@@ -162,25 +162,6 @@ export async function getTandemSession(
   }
   return partner;
 }
-
-export type OrganizationWorkspace = {
-  id: string;
-  name: string;
-  currentRole: "owner" | "admin" | "teacher";
-  city: string | null;
-  members: Array<{
-    id: string;
-    name: string;
-    role: string;
-    status: string;
-  }>;
-  stats: {
-    learners: number;
-    staff: number;
-    activeLearnersThisWeek: number;
-    speakingMinutesThisWeek: number;
-  };
-};
 
 export async function setTandemStatus(
   userId: string,

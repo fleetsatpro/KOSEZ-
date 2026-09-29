@@ -1,5 +1,3 @@
-import { getSql } from "@/lib/db";
-
 export class BlossomForbiddenError extends Error {
   readonly status = 403;
   constructor(message = "Forbidden") {
@@ -83,6 +81,7 @@ export type TeacherWorkspaceLearner = {
   pronlabScoredAttempts: number;
   pronlabBest: number;
 };
+
 async function canActForLearner(
   actorUserId: string,
   learnerUserId: string,

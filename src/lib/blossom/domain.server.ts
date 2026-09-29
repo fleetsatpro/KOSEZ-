@@ -1,6 +1,6 @@
-// Re-export barrel. Domain mutations remain server-only; implementations are
-// split into focused modules so access, workspaces, tandem, commerce/activity,
-// session, and notification boundaries can be reviewed independently.
+// Compatibility barrel for the server-only Blossom domain surface.
+// Implementations are split by authorization/data boundary so each subsystem
+// can be reviewed independently without changing domain.api import contracts.
 export * from "./access.server";
 export * from "./workspaces.server";
 export * from "./tandem.server";

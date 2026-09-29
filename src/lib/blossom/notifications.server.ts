@@ -1,9 +1,9 @@
-import type { BlossomNotification } from "./activities.server";
-import { BlossomForbiddenError } from "./access.server";
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import type { JsonObject } from "./backend.server";
 import { shouldDeliverNotification } from "./notification-preferences.server";
+import type { BlossomNotification } from "./activities.server";
+import { BlossomForbiddenError } from "./access.server";
 
 export async function writeAuditEvent(
   actorUserId: string,

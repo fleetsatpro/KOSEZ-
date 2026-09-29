@@ -1,10 +1,8 @@
+import { getSql } from "@/lib/db";
 import type { TeacherWorkspaceLearner } from "./access.server";
-import type { OrganizationWorkspace } from "./tandem.server";
 import type { LearnerDetail } from "./booking.server";
 import { mapLearnerDetail } from "./booking.server";
-import { assertLearnerAccess } from "./access.server";
-import { BlossomForbiddenError } from "./access.server";
-import { getSql } from "@/lib/db";
+import { assertLearnerAccess, BlossomForbiddenError } from "./access.server";
 
 export async function getTeacherWorkspace(userId: string): Promise<TeacherWorkspaceLearner[]> {
   const sql = await getSql();
@@ -228,6 +226,25 @@ export async function getAdminWorkspace(userId: string): Promise<AdminWorkspace>
     })),
   };
 }
+
+export type OrganizationWorkspace = {
+  id: string;
+  name: string;
+  currentRole: "owner" | "admin" | "teacher";
+  city: string | null;
+  members: Array<{
+    id: string;
+    name: string;
+    role: string;
+    status: string;
+  }>;
+  stats: {
+    learners: number;
+    staff: number;
+    activeLearnersThisWeek: number;
+    speakingMinutesThisWeek: number;
+  };
+};
 
 export async function getOrganizationWorkspace(
   userId: string,
