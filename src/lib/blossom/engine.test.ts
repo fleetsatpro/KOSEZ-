@@ -262,3 +262,17 @@ test("stage progress uses the governing within-stage point formula", () => {
   assert.equal(snap.stage.id, "growing");
   assert.equal(Math.round(snap.progress * 100), 59);
 });
+
+
+test("pending activity never mints points or stage counts before server confirmation", () => {
+  const pendingMission = {
+    id: "pending-mission",
+    type: "MISSION_COMPLETED" as const,
+    createdAt: new Date().toISOString(),
+    sourceId: "pending",
+    metadata: { syncState: "pending" },
+  };
+  assert.equal(pointsFromLog([pendingMission]), 0);
+  assert.equal(countByType([pendingMission], "MISSION_COMPLETED"), 0);
+  assert.equal(journeySnapshot([pendingMission]).stage.id, "seed");
+});
