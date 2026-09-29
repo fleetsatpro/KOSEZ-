@@ -33,9 +33,16 @@ alter table blossom_guardian_link enable row level security;
 alter table blossom_guardian_link force row level security;
 
 drop policy if exists blossom_guardian_link_party_or_admin on blossom_guardian_link;
-create policy blossom_guardian_link_party_or_admin
+drop policy if exists blossom_guardian_link_read on blossom_guardian_link;
+drop policy if exists blossom_guardian_link_insert_admin on blossom_guardian_link;
+drop policy if exists blossom_guardian_link_update_admin on blossom_guardian_link;
+drop policy if exists blossom_guardian_link_delete_admin on blossom_guardian_link;
+
+-- Reads are relation-scoped. Mutations are platform-admin-only because the
+-- application currently has no guardian/learner write flow for this table.
+create policy blossom_guardian_link_read
   on blossom_guardian_link
-  for all
+  for select
   using (
     current_setting('app.user_id', true) in (guardian_user_id, learner_user_id)
     or exists (
@@ -50,8 +57,62 @@ create policy blossom_guardian_link_party_or_admin
         and role = 'admin'
         and status = 'active'
     )
+  );
+
+create policy blossom_guardian_link_insert_admin
+  on blossom_guardian_link
+  for insert
+  with check (
+    exists (
+      select 1
+      from blossom_platform_admin
+      where user_id = current_setting('app.user_id', true)
+        and status = 'active'
+      union all
+      select 1
+      from blossom_role_grant
+      where user_id = current_setting('app.user_id', true)
+        and role = 'admin'
+        and status = 'active'
+    )
+  );
+
+create policy blossom_guardian_link_update_admin
+  on blossom_guardian_link
+  for update
+  using (
+    exists (
+      select 1
+      from blossom_platform_admin
+      where user_id = current_setting('app.user_id', true)
+        and status = 'active'
+      union all
+      select 1
+      from blossom_role_grant
+      where user_id = current_setting('app.user_id', true)
+        and role = 'admin'
+        and status = 'active'
+    )
   )
   with check (
+    exists (
+      select 1
+      from blossom_platform_admin
+      where user_id = current_setting('app.user_id', true)
+        and status = 'active'
+      union all
+      select 1
+      from blossom_role_grant
+      where user_id = current_setting('app.user_id', true)
+        and role = 'admin'
+        and status = 'active'
+    )
+  );
+
+create policy blossom_guardian_link_delete_admin
+  on blossom_guardian_link
+  for delete
+  using (
     exists (
       select 1
       from blossom_platform_admin
