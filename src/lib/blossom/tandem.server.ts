@@ -1,5 +1,4 @@
 import { assertFeaturePlan, getServerPlan } from "./workspaces.server";
-import type { ConnectPeer } from "./workspaces.server";
 import { writeAuditEvent, createNotification } from "./notifications.server";
 import { BlossomForbiddenError } from "./access.server";
 import { getSql } from "@/lib/db";

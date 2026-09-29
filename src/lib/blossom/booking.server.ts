@@ -282,4 +282,74 @@ export async function updateAdminBooking(
       ? String(rows[0].provider_reference)
       : null,
   };
+
+export type LearnerDetail = {
+  id: string;
+  name: string;
+  targetLanguage: string;
+  level: string | null;
+  goal: string;
+  activity: Array<{ id: string; type: string; sourceId: string | null; note: string | null; occurredAt: string }>;
+  pronlab: Array<{ id: string; itemId: string; score: number; seconds: number; assessment: string; createdAt: string }>;
+  homework: Array<{ id: string; title: string; body: string; status: string; createdAt: string; updatedAt: string }>;
+  notes: Array<{ id: string; tags: string[]; text: string; createdAt: string }>;
+};
+
+export function mapLearnerDetail(
+  profile: Record<string, unknown> | undefined,
+  activityRows: Record<string, unknown>[],
+  pronlabRows: Record<string, unknown>[],
+  homeworkRows: Record<string, unknown>[],
+  noteRows: Record<string, unknown>[],
+): LearnerDetail | null {
+  if (!profile) return null;
+  const preferences =
+    profile.preferences && typeof profile.preferences === "object"
+      ? (profile.preferences as Record<string, unknown>)
+      : {};
+  return {
+    id: String(profile.user_id),
+    name: String(profile.display_name ?? profile.user_id),
+    targetLanguage: String(profile.target_language ?? "en"),
+    level: profile.level ? String(profile.level) : null,
+    goal: typeof preferences.goal === "string" ? preferences.goal : "",
+    activity: activityRows.map((row) => ({
+      id: String(row.id),
+      type: String(row.event_type),
+      sourceId: row.source_id ? String(row.source_id) : null,
+      note: row.note ? String(row.note) : null,
+      occurredAt: new Date(String(row.occurred_at)).toISOString(),
+    })),
+    pronlab: pronlabRows.map((row) => ({
+      id: String(row.id),
+      itemId: String(row.item_id),
+      score: Number(row.score ?? 0),
+      seconds: Number(row.seconds ?? 0),
+      assessment:
+        row.metadata && typeof row.metadata === "object"
+          ? String((row.metadata as Record<string, unknown>).assessment ?? "unknown")
+          : "unknown",
+      createdAt: new Date(String(row.created_at)).toISOString(),
+    })),
+    homework: homeworkRows.map((row) => ({
+      id: String(row.id),
+      title: String(row.title),
+      body: String(row.body),
+      status: String(row.status),
+      createdAt: new Date(String(row.created_at)).toISOString(),
+      updatedAt: new Date(String(row.updated_at)).toISOString(),
+    })),
+    notes: noteRows.map((row) => ({
+      id: String(row.id),
+      tags: Array.isArray(row.tags)
+        ? row.tags.map(String)
+        : row.tags && typeof row.tags === "object"
+          ? Object.values(row.tags as Record<string, unknown>).map(String)
+          : [],
+      text: String(row.note),
+      createdAt: new Date(String(row.created_at)).toISOString(),
+    })),
+  };
+}
+
 }
