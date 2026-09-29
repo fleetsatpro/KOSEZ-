@@ -2,7 +2,6 @@ import type { ErrorComponentProps } from "@tanstack/react-router";
 
 export function RootErrorBoundary({ error, reset }: ErrorComponentProps) {
   if (import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
     console.error("Unhandled render error:", error);
   }
 
