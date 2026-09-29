@@ -505,9 +505,14 @@ export const useBlossom = create<AppState>()(
             occurredAt: new Date().toISOString(),
           },
         });
+        // Optimistic activity is visible locally but must not feed progress
+        // or organism derivations until the server confirms it. The sync bridge
+        // will replace this pending copy with the server activity on success and
+        // remove it on rejection.
         const activityMetadata = {
           ...(metadata ?? {}),
           languageId: current.languageId,
+          syncState: "pending" as const,
         };
         const event = {
           id: mutation.mutationId,
