@@ -56,6 +56,11 @@ import {
   getGuardianTeacherContacts,
 } from "./messaging.server";
 import { getEvidenceTimeline } from "./evidence.server";
+import {
+  getNotificationPreferences,
+  setNotificationPreference,
+} from "./notification-preferences.server";
+import type { NotificationPreferenceKind } from "./notification-preferences";
 import { getLearningFeedbackBundle, saveLearningFeedback, getLearnerFeedback } from "./learning-feedback.server";
 import {
   getTeacherSessions,
@@ -423,6 +428,33 @@ export const archiveOrganizationGroupOnServer = createServerFn({ method: "POST" 
 export const getOrganizationWorkspaceOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => getOrganizationWorkspace(context.userId));
+
+export const getNotificationPreferencesOnServer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => getNotificationPreferences(context.userId));
+
+export const setNotificationPreferenceOnServer = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .inputValidator(
+    z.object({
+      kind: z.enum([
+        "homework",
+        "booking",
+        "event",
+        "tandem",
+        "learning",
+        "communication",
+      ]),
+      enabled: z.boolean(),
+    }),
+  )
+  .handler(async ({ context, data }) =>
+    setNotificationPreference(
+      context.userId,
+      data.kind as NotificationPreferenceKind,
+      data.enabled,
+    ),
+  );
 
 export const getNotificationsOnServer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
