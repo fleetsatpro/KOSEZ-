@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import { normalizeMutationTime } from "./sync-causality";
-import { IMMERSION, PRONLAB_SETS, setsForLanguage } from "./data";
-import { LEARN_LANGUAGES } from "@/lib/i18n/locales";
+import { IMMERSION, PRONLAB_SETS, setsForLanguage, TODAY_MISSION } from "./data";
+import { LEARN_LANGUAGES, isLearnLanguageId } from "@/lib/i18n/locales";
+import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure } from "./lab-content";
 import { fullMissionBank } from "./mission-today";
 import type { JsonObject } from "./backend.server";
 
@@ -767,6 +768,9 @@ export async function recordPronlabAttempt(
   if (!knownItem || !activeItems.has(input.itemId)) {
     throw new BlossomForbiddenError("Cet exercice Pron'Lab n'est pas disponible pour votre langue active.");
   }
+  if (!Number.isFinite(input.seconds) || input.seconds <= 0 || input.seconds > 3600) {
+    throw new BlossomForbiddenError("Une prise Pron'Lab doit contenir une durée réelle et bornée.");
+  }
 
   const recordId = input.idempotencyKey ?? randomUUID();
   const metadata = input.metadata ?? {};
@@ -1388,6 +1392,151 @@ export async function saveLearningSubmission(
 ) {
   await enforceRateLimit(userId, "learning.submission", 60, 60);
   const sql = await getSql();
+  const profileRows = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const languageId = String(profileRows[0]?.target_language ?? "en");
+  if (!isLearnLanguageId(languageId)) {
+    throw new BlossomForbiddenError("Langue d’apprentissage invalide.");
+  }
+
+  // The current lab bank is authored in English. The client cannot submit lab
+  // completion evidence while another target language is active.
+  if (
+    (input.kind === "grammar" ||
+      input.kind === "listening" ||
+      input.kind === "writing") &&
+    languageId !== "en"
+  ) {
+    throw new BlossomForbiddenError(
+      "Cet atelier n’est pas disponible pour votre langue d’apprentissage active.",
+    );
+  }
+
+  if (input.kind === "grammar") {
+    const task = GRAMMAR_TASKS.find((item) => item.id === input.taskId);
+    if (!task) throw new BlossomForbiddenError("Exercice de grammaire inconnu.");
+    const correct = input.content === task.answer;
+    const expectedChecks = [correct ? "correct" : "incorrect"];
+    if (JSON.stringify(input.checks ?? []) !== JSON.stringify(expectedChecks)) {
+      throw new BlossomForbiddenError("La vérification de grammaire ne correspond pas à la réponse.");
+    }
+    input = {
+      ...input,
+      checks: expectedChecks,
+      result: {
+        ...(input.result ?? {}),
+        correct,
+        target: task.target,
+        languageId,
+      },
+    };
+  } else if (input.kind === "listening") {
+    const task = LISTENING_TASKS.find((item) => item.id === input.taskId);
+    if (!task) throw new BlossomForbiddenError("Exercice d’écoute inconnu.");
+    const correct = input.content === task.answer;
+    const expectedChecks = [correct ? "correct" : "incorrect"];
+    if (JSON.stringify(input.checks ?? []) !== JSON.stringify(expectedChecks)) {
+      throw new BlossomForbiddenError("La vérification d’écoute ne correspond pas à la réponse.");
+    }
+    input = {
+      ...input,
+      checks: expectedChecks,
+      result: {
+        ...(input.result ?? {}),
+        correct,
+        level: task.level,
+        languageId,
+      },
+    };
+  } else if (input.kind === "writing") {
+    const prompt = WRITING_PROMPTS.find((item) => item.id === input.taskId);
+    if (!prompt) throw new BlossomForbiddenError("Sujet d’écriture inconnu.");
+    const evaluation = evaluateWritingStructure(prompt, input.content);
+    if (JSON.stringify(input.checks ?? []) !== JSON.stringify(evaluation.passed)) {
+      throw new BlossomForbiddenError("La vérification d’écriture ne correspond pas à l’évaluation.");
+    }
+    input = {
+      ...input,
+      checks: evaluation.passed,
+      result: {
+        ...(input.result ?? {}),
+        checkCount: evaluation.passed.length,
+        checkTotal: evaluation.total,
+        structureScore: evaluation.score,
+        method: evaluation.method,
+        languageId,
+      },
+    };
+  } else {
+    const expected =
+      input.content === "correct"
+        ? "correct"
+        : input.content === "again"
+          ? "again"
+          : null;
+    if (!expected || JSON.stringify(input.checks ?? []) !== JSON.stringify([expected])) {
+      throw new BlossomForbiddenError("La vérification de révision est invalide.");
+    }
+
+    const taskId = input.taskId.trim();
+    if (taskId.startsWith("pron:")) {
+      const itemId = taskId.slice("pron:".length);
+      const activeItemIds = new Set(
+        setsForLanguage(languageId).flatMap((setDef) =>
+          setDef.items.map((item) => item.id),
+        ),
+      );
+      if (!activeItemIds.has(itemId)) {
+        throw new BlossomForbiddenError("Cette source Pron’Lab n’appartient pas à votre langue active.");
+      }
+      const attempts = await sql.query(
+        "select 1 from blossom_pronlab_attempt where user_id = $1 and item_id = $2 and coalesce(metadata->>'languageId', '') = $3 and seconds > 0 limit 1",
+        [userId, itemId, languageId],
+      );
+      if (!attempts[0]) {
+        throw new BlossomForbiddenError("Cette révision Pron’Lab ne repose sur aucune trace de pratique.");
+      }
+    } else if (taskId.startsWith("vocab:")) {
+      const word = taskId.slice("vocab:".length).trim().toLowerCase();
+      if (!word || word.length > 120) {
+        throw new BlossomForbiddenError("Cette source vocabulaire est invalide.");
+      }
+      const rows = await sql.query(
+        "select 1 from blossom_vocabulary where user_id = $1 and language_id = $2 and word = $3 limit 1",
+        [userId, languageId, word],
+      );
+      if (!rows[0]) {
+        throw new BlossomForbiddenError("Cette révision vocabulaire ne repose sur aucune trace sauvegardée.");
+      }
+    } else if (taskId.startsWith("mission:")) {
+      const phrase = taskId.slice("mission:".length);
+      const known =
+        languageId === "en" &&
+        (TODAY_MISSION.scene?.languageKit ?? []).some(
+          (kit) => kit.phrase === phrase,
+        );
+      if (!known) {
+        throw new BlossomForbiddenError("Cette source mission n’est pas reconnue.");
+      }
+    } else {
+      throw new BlossomForbiddenError("Source de révision inconnue.");
+    }
+
+    input = {
+      ...input,
+      taskId,
+      checks: [expected],
+      result: {
+        ...(input.result ?? {}),
+        correct: input.content === "correct",
+        sourceKind: taskId.split(":")[0],
+        languageId,
+      },
+    };
+  }
+
   const id = input.id ?? randomUUID();
   const rows = await sql.query(
     "insert into blossom_learning_submission (id, user_id, task_id, kind, content, checks, result) values ($1::uuid, $2, $3, $4, $5, $6::jsonb, $7::jsonb) on conflict (id) do update set content = excluded.content, checks = excluded.checks, result = excluded.result, updated_at = current_timestamp where blossom_learning_submission.user_id = excluded.user_id returning id, task_id, kind, content, checks, result, created_at, updated_at",
@@ -1404,18 +1553,6 @@ export async function saveLearningSubmission(
   if (!rows[0]) throw new Error("learning-submission-write-failed");
   return rows[0];
 }
-
-
-export type BlossomNotification = {
-  id: string;
-  kind: "homework" | "booking" | "event" | "tandem" | "learning" | "system" | "communication";
-  title: string;
-  body: string;
-  href: string | null;
-  metadata: JsonObject;
-  readAt: string | null;
-  createdAt: string;
-};
 
 export async function createNotification(
   userId: string,
