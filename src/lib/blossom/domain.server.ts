@@ -2169,7 +2169,6 @@ export async function endPulseSession(
       `select id, dare_id, status, ended_at, duration_seconds
        from blossom_pulse_session
        where id = $1::uuid
-         and user_id
          and user_id = $2
          and status in ('completed', 'cancelled')
        limit 1`,
