@@ -8,6 +8,7 @@ import type { JsonObject } from "./backend.server";
 
 import { getPublishedContent } from "./content.server";
 import { enforceRateLimit } from "./rate-limit.server";
+import { shouldDeliverNotification } from "./notification-preferences.server";
 
 export class BlossomForbiddenError extends Error {
   readonly status = 403;
@@ -1391,6 +1392,9 @@ export async function createNotification(
     metadata?: Record<string, unknown>;
   },
 ) {
+  if (!(await shouldDeliverNotification(userId, input.kind))) {
+    return null;
+  }
   const sql = await getSql();
   const rows = await sql.query(
     `insert into blossom_notification (id, user_id, kind, title, body, href, metadata)
