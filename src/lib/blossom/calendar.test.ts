@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { calendarFilename, teacherSessionToIcs } from "./calendar.ts";
+import { parseKosezEventDate } from "@/lib/utils";
 
 const session = {
   id: "session-123",
@@ -32,4 +33,10 @@ test("iCalendar text escapes RFC text delimiters", () => {
 test("calendar filenames remain safe and deterministic", () => {
   assert.equal(calendarFilename("  Parler café / marché  "), "parler-café-marché.ics");
   assert.equal(calendarFilename("!!!"), "kosez-seance.ics");
+});
+
+
+test("K’Osez event parser treats scheduled times as Saint-Pierre UTC+04:00", () => {
+  const value = parseKosezEventDate("2026-09-29", "18:30");
+  assert.equal(value.toISOString(), "2026-09-29T14:30:00.000Z");
 });
