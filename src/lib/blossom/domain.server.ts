@@ -1403,6 +1403,9 @@ export async function saveLearningSubmission(
   },
 ) {
   await enforceRateLimit(userId, "learning.submission", 60, 60);
+  if (input.content.length > 12000) {
+    throw new BlossomForbiddenError("Cette production est trop longue pour cette trace.");
+  }
   const sql = await getSql();
   const profileRows = await sql.query(
     "select target_language from blossom_profile where user_id = $1 limit 1",
@@ -1438,7 +1441,6 @@ export async function saveLearningSubmission(
       ...input,
       checks: expectedChecks,
       result: {
-        ...(input.result ?? {}),
         correct,
         target: task.target,
         languageId,
@@ -1456,7 +1458,6 @@ export async function saveLearningSubmission(
       ...input,
       checks: expectedChecks,
       result: {
-        ...(input.result ?? {}),
         correct,
         level: task.level,
         languageId,
@@ -1473,7 +1474,6 @@ export async function saveLearningSubmission(
       ...input,
       checks: evaluation.passed,
       result: {
-        ...(input.result ?? {}),
         checkCount: evaluation.passed.length,
         checkTotal: evaluation.total,
         structureScore: evaluation.score,
@@ -1541,7 +1541,6 @@ export async function saveLearningSubmission(
       taskId,
       checks: [expected],
       result: {
-        ...(input.result ?? {}),
         correct: input.content === "correct",
         sourceKind: taskId.split(":")[0],
         languageId,
