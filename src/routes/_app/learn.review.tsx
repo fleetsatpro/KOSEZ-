@@ -83,6 +83,7 @@ function Review() {
   function answer(correct: boolean) {
     if (!current) return;
     const nextMiss = (misses[current.id] ?? 0) + (correct ? 0 : 1);
+    const nextReviewed = reviewed + 1;
     saveLearningSubmission({
       taskId: current.sourceKey,
       kind: "review",
@@ -99,17 +100,21 @@ function Review() {
       const [, ...rest] = items;
       return correct || nextMiss >= 2 ? rest : [...rest, current];
     });
-    setReviewed((value) => value + 1);
+    setReviewed(nextReviewed);
     setRevealed(false);
+    const remaining = queue.slice(1);
+    if (remaining.length === 0 && nextReviewed >= total) {
+      finish(nextReviewed);
+    }
   }
 
-  function finish() {
+  function finish(reviewedCount = reviewed) {
     const day = new Date().toISOString().slice(0, 10);
     const reviewSourceId = `review-${day}`;
     let growth = completeActivity(
       "REVIEW_COMPLETED",
       reviewSourceId,
-      `Révision · ${reviewed} passages · ${plan.due.length} dues au départ`,
+      `Révision · ${reviewedCount} passages · ${plan.due.length} dues au départ`,
     );
     if (curriculumLessonId) {
       const evidence = completeActivity(
