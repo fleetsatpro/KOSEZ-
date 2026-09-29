@@ -7,11 +7,13 @@ import {
 import { AuthProvider } from "@/lib/auth/provider";
 import { BlossomSyncBoundary } from "@/components/blossom-sync-bridge";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
+import { RootErrorBoundary } from "@/components/app/root-error-boundary";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "K'Osez BLOSSOM";
 
 export const Route = createRootRoute({
+  errorComponent: RootErrorBoundary,
   head: () => ({
     meta: [
       { charSet: "utf-8" },
