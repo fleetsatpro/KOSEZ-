@@ -18,6 +18,7 @@ type ConnectPeer = Awaited<ReturnType<typeof getConnectPeersOnServer>>[number];
 
 function ConnectPage() {
   const joined = useBlossom((s) => s.joinedEventIds);
+  const joinedKey = joined.join(",");
   const counts = useBlossom((s) => s.eventRegistrationCounts);
   const plan = useBlossom((s) => s.plan);
   const minerals = useBlossom((s) => s.mineralSnapshot);
@@ -50,7 +51,7 @@ function ConnectPage() {
     return () => {
       disposed = true;
     };
-  }, [joined.join(",")]);
+  }, [joinedKey]);
 
   const upcoming = useMemo(
     () =>
