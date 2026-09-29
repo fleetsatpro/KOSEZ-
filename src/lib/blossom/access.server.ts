@@ -1,18 +1,5 @@
 import { getSql } from "@/lib/db";
 
-import { randomUUID } from "node:crypto";
-import { getSql } from "@/lib/db";
-import { normalizeMutationTime } from "./sync-causality";
-import { IMMERSION, PRONLAB_SETS, setsForLanguage, TODAY_MISSION } from "./data";
-import { LEARN_LANGUAGES, isLearnLanguageId } from "@/lib/i18n/locales";
-import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure } from "./lab-content";
-import { fullMissionBank } from "./mission-today";
-import type { JsonObject } from "./backend.server";
-
-import { getPublishedContent } from "./content.server";
-import { enforceRateLimit } from "./rate-limit.server";
-import { shouldDeliverNotification } from "./notification-preferences.server";
-
 export class BlossomForbiddenError extends Error {
   readonly status = 403;
   constructor(message = "Forbidden") {
@@ -29,7 +16,7 @@ export type BlossomAccessContext = {
   isAdmin: boolean;
 };
 
-async function assertAdmin(userId: string) {
+export async function assertAdmin(userId: string) {
   const sql = await getSql();
   const rows = await sql.query(
     `select 1
@@ -96,3 +83,71 @@ export type TeacherWorkspaceLearner = {
   pronlabScoredAttempts: number;
   pronlabBest: number;
 };
+async function canActForLearner(
+  actorUserId: string,
+  learnerUserId: string,
+  relation: "teacher" | "guardian",
+): Promise<boolean> {
+  if (actorUserId === learnerUserId) return relation === "guardian";
+  const sql = await getSql();
+
+  const table =
+    relation === "teacher" ? "blossom_teacher_link" : "blossom_guardian_link";
+  const rows = await sql.query(
+    "select 1 from " + table + " where " +
+      (relation === "teacher" ? "teacher_user_id" : "guardian_user_id") +
+      " = $1 and learner_user_id = $2 and status = 'active' limit 1",
+    [actorUserId, learnerUserId],
+  );
+  return Boolean(rows[0]);
+}
+
+async function canActAsOrgStaff(
+  actorUserId: string,
+  learnerUserId: string,
+): Promise<boolean> {
+  const sql = await getSql();
+  const rows = await sql.query(
+    `select 1
+     from blossom_organization_member staff
+     join blossom_organization_member learner
+       on learner.organization_id = staff.organization_id
+     where staff.user_id = $1
+       and staff.status = 'active'
+       and learner.user_id = $2
+       and learner.status = 'active'
+       and learner.role = 'learner'
+       and (
+         staff.role in ('owner','admin')
+         or (
+           staff.role = 'teacher'
+           and exists (
+             select 1
+             from blossom_organization_group g
+             join blossom_organization_group_member gm
+               on gm.group_id = g.id
+              and gm.user_id = learner.user_id
+             where g.organization_id = staff.organization_id
+               and g.teacher_user_id = staff.user_id
+               and g.status = 'active'
+           )
+         )
+       )
+     limit 1`,
+    [actorUserId, learnerUserId],
+  );
+  return Boolean(rows[0]);
+}
+
+export async function assertLearnerAccess(
+  actorUserId: string,
+  learnerUserId: string,
+  relation: "teacher" | "guardian",
+) {
+  if (
+    !(await canActForLearner(actorUserId, learnerUserId, relation)) &&
+    !(relation === "teacher" && (await canActAsOrgStaff(actorUserId, learnerUserId)))
+  ) {
+    throw new BlossomForbiddenError("You are not allowed to access this learner.");
+  }
+}

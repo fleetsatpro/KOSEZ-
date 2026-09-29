@@ -128,7 +128,7 @@ export async function getGuardianWorkspace(userId: string): Promise<GuardianWork
   }));
 }
 
-async function getServerPlan(userId: string): Promise<"centre" | "digital" | "premium"> {
+export async function getServerPlan(userId: string): Promise<"centre" | "digital" | "premium"> {
   const sql = await getSql();
   const rows = await sql.query(
     "select plan from blossom_subscription where user_id = $1 and status = 'active' limit 1",
@@ -138,7 +138,7 @@ async function getServerPlan(userId: string): Promise<"centre" | "digital" | "pr
   return plan === "premium" || plan === "digital" ? plan : "centre";
 }
 
-function assertFeaturePlan(
+export function assertFeaturePlan(
   plan: "centre" | "digital" | "premium",
   feature: "tandem" | "immersionEarly",
 ) {
