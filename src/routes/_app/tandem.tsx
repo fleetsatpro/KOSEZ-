@@ -58,6 +58,7 @@ function TandemHub() {
   const attempts = useBlossom((s) => s.pronlabAttempts);
   const phonemeLeaves = useBlossom((s) => s.phonemeLeaves);
   const missionSessions = useBlossom((s) => s.missionSessions);
+  const scopedLog = useMemo(() => log.filter((event) => activityBelongsToLanguage(event, languageId)), [log, languageId]);
   const influence = useMemo(
     () =>
       influenceFromState({
@@ -77,7 +78,6 @@ function TandemHub() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const scopedLog = useMemo(() => log.filter((event) => activityBelongsToLanguage(event, languageId)), [log, languageId]);
   const minerals = useMemo(() => computeMinerals(scopedLog), [scopedLog]);
   const nextGesture = causalNextGesture(minerals);
   const socialGrowth = growthEvents
