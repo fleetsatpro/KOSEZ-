@@ -66,6 +66,9 @@ function Review() {
   const [misses, setMisses] = useState<Record<string, number>>({});
   const [ceremony, setCeremony] = useState<CeremonyState | null>(null);
 
+  // A review run is a session snapshot. Derived queue arrays are intentionally
+  // not dependencies because submissions/attempts change during the run.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setQueue(initial);
     setSessionTotal(Math.max(initial.length, 1));
@@ -74,7 +77,7 @@ function Review() {
     setRevealed(false);
     setDone(false);
     setCeremony(null);
-  }, [initial]);
+  }, [languageId]);
 
   const current = queue[0];
   const total = sessionTotal;
