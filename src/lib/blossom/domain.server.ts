@@ -1892,34 +1892,68 @@ export async function endTandemSession(
   };
 }
 
-export async function startSpeakSession(userId: string, roomId: string) {
+function validSpeakRoomId(roomId: string): boolean {
+  const id = roomId.trim();
+  return id.length >= 2 && id.length <= 120 && /^[a-zA-Z0-9._:-]+$/.test(id);
+}
+
+function validSpeakLanguageId(languageId: string): boolean {
+  const id = languageId.trim().toLowerCase();
+  return LEARN_LANGUAGES.some((item) => item.id === id);
+}
+
+export async function startSpeakSession(userId: string, roomId: string, languageId: string) {
   await enforceRateLimit(userId, "speak.start-session", 20, 60);
   const normalizedRoomId = roomId.trim();
-  if (!normalizedRoomId || normalizedRoomId.length > 240) {
+  const normalizedLanguageId = languageId.trim().toLowerCase();
+  if (!validSpeakRoomId(normalizedRoomId)) {
     throw new BlossomForbiddenError("Cette room Speak est invalide.");
   }
+  if (!validSpeakLanguageId(normalizedLanguageId)) {
+    throw new BlossomForbiddenError("Cette langue n'est pas disponible pour OSEZ.");
+  }
   const sql = await getSql();
-  const active = await sql.query(
-    "select id, room_id from blossom_speak_session where user_id = $1 and status = 'active' order by created_at desc limit 1",
+  const profile = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
     [userId],
   );
-  if (active[0]) return { id: String(active[0].id), roomId: String(active[0].room_id) };
+  const profileLanguage = String(profile[0]?.target_language ?? "").trim().toLowerCase();
+  if (!profileLanguage || profileLanguage !== normalizedLanguageId) {
+    throw new BlossomForbiddenError(
+      "La langue de la session doit correspondre à votre langue d'apprentissage.",
+    );
+  }
+  const active = await sql.query(
+    "select id, room_id, language_id from blossom_speak_session where user_id = $1 and status = 'active' order by created_at desc limit 1",
+    [userId],
+  );
+  if (active[0]) {
+    return {
+      id: String(active[0].id),
+      roomId: String(active[0].room_id),
+      languageId: String(active[0].language_id),
+    };
+  }
   const sessionId = randomUUID();
   try {
     await sql.query(
-      "insert into blossom_speak_session (id, user_id, room_id, status, started_at) values ($1::uuid, $2, $3, 'active', current_timestamp)",
-      [sessionId, userId, normalizedRoomId],
+      "insert into blossom_speak_session (id, user_id, room_id, language_id, status, started_at) values ($1::uuid, $2, $3, $4, 'active', current_timestamp)",
+      [sessionId, userId, normalizedRoomId, normalizedLanguageId],
     );
   } catch (error) {
     if ((error as { code?: string })?.code !== "23505") throw error;
     const raced = await sql.query(
-      "select id, room_id from blossom_speak_session where user_id = $1 and status = 'active' order by created_at desc limit 1",
+      "select id, room_id, language_id from blossom_speak_session where user_id = $1 and status = 'active' order by created_at desc limit 1",
       [userId],
     );
     if (!raced[0]) throw new Error("speak-session-create-race");
-    return { id: String(raced[0].id), roomId: String(raced[0].room_id) };
+    return {
+      id: String(raced[0].id),
+      roomId: String(raced[0].room_id),
+      languageId: String(raced[0].language_id),
+    };
   }
-  return { id: sessionId, roomId: normalizedRoomId };
+  return { id: sessionId, roomId: normalizedRoomId, languageId: normalizedLanguageId };
 }
 
 export async function finalizeSpeakSession(
@@ -1937,8 +1971,14 @@ export async function finalizeSpeakSession(
   const transcriptCount = Math.max(0, Math.min(500, Math.round(evidence?.transcriptCount ?? 0)));
   const captureOnlyCount = Math.max(0, Math.min(500, Math.round(evidence?.captureOnlyCount ?? 0)));
   const rows = await sql.query(
-    `with existing as (
-       select s.id, s.room_id, s.duration_seconds, s.ended_at
+    `with profile_row as (
+       select lower(trim(target_language)) as target_language
+       from blossom_profile
+       where user_id = $2
+       limit 1
+    ),
+    existing as (
+       select s.id, s.room_id, s.language_id, s.duration_seconds, s.ended_at
        from blossom_speak_session s
        where s.id = $1::uuid and s.user_id = $2 and s.status = 'completed'
     ),
@@ -1951,19 +1991,19 @@ export async function finalizeSpeakSession(
              extract(epoch from (coalesce(ended_at, current_timestamp) - started_at))::integer
            ),
            updated_at = current_timestamp
-       where id = $1::uuid and user_id = $2 and status = 'active'
-       returning id, room_id, duration_seconds, ended_at
+       where id = $1::uuid
+         and user_id = $2
+         and status = 'active'
+         and exists (
+           select 1 from profile_row p
+           where p.target_language = lower(trim(blossom_speak_session.language_id))
+         )
+       returning id, room_id, language_id, duration_seconds, ended_at
     ),
     session_row as (
        select * from closed
        union all
        select * from existing where not exists (select 1 from closed)
-       limit 1
-    ),
-    profile_row as (
-       select target_language
-       from blossom_profile
-       where user_id = $2
        limit 1
     ),
     ins as (
@@ -1978,7 +2018,7 @@ export async function finalizeSpeakSession(
          jsonb_build_object(
            'metadata',
            jsonb_build_object(
-             'languageId', p.target_language,
+             'languageId', s.language_id,
              'roomId', s.room_id,
              'durationSeconds', s.duration_seconds,
              'minutes', greatest(1, floor(s.duration_seconds / 60.0)),
@@ -1989,7 +2029,6 @@ export async function finalizeSpeakSession(
          ),
          s.ended_at
        from session_row s
-       cross join profile_row p
        on conflict do nothing
        returning id, event_type, source_id, payload, occurred_at
     )
@@ -2013,6 +2052,9 @@ export async function finalizeSpeakSession(
     [sessionId, userId, spokenSeconds, transcriptCount, captureOnlyCount, randomUUID()],
   );
   if (!rows[0]) throw new BlossomForbiddenError("Cette session Speak n'est plus active.");
+  if (!rows[0]?.activity_id || !rows[0]?.activity_payload) {
+    throw new BlossomForbiddenError("La langue de cette session a changé; aucune croissance n'a été créditée.");
+  }
   const activityMetadata: Record<string, string | number | boolean> = {};
   const payload =
     rows[0].activity_payload &&
