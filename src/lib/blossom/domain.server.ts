@@ -502,7 +502,7 @@ export async function getOrganizationWorkspace(
   // query could return members from sibling organizations while organizationId
   // was taken from only the first row, creating a cross-tenant data-mixing risk.
   const orgRows = await sql.query(
-    \`select
+    `select
        o.id,
        o.name,
        o.metadata,
@@ -521,7 +521,7 @@ export async function getOrganizationWorkspace(
        end,
        me.created_at asc,
        o.id asc
-     limit 1\`,
+     limit 1`,
     [userId],
   );
   if (!orgRows[0]) return null;
@@ -529,7 +529,7 @@ export async function getOrganizationWorkspace(
   const organizationId = String(orgRows[0].id);
   const [rows, statsRows] = await Promise.all([
     sql.query(
-      \`select
+      `select
         m.user_id,
         m.role,
         m.status,
@@ -566,11 +566,11 @@ export async function getOrganizationWorkspace(
            when 'teacher' then 2
            else 3
          end,
-         display_name asc\`,
+         display_name asc`,
       [organizationId, userId],
     ),
     sql.query(
-      \`select
+      `select
          count(*) filter (where role = 'learner')::integer as learners,
          count(*) filter (where role <> 'learner')::integer as staff,
          count(distinct m.user_id) filter (
@@ -612,7 +612,7 @@ export async function getOrganizationWorkspace(
                and g.teacher_user_id = $2
                and g.status = 'active'
            )
-         )\`,
+         )`,
       [organizationId, userId],
     ),
   ]);
