@@ -123,3 +123,31 @@ test("review plan isolates Pron'Lab, vocabulary and review history by language",
   assert.ok(es.due.some((item) => item.sourceKey === "vocab:hola"));
   assert.ok(!en.due.some((item) => item.sourceKey === "vocab:hola"));
 });
+
+
+test("review intervals ignore identical source keys from another language", () => {
+  const submissions = [
+    {
+      ...submission("fr-old", "vocab:common", iso(8), true),
+      result: { correct: true, languageId: "fr" },
+    },
+    {
+      ...submission("fr-latest", "vocab:common", iso(2), true),
+      result: { correct: true, languageId: "fr" },
+    },
+    {
+      ...submission("en-latest", "vocab:common", iso(1), false),
+      result: { correct: false, languageId: "en" },
+    },
+  ];
+  const plan = buildReviewPlan(
+    submissions,
+    [],
+    [{ word: "common", gloss: "commun", metadata: { languageId: "fr" } }],
+    "2026-09-22T12:00:00.000Z",
+    "fr",
+  );
+  const item = plan.upcoming.find((entry) => entry.sourceKey === "vocab:common");
+  assert.ok(item);
+  assert.equal(item.intervalDays, 3);
+});
