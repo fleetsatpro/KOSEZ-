@@ -76,6 +76,7 @@ function SpeakRoom() {
   const influenceReasons = influence.speak.reasons
     .filter((r) => r.code !== "balanced")
     .map((r) => r.line);
+  const influenceReasonKey = influenceReasons.join("|");
 
   const [room, setRoom] = useState<LivingRoom | null>(null);
   const [source, setSource] = useState<"llm" | "swarm">("swarm");
@@ -154,7 +155,7 @@ function SpeakRoom() {
     return () => {
       cancelled = true;
     };
-  }, [id, learner.level, learner.firstName, learner.interests, friction, pressureHint, kitBoost, influenceReasons.join("|")]);
+  }, [id, learner.level, learner.firstName, learner.interests, friction, pressureHint, kitBoost, influenceReasonKey]);
 
   useEffect(() => {
     if (!started || done) return;
