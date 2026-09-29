@@ -15,7 +15,7 @@ import {
 import { getPublishedContentOnServer } from "@/lib/blossom/content.api";
 import { getSavedExploreItemsOnServer, toggleSavedExploreItemOnServer } from "@/lib/blossom/domain.api";
 import { useBlossom } from "@/lib/blossom/store";
-import { formatLongDate } from "@/lib/utils";
+import { formatLongDate, parseKosezEventDate } from "@/lib/utils";
 
 export const Route = createFileRoute("/_app/explore")({
   component: ExplorePage,
