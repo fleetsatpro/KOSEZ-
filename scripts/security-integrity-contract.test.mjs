@@ -172,3 +172,11 @@ test("mission reward requires a completed server run session", () => {
   );
   assert.match(theatre, /rewardSourceId = `mission-session-\${ended\.id}`;/);
 });
+
+test("late-unmount mission cleanup never completes a reward session", () => {
+  const theatre = read("src/components/app/mission-theatre-experience.tsx");
+  assert.match(
+    theatre,
+    /if \(!mountedRef\.current\)[\s\S]*endMissionRunSessionOnServer\(\{[\s\S]*status: "cancelled"/,
+  );
+});

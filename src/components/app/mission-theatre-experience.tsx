@@ -183,7 +183,9 @@ export function MissionTheatreExperience() {
       serverRunSessionRef.current = serverSession.id;
       completedServerRunRef.current = false;
       if (!mountedRef.current) {
-        void endMissionRunSessionOnServer({ data: { sessionId: serverSession.id } }).catch(() => undefined);
+        void endMissionRunSessionOnServer({
+          data: { sessionId: serverSession.id, status: "cancelled" },
+        }).catch(() => undefined);
         return;
       }
       setServerRunSessionId(serverSession.id);
