@@ -7,7 +7,7 @@ import { RecordControl, Waveform } from "@/components/app/record-control";
 import { Eyebrow, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LEARNER_MEMORY, planAllows, PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
+import { LEARNER_MEMORY, planAllows, setsForLanguage } from "@/lib/blossom/data";
 import { influenceFromState } from "@/lib/blossom/influence";
 import type { LivingRoom } from "@/lib/blossom/speak-engine";
 import { reshuffleRoom } from "@/lib/blossom/speak-engine";
@@ -73,9 +73,15 @@ function SpeakRoom() {
   const friction = influence.speak.friction ?? (memoryOn ? LEARNER_MEMORY.hesitation : null);
   const kitBoost = influence.speak.kitBoost;
   const pressureHint = influence.speak.pressureHint;
-  const influenceReasons = influence.speak.reasons
-    .filter((r) => r.code !== "balanced")
-    .map((r) => r.line);
+  const influenceReasonKey = JSON.stringify(
+    influence.speak.reasons
+      .filter((r) => r.code !== "balanced")
+      .map((r) => r.line),
+  );
+  const influenceReasons = useMemo(
+    () => JSON.parse(influenceReasonKey) as string[],
+    [influenceReasonKey],
+  );
 
   const [room, setRoom] = useState<LivingRoom | null>(null);
   const [source, setSource] = useState<"llm" | "swarm">("swarm");
@@ -154,7 +160,7 @@ function SpeakRoom() {
     return () => {
       cancelled = true;
     };
-  }, [id, learner.level, learner.firstName, learner.interests, friction, pressureHint, kitBoost, influenceReasons.join("|")]);
+  }, [id, learner.level, learner.firstName, learner.interests, friction, pressureHint, kitBoost, influenceReasons]);
 
   useEffect(() => {
     if (!started || done) return;

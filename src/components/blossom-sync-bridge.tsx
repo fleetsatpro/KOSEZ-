@@ -866,6 +866,7 @@ function SyncMark({ ready }: { ready: boolean }) {
 
 export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
   const { user, isPending } = useCurrentUserState();
+  const userId = user?.id;
   const syncingRef = useRef(false);
   const onReadyRef = useRef(onReady);
   onReadyRef.current = onReady;
@@ -873,7 +874,7 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
   useEffect(() => {
     if (isPending) return;
 
-    if (!user) {
+    if (!userId) {
       setSyncOwner(null);
       useBlossom.getState().resetJourney();
       onReadyRef.current?.();
@@ -894,7 +895,7 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
           persistedState &&
           typeof persistedState === "object" &&
           !Array.isArray(persistedState) &&
-          owner === user.id
+          owner === userId
         ) {
           useBlossom.setState(persistedState);
         }
@@ -909,13 +910,13 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
       if (disposed || cleanupSync) return;
 
       const storedOwner = useBlossom.getState().syncOwnerUserId;
-      const userChanged = storedOwner !== user.id;
-      setSyncOwner(user.id);
+      const userChanged = storedOwner !== userId;
+      setSyncOwner(userId);
 
       if (userChanged) {
         useBlossom.getState().resetJourney();
       }
-      useBlossom.setState({ syncOwnerUserId: user.id });
+      useBlossom.setState({ syncOwnerUserId: userId });
 
       if (!navigator.onLine) {
         onReadyRef.current?.();
@@ -996,7 +997,7 @@ export function BlossomSyncBridge({ onReady }: { onReady?: () => void } = {}) {
       hydrationCleanup?.();
       cleanupSync?.();
     };
-  }, [isPending, user?.id]);
+  }, [isPending, userId]);
 
   return null;
 }

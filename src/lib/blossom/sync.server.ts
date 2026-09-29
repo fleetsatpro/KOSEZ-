@@ -97,12 +97,6 @@ async function activeLanguageId(userId: string): Promise<string> {
   return isLearnLanguageId(raw) ? raw : "en";
 }
 
-function intValue(value: unknown, fallback = 0): number {
-  return typeof value === "number" && Number.isFinite(value)
-    ? Math.round(value)
-    : fallback;
-}
-
 function boundedJson(value: unknown, maxBytes: number, maxKeys = 40) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   if (Object.keys(value as Record<string, unknown>).length > maxKeys) return false;

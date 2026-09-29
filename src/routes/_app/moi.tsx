@@ -1,18 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
-import {
-  Leaf,
-  Shield,
-  BookOpen,
-  Calendar,
-  CalendarClock,
-  Sparkles,
-  ChevronRight,
-} from "lucide-react";
+import { BookOpen, Calendar, CalendarClock, Sparkles } from "lucide-react";
 import { LanguageSettings } from "@/components/app/language-settings";
 import { Eyebrow, Page, Surface } from "@/components/app/primitives";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -20,7 +11,6 @@ import {
   EVENTS,
   LEARNER_MEMORY,
   planAllows,
-  PLANS,
   PLANT_IMAGE,
 } from "@/lib/blossom/data";
 import { countByType, resolveMemory } from "@/lib/blossom/engine";
@@ -86,7 +76,7 @@ function MoiPage() {
   const setOrgMode = useBlossom((s) => s.setOrgMode);
   const setAdminMode = useBlossom((s) => s.setAdminMode);
   const setChildMode = useBlossom((s) => s.setChildMode);
-  const { access, pending: accessPending } = useBlossomWorkspaceAccess();
+  const { access } = useBlossomWorkspaceAccess();
   const resetJourney = useBlossom((s) => s.resetJourney);
   const leoLetters = useBlossom((s) => s.leoLetters);
   const markLeoLetterRead = useBlossom((s) => s.markLeoLetterRead);

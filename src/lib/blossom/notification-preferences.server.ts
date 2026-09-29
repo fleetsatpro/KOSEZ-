@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
 import {
-  DEFAULT_NOTIFICATION_PREFERENCES,
   NOTIFICATION_PREFERENCE_KINDS,
   normalizeNotificationPreferences,
   type NotificationPreferenceKind,

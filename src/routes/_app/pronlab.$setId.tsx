@@ -5,7 +5,7 @@ import { RecordControl } from "@/components/app/record-control";
 import { Eyebrow, Page, Sparkline, DualWave, Surface } from "@/components/app/primitives";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { findPronlabSet, LEARNER_MEMORY, PRONLAB_SETS, setsForLanguage } from "@/lib/blossom/data";
+import { findPronlabSet, LEARNER_MEMORY, setsForLanguage } from "@/lib/blossom/data";
 import { summarisePronlabItem, type PronlabAttempt } from "@/lib/blossom/engine";
 import { influenceFromState } from "@/lib/blossom/influence";
 import { isSetUnlocked, useBlossom } from "@/lib/blossom/store";

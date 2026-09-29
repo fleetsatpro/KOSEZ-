@@ -38,7 +38,6 @@ import {
   type ActivityType,
   type PronlabAttempt,
 } from "./engine";
-import { mergeMissionSessions } from "./sync-merge";
 import {
   activeMissionRun,
   appendMissionAttempt,

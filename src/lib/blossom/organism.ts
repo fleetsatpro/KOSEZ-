@@ -236,11 +236,6 @@ const FLOWER_LABELS = [
   "Le sol accueille une rencontre.",
   "Une lecture s'épanouit en geste.",
 ] as const;
-const MINERAL_LABELS = [
-  "Le sol se souvient.",
-  "Un nutriment entre dans la terre.",
-  "La terre retient le geste.",
-] as const;
 
 function pickLabel(pool: readonly string[], seed: string): string {
   let h = 0;
