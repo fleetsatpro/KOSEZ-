@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { getSql } from "@/lib/db";
+import { normalizeMutationTime } from "./sync-causality";
 import { IMMERSION, PRONLAB_SETS, setsForLanguage, TODAY_MISSION } from "./data";
 import { LEARN_LANGUAGES, isLearnLanguageId } from "@/lib/i18n/locales";
 import { GRAMMAR_TASKS, LISTENING_TASKS, WRITING_PROMPTS, evaluateWritingStructure } from "./lab-content";
 import type { JsonObject } from "./backend.server";
 import { getPublishedContent } from "./content.server";
 import { enforceRateLimit } from "./rate-limit.server";
+import type { PronlabAttemptInput } from "./booking.server";
 import { writeAuditEvent, createNotification } from "./notifications.server";
 import { assertLearnerAccess, BlossomForbiddenError } from "./access.server";
 
@@ -19,6 +21,112 @@ export type BlossomNotification = {
   readAt: string | null;
   createdAt: string;
 };
+
+export async function recordPronlabAttempt(
+  userId: string,
+  input: PronlabAttemptInput,
+) {
+  await enforceRateLimit(userId, "learning.pronlab-attempt", 60, 60);
+  const sql = await getSql();
+  const profileRows = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const languageId = String(profileRows[0]?.target_language ?? "en");
+  const activeItems = new Set(
+    setsForLanguage(languageId).flatMap((setDef) => setDef.items.map((item) => item.id)),
+  );
+  const knownItem = PRONLAB_SETS.flatMap((set) => set.items).find((item) => item.id === input.itemId);
+  if (!knownItem || !activeItems.has(input.itemId)) {
+    throw new BlossomForbiddenError("Cet exercice Pron'Lab n'est pas disponible pour votre langue active.");
+  }
+  if (!Number.isFinite(input.seconds) || input.seconds <= 0 || input.seconds > 3600) {
+    throw new BlossomForbiddenError("Une prise Pron'Lab doit contenir une durée réelle et bornée.");
+  }
+
+  const recordId = input.idempotencyKey ?? randomUUID();
+  const metadata = input.metadata ?? {};
+  const safeScore = 0;
+  const assessment =
+    metadata.assessment === "transcript" ? "transcript" : "capture-only";
+  const safeMetadata = {
+    ...metadata,
+    languageId,
+    assessment,
+    provider:
+      typeof metadata.provider === "string"
+        ? metadata.provider
+        : "speech-evidence",
+  };
+
+  if (input.idempotencyKey) {
+    const existing = await sql.query(
+      "select id, item_id, score, seconds, tip, metadata, created_at from blossom_pronlab_attempt where user_id = $1 and idempotency_key = $2::uuid",
+      [userId, input.idempotencyKey],
+    );
+    if (existing[0]) return existing[0];
+  }
+
+  const rows = await sql.query(
+    "insert into blossom_pronlab_attempt (id, user_id, item_id, idempotency_key, score, seconds, tip, metadata) values ($1::uuid, $2, $3, $4::uuid, $5, $6, $7, $8::jsonb) on conflict (user_id, idempotency_key) where idempotency_key is not null do update set idempotency_key = excluded.idempotency_key returning id, item_id, score, seconds, tip, metadata, created_at",
+    [
+      recordId,
+      userId,
+      input.itemId,
+      input.idempotencyKey ?? null,
+      safeScore,
+      Math.max(0, Math.round(input.seconds)),
+      input.tip ?? null,
+      JSON.stringify(safeMetadata),
+    ],
+  );
+
+  if (!rows[0]) throw new Error("pronlab-write-failed");
+  return rows[0];
+}
+
+export async function saveVocabulary(
+  userId: string,
+  input: {
+    word: string;
+    gloss: string;
+    metadata?: JsonObject;
+    mutationCreatedAt?: string;
+  },
+) {
+  await enforceRateLimit(userId, "learning.vocabulary-upsert", 120, 60);
+  const sql = await getSql();
+  const metadata = input.metadata ?? {};
+  const profileRows = await sql.query(
+    "select target_language from blossom_profile where user_id = $1 limit 1",
+    [userId],
+  );
+  const languageId = String(profileRows[0]?.target_language ?? "en");
+  const claimedLanguageId = metadata.languageId;
+  if (typeof claimedLanguageId === "string" && claimedLanguageId !== languageId) {
+    throw new BlossomForbiddenError("La langue du vocabulaire doit correspondre à votre langue active.");
+  }
+  const causalTime = normalizeMutationTime(input.mutationCreatedAt);
+  const rows = await sql.query(
+    "insert into blossom_vocabulary (user_id, language_id, word, gloss, metadata, updated_at) values ($1, $2, $3, $4, $5::jsonb, coalesce($6::timestamptz, current_timestamp)) on conflict (user_id, language_id, word) do update set gloss = excluded.gloss, metadata = excluded.metadata, updated_at = excluded.updated_at where blossom_vocabulary.updated_at <= excluded.updated_at returning word, gloss, metadata, language_id, first_saved_at, updated_at",
+    [
+      userId,
+      languageId,
+      input.word.toLowerCase(),
+      input.gloss,
+      JSON.stringify({ ...metadata, languageId }),
+      causalTime,
+    ],
+  );
+  if (rows[0]) return rows[0];
+
+  const current = await sql.query(
+    "select word, gloss, metadata, language_id, first_saved_at, updated_at from blossom_vocabulary where user_id = $1 and language_id = $2 and word = $3",
+    [userId, languageId, input.word.toLowerCase()],
+  );
+  if (!current[0]) throw new Error("vocabulary-write-failed");
+  return current[0];
+}
 
 export async function registerEvent(
   userId: string,
