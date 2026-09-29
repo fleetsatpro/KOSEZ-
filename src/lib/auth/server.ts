@@ -70,16 +70,26 @@ const env = (key: string): string | undefined => {
   return value ? value : undefined;
 };
 
+const isVercelProduction =
+  process.env.VERCEL === "1" && process.env.VERCEL_ENV === "production";
+
 // Explicit off-switch. The deployer sets `VITE_AUTH_ENABLED=true` when it
 // provisions auth; set it to "false" to force auth off everywhere (dev user).
 const authDisabled = env("VITE_AUTH_ENABLED") === "false";
 
-// Broker federation creds: the deployer injects a per-app client when deployed;
-// otherwise fall back to the shared live-preview client, which the broker accepts
-// for any `*.grok-sandbox.com` callback (see `./preview`).
-const grokIssuer = env("GROK_AUTH_ISSUER") ?? GROK_ISSUER_DEFAULT;
-const grokClientId = env("GROK_AUTH_CLIENT_ID") ?? PREVIEW_CLIENT_ID;
-const grokClientSecret = env("GROK_AUTH_CLIENT_SECRET") ?? PREVIEW_CLIENT_SECRET;
+const configuredGrokIssuer = env("GROK_AUTH_ISSUER");
+const configuredGrokClientId = env("GROK_AUTH_CLIENT_ID");
+const configuredGrokClientSecret = env("GROK_AUTH_CLIENT_SECRET");
+
+// Preview credentials are deliberately unavailable in Vercel production.
+// Production must provide its own broker credentials or auth remains disabled.
+const grokIssuer =
+  configuredGrokIssuer ?? (isVercelProduction ? "" : GROK_ISSUER_DEFAULT);
+const grokClientId =
+  configuredGrokClientId ?? (isVercelProduction ? "" : PREVIEW_CLIENT_ID);
+const grokClientSecret =
+  configuredGrokClientSecret ??
+  (isVercelProduction ? "" : PREVIEW_CLIENT_SECRET);
 
 /** True when federated sign-in is active (real auth is enforced). */
 export const authConfigured =
