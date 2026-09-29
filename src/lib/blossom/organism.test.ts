@@ -8,6 +8,9 @@ import {
   growthEventForActivity,
   organismStatusLine,
   causalNextGesture,
+  MINERAL_DEFINITIONS,
+  MINERAL_ORDER,
+  mineralForActivity,
   pushGrowthEvent,
   weekKey,
 } from "./organism.ts";
@@ -179,4 +182,58 @@ it("pending activity does not nourish organism minerals", () => {
   };
   assert.equal(computeMinerals([pending]).mission, 0);
   assert.ok(computeMinerals([confirmed]).mission > 0);
+});
+
+
+describe("canonical mineral contract", () => {
+  it("maps every nourishing activity type to exactly one mineral", () => {
+    const seen = new Map<string, string>();
+    for (const key of MINERAL_ORDER) {
+      for (const type of MINERAL_DEFINITIONS[key].writtenBy) {
+        assert.equal(seen.has(type), false, type + " is assigned to more than one mineral");
+        seen.set(type, key);
+      }
+    }
+    assert.equal(mineralForActivity("PULSE_COMPLETED"), "parole");
+    assert.equal(mineralForActivity("DIAGNOSTIC_COMPLETED"), null);
+    assert.equal(mineralForActivity("LESSON_COMPLETED"), null);
+  });
+
+  it("keeps the causal next-door basis explicit and tie-aware", () => {
+    const next = causalNextGesture({
+      at: "",
+      mission: 10,
+      parole: 10,
+      pron: 40,
+      social: 60,
+      atelier: 80,
+    });
+    assert.equal(next.mineral, "mission");
+    assert.deepEqual(next.tiedWith, ["mission", "parole"]);
+    assert.match(next.basis, /10\/100/);
+    assert.match(next.basis, /14 jours/);
+    assert.equal(next.value, 10);
+  });
+
+  it("treats Pulse as parole rather than an unassigned generic trace", () => {
+    const pulse = growthEventForActivity(
+      "PULSE_COMPLETED",
+      "pulse-session-test",
+      "2026-09-29T00:00:00.000Z",
+    );
+    assert.equal(pulse?.mineral, "parole");
+    assert.equal(pulse?.kind, "stem");
+  });
+
+  it("does not count diagnostic placement as atelier nourishment", () => {
+    const diagnostic = computeMinerals([
+      {
+        id: "diag",
+        type: "DIAGNOSTIC_COMPLETED",
+        createdAt: new Date().toISOString(),
+        sourceId: "diagnostic",
+      },
+    ]);
+    assert.equal(diagnostic.atelier, 0);
+  });
 });
