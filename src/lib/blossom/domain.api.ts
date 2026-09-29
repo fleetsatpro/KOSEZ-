@@ -151,9 +151,12 @@ export const endMissionRunSessionOnServer = createServerFn({ method: "POST" })
 
 export const startSpeakSessionOnServer = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(z.object({ roomId: z.string().trim().min(1).max(240) }))
+  .inputValidator(z.object({
+    roomId: z.string().trim().min(2).max(120),
+    languageId: z.string().trim().min(2).max(16),
+  }))
   .handler(async ({ context, data }) =>
-    startSpeakSession(context.userId, data.roomId),
+    startSpeakSession(context.userId, data.roomId, data.languageId),
   );
 
 export const finalizeSpeakSessionOnServer = createServerFn({ method: "POST" })
